@@ -2,37 +2,40 @@ import axios, { AxiosError, type AxiosInstance } from 'axios'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api'
 
-function getAccessToken(): string | null {
-  if (typeof window === 'undefined') return null
-  return localStorage.getItem('medicore_access_token')
+// Access token lives in memory only (never localStorage/sessionStorage) —
+// the refresh token is an HttpOnly cookie the browser sends automatically
+// via `withCredentials`. AuthProvider is the only writer of this value.
+let accessToken: string | null = null
+
+export function setAccessToken(token: string | null): void {
+  accessToken = token
 }
 
-function getRefreshToken(): string | null {
-  if (typeof window === 'undefined') return null
-  return localStorage.getItem('medicore_refresh_token')
+export function getAccessToken(): string | null {
+  return accessToken
 }
 
-function setTokens(accessToken: string, refreshToken: string) {
-  localStorage.setItem('medicore_access_token', accessToken)
-  localStorage.setItem('medicore_refresh_token', refreshToken)
-}
-
-function clearTokens() {
-  localStorage.removeItem('medicore_access_token')
-  localStorage.removeItem('medicore_refresh_token')
+function getCsrfTokenFromCookie(): string | null {
+  if (typeof document === 'undefined') return null
+  const match = document.cookie.match(/(?:^|;\s*)medicore_csrf=([^;]+)/)
+  return match ? decodeURIComponent(match[1]) : null
 }
 
 export const apiClient: AxiosInstance = axios.create({
-  baseURL: API_URL,
+  baseURL: `${API_URL}/v1`,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 })
 
 apiClient.interceptors.request.use((config) => {
-  const token = getAccessToken()
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`
+  }
+  const csrfToken = getCsrfTokenFromCookie()
+  if (csrfToken) {
+    config.headers['X-CSRF-Token'] = csrfToken
   }
   return config
 })
@@ -54,17 +57,26 @@ function processQueue(error: unknown, token: string | null = null) {
   failedQueue = []
 }
 
+/** Set by AuthProvider so the interceptor can clear app state on a failed refresh. */
+let onRefreshFailure: (() => void) | null = null
+export function setOnRefreshFailure(handler: (() => void) | null): void {
+  onRefreshFailure = handler
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as typeof error.config & { _retry?: boolean }
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    const isAuthEndpoint =
+      originalRequest?.url?.includes('/auth/login') || originalRequest?.url?.includes('/auth/refresh')
+
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       if (isRefreshing) {
-        return new Promise((resolve, reject) => {
+        return new Promise<string>((resolve, reject) => {
           failedQueue.push({ resolve, reject })
         }).then((token) => {
-          originalRequest.headers!.Authorization = `Bearer ${token}`
+          originalRequest.headers.Authorization = `Bearer ${token}`
           return apiClient(originalRequest)
         })
       }
@@ -72,30 +84,24 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true
       isRefreshing = true
 
-      const refreshToken = getRefreshToken()
-      if (!refreshToken) {
-        clearTokens()
-        window.location.href = '/login'
-        return Promise.reject(error)
-      }
-
       try {
-        const { data } = await axios.post(`${API_URL}/v1/auth/refresh`, { refreshToken })
-        const { accessToken, refreshToken: newRefreshToken } = data.data as {
-          accessToken: string
-          refreshToken: string
-        }
+        const { data } = await axios.post<{ data: { accessToken: string } }>(
+          `${API_URL}/v1/auth/refresh`,
+          undefined,
+          { withCredentials: true, headers: { 'X-CSRF-Token': getCsrfTokenFromCookie() ?? '' } },
+        )
 
-        setTokens(accessToken, newRefreshToken)
-        processQueue(null, accessToken)
+        const newAccessToken = data.data.accessToken
+        setAccessToken(newAccessToken)
+        processQueue(null, newAccessToken)
 
-        originalRequest.headers!.Authorization = `Bearer ${accessToken}`
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
         return apiClient(originalRequest)
-      } catch (err) {
-        processQueue(err, null)
-        clearTokens()
-        window.location.href = '/login'
-        return Promise.reject(err)
+      } catch (refreshError) {
+        processQueue(refreshError, null)
+        setAccessToken(null)
+        onRefreshFailure?.()
+        return Promise.reject(refreshError)
       } finally {
         isRefreshing = false
       }
@@ -104,5 +110,3 @@ apiClient.interceptors.response.use(
     return Promise.reject(error)
   },
 )
-
-export { setTokens, clearTokens, getAccessToken }

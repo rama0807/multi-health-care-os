@@ -1,9 +1,10 @@
 import { Controller } from '@nestjs/common'
 import { ApiTags } from '@nestjs/swagger'
+
 import { AppointmentsService } from './appointments.service'
 
 @ApiTags('appointments')
 @Controller({ path: 'appointments', version: '1' })
 export class AppointmentsController {
-  constructor(private readonly appointmentsService: AppointmentsService) {}
+  constructor(_appointmentsService: AppointmentsService) {}
 }

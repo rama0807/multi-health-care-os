@@ -39,8 +39,13 @@ erDiagram
         string lastName
         string phone
         string avatar
-        boolean isActive
+        enum status "ACTIVE | INACTIVE | SUSPENDED | PENDING_VERIFICATION"
         boolean isEmailVerified
+        string timezone
+        boolean mfaEnabled
+        string mfaSecret "schema-ready; no TOTP flow implemented yet"
+        int failedLoginAttempts
+        datetime lockedUntil
         string organizationId FK
         datetime lastLoginAt
         datetime createdAt
@@ -59,14 +64,15 @@ erDiagram
     Permission {
         string id PK
         string resource
-        string action
-        string scope
+        string action "read | create | update | delete | manage"
+        string scope "all | own"
         string description
     }
 
     UserRole {
         string userId FK
         string roleId FK
+        string hospitalId FK "nullable — null means org-wide, set means scoped to one hospital"
         datetime assignedAt
         string assignedBy FK
     }
@@ -76,16 +82,21 @@ erDiagram
         string permissionId FK
     }
 
-    RefreshToken {
+    Hospital {
         string id PK
-        string tokenHash UK
-        string userId FK
-        string sessionId
-        string userAgent
-        string ipAddress
-        boolean isRevoked
-        datetime expiresAt
+        string organizationId FK
+        string name
+        string code
+        string address
+        string city
+        string state
+        string country
+        string pincode
+        string phone
+        string email
+        boolean isActive
         datetime createdAt
+        datetime updatedAt
     }
 
     Department {
@@ -93,6 +104,7 @@ erDiagram
         string name
         string code
         string headDoctorId FK
+        string hospitalId FK
         string organizationId FK
         boolean isActive
         datetime createdAt
@@ -460,11 +472,15 @@ erDiagram
     }
 
     Organization ||--o{ User : "has"
+    Organization ||--o{ Hospital : "owns"
     Organization ||--o{ Department : "has"
     Organization ||--o{ Patient : "has"
     Organization ||--o{ Appointment : "has"
     Organization ||--o{ Invoice : "has"
     Organization ||--o{ AuditLog : "generates"
+
+    Hospital ||--o{ Department : "contains"
+    Hospital ||--o{ UserRole : "scopes (optional)"
 
     User ||--o{ UserRole : "has"
     Role ||--o{ UserRole : "assigned to"
@@ -473,7 +489,8 @@ erDiagram
 
     User ||--o| Doctor : "profile"
     User ||--o| Staff : "profile"
-    User ||--o{ RefreshToken : "has"
+    %% Refresh tokens and sessions are Redis-only (see ARCHITECTURE.md's
+    %% Redis key table) — deliberately not a Postgres table, per ADR-006.
 
     Department ||--o{ Doctor : "has"
     Department ||--o{ Staff : "has"

@@ -50,3 +50,5 @@ export const UpdateOrganizationSchema = z.object({
   website: z.string().url().optional(),
   licenseNumber: z.string().optional(),
 })
+
+export type UpdateOrganizationDto = z.infer<typeof UpdateOrganizationSchema>

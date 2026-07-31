@@ -82,19 +82,44 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Generate Prisma client
-        run: pnpm db:generate
+      - name: Generate a throwaway RS256 keypair for CI
+        run: |
+          node -e "
+            const { generateKeyPairSync } = require('crypto');
+            const { privateKey, publicKey } = generateKeyPairSync('rsa', {
+              modulusLength: 2048,
+              publicKeyEncoding: { type: 'spki', format: 'pem' },
+              privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+            });
+            const fs = require('fs');
+            fs.appendFileSync(process.env.GITHUB_ENV, 'JWT_PRIVATE_KEY=' + Buffer.from(privateKey).toString('base64') + '\n');
+            fs.appendFileSync(process.env.GITHUB_ENV, 'JWT_PUBLIC_KEY=' + Buffer.from(publicKey).toString('base64') + '\n');
+          "
+
+      - name: Generate Prisma client and apply migrations
+        run: |
+          pnpm db:generate
+          pnpm --filter @medicore/database exec prisma migrate deploy
         env:
           DATABASE_URL: postgresql://medicore:medicore@localhost:5432/medicore_test
 
-      - name: Run API tests
+      - name: Run API unit tests
         run: pnpm --filter @medicore/api test:coverage
         env:
           NODE_ENV: test
           DATABASE_URL: postgresql://medicore:medicore@localhost:5432/medicore_test
           REDIS_HOST: localhost
           REDIS_PORT: 6379
-          JWT_SECRET: test-secret-not-for-production
+          COOKIE_SECRET: test-cookie-secret-not-for-production
+
+      - name: Run API e2e tests
+        run: pnpm --filter @medicore/api test:e2e
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://medicore:medicore@localhost:5432/medicore_test
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          COOKIE_SECRET: test-cookie-secret-not-for-production
 
   test-web:
     name: Test Web

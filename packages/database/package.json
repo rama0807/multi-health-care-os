@@ -15,7 +15,8 @@
     "build": "echo 'No build needed for database package'"
   },
   "dependencies": {
-    "@prisma/client": "^5.17.0"
+    "@prisma/client": "^5.17.0",
+    "argon2": "^0.41.1"
   },
   "devDependencies": {
     "prisma": "^5.17.0",

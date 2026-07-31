@@ -15,7 +15,7 @@ export interface Response<T> {
 
 @Injectable()
 export class ResponseTransformInterceptor<T> implements NestInterceptor<T, Response<T>> {
-  intercept(context: ExecutionContext, next: CallHandler): Observable<Response<T>> {
+  intercept(context: ExecutionContext, next: CallHandler<T>): Observable<Response<T>> {
     const request = context.switchToHttp().getRequest<FastifyRequest>()
     const requestId = (request.headers['x-request-id'] as string) ?? nanoid(10)
 
@@ -23,7 +23,7 @@ export class ResponseTransformInterceptor<T> implements NestInterceptor<T, Respo
       map((data) => {
         // If already wrapped (e.g., paginated response), pass through
         if (data && typeof data === 'object' && 'success' in data) {
-          return data as Response<T>
+          return data as unknown as Response<T>
         }
 
         return {

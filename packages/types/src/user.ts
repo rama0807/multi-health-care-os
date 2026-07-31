@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { SystemRole } from './enums'
+import { SystemRole, UserStatus } from './enums'
 
 export interface User {
   id: string
@@ -10,8 +10,10 @@ export interface User {
   fullName: string
   phone: string | null
   avatar: string | null
-  isActive: boolean
+  status: UserStatus
   isEmailVerified: boolean
+  timezone: string
+  mfaEnabled: boolean
   organizationId: string
   roles: SystemRole[]
   lastLoginAt: Date | null
@@ -25,7 +27,7 @@ export const CreateUserSchema = z.object({
   lastName: z.string().min(2).max(50),
   phone: z.string().optional(),
   password: z.string().min(8).regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/),
-  roles: z.array(z.nativeEnum(SystemRole)).min(1),
+  roleIds: z.array(z.string()).min(1),
 })
 
 export type CreateUserDto = z.infer<typeof CreateUserSchema>
@@ -34,7 +36,7 @@ export const UpdateUserSchema = z.object({
   firstName: z.string().min(2).max(50).optional(),
   lastName: z.string().min(2).max(50).optional(),
   phone: z.string().optional(),
-  roles: z.array(z.nativeEnum(SystemRole)).optional(),
+  status: z.nativeEnum(UserStatus).optional(),
 })
 
 export type UpdateUserDto = z.infer<typeof UpdateUserSchema>

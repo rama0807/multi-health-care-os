@@ -97,6 +97,12 @@ export enum ShiftType {
   ROTATING = 'ROTATING',
 }
 
+export enum DoctorAvailabilityStatus {
+  AVAILABLE = 'AVAILABLE',
+  ON_LEAVE = 'ON_LEAVE',
+  UNAVAILABLE = 'UNAVAILABLE',
+}
+
 export enum NotificationChannel {
   EMAIL = 'EMAIL',
   SMS = 'SMS',
@@ -114,8 +120,16 @@ export enum SystemRole {
   LAB_TECHNICIAN = 'LAB_TECHNICIAN',
   RADIOLOGY_TECHNICIAN = 'RADIOLOGY_TECHNICIAN',
   PHARMACIST = 'PHARMACIST',
-  BILLING_STAFF = 'BILLING_STAFF',
+  CASHIER = 'CASHIER',
+  HR = 'HR',
   INVENTORY_MANAGER = 'INVENTORY_MANAGER',
+}
+
+export enum UserStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+  SUSPENDED = 'SUSPENDED',
+  PENDING_VERIFICATION = 'PENDING_VERIFICATION',
 }
 
 export enum DocumentType {

@@ -65,6 +65,68 @@ export interface PatientSearchQuery {
   q?: string
   uhid?: string
   phone?: string
+  dob?: string
+  gender?: Gender
+  isActive?: boolean
+  sortBy?: 'createdAt' | 'firstName' | 'lastName' | 'uhid'
+  sortOrder?: 'asc' | 'desc'
   page?: number
   limit?: number
+}
+
+export const CreatePatientDocumentSchema = z.object({
+  documentType: z.nativeEnum(DocumentType),
+})
+export type CreatePatientDocumentDto = z.infer<typeof CreatePatientDocumentSchema>
+
+export const DuplicateCheckSchema = z.object({
+  firstName: z.string().min(1).optional(),
+  lastName: z.string().min(1).optional(),
+  phone: z.string().optional(),
+  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+})
+export type DuplicateCheckDto = z.infer<typeof DuplicateCheckSchema>
+
+export interface DuplicateMatch {
+  patient: Patient
+  confidence: number
+  matchedFields: Array<'phone' | 'dateOfBirth' | 'firstName' | 'lastName'>
+}
+
+export interface DuplicateCheckResult {
+  matches: DuplicateMatch[]
+}
+
+export type PatientTimelineEntryType =
+  | 'REGISTRATION'
+  | 'APPOINTMENT'
+  | 'ADMISSION'
+  | 'LAB_TEST'
+  | 'RADIOLOGY'
+  | 'PRESCRIPTION'
+  | 'INVOICE'
+  | 'AUDIT'
+
+export interface PatientTimelineEntry {
+  id: string
+  type: PatientTimelineEntryType
+  title: string
+  description?: string
+  occurredAt: Date
+  metadata?: Record<string, unknown>
+}
+
+export interface PatientSummaryCounts {
+  appointments: number
+  admissions: number
+  labTests: number
+  radiologyOrders: number
+  invoices: number
+  medicalRecords: number
+  prescriptions: number
+  insuranceClaims: number
+}
+
+export interface PatientWithSummary extends Patient {
+  summary: PatientSummaryCounts
 }

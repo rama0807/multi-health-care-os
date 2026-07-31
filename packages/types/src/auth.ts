@@ -8,15 +8,36 @@ export interface JwtPayload {
   orgId: string
   orgSlug: string
   roles: SystemRole[]
+  /** "resource.action.scope" strings, e.g. "patients.read.own" — resolved at login/refresh time */
+  permissions: string[]
+  /** Hospitals this user's role assignments are scoped to; empty = org-wide */
+  hospitalIds: string[]
   sessionId: string
   iat: number
   exp: number
 }
 
-export interface AuthTokens {
+export interface AccessTokenResponse {
   accessToken: string
-  refreshToken: string
   expiresIn: number
+}
+
+export interface AuthenticatedUser {
+  id: string
+  email: string
+  firstName: string
+  lastName: string
+  avatar: string | null
+  organizationId: string
+  organizationSlug: string
+  organizationName: string
+  roles: SystemRole[]
+  permissions: string[]
+  hospitalIds: string[]
+}
+
+export interface LoginResponse extends AccessTokenResponse {
+  user: AuthenticatedUser
 }
 
 export interface SessionInfo {
@@ -33,6 +54,7 @@ export const LoginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
   organizationSlug: z.string().optional(),
+  rememberMe: z.boolean().optional().default(false),
 })
 
 export type LoginDto = z.infer<typeof LoginSchema>
@@ -63,6 +85,8 @@ export const ForgotPasswordSchema = z.object({
   email: z.string().email(),
 })
 
+export type ForgotPasswordDto = z.infer<typeof ForgotPasswordSchema>
+
 export const ResetPasswordSchema = z.object({
   token: z.string(),
   password: z
@@ -70,3 +94,28 @@ export const ResetPasswordSchema = z.object({
     .min(8)
     .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/),
 })
+
+export type ResetPasswordDto = z.infer<typeof ResetPasswordSchema>
+
+export const VerifyEmailSchema = z.object({
+  token: z.string(),
+})
+
+export type VerifyEmailDto = z.infer<typeof VerifyEmailSchema>
+
+export const RefreshTokenSchema = z.object({
+  // Web clients rely on the httpOnly cookie; non-browser clients may pass it explicitly.
+  refreshToken: z.string().optional(),
+})
+
+export type RefreshTokenDto = z.infer<typeof RefreshTokenSchema>
+
+export const ChangePasswordSchema = z.object({
+  currentPassword: z.string().min(8),
+  newPassword: z
+    .string()
+    .min(8)
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/),
+})
+
+export type ChangePasswordDto = z.infer<typeof ChangePasswordSchema>

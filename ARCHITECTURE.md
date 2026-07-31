@@ -234,79 +234,101 @@ All API responses follow this structure:
 
 ## Authentication Flow
 
+*(Implemented in Milestone 2 — apps/api/src/modules/auth)*
+
 ### Login Flow
 
 ```
 Client                     API                      Database           Redis
   │                         │                          │                 │
   │── POST /auth/login ─────►│                          │                 │
-  │   {email, password}      │                          │                 │
+  │   {email, password,      │                          │                 │
+  │    rememberMe}           │                          │                 │
   │                         │── Find user by email ────►│                 │
   │                         │◄──────────────────────────│                 │
   │                         │                          │                 │
-  │                         │── Verify bcrypt hash     │                 │
+  │                         │── Check lockedUntil,      │                 │
+  │                         │   status, org.isActive    │                 │
+  │                         │── Verify Argon2 hash      │                 │
+  │                         │   (failure → increment    │                 │
+  │                         │    failedLoginAttempts,   │                 │
+  │                         │    lock at 5 for 15min)   │                 │
   │                         │                          │                 │
-  │                         │── Generate access token  │                 │
-  │                         │   (JWT, 15min TTL)        │                 │
+  │                         │── Resolve roles/permissions/hospitalIds ───►│
+  │                         │   (Role → RolePermission → Permission)      │
   │                         │                          │                 │
-  │                         │── Generate refresh token │                 │
-  │                         │   (opaque, 30day TTL)    │                 │
+  │                         │── Sign access token       │                 │
+  │                         │   (JWT, RS256, 15min TTL) │                 │
   │                         │                          │                 │
-  │                         │── Store refresh token ───────────────────►│
-  │                         │   in Redis with metadata │                 │
+  │                         │── Create session + opaque │                 │
+  │                         │   refresh token ──────────────────────────►│
+  │                         │   session:{userId}:{sessionId}              │
+  │                         │   refresh:{sha256(token)}                   │
   │                         │                          │                 │
-  │                         │── Log audit event ───────►│                 │
+  │                         │── Emit auth.login (→ AuditLog listener) ───►│
   │                         │                          │                 │
-  │◄── 200 {accessToken,    │                          │                 │
-  │         refreshToken}    │                          │                 │
+  │◄── 200 {accessToken,     │                          │                 │
+  │         expiresIn, user} │                          │                 │
+  │◄── Set-Cookie: medicore_rt (HttpOnly), medicore_csrf │                 │
 ```
 
-### Token Refresh Flow
+Refresh token never appears in the response body — only as an HttpOnly cookie. The access token is returned in the body and kept in memory by the frontend (never persisted to storage).
+
+### Token Refresh Flow (with rotation + reuse detection)
 
 ```
 Client                     API                          Redis
   │                         │                              │
   │── POST /auth/refresh ───►│                              │
-  │   {refreshToken}         │                              │
-  │                         │── Lookup refresh token ──────►│
-  │                         │◄─── Token metadata ───────────│
+  │   Cookie: medicore_rt,   │                              │
+  │   Header: X-CSRF-Token   │                              │
+  │                         │── Lookup refresh:{hash} ─────►│
   │                         │                              │
-  │                         │── Validate: not expired,     │
-  │                         │   not revoked, device match  │
-  │                         │                              │
-  │                         │── Generate new access token  │
-  │                         │── Rotate refresh token        │
-  │                         │── Update Redis entry ─────────►│
-  │                         │                              │
-  │◄── 200 {newAccessToken,  │                              │
-  │         newRefreshToken} │                              │
+  │            ┌── found & session still alive ─────────────┤
+  │            │   → tombstone old key (60s), issue new      │
+  │            │     token, bump session.lastUsedAt           │
+  │            │                                              │
+  │            └── not found, but found under                 │
+  │                refresh:revoked:{hash} (tombstone)         │
+  │                → THEFT: kill the whole session,           │
+  │                  emit auth.token_reuse_detected, 401      │
+  │                                                            │
+  │◄── 200 {accessToken, expiresIn, user}                      │
+  │◄── Set-Cookie: medicore_rt (rotated), medicore_csrf         │
 ```
+
+`JwtStrategy` additionally checks `session:{userId}:{sessionId}` exists on **every** authenticated request — this is what makes logout/theft-detection revoke access immediately rather than waiting out the access token's 15-minute expiry.
 
 ### RBAC Structure
 
 ```
 Organization
+  └── Hospital (0..n)
+        └── Department (0..n)
   └── User
-        └── Roles (many-to-many)
+        └── UserRole (many-to-many, optionally scoped to one Hospital)
               └── Role
-                    └── Permissions (many-to-many)
+                    └── RolePermission (many-to-many)
                           └── Permission
                                 ├── resource: "patients"
-                                ├── action: "read" | "write" | "delete"
-                                └── scope: "own" | "department" | "all"
+                                ├── action: "read" | "create" | "update" | "delete" | "manage"
+                                └── scope: "own" | "all"
 ```
 
-**System Roles:**
-- `SUPER_ADMIN` — MediCore platform admin (cross-org)
-- `ORG_ADMIN` — Hospital administrator
-- `DOCTOR` — Full clinical access to assigned patients
-- `NURSE` — Clinical read + limited write
-- `RECEPTIONIST` — Patient registration, appointments
-- `LAB_TECHNICIAN` — Lab module access
+Permissions are **entirely DB-driven** (seeded via `packages/database/prisma/seed.ts`, never hardcoded in guards). At login/refresh, a user's full permission set is resolved and embedded in the JWT as `"resource.action.scope"` strings; `PermissionsGuard` + `@RequirePermissions()` check membership with no role-based bypass — including for `SUPER_ADMIN`, whose access comes purely from its seeded role holding every permission row. `UserRole.hospitalId` (nullable) lets a role assignment be scoped to one hospital ("Hospital Admin for Hospital X") instead of the whole org — this only affects Department/Hospital-management endpoints today; clinical/financial resources remain org-wide.
+
+**System Roles** (`SystemRole` enum — tags a Role's intent, not its permissions):
+- `SUPER_ADMIN` — MediCore platform admin (seeded in its own dedicated org; cross-tenant querying is future work, see ADR-008)
+- `ORG_ADMIN` — Hospital/organization administrator (org-wide by default, or hospital-scoped via `UserRole.hospitalId`)
+- `DOCTOR` — Clinical access, scoped to assigned patients (`.own` scope)
+- `NURSE` — Clinical read access
+- `RECEPTIONIST` — Patient registration, appointments, billing read
+- `LAB_TECHNICIAN` — Laboratory module access
 - `RADIOLOGY_TECHNICIAN` — Radiology module access
 - `PHARMACIST` — Pharmacy module access
-- `BILLING_STAFF` — Billing and invoices
-- `INVENTORY_MANAGER` — Inventory and pharmacy stock
+- `CASHIER` — Billing and payments
+- `HR` — Staff management
+- `INVENTORY_MANAGER` — Inventory and stock
 
 ---
 
@@ -372,11 +394,14 @@ Request ──► API ──► Queue Job ──► Worker ──► AI Provider
 
 | Key Pattern | Purpose | TTL |
 |-------------|---------|-----|
-| `session:{userId}:{sessionId}` | Session data | 30d |
-| `refresh:{tokenHash}` | Refresh token metadata | 30d |
+| `session:{userId}:{sessionId}` | Session metadata (userAgent, ipAddress, lastUsedAt) | 30d (remember-me) / 1d |
+| `sessions:{userId}` | Set of a user's active session IDs (enumeration for logout-all / list-sessions, no `KEYS`/`SCAN`) | matches sessions |
+| `refresh:{sha256(token)}` | Refresh token metadata | 30d (remember-me) / 1d |
+| `refresh:revoked:{sha256(token)}` | Short-lived tombstone left behind on rotation — a hit here means the token was replayed after rotation (theft) | 60s |
+| `email_verify:{sha256(token)}` | Email verification token → userId, single-use (`GETDEL`) | 24h |
+| `pwd_reset:{sha256(token)}` | Password reset token → userId, single-use (`GETDEL`) | 1h |
 | `rate:{ip}:{endpoint}` | Rate limiting counters | 1m |
 | `cache:org:{orgId}:{resource}` | Query result cache | 5m |
-| `otp:{email}` | OTP for email verification | 10m |
 | `bull:*` | BullMQ job data | Managed by Bull |
 
 ### Object Storage (S3/MinIO)
@@ -477,6 +502,8 @@ defaultJobOptions: {
 ## Multi-Tenancy Architecture
 
 MediCore uses **row-level multi-tenancy** — all tenant data lives in shared tables, isolated by `organizationId`.
+
+**Organization hierarchy** (Milestone 2): an `Organization` (the tenant) can own multiple `Hospital` rows (physical facilities/branches), each containing `Department` rows. Every tenant-scoped table still carries `organizationId` directly (defense-in-depth, per the isolation guarantee below) even where it's also derivable via the hospital/department chain. `organizationId` is always read from the JWT claim (`request.user.orgId`), never from a route param or request body.
 
 **Why not schema-per-tenant?**
 - Row-level is simpler to operate (one set of migrations)

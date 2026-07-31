@@ -7,7 +7,7 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "outDir": "./dist",
-    "incremental": true,
+    "incremental": false,
     "paths": {}
   }
 }

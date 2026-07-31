@@ -233,8 +233,8 @@ pnpm --filter @medicore/web build
 
 | Milestone | Status | Target |
 |-----------|--------|--------|
-| M1: Foundation & Infrastructure | In Progress | Week 1-2 |
-| M2: Authentication & Multi-tenancy | Planned | Week 3 |
+| M1: Foundation & Infrastructure | Done | Week 1-2 |
+| M2: Authentication, Organization & RBAC | Done | Week 3 |
 | M3: Patient Management | Planned | Week 4 |
 | M4: Appointments & Scheduling | Planned | Week 5 |
 | M5: Clinical — Medical Records | Planned | Week 6 |

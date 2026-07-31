@@ -1,9 +1,10 @@
 import { Controller } from '@nestjs/common'
 import { ApiTags } from '@nestjs/swagger'
+
 import { AiService } from './ai.service'
 
 @ApiTags('ai')
 @Controller({ path: 'ai', version: '1' })
 export class AiController {
-  constructor(private readonly aiService: AiService) {}
+  constructor(_aiService: AiService) {}
 }

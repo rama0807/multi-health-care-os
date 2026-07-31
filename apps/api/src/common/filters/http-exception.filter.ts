@@ -34,7 +34,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
         details = resp.errors ?? resp.details
       } else {
         code = this.statusToCode(status)
-        message = exceptionResponse as string
+        message = exceptionResponse
       }
     } else {
       status = HttpStatus.INTERNAL_SERVER_ERROR

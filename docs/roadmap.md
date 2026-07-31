@@ -28,18 +28,20 @@
 **Goal:** Complete auth system with multi-tenancy, RBAC, and organization management.
 
 ### Deliverables
-- [ ] Organization registration (onboarding flow)
-- [ ] User registration and email verification
-- [ ] Login / logout
-- [ ] JWT + refresh token implementation
-- [ ] RBAC: roles and permissions seeded
-- [ ] Password reset flow
-- [ ] Session management (active sessions list)
-- [ ] Audit log middleware (auto-capture on mutations)
-- [ ] Frontend: login page, forgot password, email verification
-- [ ] Frontend: org settings page
-- [ ] Frontend: user management page (admin)
-- [ ] Role assignment UI
+- [x] Organization registration (onboarding flow) — `POST /auth/register`
+- [x] User registration and email verification — admin-created users + self-registered org admins, Redis-backed verification tokens
+- [x] Login / logout — Argon2, RS256 JWT, HttpOnly refresh cookie, CSRF
+- [x] JWT + refresh token implementation — rotation with reuse (theft) detection
+- [x] RBAC: roles and permissions seeded — DB-driven, `packages/database/prisma/seed.ts`
+- [x] Password reset flow
+- [x] Session management (active sessions list) — `GET /auth/sessions`, `POST /auth/logout(-all)`
+- [x] Audit log middleware (auto-capture on mutations) — event-listener based (`modules/audit`), not an HTTP interceptor
+- [x] Frontend: login page, forgot password, email verification
+- [ ] Frontend: org settings page — backend (`GET/PATCH /organizations/me`) implemented; no frontend page yet
+- [ ] Frontend: user management page (admin) — backend (`modules/users`) implemented; no frontend page yet
+- [ ] Role assignment UI — backend (`modules/roles`, assign/revoke endpoints) implemented; no frontend UI yet
+
+Also delivered beyond the original scope: `Hospital` entity (Organization → Hospital → Department hierarchy), hospital-scoped role assignments (`UserRole.hospitalId`), account lockout, `Hospitals`/`Departments` REST modules, and a `/health` endpoint.
 
 ---
 
@@ -62,12 +64,34 @@
 
 ---
 
-## Milestone 4 — Appointments & Scheduling (Week 5)
+## Milestone 4 — Doctor Management & Scheduling (Week 5)
 
-**Goal:** Full appointment lifecycle from booking to completion.
+**Goal:** Doctor directory/profile management, then doctor-side scheduling.
+Split into two checkpoints (see ADR-0005) to keep each session's scope
+tight; appointment *booking* itself (patient-facing slot booking, queue,
+status machine) is deferred to a later milestone.
 
-### Deliverables
-- [ ] Doctor availability configuration (weekly schedule, exceptions)
+### Checkpoint 4.1 — Doctor Management — ✅ Complete
+- [x] Doctor CRUD
+- [x] Professional profile
+- [x] Linked user onboarding (`StaffOnboardingService`, reused across staff roles)
+- [x] Search
+- [x] Filters
+- [x] Dashboard (total/active doctor stats)
+- [x] Doctor profile page
+- [x] Tests (unit + e2e)
+- [x] Documentation (`docs/modules/04-doctor-management.md`)
+
+### Checkpoint 4.2 — Doctor Scheduling — Not started
+- [ ] Weekly schedules
+- [ ] Leave management
+- [ ] Availability (beyond the existing `availabilityStatus` enum)
+- [ ] Dashboard availability stats
+- [ ] Doctor documents
+- [ ] Audit timeline
+- [ ] Remaining tests
+
+### Deferred beyond Milestone 4
 - [ ] Appointment slot generation
 - [ ] Conflict detection
 - [ ] Appointment booking (OPD, IPD, emergency, procedure)
@@ -78,7 +102,6 @@
 - [ ] Frontend: calendar view (day/week)
 - [ ] Frontend: appointment list with queue display
 - [ ] Frontend: booking form
-- [ ] Frontend: doctor schedule management
 
 ---
 

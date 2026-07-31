@@ -1,33 +1,35 @@
 import { Module } from '@nestjs/common'
-import { APP_GUARD } from '@nestjs/core'
+import { ConfigService } from '@nestjs/config'
 import { JwtModule } from '@nestjs/jwt'
 import { PassportModule } from '@nestjs/passport'
 
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
-import { RolesGuard } from '../../common/guards/roles.guard'
-import { UsersModule } from '../users/users.module'
+import { RolesModule } from '../roles/roles.module'
+
 import { AuthController } from './auth.controller'
 import { AuthService } from './auth.service'
+import { SessionsService } from './sessions.service'
 import { JwtStrategy } from './strategies/jwt.strategy'
+import { TokensService } from './tokens.service'
 
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
-      useFactory: () => ({
-        secret: process.env.JWT_SECRET ?? 'change-me',
-        signOptions: { expiresIn: process.env.JWT_ACCESS_TOKEN_EXPIRY ?? '15m' },
+      useFactory: (configService: ConfigService) => ({
+        privateKey: configService.get<string>('jwt.privateKey'),
+        publicKey: configService.get<string>('jwt.publicKey'),
+        signOptions: {
+          algorithm: 'RS256',
+          expiresIn: configService.get<string>('jwt.accessTokenExpiry'),
+        },
+        verifyOptions: { algorithms: ['RS256'] },
       }),
+      inject: [ConfigService],
     }),
-    UsersModule,
+    RolesModule,
   ],
   controllers: [AuthController],
-  providers: [
-    AuthService,
-    JwtStrategy,
-    { provide: APP_GUARD, useClass: JwtAuthGuard },
-    { provide: APP_GUARD, useClass: RolesGuard },
-  ],
-  exports: [AuthService, JwtModule],
+  providers: [AuthService, SessionsService, TokensService, JwtStrategy],
+  exports: [AuthService, SessionsService, TokensService],
 })
 export class AuthModule {}

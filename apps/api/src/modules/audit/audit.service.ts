@@ -41,4 +41,36 @@ export class AuditService {
       take: Math.min(limit, 100),
     })
   }
+
+  /**
+   * Direct `Doctor` events use `resourceId = doctorId`, but schedule/leave/
+   * document events use `resourceId = <their own id>` (scheduleId, leaveId,
+   * documentId) with the owning doctorId carried in `after` instead — see
+   * `AuditListener`'s persist* helpers. This matches both shapes rather than
+   * adding a second capture path.
+   */
+  async listForDoctor(organizationId: string, doctorId: string, limit = 50) {
+    const logs = await this.prisma.auditLog.findMany({
+      where: {
+        organizationId,
+        OR: [
+          { resource: 'Doctor', resourceId: doctorId },
+          {
+            resource: { in: ['DoctorSchedule', 'DoctorLeave', 'DoctorDocument', 'Appointment', 'Encounter', 'Prescription'] },
+            after: { path: ['doctorId'], equals: doctorId },
+          },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(limit, 100),
+    })
+
+    return logs.map((log) => ({
+      id: log.id,
+      title: log.action.replace(/[._]/g, ' '),
+      action: log.action,
+      resource: log.resource,
+      occurredAt: log.createdAt,
+    }))
+  }
 }

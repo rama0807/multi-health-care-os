@@ -456,7 +456,7 @@ export class PatientsService {
       this.prisma.labTest.count({ where: { patientId, organizationId } }),
       this.prisma.radiologyOrder.count({ where: { patientId, organizationId } }),
       this.prisma.invoice.count({ where: { patientId, organizationId } }),
-      this.prisma.medicalRecord.count({ where: { patientId, organizationId } }),
+      this.prisma.encounter.count({ where: { patientId, organizationId } }),
       this.prisma.prescription.count({ where: { patientId, organizationId } }),
       this.prisma.insuranceClaim.count({ where: { patientId, organizationId } }),
     ])

@@ -82,30 +82,49 @@ status machine) is deferred to a later milestone.
 - [x] Tests (unit + e2e)
 - [x] Documentation (`docs/modules/04-doctor-management.md`)
 
-### Checkpoint 4.2 — Doctor Scheduling — Not started
-- [ ] Weekly schedules
-- [ ] Leave management
-- [ ] Availability (beyond the existing `availabilityStatus` enum)
-- [ ] Dashboard availability stats
-- [ ] Doctor documents
-- [ ] Audit timeline
-- [ ] Remaining tests
-
-### Deferred beyond Milestone 4
-- [ ] Appointment slot generation
-- [ ] Conflict detection
-- [ ] Appointment booking (OPD, IPD, emergency, procedure)
-- [ ] Appointment status machine (scheduled → confirmed → arrived → in-consultation → completed/cancelled)
-- [ ] Appointment queue for walk-ins
-- [ ] Recurring appointments
-- [ ] SMS/email confirmation notifications
-- [ ] Frontend: calendar view (day/week)
-- [ ] Frontend: appointment list with queue display
-- [ ] Frontend: booking form
+### Checkpoint 4.2 — Doctor Scheduling — ✅ Complete
+- [x] Weekly schedules
+- [x] Leave management
+- [x] Availability (beyond the existing `availabilityStatus` enum)
+- [x] Dashboard availability stats
+- [x] Doctor documents
+- [x] Audit timeline
+- [x] Remaining tests
 
 ---
 
-## Milestone 5 — Clinical — Medical Records (Week 6)
+## Milestone 5 — Appointment Management (Week 6)
+
+**Goal:** Patient-facing appointment booking, on top of Milestone 4's
+scheduling engine. Split into two checkpoints (see ADR-0006) mirroring
+Milestone 4's precedent.
+
+### Checkpoint 5.1 — Core Booking — ✅ Complete
+- [x] Appointment slot generation (reuses `AvailabilityService` from 4.2,
+      unmodified — see ADR-0006)
+- [x] Conflict detection
+- [x] Appointment booking (OPD, IPD, emergency, procedure)
+- [x] Appointment status machine (scheduled → confirmed → arrived → in-consultation → completed/cancelled/no-show)
+- [x] Email confirmation (reuses existing `EmailService`)
+- [x] Frontend: day-view queue with filters
+- [x] Frontend: booking form with live slot selection
+- [x] Tests (unit + e2e)
+
+### Checkpoint 5.2 — Queue & Recurring — ✅ Complete (SMS deferred)
+- [x] Dedicated walk-in flow (`isWalkIn` flag, auto-assigns next available
+      slot today — see ADR-0007)
+- [x] Recurring appointments (`recurrenceGroupId`, independent rows per
+      occurrence, partial-success reporting — see ADR-0007)
+- [ ] SMS confirmations — **deferred, not attempted**: no SMS provider
+      (Twilio or otherwise) is configured anywhere in this repo; this is
+      genuinely credential-blocked, unlike email. Pick up if/when SMS
+      provider credentials are supplied.
+- [x] Frontend: walk-in quick-book dialog, recurring-booking toggle
+- [x] Tests (unit + e2e)
+
+---
+
+## Milestone 6 — Clinical — Medical Records (Week 7)
 
 **Goal:** Structured clinical documentation per consultation.
 
@@ -123,9 +142,9 @@ status machine) is deferred to a later milestone.
 
 ---
 
-## Milestone 6 — Laboratory & Radiology (Week 7)
+## Milestone 7 — Laboratory Management (Week 8)
 
-**Goal:** Lab order management and radiology order tracking.
+**Goal:** Lab order management, from consultation to result.
 
 ### Deliverables
 - [ ] Lab test catalog (configurable per org)
@@ -134,15 +153,23 @@ status machine) is deferred to a later milestone.
 - [ ] Result entry (manual) and PDF upload
 - [ ] Abnormal value flagging with reference ranges
 - [ ] Lab result PDF generation
-- [ ] Radiology order creation
-- [ ] Radiology report upload and viewing
 - [ ] AI-powered lab report summarization (async)
 - [ ] Frontend: lab order list and result entry form
+
+---
+
+## Milestone 8 — Radiology Management (Week 9)
+
+**Goal:** Radiology order tracking, from consultation to report.
+
+### Deliverables
+- [ ] Radiology order creation from consultation
+- [ ] Radiology report upload and viewing
 - [ ] Frontend: radiology order queue
 
 ---
 
-## Milestone 7 — Billing & Insurance (Week 8–9)
+## Milestone 9 — Billing & Insurance (Week 10–11)
 
 **Goal:** Complete financial operations from invoice generation to insurance claims.
 
@@ -165,7 +192,7 @@ status machine) is deferred to a later milestone.
 
 ---
 
-## Milestone 8 — Pharmacy & Inventory (Week 10)
+## Milestone 10 — Pharmacy & Inventory (Week 12)
 
 **Goal:** Pharmacy dispensing and general inventory management.
 
@@ -184,7 +211,7 @@ status machine) is deferred to a later milestone.
 
 ---
 
-## Milestone 9 — Staff & Attendance (Week 11)
+## Milestone 11 — Staff & Attendance (Week 13)
 
 **Goal:** HR and attendance management for hospital staff.
 
@@ -201,7 +228,7 @@ status machine) is deferred to a later milestone.
 
 ---
 
-## Milestone 10 — AI Features (Week 12–13)
+## Milestone 12 — AI Features (Week 14–15)
 
 **Goal:** Integrate all planned AI capabilities.
 
@@ -217,7 +244,7 @@ status machine) is deferred to a later milestone.
 
 ---
 
-## Milestone 11 — Reports & Analytics (Week 14)
+## Milestone 13 — Reports & Analytics (Week 16)
 
 **Goal:** Operational intelligence for hospital administrators.
 
@@ -234,7 +261,7 @@ status machine) is deferred to a later milestone.
 
 ---
 
-## Milestone 12 — Notifications & Communication (Week 15)
+## Milestone 14 — Notifications & Communication (Week 17)
 
 **Goal:** Multi-channel patient and staff communication.
 
@@ -251,7 +278,7 @@ status machine) is deferred to a later milestone.
 
 ---
 
-## Milestone 13 — Production Hardening (Week 16)
+## Milestone 15 — Production Hardening (Week 18)
 
 **Goal:** Secure, observable, deployable to production.
 

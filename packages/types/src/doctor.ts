@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { UpcomingLeaveEntry } from './doctor-availability'
 import { DoctorAvailabilityStatus } from './enums'
 
 export interface DoctorHospitalSummary {
@@ -95,6 +96,10 @@ export interface DoctorSearchQuery {
 export interface DoctorDashboardStats {
   totalDoctors: number
   activeDoctors: number
+  availableToday: number
+  onLeaveToday: number
+  offDutyToday: number
+  upcomingLeave: UpcomingLeaveEntry[]
 }
 
 export interface DoctorSummaryCounts {

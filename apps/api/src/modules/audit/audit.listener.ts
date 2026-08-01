@@ -25,6 +25,65 @@ interface DoctorEventPayload {
   userId?: string
 }
 
+interface DoctorScheduleEventPayload {
+  doctorId: string
+  organizationId: string
+  userId?: string
+  scheduleId: string
+}
+
+interface DoctorLeaveEventPayload {
+  doctorId: string
+  organizationId: string
+  userId?: string
+  leaveId: string
+}
+
+interface DoctorDocumentEventPayload {
+  doctorId: string
+  organizationId: string
+  userId?: string
+  documentId: string
+}
+
+interface AppointmentEventPayload {
+  appointmentId: string
+  doctorId: string
+  patientId: string
+  organizationId: string
+  userId?: string
+  fromStatus?: string
+  toStatus?: string
+}
+
+interface EncounterEventPayload {
+  encounterId: string
+  doctorId: string
+  patientId: string
+  organizationId: string
+  userId?: string
+  fromStatus?: string
+  toStatus?: string
+}
+
+interface ClinicalNoteEventPayload {
+  encounterId: string
+  noteId: string
+  version: number
+  organizationId: string
+  userId?: string
+}
+
+interface PrescriptionEventPayload {
+  prescriptionId: string
+  doctorId: string
+  patientId: string
+  organizationId: string
+  userId?: string
+  fromStatus?: string
+  toStatus?: string
+}
+
 @Injectable()
 export class AuditListener {
   private readonly logger = new Logger(AuditListener.name)
@@ -124,6 +183,91 @@ export class AuditListener {
     return this.persistDoctorEvent(payload, 'doctor.restored')
   }
 
+  @OnEvent('doctor.schedule.created')
+  onScheduleCreated(payload: DoctorScheduleEventPayload) {
+    return this.persistScheduleEvent(payload, 'doctor.schedule.created')
+  }
+
+  @OnEvent('doctor.schedule.updated')
+  onScheduleUpdated(payload: DoctorScheduleEventPayload) {
+    return this.persistScheduleEvent(payload, 'doctor.schedule.updated')
+  }
+
+  @OnEvent('doctor.leave.requested')
+  onLeaveRequested(payload: DoctorLeaveEventPayload) {
+    return this.persistLeaveEvent(payload, 'doctor.leave.requested')
+  }
+
+  @OnEvent('doctor.leave.approved')
+  onLeaveApproved(payload: DoctorLeaveEventPayload) {
+    return this.persistLeaveEvent(payload, 'doctor.leave.approved')
+  }
+
+  @OnEvent('doctor.leave.rejected')
+  onLeaveRejected(payload: DoctorLeaveEventPayload) {
+    return this.persistLeaveEvent(payload, 'doctor.leave.rejected')
+  }
+
+  @OnEvent('doctor.leave.cancelled')
+  onLeaveCancelled(payload: DoctorLeaveEventPayload) {
+    return this.persistLeaveEvent(payload, 'doctor.leave.cancelled')
+  }
+
+  @OnEvent('doctor.document_uploaded')
+  onDoctorDocumentUploaded(payload: DoctorDocumentEventPayload) {
+    return this.persistDoctorDocumentEvent(payload, 'doctor.document_uploaded')
+  }
+
+  @OnEvent('doctor.document_deleted')
+  onDoctorDocumentDeleted(payload: DoctorDocumentEventPayload) {
+    return this.persistDoctorDocumentEvent(payload, 'doctor.document_deleted')
+  }
+
+  @OnEvent('appointment.created')
+  onAppointmentCreated(payload: AppointmentEventPayload) {
+    return this.persistAppointmentEvent(payload, 'appointment.created')
+  }
+
+  @OnEvent('appointment.status_changed')
+  onAppointmentStatusChanged(payload: AppointmentEventPayload) {
+    return this.persistAppointmentEvent(payload, `appointment.status_changed_to_${(payload.toStatus ?? '').toLowerCase()}`)
+  }
+
+  @OnEvent('encounter.created')
+  onEncounterCreated(payload: EncounterEventPayload) {
+    return this.persistEncounterEvent(payload, 'encounter.created')
+  }
+
+  @OnEvent('encounter.status_changed')
+  onEncounterStatusChanged(payload: EncounterEventPayload) {
+    return this.persistEncounterEvent(payload, `encounter.status_changed_to_${(payload.toStatus ?? '').toLowerCase()}`)
+  }
+
+  @OnEvent('clinical_note.created')
+  onClinicalNoteCreated(payload: ClinicalNoteEventPayload) {
+    return this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action: 'clinical_note.created',
+      resource: 'ClinicalNote',
+      resourceId: payload.noteId,
+      after: { encounterId: payload.encounterId, version: payload.version },
+    })
+  }
+
+  @OnEvent('prescription.created')
+  onPrescriptionCreated(payload: PrescriptionEventPayload) {
+    return this.persistPrescriptionEvent(payload, 'prescription.created')
+  }
+
+  @OnEvent('prescription.status_changed')
+  onPrescriptionStatusChanged(payload: PrescriptionEventPayload) {
+    return this.persistPrescriptionEvent(
+      payload,
+      `prescription.status_changed_to_${(payload.toStatus ?? '').toLowerCase()}`,
+    )
+  }
+
   private async persistDoctorEvent(payload: DoctorEventPayload, action: string) {
     await this.auditService.record({
       organizationId: payload.organizationId,
@@ -131,6 +275,77 @@ export class AuditListener {
       action,
       resource: 'Doctor',
       resourceId: payload.doctorId,
+    })
+  }
+
+  private async persistScheduleEvent(payload: DoctorScheduleEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'DoctorSchedule',
+      resourceId: payload.scheduleId,
+      after: { doctorId: payload.doctorId },
+    })
+  }
+
+  private async persistLeaveEvent(payload: DoctorLeaveEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'DoctorLeave',
+      resourceId: payload.leaveId,
+      after: { doctorId: payload.doctorId },
+    })
+  }
+
+  private async persistDoctorDocumentEvent(payload: DoctorDocumentEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'DoctorDocument',
+      resourceId: payload.documentId,
+      after: { doctorId: payload.doctorId },
+    })
+  }
+
+  private async persistAppointmentEvent(payload: AppointmentEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'Appointment',
+      resourceId: payload.appointmentId,
+      after: { doctorId: payload.doctorId, patientId: payload.patientId, fromStatus: payload.fromStatus, toStatus: payload.toStatus },
+    })
+  }
+
+  private async persistEncounterEvent(payload: EncounterEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'Encounter',
+      resourceId: payload.encounterId,
+      after: { doctorId: payload.doctorId, patientId: payload.patientId, fromStatus: payload.fromStatus, toStatus: payload.toStatus },
+    })
+  }
+
+  private async persistPrescriptionEvent(payload: PrescriptionEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'Prescription',
+      resourceId: payload.prescriptionId,
+      after: {
+        doctorId: payload.doctorId,
+        patientId: payload.patientId,
+        fromStatus: payload.fromStatus,
+        toStatus: payload.toStatus,
+      },
     })
   }
 

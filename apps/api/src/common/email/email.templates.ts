@@ -51,6 +51,30 @@ export function roleGrantedTemplate(firstName: string, roleName: string, loginUr
   }
 }
 
+export function appointmentConfirmedTemplate(
+  patientFirstName: string,
+  doctorFullName: string,
+  scheduledAt: Date,
+  appointmentNumber: string,
+): EmailContent {
+  const when = scheduledAt.toLocaleString('en-IN', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'Asia/Kolkata',
+  })
+  return {
+    subject: `Appointment confirmed — ${appointmentNumber}`,
+    html: wrapper(
+      'Appointment confirmed',
+      `<p>Hi ${patientFirstName},</p>
+       <p>Your appointment with <strong>Dr. ${doctorFullName}</strong> is confirmed for:</p>
+       <p style="font-size:16px;font-weight:600;">${when}</p>
+       <p>Appointment reference: <strong>${appointmentNumber}</strong></p>
+       <p>Please arrive 10 minutes early. Contact the hospital if you need to reschedule.</p>`,
+    ),
+  }
+}
+
 export function accountCreatedTemplate(
   firstName: string,
   email: string,

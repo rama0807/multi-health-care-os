@@ -15,6 +15,7 @@ import { StaffOnboardingService } from '../../common/onboarding/staff-onboarding
 import { PrismaService } from '../../prisma/prisma.service'
 import { DepartmentsService } from '../departments/departments.service'
 import { HospitalsService } from '../hospitals/hospitals.service'
+import { AvailabilityService } from '../scheduling/availability.service'
 
 type DoctorWithRelations = PrismaDoctor & {
   user: User
@@ -35,6 +36,7 @@ export class DoctorsService {
     private readonly staffOnboardingService: StaffOnboardingService,
     private readonly hospitalsService: HospitalsService,
     private readonly departmentsService: DepartmentsService,
+    private readonly availabilityService: AvailabilityService,
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
@@ -250,12 +252,13 @@ export class DoctorsService {
   }
 
   async getDashboardStats(organizationId: string): Promise<DoctorDashboardStats> {
-    const [totalDoctors, activeDoctors] = await Promise.all([
+    const [totalDoctors, activeDoctors, availability] = await Promise.all([
       this.prisma.doctor.count({ where: { organizationId } }),
       this.prisma.doctor.count({ where: { organizationId, isActive: true } }),
+      this.availabilityService.getDashboardStats(organizationId),
     ])
 
-    return { totalDoctors, activeDoctors }
+    return { totalDoctors, activeDoctors, ...availability }
   }
 
   private async requireDoctor(organizationId: string, id: string): Promise<DoctorWithRelations> {

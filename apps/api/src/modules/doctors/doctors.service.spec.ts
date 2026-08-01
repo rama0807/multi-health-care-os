@@ -47,6 +47,7 @@ describe('DoctorsService', () => {
   let staffOnboardingService: { onboardUserInTransaction: jest.Mock; sendOnboardingEmail: jest.Mock }
   let hospitalsService: { getById: jest.Mock }
   let departmentsService: { getById: jest.Mock }
+  let availabilityService: { getDashboardStats: jest.Mock }
   let eventEmitter: { emit: jest.Mock }
   let service: DoctorsService
 
@@ -71,6 +72,11 @@ describe('DoctorsService', () => {
     }
     hospitalsService = { getById: jest.fn().mockResolvedValue({ id: 'hospital_1' }) }
     departmentsService = { getById: jest.fn().mockResolvedValue({ id: 'dept_1', hospitalId: 'hospital_1' }) }
+    availabilityService = {
+      getDashboardStats: jest
+        .fn()
+        .mockResolvedValue({ availableToday: 0, onLeaveToday: 0, offDutyToday: 0, upcomingLeave: [] }),
+    }
     eventEmitter = { emit: jest.fn() }
 
     service = new DoctorsService(
@@ -78,6 +84,7 @@ describe('DoctorsService', () => {
       staffOnboardingService as never,
       hospitalsService as never,
       departmentsService as never,
+      availabilityService as never,
       eventEmitter as never,
     )
   })
@@ -274,12 +281,25 @@ describe('DoctorsService', () => {
   })
 
   describe('getDashboardStats', () => {
-    it('returns total and active doctor counts', async () => {
+    it('returns total/active doctor counts merged with availability stats', async () => {
       prisma.doctor.count.mockResolvedValueOnce(10).mockResolvedValueOnce(8)
+      availabilityService.getDashboardStats.mockResolvedValue({
+        availableToday: 5,
+        onLeaveToday: 1,
+        offDutyToday: 2,
+        upcomingLeave: [],
+      })
 
       const stats = await service.getDashboardStats('org_1')
 
-      expect(stats).toEqual({ totalDoctors: 10, activeDoctors: 8 })
+      expect(stats).toEqual({
+        totalDoctors: 10,
+        activeDoctors: 8,
+        availableToday: 5,
+        onLeaveToday: 1,
+        offDutyToday: 2,
+        upcomingLeave: [],
+      })
     })
   })
 })

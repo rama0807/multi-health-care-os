@@ -48,6 +48,11 @@ export enum AppointmentStatus {
   NO_SHOW = 'NO_SHOW',
 }
 
+export enum RecurrenceFrequency {
+  DAILY = 'DAILY',
+  WEEKLY = 'WEEKLY',
+}
+
 export enum InvoiceStatus {
   DRAFT = 'DRAFT',
   ISSUED = 'ISSUED',
@@ -103,6 +108,42 @@ export enum DoctorAvailabilityStatus {
   UNAVAILABLE = 'UNAVAILABLE',
 }
 
+export enum Weekday {
+  SUNDAY = 'SUNDAY',
+  MONDAY = 'MONDAY',
+  TUESDAY = 'TUESDAY',
+  WEDNESDAY = 'WEDNESDAY',
+  THURSDAY = 'THURSDAY',
+  FRIDAY = 'FRIDAY',
+  SATURDAY = 'SATURDAY',
+}
+
+export enum LeaveType {
+  CASUAL = 'CASUAL',
+  SICK = 'SICK',
+  EARNED = 'EARNED',
+  CONFERENCE = 'CONFERENCE',
+  TRAINING = 'TRAINING',
+  EMERGENCY = 'EMERGENCY',
+  HOLIDAY = 'HOLIDAY',
+  OTHER = 'OTHER',
+}
+
+export enum LeaveStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum DoctorDocumentType {
+  MEDICAL_DEGREE = 'MEDICAL_DEGREE',
+  MEDICAL_LICENSE = 'MEDICAL_LICENSE',
+  EXPERIENCE_CERTIFICATE = 'EXPERIENCE_CERTIFICATE',
+  ID_PROOF = 'ID_PROOF',
+  OTHER = 'OTHER',
+}
+
 export enum NotificationChannel {
   EMAIL = 'EMAIL',
   SMS = 'SMS',
@@ -151,4 +192,47 @@ export enum InsuranceClaimStatus {
   PARTIALLY_APPROVED = 'PARTIALLY_APPROVED',
   REJECTED = 'REJECTED',
   SETTLED = 'SETTLED',
+}
+
+export enum EncounterType {
+  OPD = 'OPD',
+  TELECONSULTATION = 'TELECONSULTATION',
+  FOLLOW_UP = 'FOLLOW_UP',
+  EMERGENCY = 'EMERGENCY',
+  WALK_IN = 'WALK_IN',
+}
+
+export enum EncounterStatus {
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
+  AMENDED = 'AMENDED',
+}
+
+export enum DiagnosisType {
+  PRIMARY = 'PRIMARY',
+  SECONDARY = 'SECONDARY',
+  DIFFERENTIAL = 'DIFFERENTIAL',
+}
+
+export enum EncounterAttachmentType {
+  CLINICAL_DOCUMENT = 'CLINICAL_DOCUMENT',
+  IMAGE = 'IMAGE',
+  EXTERNAL_REPORT = 'EXTERNAL_REPORT',
+  OTHER = 'OTHER',
+}
+
+export enum PrescriptionStatus {
+  ACTIVE = 'ACTIVE',
+  COMPLETED = 'COMPLETED',
+  DISCONTINUED = 'DISCONTINUED',
+}
+
+export enum MedicationRoute {
+  ORAL = 'ORAL',
+  TOPICAL = 'TOPICAL',
+  INTRAVENOUS = 'INTRAVENOUS',
+  INTRAMUSCULAR = 'INTRAMUSCULAR',
+  SUBCUTANEOUS = 'SUBCUTANEOUS',
+  INHALED = 'INHALED',
+  OTHER = 'OTHER',
 }

@@ -41,7 +41,7 @@ describe('PatientsService', () => {
     prescription: Record<string, jest.Mock>
     invoice: Record<string, jest.Mock>
     insuranceClaim: Record<string, jest.Mock>
-    medicalRecord: Record<string, jest.Mock>
+    encounter: Record<string, jest.Mock>
     auditLog: Record<string, jest.Mock>
     $transaction: jest.Mock
   }
@@ -71,7 +71,7 @@ describe('PatientsService', () => {
       prescription: { findMany: jest.fn().mockResolvedValue([]), count: jest.fn().mockResolvedValue(0) },
       invoice: { findMany: jest.fn().mockResolvedValue([]), count: jest.fn().mockResolvedValue(0) },
       insuranceClaim: { count: jest.fn().mockResolvedValue(0) },
-      medicalRecord: { count: jest.fn().mockResolvedValue(0) },
+      encounter: { count: jest.fn().mockResolvedValue(0) },
       auditLog: { findMany: jest.fn().mockResolvedValue([]) },
       $transaction: jest.fn((cb: (tx: unknown) => unknown) =>
         cb({ $executeRaw: jest.fn().mockResolvedValue(undefined), patient: txPatient }),

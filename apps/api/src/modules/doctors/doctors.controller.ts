@@ -1,9 +1,12 @@
-import { DoctorSearchQuery } from '@medicore/types'
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common'
+import { DoctorSearchQuery, JwtPayload } from '@medicore/types'
+import { Body, Controller, Delete, ForbiddenException, Get, Param, Patch, Post, Query } from '@nestjs/common'
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
 import { RequirePermissions } from '../../common/decorators/permissions.decorator'
+import { PermissionsService } from '../../common/permissions/permissions.service'
+import { AuditService } from '../audit/audit.service'
+import { DoctorRefService } from '../scheduling/doctor-ref.service'
 
 import { DoctorsService } from './doctors.service'
 import { CreateDoctorDto } from './dto/create-doctor.dto'
@@ -13,7 +16,12 @@ import { UpdateDoctorDto } from './dto/update-doctor.dto'
 @ApiBearerAuth()
 @Controller({ path: 'doctors', version: '1' })
 export class DoctorsController {
-  constructor(private readonly doctorsService: DoctorsService) {}
+  constructor(
+    private readonly doctorsService: DoctorsService,
+    private readonly auditService: AuditService,
+    private readonly doctorRef: DoctorRefService,
+    private readonly permissionsService: PermissionsService,
+  ) {}
 
   @Get()
   @RequirePermissions('doctors.read')
@@ -63,6 +71,19 @@ export class DoctorsController {
     return this.doctorsService.getById(orgId, id)
   }
 
+  @Get(':id/audit-timeline')
+  @RequirePermissions('doctors.read')
+  async getAuditTimeline(
+    @CurrentUser() user: JwtPayload,
+    @CurrentUser('orgId') orgId: string,
+    @Param('id') id: string,
+    @Query('limit') limit?: string,
+  ) {
+    await this.assertOwnScopeOk(orgId, id, user)
+    const entries = await this.auditService.listForDoctor(orgId, id, limit ? Number(limit) : undefined)
+    return { entries }
+  }
+
   @Post()
   @RequirePermissions('doctors.create')
   create(
@@ -102,5 +123,20 @@ export class DoctorsController {
     @Param('id') id: string,
   ) {
     return this.doctorsService.deactivate(orgId, id, userId)
+  }
+
+  /**
+   * Same own/all distinction as the scheduling controllers — `doctors.read`
+   * can be held at `.own` scope (a doctor viewing themself), which must be
+   * restricted here to the caller's own linked profile.
+   */
+  private async assertOwnScopeOk(orgId: string, doctorId: string, user: JwtPayload): Promise<void> {
+    const scope = this.permissionsService.getScope(user, 'doctors', 'read')
+    if (scope !== 'own') return
+
+    const ownProfile = await this.doctorRef.findDoctorProfileForUser(orgId, user.sub)
+    if (!ownProfile || ownProfile.id !== doctorId) {
+      throw new ForbiddenException('You can only view your own audit timeline')
+    }
   }
 }

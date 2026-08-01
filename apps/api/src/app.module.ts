@@ -37,6 +37,7 @@ import { PharmacyModule } from './modules/pharmacy/pharmacy.module'
 import { PrescriptionsModule } from './modules/prescriptions/prescriptions.module'
 import { RadiologyModule } from './modules/radiology/radiology.module'
 import { RolesModule } from './modules/roles/roles.module'
+import { SchedulingModule } from './modules/scheduling/scheduling.module'
 import { StaffModule } from './modules/staff/staff.module'
 import { UsersModule } from './modules/users/users.module'
 import { PrismaModule } from './prisma/prisma.module'
@@ -83,6 +84,7 @@ import { PrismaModule } from './prisma/prisma.module'
     HospitalsModule,
     DepartmentsModule,
     DoctorsModule,
+    SchedulingModule,
     AuthModule,
     UsersModule,
     OrganizationsModule,

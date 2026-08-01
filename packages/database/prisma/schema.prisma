@@ -157,6 +157,34 @@ enum DoctorAvailabilityStatus {
   UNAVAILABLE
 }
 
+enum Weekday {
+  SUNDAY
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+}
+
+enum LeaveType {
+  CASUAL
+  SICK
+  EARNED
+  CONFERENCE
+  TRAINING
+  EMERGENCY
+  HOLIDAY
+  OTHER
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
 enum SystemRole {
   SUPER_ADMIN
   ORG_ADMIN
@@ -266,7 +294,7 @@ model Organization {
   doctors         Doctor[]
   patients        Patient[]
   appointments    Appointment[]
-  medicalRecords  MedicalRecord[]
+  encounters      Encounter[]
   labTests        LabTest[]
   radiologyOrders RadiologyOrder[]
   invoices        Invoice[]
@@ -280,6 +308,8 @@ model Organization {
   prescriptions   Prescription[]
   admissions      Admission[]
   insuranceClaims InsuranceClaim[]
+  doctorSchedules DoctorSchedule[]
+  doctorLeaves    DoctorLeave[]
 
   @@index([slug])
   @@map("organizations")
@@ -443,7 +473,6 @@ model Doctor {
   organizationId     String
   consultationFee    Decimal                  @db.Decimal(10, 2)
   availabilityStatus DoctorAvailabilityStatus @default(AVAILABLE)
-  availabilitySlots  Json                     @default("[]")
   joiningDate        DateTime
   bio                String?
   isActive           Boolean                  @default(true)
@@ -455,16 +484,125 @@ model Doctor {
   hospital        Hospital         @relation(fields: [hospitalId], references: [id])
   organization    Organization     @relation(fields: [organizationId], references: [id])
   appointments    Appointment[]
-  medicalRecords  MedicalRecord[]
+  encounters      Encounter[]
   prescriptions   Prescription[]
   labTests        LabTest[]
   radiologyOrders RadiologyOrder[]
+  schedules       DoctorSchedule[]
+  leaves          DoctorLeave[]
+  documents       DoctorDocument[]
 
   @@unique([registrationNumber, organizationId])
   @@index([organizationId])
   @@index([departmentId])
   @@index([hospitalId])
   @@map("doctors")
+}
+
+// ─── Provider Scheduling ───────────────────────────────────────────────────
+//
+// Modeled per-provider-type (Doctor) rather than through a polymorphic
+// "Provider" table — see ADR-0006. The *algorithm* in AvailabilityService
+// (weekly schedule + leave overlay + shift/break slot slicing) is written
+// generically enough that a future provider type (Nurse, Physiotherapist,
+// etc.) can stand up its own {Type}Schedule/{Type}ScheduleDay/{Type}Leave
+// trio and near-identical service without redesigning the approach.
+
+model DoctorSchedule {
+  id             String   @id @default(cuid())
+  doctorId       String
+  organizationId String
+  // The date this version takes effect from. Selecting "the schedule that
+  // applies on date X" = the isActive row with the greatest effectiveFrom
+  // that is <= X — this lets a new version be created ahead of time
+  // (effectiveFrom in the future) without disturbing what's currently in
+  // effect, and keeps every prior version in place for history/audit
+  // instead of overwriting it in place.
+  effectiveFrom  DateTime @db.Date
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  doctor       Doctor              @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  organization Organization        @relation(fields: [organizationId], references: [id])
+  days         DoctorScheduleDay[]
+
+  @@unique([doctorId, effectiveFrom])
+  @@index([doctorId])
+  @@index([organizationId])
+  @@index([doctorId, isActive, effectiveFrom])
+  @@map("doctor_schedules")
+}
+
+model DoctorScheduleDay {
+  id           String   @id @default(cuid())
+  scheduleId   String
+  dayOfWeek    Weekday
+  isWorkingDay Boolean  @default(true)
+  // ScheduleShift[] — see packages/types/src/doctor-schedule.ts. Kept as JSON
+  // (like Doctor.languagesSpoken/Organization.settings elsewhere in this
+  // schema) since a day's shifts+breaks are always read/written together as
+  // one unit from the schedule editor, never queried independently.
+  shifts       Json     @default("[]")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  schedule DoctorSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@unique([scheduleId, dayOfWeek])
+  @@index([scheduleId])
+  @@map("doctor_schedule_days")
+}
+
+model DoctorLeave {
+  id              String      @id @default(cuid())
+  doctorId        String
+  organizationId  String
+  leaveType       LeaveType
+  startDate       DateTime    @db.Date
+  endDate         DateTime    @db.Date
+  reason          String?
+  status          LeaveStatus @default(PENDING)
+  appliedByUserId String
+  decidedByUserId String?
+  decidedAt       DateTime?
+  decisionNote    String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  doctor       Doctor       @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([doctorId])
+  @@index([organizationId])
+  @@index([status, organizationId])
+  @@index([doctorId, startDate, endDate])
+  @@map("doctor_leaves")
+}
+
+enum DoctorDocumentType {
+  MEDICAL_DEGREE
+  MEDICAL_LICENSE
+  EXPERIENCE_CERTIFICATE
+  ID_PROOF
+  OTHER
+}
+
+model DoctorDocument {
+  id             String             @id @default(cuid())
+  doctorId       String
+  organizationId String
+  documentType   DoctorDocumentType
+  fileName       String
+  fileUrl        String
+  mimeType       String
+  fileSizeBytes  Int
+  uploadedAt     DateTime           @default(now())
+
+  doctor Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@index([doctorId])
+  @@map("doctor_documents")
 }
 
 model Staff {
@@ -518,7 +656,7 @@ model Patient {
   organization    Organization      @relation(fields: [organizationId], references: [id])
   documents       PatientDocument[]
   appointments    Appointment[]
-  medicalRecords  MedicalRecord[]
+  encounters      Encounter[]
   prescriptions   Prescription[]
   labTests        LabTest[]
   radiologyOrders RadiologyOrder[]
@@ -569,6 +707,14 @@ model Appointment {
   notes             String?
   roomNumber        String?
   referredBy        String?
+  // `isWalkIn`/`recurrenceGroupId` — see ADR-0007. A walk-in still has a
+  // real `scheduledAt` (the receptionist assigns the next available slot
+  // automatically); the flag only distinguishes how it was booked, for
+  // reporting/queue-display purposes. `recurrenceGroupId` links every
+  // occurrence created from one recurring-booking request — null for a
+  // one-off appointment.
+  isWalkIn          Boolean           @default(false)
+  recurrenceGroupId String?
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
@@ -576,7 +722,7 @@ model Appointment {
   doctor        Doctor         @relation(fields: [doctorId], references: [id])
   department    Department?    @relation(fields: [departmentId], references: [id])
   organization  Organization   @relation(fields: [organizationId], references: [id])
-  medicalRecord MedicalRecord?
+  encounter     Encounter?
   labTests      LabTest[]
   invoice       Invoice?
 
@@ -585,39 +731,177 @@ model Appointment {
   @@index([doctorId, scheduledAt])
   @@index([patientId, organizationId])
   @@index([status, organizationId, scheduledAt])
+  @@index([recurrenceGroupId])
   @@map("appointments")
 }
 
-// ─── Clinical ──────────────────────────────────────────────────────────────
+// ─── Clinical — EMR (see ADR-0008) ─────────────────────────────────────────
+//
+// `Encounter` is the longitudinal EMR's central entity — one per
+// consultation, created from a completed `Appointment`. Everything a
+// clinician records during that consultation hangs off it as its own
+// child table (`ClinicalNote`, `Vital`, `Diagnosis`, `Procedure`,
+// `EncounterAttachment`) rather than being flat columns on `Encounter`
+// itself, so each facet can evolve/be queried independently — most
+// importantly `ClinicalNote`, which is append-only (see its own comment).
 
-model MedicalRecord {
-  id                      String   @id @default(cuid())
-  patientId               String
-  doctorId                String
-  appointmentId           String?  @unique
-  organizationId          String
-  chiefComplaint          String
-  historyOfPresentIllness String?
-  pastMedicalHistory      String?
-  examination             String?
-  diagnosis               String
-  icdCode                 String?
-  plan                    String?
-  followUpInstructions    String?
-  followUpDays            Int?
-  vitalSigns              Json?
-  recordedAt              DateTime @default(now())
-  createdAt               DateTime @default(now())
+enum EncounterType {
+  OPD
+  TELECONSULTATION
+  FOLLOW_UP
+  EMERGENCY
+  WALK_IN
+}
 
-  patient       Patient        @relation(fields: [patientId], references: [id])
-  doctor        Doctor         @relation(fields: [doctorId], references: [id])
-  appointment   Appointment?   @relation(fields: [appointmentId], references: [id])
-  organization  Organization   @relation(fields: [organizationId], references: [id])
+enum EncounterStatus {
+  IN_PROGRESS
+  COMPLETED
+  AMENDED
+}
+
+enum PrescriptionStatus {
+  ACTIVE
+  COMPLETED
+  DISCONTINUED
+}
+
+enum DiagnosisType {
+  PRIMARY
+  SECONDARY
+  DIFFERENTIAL
+}
+
+model Encounter {
+  id             String          @id @default(cuid())
+  patientId      String
+  doctorId       String
+  appointmentId  String?         @unique
+  organizationId String
+  type           EncounterType   @default(OPD)
+  status         EncounterStatus @default(IN_PROGRESS)
+  notes          String?
+  encounterDate  DateTime        @default(now())
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  patient       Patient               @relation(fields: [patientId], references: [id])
+  doctor        Doctor                @relation(fields: [doctorId], references: [id])
+  appointment   Appointment?          @relation(fields: [appointmentId], references: [id])
+  organization  Organization          @relation(fields: [organizationId], references: [id])
+  clinicalNotes ClinicalNote[]
+  vitals        Vital[]
+  diagnoses     Diagnosis[]
+  procedures    Procedure[]
+  attachments   EncounterAttachment[]
   prescriptions Prescription[]
 
   @@index([patientId, organizationId])
+  @@index([doctorId, organizationId])
   @@index([organizationId])
-  @@map("medical_records")
+  @@map("encounters")
+}
+
+/// Append-only: an edit inserts a new row with `version = previous + 1`
+/// rather than updating in place — "never overwrite historical notes" is
+/// enforced by never exposing an `update` at the service layer, not just
+/// by convention. The current note is the highest `version` per encounter.
+model ClinicalNote {
+  id                      String   @id @default(cuid())
+  encounterId             String
+  version                 Int
+  chiefComplaint          String?
+  historyOfPresentIllness String?
+  pastMedicalHistory      String?
+  familyHistory           String?
+  surgicalHistory         String?
+  socialHistory           String?
+  allergies               String?
+  currentMedications      String?
+  createdByUserId         String
+  createdAt               DateTime @default(now())
+
+  encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+
+  @@unique([encounterId, version])
+  @@index([encounterId])
+  @@map("clinical_notes")
+}
+
+model Vital {
+  id                     String   @id @default(cuid())
+  encounterId            String
+  heightCm               Float?
+  weightKg               Float?
+  /// Computed server-side from height/weight at write time — denormalized
+  /// so trend/chart queries don't recompute float math per row.
+  bmi                     Float?
+  bloodPressureSystolic  Int?
+  bloodPressureDiastolic Int?
+  pulse                  Int?
+  temperatureCelsius     Float?
+  respiratoryRate        Int?
+  spo2                   Int?
+  recordedByUserId       String
+  recordedAt             DateTime @default(now())
+
+  encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+
+  @@index([encounterId])
+  @@map("vitals")
+}
+
+model Diagnosis {
+  id          String        @id @default(cuid())
+  encounterId String
+  type        DiagnosisType @default(PRIMARY)
+  description String
+  /// Placeholder, not a validated lookup against a real ICD-10 terminology
+  /// service — see ADR-0008/TECH_DEBT.
+  icdCode     String?
+  createdAt   DateTime      @default(now())
+
+  encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+
+  @@index([encounterId])
+  @@map("diagnoses")
+}
+
+model Procedure {
+  id          String   @id @default(cuid())
+  encounterId String
+  name        String
+  notes       String?
+  performedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+
+  @@index([encounterId])
+  @@map("procedures")
+}
+
+enum EncounterAttachmentType {
+  CLINICAL_DOCUMENT
+  IMAGE
+  EXTERNAL_REPORT
+  OTHER
+}
+
+model EncounterAttachment {
+  id             String                  @id @default(cuid())
+  encounterId    String
+  organizationId String
+  documentType   EncounterAttachmentType @default(OTHER)
+  fileName       String
+  fileUrl        String
+  mimeType       String
+  fileSizeBytes  Int
+  uploadedAt     DateTime                @default(now())
+
+  encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+
+  @@index([encounterId])
+  @@map("encounter_attachments")
 }
 
 model Prescription {
@@ -625,18 +909,19 @@ model Prescription {
   prescriptionNumber String
   patientId          String
   doctorId           String
-  medicalRecordId    String?
+  encounterId        String?
   organizationId     String
-  status             String   @default("ACTIVE")
+  status             PrescriptionStatus @default(ACTIVE)
   notes              String?
   prescribedAt       DateTime @default(now())
   createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  patient       Patient            @relation(fields: [patientId], references: [id])
-  doctor        Doctor             @relation(fields: [doctorId], references: [id])
-  medicalRecord MedicalRecord?     @relation(fields: [medicalRecordId], references: [id])
-  organization  Organization       @relation(fields: [organizationId], references: [id])
-  items         PrescriptionItem[]
+  patient      Patient            @relation(fields: [patientId], references: [id])
+  doctor       Doctor             @relation(fields: [doctorId], references: [id])
+  encounter    Encounter?         @relation(fields: [encounterId], references: [id])
+  organization Organization       @relation(fields: [organizationId], references: [id])
+  items        PrescriptionItem[]
 
   @@unique([prescriptionNumber, organizationId])
   @@index([patientId, organizationId])

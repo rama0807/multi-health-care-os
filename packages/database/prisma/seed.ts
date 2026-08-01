@@ -14,6 +14,9 @@ const DEMO_PASSWORD = 'Demo@12345'
 const RESOURCE_ACTIONS: Record<string, string[]> = {
   patients: ['read', 'create', 'update', 'delete'],
   doctors: ['read', 'create', 'update', 'delete'],
+  'doctors.schedule': ['read', 'update'],
+  'doctors.leave': ['read', 'approve', 'manage'],
+  'doctors.documents': ['read', 'manage'],
   appointments: ['read', 'create', 'update', 'delete'],
   medical_records: ['read', 'create', 'update'],
   prescriptions: ['read', 'create', 'update'],
@@ -38,9 +41,40 @@ const OWN_SCOPE_PERMISSIONS: Array<{ resource: string; action: string }> = [
   { resource: 'doctors', action: 'read' },
   { resource: 'medical_records', action: 'read' },
   { resource: 'medical_records', action: 'create' },
+  { resource: 'medical_records', action: 'update' },
   { resource: 'prescriptions', action: 'read' },
   { resource: 'prescriptions', action: 'create' },
+  { resource: 'prescriptions', action: 'update' },
+  { resource: 'doctors.schedule', action: 'read' },
+  { resource: 'doctors.leave', action: 'read' },
+  { resource: 'doctors.leave', action: 'manage' },
+  { resource: 'doctors.documents', action: 'read' },
+  { resource: 'doctors.documents', action: 'manage' },
+  { resource: 'appointments', action: 'update' },
 ]
+
+/**
+ * `role.upsert`'s `update: {}` branch intentionally leaves an existing
+ * role's fields untouched, but that meant a role created before a given
+ * permission existed would never receive it on subsequent seed runs —
+ * every permission added after a role's first creation silently never
+ * reached its `RolePermission` rows (see TECH_DEBT TD-0011). This tops a
+ * role up to include every permission it should currently have, without
+ * touching anything already there or removing extras a session may have
+ * granted manually.
+ */
+async function syncRolePermissions(
+  prisma: PrismaClient,
+  roleId: string,
+  desiredPermissionIds: string[],
+): Promise<void> {
+  const existing = await prisma.rolePermission.findMany({ where: { roleId }, select: { permissionId: true } })
+  const existingIds = new Set(existing.map((rp) => rp.permissionId))
+  const missing = desiredPermissionIds.filter((id) => !existingIds.has(id))
+  if (missing.length) {
+    await prisma.rolePermission.createMany({ data: missing.map((permissionId) => ({ roleId, permissionId })) })
+  }
+}
 
 function buildPermissionCatalog() {
   const permissions: Array<{ resource: string; action: string; scope: string }> = []
@@ -94,12 +128,20 @@ const ROLE_SPECS: RoleSpec[] = [
     systemRole: SystemRole.DOCTOR,
     permissions: [
       { resource: 'doctors', action: 'read', scope: 'own' },
+      { resource: 'doctors.schedule', action: 'read', scope: 'own' },
+      { resource: 'doctors.leave', action: 'read', scope: 'own' },
+      { resource: 'doctors.leave', action: 'manage', scope: 'own' },
+      { resource: 'doctors.documents', action: 'read', scope: 'own' },
+      { resource: 'doctors.documents', action: 'manage', scope: 'own' },
       { resource: 'patients', action: 'read', scope: 'own' },
       { resource: 'medical_records', action: 'read', scope: 'own' },
       { resource: 'medical_records', action: 'create', scope: 'own' },
+      { resource: 'medical_records', action: 'update', scope: 'own' },
       { resource: 'prescriptions', action: 'read', scope: 'own' },
       { resource: 'prescriptions', action: 'create', scope: 'own' },
+      { resource: 'prescriptions', action: 'update', scope: 'own' },
       { resource: 'appointments', action: 'read' },
+      { resource: 'appointments', action: 'update', scope: 'own' },
       { resource: 'laboratory', action: 'read' },
       { resource: 'laboratory', action: 'create' },
       { resource: 'radiology', action: 'read' },
@@ -179,6 +221,13 @@ const ROLE_SPECS: RoleSpec[] = [
       { resource: 'doctors', action: 'read' },
       { resource: 'doctors', action: 'create' },
       { resource: 'doctors', action: 'update' },
+      { resource: 'doctors.schedule', action: 'read' },
+      { resource: 'doctors.schedule', action: 'update' },
+      { resource: 'doctors.leave', action: 'read' },
+      { resource: 'doctors.leave', action: 'approve' },
+      { resource: 'doctors.leave', action: 'manage' },
+      { resource: 'doctors.documents', action: 'read' },
+      { resource: 'doctors.documents', action: 'manage' },
       { resource: 'staff', action: 'read' },
       { resource: 'staff', action: 'create' },
       { resource: 'staff', action: 'update' },
@@ -231,6 +280,7 @@ async function main() {
       rolePermissions: { create: allPermissions.map((p) => ({ permissionId: p.id })) },
     },
   })
+  await syncRolePermissions(prisma, superAdminRole.id, allPermissions.map((p) => p.id))
 
   const superAdminPasswordHash = await argon2.hash(DEMO_PASSWORD)
   const superAdmin = await prisma.user.upsert({
@@ -329,6 +379,7 @@ async function main() {
         rolePermissions: { create: permissionIds.map((permissionId) => ({ permissionId })) },
       },
     })
+    await syncRolePermissions(prisma, role.id, permissionIds)
 
     const passwordHash = await argon2.hash(DEMO_PASSWORD)
     const user = await prisma.user.upsert({

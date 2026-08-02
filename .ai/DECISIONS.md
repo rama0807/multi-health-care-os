@@ -443,3 +443,434 @@ same "insert/split and renumber everything after" pattern already used in
 ADR-0006 when Appointment Management was inserted as Milestone 5 — the
 precedent for reconciling `docs/roadmap.md` after a scope change lands
 mid-project rather than only at initial planning.
+
+---
+
+## ADR-0012: Milestone 7 schema/permission decisions — `LabTestCatalogItem` shape, `LabTest.encounterId`, and own-scope `laboratory.*` for Doctor
+
+Date: 2026-08-02
+Status: Accepted
+
+**Context:** Milestone 7 (Laboratory Management) required two genuine
+judgment calls beyond routine implementation, plus one gap-fix in the
+pre-existing schema:
+
+1. `LabTest` (from the original scaffolding commit, never built upon —
+   `laboratory` module was a 3-line no-op like every other module before
+   its milestone) had no `encounterId`, unlike `Prescription`
+   (`encounterId String?` since Checkpoint 6.2). "Lab order creation from
+   consultation" — an explicit scope item — requires this link.
+2. No lab test catalog model existed at all. "Lab test catalog
+   (configurable per org)" needed a new model, with an open design
+   question: numeric reference range vs. free text vs. both (many real
+   lab tests are qualitative — "Negative"/"Non-reactive" — where a
+   numeric bound is meaningless), and whether/how a critical threshold is
+   modeled.
+3. `laboratory.*` was already seeded as all-scope for every role,
+   including Doctor. The same "own vs. all scope" question already hit
+   twice (medical_records/prescriptions, see ADR-0010's item 3 and the
+   TD-0011 lineage) applies here: should a doctor's lab-order permissions
+   be `.own`-scoped like prescriptions, given Lab Technician/Nurse need to
+   see every order regardless of who ordered it?
+
+**Decision:**
+1. **Added `LabTest.encounterId String?` + `Encounter.labTests LabTest[]`**
+   (migration `20260801191909_lab_management`), mirroring
+   `Prescription.encounterId`'s shape exactly — nullable (an order need
+   not always trace to an encounter, matching the pre-existing nullable
+   `appointmentId`), with its own index.
+2. **New `LabTestCatalogItem` model, org-scoped, supporting *both* a
+   numeric range and a text range simultaneously** (`referenceRangeLow`/
+   `referenceRangeHigh` Float?, `referenceRangeText` String?, plus
+   optional explicit `criticalLow`/`criticalHigh` Float?) rather than
+   picking one representation. A quantitative test (CBC, FBS) sets the
+   numeric fields for automatic abnormal-flagging; a qualitative test
+   (HIV screen, culture) sets only the text field and is never
+   auto-flagged (see `abnormal-flagging.ts`). `LabTestItem` itself gained
+   matching denormalized fields (`catalogItemId`, `referenceRangeLow/High`,
+   `criticalLow/High`) populated *at order-creation time* from the
+   catalog (or from ad-hoc DTO fields when no catalog item is chosen) —
+   not looked up again at result-entry time, so a later edit or
+   deactivation of the catalog item never retroactively changes how an
+   already-ordered item's abnormal flag is computed. `LabTestItem`'s
+   original free-text `testName`/`testCode`/`category`/`referenceRange`
+   fields are unchanged — an order item can still be entered ad hoc
+   without any catalog reference.
+3. **`laboratory.read`/`create`/`update` are own-scoped for the Doctor
+   role** (`seed.ts`), added to `OWN_SCOPE_PERMISSIONS` and the `Doctor`
+   role spec exactly like `prescriptions.*` — a doctor orders/views/
+   updates lab tests only for patients they're treating. **Lab
+   Technician and Nurse remain all-scope** (unchanged) — they process and
+   view every order in the queue regardless of which doctor placed it,
+   the same reasoning that keeps `doctors.documents`/`appointments` reads
+   broad for non-doctor staff roles.
+
+**Consequences:** No data migration risk (`lab_tests`/`lab_test_items`
+tables were pre-existing but the catalog concept and `encounterId` are
+net-new columns/table, safe to add as nullable/optional). The abnormal-
+flagging rule (numeric-only, critical bounds explicit-or-derived via a
+disclosed 20%-of-range multiplier) is documented in code and TECH_DEBT
+rather than presented as clinically authoritative — same spirit as
+ADR-0010's drug-interaction disclosure. `LabOrderController`'s catalog
+routes (`/laboratory/catalog`) are *not* own-scope-checked — a catalog
+item has no owning doctor, so only the plain `laboratory.create/update`
+permission gates management of it, regardless of the caller's scope on
+order routes.
+
+---
+
+## ADR-0013: Milestone 8 (Radiology) schema/permission decisions — expanded scope per explicit user instruction, versioned reports, own-scope `radiology.*`, `RadiologyTechnician` role activated
+
+Date: 2026-08-02
+Status: Accepted
+
+**Context:** `NEXT.md` (written at the close of Milestone 7) scoped
+Radiology narrowly — order creation from consultation, report upload/
+viewing, a frontend queue — explicitly warning against a Laboratory-style
+structured/versioned system "unless the roadmap or user asks for one."
+This session's actual instruction **did** ask for one: a full
+Radiology Information System — a configurable study catalog (name/code/
+category/modality/body part/contrast/price/duration), scheduling (date/
+time/room/machine/technician/radiologist/duration), a versioned report
+with clinical indication/technique/findings/impression/recommendations
+plus verification and release, image/external/DICOM-placeholder
+attachments, a dashboard, and four frontend routes. Per `CLAUDE.md`'s
+rule ("only raise a settled decision again if new information directly
+contradicts it, and propose updating `DECISIONS.md` rather than silently
+overriding it"), this ADR records that the explicit, detailed
+in-conversation instruction supersedes `NEXT.md`'s narrower framing —
+not a silent scope change.
+
+**Decision:**
+1. **Full RIS scope implemented, not the minimal version.** New
+   `RadiologyCatalogItem` model (org-scoped: `code`, `name`, `category`,
+   `modality`, `bodyPart` — both `modality`/`bodyPart` stay free-text
+   `String`, matching the pre-existing `RadiologyOrder.modality`/
+   `bodyPart` columns from the original scaffold, rather than a strict
+   enum — real DICOM modality vocabularies are broad and this keeps room
+   for a future PACS integration to supply its own values). `Priority`
+   is reused as-is (already modeled `ROUTINE`/`URGENT`/`STAT` for
+   Laboratory).
+2. **`RadiologyOrder.encounterId` + `Encounter.radiologyOrders` added**
+   (migration `20260801202731_radiology_management`), mirroring
+   `LabTest.encounterId` exactly per ADR-0012's precedent — nullable,
+   its own index. `RadiologyOrder.catalogItemId` added the same way
+   (nullable FK, `onDelete: SetNull`), denormalizing `modality`/`bodyPart`
+   onto the order at creation time (never re-looked-up), the same
+   "denormalize at order time" pattern `LabTestItem` established.
+3. **`RadiologyStatus` gained `REJECTED`** (alongside the pre-existing
+   `ORDERED`/`SCHEDULED`/`IN_PROGRESS`/`COMPLETED`/`REPORTED`/
+   `CANCELLED`) — the roadmap's status list explicitly named it, and it
+   models a real distinct outcome ("this order should never have been
+   placed") from `CANCELLED` ("this was valid but no longer needed").
+4. **Reports are a separate, append-only `RadiologyReport` child table**
+   (version = previous + 1, no update method exposed — same "never
+   overwrite" enforcement as `ClinicalNote`, ADR-0008), with the
+   *current* version's content denormalized onto `RadiologyOrder` itself
+   for cheap list/queue reads. Once `REPORTED` (released), no further
+   report versions can be authored in this milestone — amending a
+   released report is deferred (see TECH_DEBT), a deliberate
+   simplification rather than modeling re-verification-after-amendment.
+   **Verification and release are separate, sequential actions**
+   (`verifiedByUserId`/`verifiedAt`, then `releasedByUserId`/`releasedAt`
+   + status → `REPORTED`) — release requires verification first,
+   modeling a real radiologist workflow (author → verify → release)
+   rather than a single "submit" step.
+5. **Image attachments are a separate `RadiologyAttachment` table**, not
+   reusing `EncounterAttachment` — a radiology order's attachments are
+   scoped to the order (findable independent of which encounter it
+   came from) and need a `DICOM_PLACEHOLDER`/`EXTERNAL_IMAGING` type with
+   no real file (metadata-only: accession number / external URL / study
+   instance UID) for referencing an outside PACS study — a shape
+   `EncounterAttachment` doesn't have. `IMAGE`/`PDF` attachments reuse
+   `StorageService` exactly like every other upload in this codebase.
+   **No real PACS/DICOM server integration exists** (explicitly excluded
+   by instruction) — the placeholder type is the extension point a future
+   integration would replace.
+6. **`radiology.read`/`create`/`update` changed from all-scope to
+   own-scope for the Doctor role** (mirroring ADR-0012's laboratory
+   decision exactly, for the same reason: a doctor should only order/
+   view/update imaging for patients they're treating). **A new
+   `Radiology Technician` role was added to `seed.ts`'s `ROLE_SPECS`**
+   (all-scope `radiology.*` + `patients.read`) — `SystemRole
+   .RADIOLOGY_TECHNICIAN` already existed in the schema enum from the
+   original scaffolding commit but had no role spec, the same situation
+   `LAB_TECHNICIAN` was in before Milestone 7. Nurse gained `radiology.read`
+   (mirroring its existing `laboratory.read` grant).
+7. **No dedicated technician-picker UI** — `RadiologyOrder
+   .technicianUserId` stays a plain `String` (no FK, matching the
+   `sampleCollectedBy`-style "actor" convention), and the frontend has no
+   staff-directory lookup to populate it from (no such endpoint exists
+   yet for any staff type) — tracked in TECH_DEBT rather than building a
+   speculative staff-directory feature for this one field.
+
+**Consequences:** No data migration risk (`radiology_orders` had no real
+rows). RBAC reuses the existing `radiology` permission resource (already
+seeded with `read`/`create`/`update`) — no new resource was needed.
+`docs/roadmap.md`'s Milestone 8 entry undersold this session's actual
+scope; not renumbered or rewritten since the milestone boundary itself
+(Radiology as its own milestone, per ADR-0011) is unchanged — only its
+internal depth grew. Frontend has four routes (`/dashboard/radiology`
+dashboard, `/dashboard/radiology/orders` queue, `/dashboard/radiology/
+catalog`, `/dashboard/radiology/[orderId]` detail with Scheduling/Report/
+Attachments tabs), plus a Radiology tab on the encounter detail page and
+a "Recent imaging" panel on the patient timeline — mirroring Laboratory's
+integration points exactly.
+
+---
+
+## ADR-0014: Milestone 9 reordered to Pharmacy Management (Billing & Insurance pushed to Milestone 10); `Drug`/`DispenseOrder`/`DispenseItem`/`DrugReturn` schema design
+
+Date: 2026-08-03
+Status: Accepted
+
+**Context:** `NEXT.md` (written at the close of Milestone 8) scoped
+Milestone 9 as Billing & Insurance, per `docs/roadmap.md`'s original
+numbering. This session's explicit instruction reordered the roadmap
+instead: build Pharmacy Management now, under the label "Milestone 9,"
+with Billing and Insurance explicitly excluded and pushed to "later
+milestones." Per `CLAUDE.md`'s rule ("only raise a settled decision again
+if new information directly contradicts it, and propose updating
+`DECISIONS.md` rather than silently overriding it"), this is that
+proposal — the same kind of explicit, in-conversation instruction that
+superseded `NEXT.md`'s framing in ADR-0013 (Radiology's expanded scope).
+
+**Decision:**
+1. **Reorder and split** `docs/roadmap.md`: old Milestone 9 (Billing &
+   Insurance) and old Milestone 10 (Pharmacy & Inventory) are replaced
+   with Milestone 9 — Pharmacy Management (this session's actual scope:
+   drug catalog, dispensing, stock, returns — not general inventory),
+   Milestone 10 — Billing & Insurance (unchanged deliverable list, moved
+   back one slot), and a new Milestone 11 — General Inventory (purchase
+   orders, non-drug stock — the half of old Milestone 10 not touched this
+   session). Former Milestones 11–15 (Staff & Attendance through
+   Production Hardening) shift to 12–16, mirroring ADR-0011's
+   insert-and-shift-everything-after precedent. `inventory` module
+   remains the untouched 3-line scaffold, now explicitly Milestone 11's
+   job rather than bundled with Pharmacy.
+2. **`Medication` (unused since the original scaffolding commit — confirmed
+   zero references anywhere in `apps/api`/`apps/web`/`packages/types`/
+   `seed.ts`) is renamed to `Drug` and extended**, rather than left in
+   place alongside a new parallel model. Its pre-existing shape (name,
+   genericName, manufacturer, strength, form, category, unitPrice,
+   isActive) was missing more than half of what the roadmap's Drug Catalog
+   fields require (brand name, batch, expiry, tax, stock levels) — the
+   same "shape genuinely insufficient, don't force-fit" reasoning as
+   ADR-0008's `MedicalRecord` → `Encounter` replacement, not ADR-0010's
+   "reuse with one adjustment" case. `category` was dropped (not in the
+   roadmap's field list and not worth carrying forward on an unused model).
+3. **One `Drug` row is one batch — batch number and expiry live directly on
+   the catalog row, not on a separate child table.** The roadmap's own
+   field list puts "Batch" and "Expiry" inside "Drug Catalog CRUD Fields"
+   (not only under the separate "Stock" section), so a second `DrugBatch`
+   table was a bigger abstraction than asked for. Restocking the same
+   generic/brand drug with a new batch creates a new `Drug` row (sharing
+   genericName/brandName/strength/dosageForm/manufacturer/price/tax with
+   its sibling batches, differing in batchNumber/expiryDate/stock) rather
+   than a join. Traded off: no single "the drug" identity across batches
+   for catalog editing (renaming a drug's brand name means editing every
+   batch row) — acceptable given the roadmap never asked for cross-batch
+   catalog identity, and the same simplicity-over-speculative-normalization
+   call CLAUDE.md asks for ("three similar lines is better than a
+   premature abstraction").
+4. **`DispenseOrder` is one-to-one with `Prescription`** (`prescriptionId`
+   unique) — "Dispense prescription" creates exactly one dispense record
+   per prescription that tracks its full fulfillment lifecycle, mirroring
+   how `Encounter` is the one central record per consultation (ADR-0008).
+   `DispenseItem` rows mirror `PrescriptionItem` rows 1:1 (denormalizing
+   `medicationName` at creation time, same "denormalize at order time"
+   idiom as `LabTestItem`/`RadiologyOrder`), each optionally linked to a
+   `Drug` (batch) once the pharmacist resolves the prescribed medication
+   name to an actual catalog entry — "Batch selection" in the roadmap's
+   frontend feature list is this resolution step.
+5. **`DispenseStatus` has exactly the six roadmap-specified values**
+   (`PENDING`/`PREPARING`/`READY`/`DISPENSED`/`CANCELLED`/`RETURNED`), no
+   extra states invented to represent partial fulfillment:
+   - **Partial dispense** increments `DispenseItem.quantityDispensed` for
+     the specified items/quantities without changing `DispenseOrder`
+     .status — repeatable, order stays `READY` until finalized.
+   - **Complete dispense** fills any remaining requested quantity on every
+     item and moves the order to `DISPENSED`, stamping `dispensedAt`/
+     `dispensedByUserId`. This is the only transition into `DISPENSED`.
+   - **Reject** and **Cancel** are the same underlying transition
+     (`CANCELLED`), distinguished only by a `rejected: Boolean` flag +
+     `cancelReason` text — the roadmap lists "Reject" and "Cancel" as
+     separate actions but only one non-`PENDING` terminal-before-dispense
+     status exists, so the distinction is recorded as data, not as two
+     enum values.
+   - **Returned** is reached from `DISPENSED` when at least one
+     `DrugReturn` is recorded against the order — there is no
+     `PARTIALLY_RETURNED` state; a partial-quantity return still moves the
+     whole order to `RETURNED` (it's a true statement — "this dispensed
+     order has an associated return" — even if only some of it came back).
+6. **Stock reservation is enforced in application code, not a DB
+   constraint** — moving an order to `PREPARING` (batch selected) reserves
+   the requested quantity on the `Drug` row (`reservedStock += qty`);
+   dispense (partial/complete) converts reserved → deducted; cancel/reject
+   releases the reservation. This accepts the same class of race-condition
+   gap already open and documented for appointment booking (TD-0012) and
+   `DoctorLeaveService` — not a new gap, and not blocking for this
+   milestone; tracked in `TECH_DEBT.md`.
+7. **`pharmacy.*` (`read`/`create`/`update`) stays all-scope for every role
+   that has it** — already seeded this way (Pharmacist gets all three;
+   Hospital Admin gets everything). Unlike lab/radiology orders
+   (ADR-0012/ADR-0013's doctor-owns-their-orders reasoning), pharmacy is
+   staff-facing (pharmacist dispenses across every doctor's prescriptions
+   the same way a cashier processes every patient's invoice) — the same
+   reasoning `NEXT.md` already flagged for Billing/Insurance applies here
+   too, decided deliberately rather than defaulting to the clinical-module
+   own-scope pattern. **Pharmacist additionally gains `prescriptions.update`**
+   (previously only `prescriptions.read`) so completing a dispense can
+   transition the source `Prescription` to `COMPLETED` via the existing
+   `PrescriptionsService.updateStatus`, the same cross-module reuse
+   `RadiologyOrdersService` already does with `EncountersService`.
+
+**Consequences:** No data migration risk beyond the `Medication` rename
+(table had zero rows). `docs/roadmap.md`'s Billing & Insurance and General
+Inventory milestones keep their original deliverable lists verbatim —
+only the heading/week-label numbers move (Billing & Insurance: 9→10;
+Staff & Attendance through Production Hardening: 11–15→12–16). `NEXT.md`
+is replaced with Milestone 10 — Billing & Insurance now that this
+session's Pharmacy work is verified complete, per the Milestone
+Completion Checklist.
+
+---
+
+## ADR-0015: Milestone 10 narrowed to Billing only (Insurance carved out to its own Milestone 11); Charge Engine, Invoice discount/refund workflow, and schema design
+
+Date: 2026-08-03
+Status: Accepted
+
+**Context:** `NEXT.md` (written at the close of Milestone 9) scoped
+Milestone 10 as "Billing & Insurance," per `docs/roadmap.md`'s original
+bundling. This session's explicit instruction narrowed scope to Billing
+only — "Insurance is NOT part of this milestone" — with the full Billing
+deliverable list (Charge Engine, Invoice, Payments, Discounts, Taxes,
+Receipts, Refunds, APIs, frontend, dashboard). Per `CLAUDE.md`'s rule
+("only raise a settled decision again if new information directly
+contradicts it, and propose updating `DECISIONS.md` rather than silently
+overriding it"), this ADR records that instruction the same way ADR-0013
+(Radiology's expanded scope) and ADR-0014 (Pharmacy's reorder) recorded
+theirs.
+
+**Decision:**
+
+1. **`docs/roadmap.md`'s Milestone 10 is split**: Milestone 10 — Billing
+   (this session, complete), a new Milestone 11 — Insurance Management
+   (TPA/cashless claims — carved out, not started), and General Inventory
+   /Staff & Attendance/AI/Reports/Notifications/Production Hardening shift
+   from 11–16 to 12–17, mirroring ADR-0011's insert-and-shift-everything-
+   after precedent. `InsuranceModule` remains the untouched 3-line
+   scaffold confirmed at Milestone 8's session and unchanged since.
+
+2. **`Charge` is the reusable "Charge Engine" entity** — one row per
+   billable event, created either by a manual cashier action
+   (`POST /billing/charges`) or, in this session, by the one real
+   automated caller: the appointment-completion listener (point 6 below).
+   `sourceModule`/`sourceId` record provenance as plain columns (a
+   `ChargeSourceModule` enum: APPOINTMENT/CONSULTATION/LABORATORY/
+   RADIOLOGY/PHARMACY/PROCEDURE/MISCELLANEOUS, plus an optional free-text
+   `sourceId`) rather than a hard FK into each clinical module's own
+   tables — the same "actor reference stays a plain column" convention as
+   `LabTest.sampleCollectedBy`/`RadiologyOrder.technicianUserId`. This
+   session does not modify Laboratory/Radiology/Pharmacy to emit charges
+   automatically (out of scope — those modules were confirmed untouched
+   per the reading policy); `ChargesService.create` is the reusable entry
+   point a future session would call from those modules, and the manual
+   API already lets a cashier record a charge against any of them today
+   via `sourceModule`.
+
+3. **`ServiceCatalogItem`** (new model, org-scoped: code/name/category/
+   price/taxPercent/isActive) is "service catalog with pricing" —
+   `category` stays free-text (mirrors `RadiologyCatalogItem.modality`/
+   `bodyPart`'s precedent) rather than an enum. Charges and invoice line
+   items both denormalize `description`/`unitPrice`/`taxPercent` from the
+   catalog item *at creation time* — the same "denormalize at order time"
+   idiom as `LabTestItem`/`RadiologyOrder`/`DispenseItem` — so a later
+   catalog price edit never retroactively changes an already-billed
+   charge or invoice item.
+
+4. **Invoice creation sweeps `PENDING` charges, not just manual line
+   items.** `POST /billing/invoices` accepts `items[]` (ad-hoc) and/or
+   `chargeIds[]` (existing charges to bill) — at least one is required.
+   Swept charges flip to `INVOICED` with `invoiceId` set; cancelling a
+   not-yet-paid invoice releases them back to `PENDING` for re-billing
+   (mirrors `DispenseService`'s reservation-release-on-cancel pattern).
+   `Invoice.encounterId` was added (nullable, unique — mirrors the
+   pre-existing `appointmentId`) alongside the pre-existing
+   `appointmentId`, since not every billable visit traces through an
+   `Appointment` record.
+
+5. **Discount and refund approval workflow is the same shape for both**:
+   a caller holding `billing.manage` has their discount/refund
+   auto-approved and applied immediately; anyone else's request lands
+   `PENDING` (on `Invoice.discountApprovalStatus` / `Refund.status`)
+   until a `billing.manage` holder approves or rejects it. No `seed.ts`
+   changes were needed — `billing.manage` was already seeded and already
+   excluded from the `Cashier` role (only `Hospital Admin`'s wildcard
+   grant includes it), so this session's RBAC need ("separate the person
+   who requests a discount/refund from the person who can unilaterally
+   grant one") was already satisfied by the existing permission catalog.
+   An invoice-level discount (`DiscountType`: FLAT/PERCENTAGE) is applied
+   on top of the post-item-discount subtotal, before the already-computed
+   per-item tax is touched — see `billing-calculations.ts`. Only an
+   `APPROVED` discount is ever reflected in `discountAmount`/
+   `totalAmount`/`balanceDue`; a `PENDING` one changes nothing until
+   resolved, and requesting/approving is blocked once any payment has
+   been recorded (a paid invoice's numbers shouldn't move — reject and
+   handle via a refund instead).
+
+6. **A completed refund (partial or full) flips the invoice to
+   `REFUNDED`**, regardless of whether the full paid amount was
+   refunded — the same "even if only some of it came back" semantics
+   `DispenseOrder.RETURNED` already established (ADR-0014 point 5).
+   `paidAmount`/`balanceDue` are left untouched by a refund (they record
+   what was collected, a historical fact); the sum of `COMPLETED` refunds
+   against an invoice is the source of truth for how much has been
+   refunded.
+
+7. **"Auto-invoice generation from appointment"** is a dedicated
+   `AppointmentInvoiceListener` (in the `billing` module) reacting to the
+   pre-existing `appointment.status_changed` event — the same
+   multiple-independent-listeners-on-one-event pattern `AuditListener`
+   already established. On completion, it creates one `CONSULTATION`
+   charge priced from `Doctor.consultationFee` (already a required field,
+   seeded for every doctor since Milestone 4) with `taxPercent` from
+   `Organization.settings.gstRate`, then sweeps it into a new `DRAFT`
+   invoice. Idempotent via `Invoice.appointmentId`'s existing unique
+   constraint (checked before doing anything). Failures are logged and
+   swallowed — an invoicing hiccup must never block the appointment
+   status transition that triggered it, the same "best-effort, don't
+   fail the primary action" idiom as `DispenseService.dispenseComplete`'s
+   prescription-completion call (TD-0023).
+
+8. **Split and partial payments needed no schema change at all** — the
+   pre-existing `Payment` model (one row per payment, `invoiceId` not
+   unique) already supported multiple rows per invoice; calling
+   `POST /billing/invoices/:id/payments` more than once, with different
+   `paymentMode`s and/or amounts, *is* both split and partial payment.
+   `PaymentMode.INSURANCE` already existed in the schema from the
+   original scaffold but is excluded from the frontend's payment-mode
+   picker this session (insurance-backed payment collection needs the
+   claim workflow Milestone 11 will build).
+
+9. **Receipt/invoice PDFs include a QR placeholder, not a real scannable
+   payment code** — no UPI/payment-gateway credentials or merchant VPA
+   are configured anywhere in this repo. Generating a QR that *looks*
+   scannable but resolves to nothing would be actively misleading (worse
+   than simply omitting it), so both PDFs render a labeled bordered box
+   ("QR (integration pending)") instead — the same disclosed-placeholder
+   practice as the DICOM/ICD-10 placeholders in earlier milestones, not a
+   faked payment feature.
+
+**Consequences:** No pre-existing rows were at risk (`Invoice`/
+`InvoiceItem`/`Payment`/`InsuranceClaim` were all unused since the
+original scaffolding commit, confirmed before this session's migration).
+`InsuranceClaim`/`Invoice.insuranceClaim` remain in the schema, unused
+by any service — the exact extension point Milestone 11 builds on.
+Concurrent-write races on `Charge`/`Invoice`/`Payment` totals have no
+DB-level locking, the same accepted-for-now gap as TD-0012/TD-0021 (see
+TECH_DEBT). No dedicated frontend page manages the service catalog or
+raises ad-hoc charges outside the invoice-creation flow — the backend
+fully supports both, but building a standalone admin UI for either was
+not requested this session (see TECH_DEBT).

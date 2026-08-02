@@ -169,49 +169,88 @@ Milestone 4's precedent.
 
 ---
 
-## Milestone 9 — Billing & Insurance (Week 10–11)
+## Milestone 9 — Pharmacy Management (Week 10–11)
 
-**Goal:** Complete financial operations from invoice generation to insurance claims.
+**Goal:** Pharmacy dispensing, from prescription to dispense, with batch/expiry-tracked stock.
+Reordered ahead of Billing & Insurance per explicit instruction — see ADR-0014.
+General (non-drug) inventory, purchase orders, and pharmacy↔billing
+integration are explicitly out of scope this milestone (Billing itself
+is out of scope entirely) — see Milestone 10.
 
-### Deliverables
-- [ ] Service catalog with pricing
-- [ ] Auto-invoice generation from appointment
-- [ ] Manual line-item addition
-- [ ] Discount management
-- [ ] GST calculation (GST-compliant invoicing)
-- [ ] Multiple payment modes (cash, card, UPI, NEFT)
-- [ ] Payment receipt generation
-- [ ] Invoice PDF generation
-- [ ] Insurance policy management
-- [ ] TPA/cashless claim workflow
-- [ ] Claim status tracking
-- [ ] Revenue dashboard
-- [ ] Frontend: billing workbench
-- [ ] Frontend: insurance claim management
-- [ ] Frontend: payment receipts
+### Deliverables — ✅ Complete
+- [x] Drug catalog (generic/brand name, strength, dosage form,
+      manufacturer, batch, expiry, price, tax, active) — one row per
+      batch, see ADR-0014
+- [x] Dispense workflow (Pending → Preparing → Ready → Dispensed, plus
+      Cancelled/Returned) — dispense/partial-dispense/complete-dispense/
+      reject/cancel actions, full history
+- [x] Stock management (current/reserved/available, minimum stock,
+      reorder level, expiry tracking, batch tracking)
+- [x] Medicine returns (adjusts stock back, fully audited)
+- [x] REST + Swagger + RBAC (all-scope `pharmacy.*`) + pagination/
+      filtering/sorting + audit integration
+- [x] Frontend: `/dashboard/pharmacy` dashboard, `/catalog`, `/dispense`
+      queue, `/stock`, `/[dispenseId]` detail — dispensing queue,
+      prescription integration (dispense button on an encounter's
+      prescription), batch selection, expiry/low-stock warnings, return
+      workflow
+- [x] Tests (unit + e2e + browser-verified)
 
 ---
 
-## Milestone 10 — Pharmacy & Inventory (Week 12)
+## Milestone 10 — Billing (Week 12)
 
-**Goal:** Pharmacy dispensing and general inventory management.
+**Goal:** Complete financial operations from charge capture to invoice, payment,
+and refund. Insurance is its own follow-up milestone — see ADR-0015.
 
 ### Deliverables
-- [ ] Medication catalog with stock management
-- [ ] Prescription-to-dispense workflow
-- [ ] Stock deduction on dispense
-- [ ] Low stock alerts
-- [ ] Pharmacy billing integration
+- [x] Charge Engine — reusable charge entity, consumed by every clinical module
+- [x] Service catalog with pricing
+- [x] Auto-invoice generation from appointment
+- [x] Manual line-item addition
+- [x] Discount management (flat/percentage, approval workflow)
+- [x] GST calculation (GST-compliant invoicing)
+- [x] Multiple payment modes (cash, card, UPI, bank transfer/NEFT/RTGS, cheque)
+- [x] Split payments / partial payments / outstanding balance tracking
+- [x] Payment receipt generation (PDF, hospital branding, QR placeholder)
+- [x] Invoice PDF generation
+- [x] Refunds (partial/full, audit)
+- [x] Revenue dashboard
+- [x] Frontend: billing workbench (invoices, payments, refunds)
+- [x] Frontend: payment receipts
+- [x] Tests (unit + e2e + browser-verified)
+
+---
+
+## Milestone 11 — Insurance Management (Week 13)
+
+**Goal:** Insurance policy management and TPA/cashless claim workflow —
+carved out of the original "Billing & Insurance" milestone (see ADR-0015),
+building on the `InsuranceClaim` model and `Invoice.insuranceClaim` relation
+already in the schema.
+
+### Deliverables
+- [ ] Insurance policy management
+- [ ] TPA/cashless claim workflow
+- [ ] Claim status tracking
+- [ ] Frontend: insurance claim management
+
+---
+
+## Milestone 12 — General Inventory (Week 14)
+
+**Goal:** Non-drug hospital inventory management (equipment, consumables, supplies).
+
+### Deliverables
 - [ ] General inventory module
 - [ ] Purchase order management
 - [ ] Expiry tracking
 - [ ] Inventory reports
-- [ ] Frontend: pharmacy queue
 - [ ] Frontend: inventory management
 
 ---
 
-## Milestone 11 — Staff & Attendance (Week 13)
+## Milestone 13 — Staff & Attendance (Week 15)
 
 **Goal:** HR and attendance management for hospital staff.
 
@@ -228,7 +267,7 @@ Milestone 4's precedent.
 
 ---
 
-## Milestone 12 — AI Features (Week 14–15)
+## Milestone 14 — AI Features (Week 16–17)
 
 **Goal:** Integrate all planned AI capabilities.
 
@@ -244,7 +283,7 @@ Milestone 4's precedent.
 
 ---
 
-## Milestone 13 — Reports & Analytics (Week 16)
+## Milestone 15 — Reports & Analytics (Week 18)
 
 **Goal:** Operational intelligence for hospital administrators.
 
@@ -261,7 +300,7 @@ Milestone 4's precedent.
 
 ---
 
-## Milestone 14 — Notifications & Communication (Week 17)
+## Milestone 16 — Notifications & Communication (Week 19)
 
 **Goal:** Multi-channel patient and staff communication.
 
@@ -278,7 +317,7 @@ Milestone 4's precedent.
 
 ---
 
-## Milestone 15 — Production Hardening (Week 18)
+## Milestone 17 — Production Hardening (Week 20)
 
 **Goal:** Secure, observable, deployable to production.
 

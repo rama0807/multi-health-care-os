@@ -508,3 +508,294 @@ edge case the way a synthetic all-hours fixture does).
 midnight (if the scheduling engine supports cross-midnight shifts — needs
 checking) or change the walk-in test to book against a fixed, injected
 "now" rather than real wall-clock time.
+
+---
+
+## TD-0018 (tracking only, not a defect): AI-powered lab report summarization deferred, credential-blocked
+
+Opened: 2026-08-02
+Status: Open — expected to stay open until the user supplies credentials
+Severity: N/A (not a bug — an intentionally deferred feature)
+
+**Description:** Milestone 7's roadmap scope (`docs/roadmap.md`) included
+"AI-powered lab report summarization (async)." No AI/LLM provider is
+genuinely configured anywhere in this repo: `apps/api/.env.example` (and
+the local `.env`) declare `OPENAI_API_KEY`/`ANTHROPIC_API_KEY`/
+`AI_PROVIDER` fields, but both hold only unset placeholder values
+(`sk-xxxxxxxxxxxx` / `sk-ant-xxxxxxxxxxxx`), and a repo-wide grep confirms
+no code anywhere reads any of these three env vars — they're template
+placeholders for a future integration, not a wired credential. Confirmed
+`apps/api/src/modules/ai/` remains the same 3-file no-op scaffold (empty
+constructors) it was before this session — unlike `EmailService`
+(Milestone 5), which had a genuine console-fallback to build on, there is
+no equivalent AI scaffolding to extend. Per `CLAUDE.md`'s explicit
+prohibition on faking clinical logic to "make it work," this was not
+stubbed with a canned/fake summary.
+
+**Impact:** None currently — every other Milestone 7 deliverable (catalog,
+order creation, sample collection, structured result entry, abnormal
+flagging, both PDF paths) is fully implemented and covers the clinically
+load-bearing parts of the workflow. Summarization is a convenience layer
+on top of data that's already fully queryable/exportable (structured
+items + the generated PDF), so its absence blocks no other functionality.
+
+**Resolution plan:** Pick up once the user supplies LLM provider
+credentials (e.g. `ANTHROPIC_API_KEY`). At that point, build it as a
+genuinely async job (not an inline request-blocking call): an event
+listener on `lab_test.status_changed_to_reported` (or `_completed`)
+enqueues a summarization job, the job calls the LLM with the order's
+structured `LabTestItem` rows (result/unit/reference range/abnormal
+flags) and stores the summary text on the order (a new nullable field,
+e.g. `LabTest.aiSummary`), and the frontend polls or re-fetches once
+available. Mirrors the general shape of TD-0015 (SMS) and TD-0016 (drug
+interactions) — implement for real once genuinely unblocked, don't
+retrofit a fake version now.
+
+---
+
+## TD-0019 (tracking only, not a defect): AI-powered radiology image interpretation and PACS/DICOM integration explicitly out of scope
+
+Opened: 2026-08-02
+Status: Open — explicitly excluded by instruction, not a gap to fill
+Severity: N/A (not a bug — explicitly excluded feature)
+
+**Description:** Milestone 8's instructions explicitly excluded two
+things: AI image interpretation and real PACS/DICOM server integration.
+Neither is implemented, and neither is faked. The module is designed so
+a future PACS integration has a real extension point: `RadiologyAttachment
+.type` includes `DICOM_PLACEHOLDER`/`EXTERNAL_IMAGING` (metadata-only —
+accession number, external URL, study instance UID — no real file or
+DICOM parsing), and `RadiologyOrder`'s scheduling/report fields are
+plain columns a PACS webhook or worklist integration could populate
+without a schema change.
+
+**Impact:** None — these were never in scope for this session. Recorded
+here only so a future session (or the user) has one place documenting
+that the exclusion was deliberate, not an oversight, and what shape the
+integration point is in.
+
+**Resolution plan:** When/if the user wants real PACS/DICOM connectivity
+or AI-assisted image interpretation, treat both as genuinely new,
+credential/infrastructure-blocked features (same practice as TD-0015
+SMS, TD-0018 AI lab summarization) — do not stub either with fake
+output.
+
+---
+
+## TD-0020: Radiology scheduling has no technician picker UI (raw user ID only)
+
+Opened: 2026-08-02
+Status: Open
+Severity: Low
+
+**Description:** `RadiologyOrder.technicianUserId` is a plain `String`
+(no FK, matching the `LabTest.sampleCollectedBy`-style "actor" convention
+— ADR-0008 point 5), settable via the `POST /radiology/:id/schedule` API,
+but the frontend Scheduling tab has no input for it at all — there is no
+staff-directory/user-lookup endpoint anywhere in this codebase yet (not
+for lab technicians, not for any other staff type) for the frontend to
+populate a picker from. The Radiologist field *does* have a picker
+(reuses the existing `listDoctors` endpoint, since a radiologist is
+modeled as a `Doctor` by specialization).
+
+**Impact:** Low — a receptionist/radiology-technician role can still
+process orders end to end (schedule/start/complete/report) without ever
+setting `technicianUserId`; it's an optional metadata field, not
+load-bearing for any status transition or permission check.
+
+**Resolution plan:** Add a generic "list users by role" (or
+per-organization staff directory) endpoint if/when one becomes needed
+for multiple modules (this same gap would block a technician picker for
+Laboratory too, which has the identical `sampleCollectedBy` shape) —
+not worth building a one-off endpoint for this single field.
+
+---
+
+## TD-0021: Drug stock reservation/deduction has no DB-level protection against a race
+
+Opened: 2026-08-03
+Status: Open
+Severity: Medium
+
+**Description:** `DispenseService`'s batch-selection (reserve),
+partial/complete dispense (convert reserved → deducted), and cancel/
+reject (release reservation) all read `Drug.currentStock`/`reservedStock`
+and write back within an application-level `$transaction`, but there is
+no Postgres row lock (`SELECT ... FOR UPDATE`) or exclusion constraint
+preventing two concurrent dispense orders from both reserving against
+the same batch's available stock before either commits — the same class
+of gap already open and documented for appointment booking (**TD-0012**)
+and `DoctorLeaveService`'s overlap check, not a new pattern introduced
+here.
+
+**Impact:** Low probability in practice (requires two pharmacists
+preparing different orders against the same batch at the exact same
+moment), but a genuine correctness gap — `Drug.reservedStock` could
+theoretically exceed what's truly available under concurrent load.
+
+**Resolution plan:** Add a `SELECT ... FOR UPDATE`-guarded read of the
+`Drug` row inside `prepareItems`/`dispensePartial`/`dispenseComplete`'s
+transactions, or a raw constraint ensuring `reservedStock <= currentStock`
+at the database level. Worth fixing before multi-pharmacist concurrent
+production use; not blocking for this milestone.
+
+---
+
+## TD-0022: `DrugQuery.lowStockOnly` filters in application code, not in the database query
+
+Opened: 2026-08-03
+Status: Open
+Severity: Low
+
+**Description:** "Low stock" means `currentStock <= reorderLevel` — a
+comparison between two columns on the same row, which Prisma's query
+builder cannot express in a `where` filter without a raw query.
+`DrugCatalogService.list` works around this by fetching every drug
+matching the other filters for the org and filtering/paginating in
+JavaScript when `lowStockOnly` is set, instead of paginating at the
+database level like every other query path in this codebase.
+
+**Impact:** Low today — a single organization's drug catalog (one row
+per batch) is not large enough for this to be a real performance
+problem — but it doesn't scale the way DB-level pagination does, and is
+an inconsistent pattern versus the rest of the codebase's query methods.
+
+**Resolution plan:** Replace with a `Prisma.$queryRaw` (or a raw SQL
+filter fragment: `WHERE "current_stock" <= "reorder_level"`) if/when a
+single org's catalog grows large enough for this to matter.
+
+---
+
+## TD-0024: Billing has no standalone Service Catalog or Charges admin UI
+
+Opened: 2026-08-03
+Status: Open
+Severity: Low
+
+**Description:** `ServiceCatalogService`/`ChargesService` are fully
+implemented and REST-exposed (`GET/POST /billing/catalog`, `PATCH
+/billing/catalog/:id`, `GET/POST /billing/charges`, `POST
+/billing/charges/:id/void`), but no frontend page manages them directly
+— the invoice-creation dialog is the only UI surface that touches
+catalog items (implicitly, via a charge's denormalized fields) and
+existing pending charges (via the sweep checklist). There is no page to
+browse/deactivate catalog items or raise/void an ad-hoc charge outside
+the context of building an invoice.
+
+**Impact:** Low — every roadmap-required frontend surface (billing
+workbench: invoices, payments, refunds) is implemented; catalog/charge
+management is reachable only through the API (Swagger) or indirectly
+through invoice creation, not a dedicated admin screen.
+
+**Resolution plan:** Add a `/dashboard/billing/catalog` management page
+(mirrors `/dashboard/radiology/catalog`'s pattern exactly) if/when
+catalog upkeep becomes a real workflow need, rather than building it
+speculatively now.
+
+---
+
+## TD-0025: Billing has no DB-level protection against concurrent-write races
+
+Opened: 2026-08-03
+Status: Open
+Severity: Medium
+
+**Description:** `InvoicesService`/`PaymentsService`/`RefundsService` all
+read an `Invoice` row, compute new totals/paid-amount/balance in
+application code, then write back within a `$transaction` — but nothing
+prevents two concurrent requests (e.g. two cashiers recording a payment
+against the same invoice at the same instant) from both reading the
+pre-update balance before either commits. The same class of gap already
+open and accepted for appointment booking (TD-0012) and pharmacy stock
+reservation (TD-0021), not a new pattern introduced here.
+
+**Impact:** Low probability in practice (requires two near-simultaneous
+writes against the same invoice), but a genuine correctness gap —
+`paidAmount`/`balanceDue` could theoretically be computed from stale
+data under concurrent load.
+
+**Resolution plan:** Add a `SELECT ... FOR UPDATE`-guarded read of the
+`Invoice` row inside the payment/discount/refund transactions, or an
+optimistic-concurrency version column, if this becomes a real issue
+under multi-cashier concurrent load. Not blocking for this milestone.
+
+---
+
+## TD-0026: Invoice `OVERDUE` status is never automatically set
+
+Opened: 2026-08-03
+Status: Open
+Severity: Low
+
+**Description:** `InvoiceStatus.OVERDUE` exists in the schema (from the
+original scaffolding commit) and `Invoice.dueDate` is a real, settable
+field, but nothing in this session transitions an invoice's status to
+`OVERDUE` when its due date passes with a balance still owing — doing so
+would require a scheduled job, and no cron/scheduler infrastructure
+exists anywhere in this repo (the same "no cron infra" gap noted for
+`NotificationType.APPOINTMENT_REMINDER` and every other
+would-be-scheduled feature in this codebase).
+
+**Impact:** Low — `balanceDue` and `dueDate` are both real and queryable
+today (the frontend could compute "is this overdue" client-side from
+those two fields), just not reflected in the persisted `status` column
+or filterable via `status=OVERDUE`.
+
+**Resolution plan:** Pick up once this repo has any scheduled-job
+infrastructure (a recurring job scanning `ISSUED`/`PARTIALLY_PAID`
+invoices past `dueDate`) — don't bolt on a one-off cron for this single
+feature ahead of that.
+
+---
+
+## TD-0027 (tracking only, not a defect): Invoice/receipt QR is a disclosed placeholder, not a real payment gateway
+
+Opened: 2026-08-03
+Status: Open — expected to stay open until the user supplies a payment-gateway/UPI integration
+Severity: N/A (not a bug — an intentionally deferred feature)
+
+**Description:** Milestone 10's roadmap scope named a receipt/invoice QR
+code. No UPI/payment-gateway credentials or merchant VPA are configured
+anywhere in this repo. Per `CLAUDE.md`'s prohibition on faking
+billing logic to "make it work," both PDF generators (`billing-invoice-
+pdf.ts`, `billing-receipt-pdf.ts`) render a labeled bordered placeholder
+box instead of a real scannable code — see ADR-0015 point 9.
+
+**Impact:** None currently — every other Milestone 10 deliverable
+(invoicing, discounts, taxes, multi-mode payments, refunds) is fully
+implemented and functional without it.
+
+**Resolution plan:** Pick up once the user supplies a real payment
+gateway/UPI merchant integration. At that point, generate an actual UPI
+deep-link QR (e.g. via a `qrcode` npm package) encoding the invoice/
+payment reference, mirroring the general shape of TD-0015 (SMS)/
+TD-0018 (AI summarization)/TD-0019 (PACS) — implement for real once
+genuinely unblocked, don't retrofit a fake one now.
+
+---
+
+## TD-0023 (tracking only, not a defect): Completing a dispense best-effort-completes the source prescription
+
+Opened: 2026-08-03
+Status: Open
+Severity: Low
+
+**Description:** `DispenseService.dispenseComplete` calls
+`PrescriptionsService.updateStatus(..., { status: COMPLETED })` after its
+own transaction commits, swallowing any error
+(`.catch(() => undefined)`) rather than failing the whole dispense — the
+same "separate service calls, no distributed transaction" pattern already
+used throughout this codebase (e.g. `EncountersService`/
+`RadiologyOrdersService`), not a new gap. In the extremely unlikely case
+this call fails (e.g. the prescription was independently discontinued in
+the same instant), the `DispenseOrder` ends up `DISPENSED` while its
+`Prescription` stays `ACTIVE` — a minor, self-correcting inconsistency
+(the prescription can still be manually marked `COMPLETED`/
+`DISCONTINUED` from the encounter page).
+
+**Impact:** None observed; a real but narrow edge case with a manual
+recovery path already in the UI.
+
+**Resolution plan:** Not planned — acceptable given the same pattern is
+already relied on elsewhere in this codebase. Revisit only if this
+proves to happen in practice.

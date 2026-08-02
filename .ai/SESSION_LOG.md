@@ -6,6 +6,546 @@
 
 ---
 
+## Session: 2026-08-03 (Milestone 10 — Billing, complete)
+
+### What was completed
+Ran in Auto Mode. Explicit instruction narrowed Milestone 10 to Billing
+only ("Insurance is NOT part of this milestone"), giving the full
+deliverable list (Charge Engine, Invoice, Payments, Discounts, Taxes,
+Receipts, Refunds, APIs, frontend, dashboard). Recorded as **ADR-0015** —
+`docs/roadmap.md`'s Milestone 10 is now "Billing" alone; a new Milestone
+11 ("Insurance Management") carries the TPA/cashless-claim deliverables
+that used to sit under the old "Billing & Insurance" bundle, and every
+later milestone shifted by one (12–16 → 13–17). Per the reading policy,
+work touched Billing, Appointments (auto-invoice trigger), Patients, the
+Prisma schema, and shared types.
+
+- Confirmed `billing`/`insurance` modules were still 3-line no-op
+  scaffolds, and `Invoice`/`InvoiceItem`/`Payment`/`InsuranceClaim` (from
+  the original scaffolding commit) were completely unused.
+- **Schema** (migration `20260802202302_billing_management`, applied to
+  both `medicore_dev`/`medicore_test`): new `ServiceCatalogItem`,
+  `Charge` (the reusable Charge Engine entity), `Refund` models;
+  `Invoice` gained `encounterId` + a full discount-approval-workflow
+  field set + `finalizedAt`/`cancelledAt`/`cancelReason`. New enums:
+  `ChargeSourceModule`, `ChargeStatus`, `DiscountType`,
+  `DiscountApprovalStatus`, `RefundStatus`. Recorded **ADR-0015**.
+- **RBAC**: no `seed.ts` changes needed — `billing.manage` was already
+  seeded and already excluded from `Cashier` (only `Hospital Admin`'s
+  wildcard includes it), so the discount/refund approval workflow's
+  "separate requester from approver" need was already satisfied.
+- **Backend** (`apps/api/src/modules/billing/`, rebuilt from scratch):
+  `ServiceCatalogService`/`Controller`, `ChargesService`/`Controller`,
+  `InvoicesService`/`Controller` (create/add-item/discount workflow/
+  finalize/cancel/PDF), `PaymentsService`/`Controller` (record payment +
+  receipt PDF — repeat calls cover split/partial payment),
+  `RefundsService`/`Controller` (request/approve/reject),
+  `BillingDashboardService`, `AppointmentInvoiceListener` (auto-invoice
+  from a completed appointment, priced from `Doctor.consultationFee` +
+  org GST rate, idempotent via `Invoice.appointmentId`'s unique
+  constraint). Pure math in `billing-calculations.ts`.
+- **Audit integration**: `audit.listener.ts` gained 12 new `@OnEvent`
+  handlers for charge/invoice/payment/refund lifecycle events.
+- **Tests**: 46 new unit tests (8 spec files) + 29 new e2e tests
+  (`apps/api/test/billing.e2e-spec.ts`). All passing (359 unit / 199 e2e
+  total across the whole API, zero failures).
+- **Frontend**: `apps/web/src/lib/api/billing.ts` + 4 new pages
+  (`/dashboard/billing` dashboard, `/invoices` list+create,
+  `/invoices/[invoiceId]` detail, `/payments`, `/refunds`) — the
+  sidebar's pre-existing "Billing" link needed no changes.
+- **Full verification, all green**: `pnpm --filter @medicore/database
+  db:generate`, `pnpm lint`, `pnpm typecheck`, `pnpm test` (313 api unit
+  + 6 web), `pnpm test:e2e` (199/199), `pnpm build` (all 6 packages).
+- **Browser-verified end to end**: killed stale dev processes on ports
+  3000/4000 and restarted fresh both before and after the verification
+  build (TD-0004). Logged in as `admin@medicore.demo`, drove the full
+  golden path for a real patient: created an invoice (₹800 + 18% GST =
+  ₹944), applied a 10% discount (auto-approved, ₹864), finalized it,
+  recorded two ₹400 cash payments (→ Paid), requested and completed a
+  ₹200 refund (→ Refunded, balance due ₹64), and confirmed the
+  Payments/Refunds/Invoices lists and dashboard all reflect it. 17
+  screenshots under `docs/screens/`. **Two real bugs found and fixed**:
+  the New-invoice dialog never navigated to the created invoice (missing
+  `router.push`), and the dashboard's 7-day collection-trend bars never
+  rendered any height (a CSS percentage-height-without-a-definite-parent
+  bug — fixed by giving each day column an explicit `h-32`).
+- Updated `.ai/NEXT.md`: replaced entirely with **Milestone 11 —
+  Insurance Management**.
+
+### Files modified/created
+- Schema: `packages/database/prisma/schema.prisma`,
+  `packages/database/prisma/migrations/20260802202302_billing_management/`.
+- Shared types: `packages/types/src/enums.ts` (5 new enums, plus
+  previously-missing `InvoiceType`/`PaymentStatus`),
+  `packages/types/src/billing.ts` (rewritten — full interface/zod-schema
+  set for catalog/charges/invoices/payments/refunds/dashboard).
+- Backend: `apps/api/src/modules/billing/*` (new: `billing-calculations
+  .ts`(+spec), `billing-invoice-pdf.ts`, `billing-receipt-pdf.ts`,
+  `service-catalog.service.ts`(+spec)+`.controller.ts`,
+  `charges.service.ts`(+spec)+`.controller.ts`, `invoices.service.ts`
+  (+spec)+`.controller.ts`, `payments.service.ts`(+spec)+`.controller
+  .ts`, `refunds.service.ts`(+spec)+`.controller.ts`,
+  `billing-dashboard.service.ts`(+spec),
+  `appointment-invoice.listener.ts`(+spec), `dto/*`; rewrote
+  `billing.module.ts`/`billing.controller.ts`; deleted the old
+  `billing.service.ts` placeholder),
+  `apps/api/src/modules/audit/audit.listener.ts`,
+  `apps/api/test/billing.e2e-spec.ts`.
+- Frontend: `apps/web/src/lib/api/billing.ts` (new),
+  `apps/web/src/app/dashboard/billing/page.tsx` (new),
+  `apps/web/src/app/dashboard/billing/invoices/page.tsx` (new),
+  `apps/web/src/app/dashboard/billing/invoices/[invoiceId]/page.tsx`
+  (new), `apps/web/src/app/dashboard/billing/payments/page.tsx` (new),
+  `apps/web/src/app/dashboard/billing/refunds/page.tsx` (new).
+- Docs: `docs/roadmap.md` (Milestone 10 split, 11–16 renumbered to
+  12–17), `docs/screens/billing-*.png` (17 new), all `.ai/*` files.
+
+### Architectural decisions
+See **ADR-0015** in `DECISIONS.md` for the full reasoning — Charge Engine
+design, invoice discount/refund approval workflow, `Invoice.encounterId`,
+split/partial payments needing no schema change, the QR-placeholder
+decision, and the Milestone 10/11 roadmap split.
+
+### Known issues
+- TD-0024: no standalone Service Catalog/Charges admin UI (only the
+  invoice-creation flow's sweep-and-ad-hoc surface).
+- TD-0025: no DB-level protection against concurrent-write races on
+  Invoice/Payment/Refund totals (same accepted-for-now class as
+  TD-0012/TD-0021).
+- TD-0026: `InvoiceStatus.OVERDUE` is never automatically set (no cron
+  infra in this repo).
+- TD-0027 (tracking only): invoice/receipt QR is a disclosed placeholder,
+  not a real payment gateway — credential-blocked, not faked.
+
+### Recommended next task
+**Milestone 11 — Insurance Management** (see `.ai/NEXT.md`): insurance
+policy management, TPA/cashless claim workflow, claim status tracking,
+frontend claim management — building on the pre-existing
+`InsuranceClaim` model and `Invoice.insuranceClaim` relation (both
+unused since the original scaffolding commit, confirmed again this
+session).
+
+### Estimated completion
+Overall: ~63% (10 of 17 roadmap milestones fully complete: Foundation
+through Billing, minus the still-provisional cross-cutting items tracked
+in TD-0001). Billing module: 100% for Milestone 10's scope (Insurance
+explicitly excluded, tracked as its own milestone).
+
+---
+
+## Session: 2026-08-03 (Milestone 9 — Pharmacy Management, complete)
+
+### What was completed
+Ran in Auto Mode. Explicit instruction reordered the roadmap ahead of
+`.ai/NEXT.md`'s plan: build Pharmacy Management now (not Billing &
+Insurance), labeled "Milestone 9," with Billing/Insurance and general
+(non-drug) inventory explicitly out of scope. Recorded as **ADR-0014** —
+a reorder-and-split of `docs/roadmap.md` (see Architectural decisions
+below) rather than silently overriding `NEXT.md`. Per the reading policy,
+work touched Pharmacy, Prescriptions, Encounters, Patients, the Prisma
+schema, and shared pharmacy types.
+
+- Confirmed `apps/api/src/modules/pharmacy/` was still the 3-line no-op
+  scaffold, and that `Medication`/`InventoryItem` (from the original
+  scaffolding commit) were completely unused.
+- **Schema** (migration `20260802183901_pharmacy_management`, applied to
+  both `medicore_dev`/`medicore_test`): `Medication` renamed/extended
+  into `Drug` (one row = one batch — batch number/expiry are catalog
+  fields, not a separate table); new `DispenseStatus` enum; new
+  `DispenseOrder` (one per prescription), `DispenseItem` (mirrors a
+  `PrescriptionItem` 1:1), `DrugReturn` models. Recorded **ADR-0014**.
+- **RBAC**: `pharmacy.*` stays all-scope for every role (staff-facing,
+  like billing/insurance — no doctor own-scope). Pharmacist role gained
+  `prescriptions.update` so completing a dispense can complete the source
+  prescription. Re-ran `pnpm db:seed`; `syncRolePermissions` synced it
+  with zero manual intervention.
+- **Backend** (`apps/api/src/modules/pharmacy/`, rebuilt from scratch):
+  `DrugCatalogService`/`Controller` (CRUD, stock adjustment, low-stock/
+  expiring filters) and `DispenseService`/`Controller` — create from a
+  prescription, batch selection (reserves stock), mark ready, partial/
+  complete dispense (converts reserved → deducted, completes the
+  prescription), reject/cancel (releases reservations), medicine returns
+  (restocks, moves to `RETURNED`), dashboard stats.
+- **Audit integration**: `audit.listener.ts` gained 4 new `@OnEvent`
+  handlers (`dispense_order.created`/`status_changed`/
+  `partially_dispensed`, `drug_return.created`).
+- **Tests**: 25 new unit tests + 20 new e2e tests
+  (`apps/api/test/pharmacy.e2e-spec.ts`). All passing (267 unit / 170
+  e2e total, zero failures — no pre-existing flakes hit this run).
+- **Frontend**: `apps/web/src/lib/api/pharmacy.ts` + 5 new pages
+  (`/dashboard/pharmacy` dashboard, `/catalog`, `/dispense` queue,
+  `/stock`, `/[dispenseId]` detail) + a "Dispense" button on the
+  encounter detail page's Prescriptions tab.
+- **Full verification, all green**: `pnpm --filter @medicore/database
+  db:generate`, `pnpm lint`, `pnpm typecheck`, `pnpm test` (267 api unit +
+  6 web), `pnpm test:e2e` (170/170), `pnpm build` (all 6 packages).
+- **Browser-verified end to end**: killed stale dev processes and
+  restarted fresh (TD-0004). Logged in as `admin@medicore.demo`, created
+  fixture patient/encounter/prescriptions via the API, then drove every
+  Pharmacy page through the browser: added drug batches (including a
+  low-stock/near-expiry one), created a dispense order, selected batches,
+  marked ready, partially dispensed, completed the dispense (confirmed
+  the source prescription flipped to "Completed"), recorded a return
+  (order moved to "Returned"), and rejected a second order with a reason.
+  19 screenshots under `docs/screens/`. Fixed one real bug found during
+  this pass: "Dispensed today" excluded orders that had since moved to
+  `RETURNED` — now counts by `dispensedAt` regardless of current status.
+- Updated `.ai/NEXT.md`: replaced entirely with **Milestone 10 — Billing
+  & Insurance**.
+
+### Files modified/created
+- Schema: `packages/database/prisma/schema.prisma`,
+  `packages/database/prisma/migrations/20260802183901_pharmacy_management/`,
+  `packages/database/prisma/seed.ts` (Pharmacist `prescriptions.update`).
+- Shared types: `packages/types/src/enums.ts` (`DispenseStatus`),
+  `packages/types/src/pharmacy.ts` (new).
+- Backend: `apps/api/src/modules/pharmacy/*` (new:
+  `drug-catalog.service.ts` + `.controller.ts` + `.spec.ts`,
+  `dispense.service.ts` + `.controller.ts` + `.spec.ts`, `dto/*`;
+  rewrote `pharmacy.module.ts`; deleted the old `pharmacy.controller.ts`/
+  `.service.ts` placeholders), `apps/api/src/modules/audit/audit.listener.ts`,
+  `apps/api/test/pharmacy.e2e-spec.ts`.
+- Frontend: `apps/web/src/lib/api/pharmacy.ts` (new),
+  `apps/web/src/app/dashboard/pharmacy/page.tsx` (new),
+  `apps/web/src/app/dashboard/pharmacy/catalog/page.tsx` (new),
+  `apps/web/src/app/dashboard/pharmacy/dispense/page.tsx` (new),
+  `apps/web/src/app/dashboard/pharmacy/stock/page.tsx` (new),
+  `apps/web/src/app/dashboard/pharmacy/[dispenseId]/page.tsx` (new),
+  `apps/web/src/app/dashboard/medical-records/[encounterId]/page.tsx`
+  (Dispense button on the Prescriptions tab).
+- Docs: `.ai/DECISIONS.md` (ADR-0014), `.ai/TECH_DEBT.md` (TD-0021,
+  TD-0022, TD-0023), `.ai/PROGRESS.md`, `.ai/CHANGELOG.md`,
+  `.ai/MODULE_STATUS.md`, `.ai/PROJECT_CONTEXT.md`, `docs/roadmap.md`
+  (reordered/renumbered), `.ai/NEXT.md` (replaced), 19 new
+  `docs/screens/pharmacy-*.png`.
+
+### Architectural decisions made
+See **ADR-0014** in `DECISIONS.md`: Milestone 9 reordered to Pharmacy
+Management ahead of Billing & Insurance (roadmap split into Pharmacy/
+Billing & Insurance/General Inventory, former 11–15 shift to 12–16),
+`Drug`/`DispenseOrder`/`DispenseItem`/`DrugReturn` schema shape
+(batch-per-catalog-row design), the `DispenseStatus` state-machine
+semantics (partial vs. complete dispense, reject vs. cancel, returned),
+application-level stock reservation, and all-scope `pharmacy.*` RBAC.
+
+### Known issues
+- **TD-0021** (Medium): drug stock reservation/deduction has no DB-level
+  concurrency protection — same class of gap as TD-0012 (appointment
+  booking), not new. Low probability, worth fixing before multi-
+  pharmacist concurrent production use.
+- **TD-0022** (Low): `lowStockOnly` catalog filter runs in application
+  code (paginates in JS) rather than as a DB-level query, since it
+  compares two columns on the same row.
+- **TD-0023** (tracking only): completing a dispense best-effort-
+  completes the source prescription via a swallowed cross-module call —
+  same pattern already used elsewhere in this codebase, not a new gap.
+- No new bugs discovered this session beyond the "Dispensed today" stat
+  bug caught and fixed during browser verification (see above).
+
+### Recommended next task
+**Milestone 10 — Billing & Insurance**, per `.ai/NEXT.md` — a larger
+milestone bundling two sub-domains (service catalog/invoicing/payments/
+GST and insurance claims/TPA workflow); check whether a checkpoint split
+is warranted once the actual shape of the work is clearer, per the
+precedent in ADR-0005/0006/0009/0011 (but don't split preemptively —
+Laboratory, Radiology, and now Pharmacy were each completed in one
+session despite looking similarly sized on paper).
+
+### Estimated completion
+- **Overall project**: ~60% (9 of 16 roadmap milestones fully complete:
+  Doctors, Scheduling, Appointments, Medical Records/EMR, Prescriptions,
+  Laboratory, Radiology, and now Pharmacy — all backend+frontend+tests+
+  docs; everything else still provisional/unaudited). Roadmap grew from
+  15 to 16 milestones this session (General Inventory split out as its
+  own Milestone 11 — see ADR-0014).
+- **Pharmacy module**: 100% for Milestone 9's scope (general inventory
+  and pharmacy↔billing integration are explicitly out of scope, deferred
+  to Milestones 11 and 10 respectively).
+
+---
+
+## Session: 2026-08-02 (Milestone 8 — Radiology Management, complete)
+
+### What was completed
+Ran in Auto Mode with an explicit, detailed instruction for Milestone 8
+that asked for a full Radiology Information System — materially more
+than `.ai/NEXT.md`'s narrower framing (no catalog, no versioned reports).
+Per `CLAUDE.md`'s guidance on new information contradicting a settled
+decision, this was recorded as a scope-expansion ADR (ADR-0013) rather
+than silently overridden or re-asked about. Per the reading policy, work
+touched Radiology, Encounter (consultation-order link), Patients,
+Doctors, and shared types; Pharmacy/Billing/Insurance/AI were not
+touched.
+
+- Confirmed `apps/api/src/modules/radiology/` was still the 3-line no-op
+  scaffold, and that `RadiologyOrder`/`RadiologyStatus`/`Priority`
+  already existed in `schema.prisma` from the original scaffolding
+  commit with no `encounterId` and no catalog concept — matching what
+  `NEXT.md` flagged.
+- **Schema** (migration `20260801202731_radiology_management`, applied
+  to both `medicore_dev`/`medicore_test`): new `RadiologyCatalogItem`
+  model; `RadiologyOrder` gained `encounterId`, `catalogItemId`, full
+  scheduling fields, and report fields (`technique`/`recommendations`/
+  `verifiedByUserId`/`verifiedAt`/`releasedByUserId`/`releasedAt`);
+  `RadiologyStatus` gained `REJECTED`; new append-only `RadiologyReport`
+  model (mirrors `ClinicalNote`); new `RadiologyAttachment` model +
+  `RadiologyAttachmentType` enum (`IMAGE`/`PDF`/`EXTERNAL_IMAGING`/
+  `DICOM_PLACEHOLDER`). Recorded **ADR-0013**.
+- **Own-scope decision**: `radiology.read`/`create`/`update` changed
+  from all-scope to own-scope for the Doctor role, mirroring ADR-0012.
+  Added a new **Radiology Technician** role to `seed.ts`'s `ROLE_SPECS`
+  (`SystemRole.RADIOLOGY_TECHNICIAN` already existed unused in the
+  schema enum). Nurse gained `radiology.read`. Re-ran `pnpm db:seed`;
+  `syncRolePermissions` synced everything with zero manual intervention.
+- **Backend** (`apps/api/src/modules/radiology/`, rebuilt from scratch):
+  `RadiologyCatalogService`/`Controller` and `RadiologyOrdersService`/
+  `Controller` — order CRUD, scheduling (dedicated action, supports
+  reschedule), start/complete study, versioned report authoring
+  (`COMPLETED`-only) with a sequential verify → release workflow
+  (release requires verification), external report-file upload, a
+  structured `pdfkit` PDF, file/external attachment actions, dashboard
+  stats, a fixed `ALLOWED_TRANSITIONS` state machine, and
+  `assertOwnScopeOk` (same idiom as `LabTestsService`).
+- **Audit integration**: `audit.listener.ts` gained 3 new `@OnEvent`
+  handlers (`radiology_order.ordered`/`status_changed`/`report_drafted`);
+  `AuditService.listForDoctor`'s resource list grew to include
+  `RadiologyOrder`.
+- **Tests**: 34 new unit tests (`radiology-catalog.service.spec.ts`,
+  `radiology-orders.service.spec.ts`) + 29 new e2e tests
+  (`apps/api/test/radiology.e2e-spec.ts` — full lifecycle, catalog CRUD,
+  external report-file path, rejection/cancellation, dashboard stats,
+  own-scope enforcement). All passing (242 unit / 150 e2e total — the
+  one other failure, `appointments.e2e-spec.ts`'s walk-in test, is the
+  pre-existing unrelated TD-0017 midnight flake, confirmed by re-running
+  it in isolation outside the ~23:30–23:59 window).
+- **Frontend**: `apps/web/src/lib/api/radiology.ts` + 4 new pages
+  (`/dashboard/radiology` dashboard, `/dashboard/radiology/orders`
+  queue, `/dashboard/radiology/catalog`, `/dashboard/radiology/[orderId]`
+  detail with Scheduling/Report/Attachments tabs) + a Radiology tab on
+  the encounter detail page + a "Recent imaging" panel on the patient
+  timeline.
+- **AI image interpretation and real PACS/DICOM integration: explicitly
+  out of scope** (**TD-0019**, by instruction, not credential-blocked).
+- **Full verification, all green**: `pnpm --filter @medicore/database
+  db:generate`, `pnpm lint`, `pnpm typecheck`, `pnpm test` (242 api unit +
+  6 web), `pnpm test:e2e` (149/150, 1 pre-existing unrelated flake),
+  `pnpm build` (all 6 packages, `turbo run build --force`).
+- **Browser-verified end to end**: two stale `pnpm dev` processes from
+  before this session were killed and restarted first (TD-0004).
+  `chromium-cli` still not available (TD-0010); installed
+  `playwright@1.62.1` ad hoc into the session scratch dir. Logged in as
+  `admin@medicore.demo`, added an "X-Ray Chest" catalog item, created a
+  real radiology order from a real patient's encounter, scheduled it,
+  started and completed the study, authored a full report, verified and
+  released it (genuinely reached "Reported" status), downloaded a real
+  PDF (`file` confirmed "PDF document, version 1.3, 1 pages"), uploaded
+  a real image attachment and a metadata-only external/DICOM-placeholder
+  attachment, and confirmed both the org-wide queue and the patient-
+  timeline "Recent imaging" panel render correctly. 19 screenshots saved
+  under `docs/screens/`.
+- Updated `.ai/NEXT.md`: replaced entirely with **Milestone 9 — Billing
+  & Insurance**.
+
+### Files modified/created
+- Schema: `packages/database/prisma/schema.prisma`,
+  `packages/database/prisma/migrations/20260801202731_radiology_management/`,
+  `packages/database/prisma/seed.ts` (own-scope grants, new Radiology
+  Technician role).
+- Shared types: `packages/types/src/enums.ts` (`RadiologyStatus`,
+  `RadiologyAttachmentType`), `packages/types/src/radiology.ts` (new).
+- Backend: `apps/api/src/modules/radiology/*` (new:
+  `radiology-orders.service.ts` + `.controller.ts` + `.spec.ts`,
+  `radiology-catalog.service.ts` + `.controller.ts` + `.spec.ts`,
+  `radiology-report-pdf.ts`, `dto/*`; rewrote `radiology.module.ts`;
+  deleted the old `radiology.controller.ts`/`.service.ts` placeholders),
+  `apps/api/src/modules/audit/audit.listener.ts` +
+  `audit.service.ts`/`.spec.ts`, `apps/api/test/radiology.e2e-spec.ts`.
+- Frontend: `apps/web/src/lib/api/radiology.ts` (new),
+  `apps/web/src/app/dashboard/radiology/page.tsx` (new),
+  `apps/web/src/app/dashboard/radiology/orders/page.tsx` (new),
+  `apps/web/src/app/dashboard/radiology/catalog/page.tsx` (new),
+  `apps/web/src/app/dashboard/radiology/[orderId]/page.tsx` (new),
+  `apps/web/src/app/dashboard/medical-records/[encounterId]/page.tsx`
+  (Radiology tab), `apps/web/src/app/dashboard/medical-records/page.tsx`
+  (Recent imaging panel).
+- Docs: `.ai/DECISIONS.md` (ADR-0013), `.ai/TECH_DEBT.md` (TD-0019,
+  TD-0020), `.ai/PROGRESS.md`, `.ai/CHANGELOG.md`, `.ai/MODULE_STATUS.md`,
+  `.ai/PROJECT_CONTEXT.md`, `.ai/NEXT.md` (replaced), 19 new
+  `docs/screens/radiology-*.png` + `medical-records-recent-imaging.png`.
+
+### Architectural decisions made
+See **ADR-0013** in `DECISIONS.md`: expanded Milestone 8 scope per
+explicit instruction (full RIS, not the minimal version), catalog shape,
+`RadiologyOrder` scheduling/report field additions, versioned-report +
+verify/release design, attachment model shape (incl. DICOM-placeholder
+extension point), and own-scope `radiology.*` for Doctor + a newly
+activated Radiology Technician role.
+
+### Known issues
+- **TD-0019** (tracking only): AI image interpretation and real
+  PACS/DICOM integration are explicitly out of scope by instruction —
+  not a defect.
+- **TD-0020** (Low): no technician-picker UI (raw user ID field only) —
+  no staff-directory endpoint exists yet for any module to build one on.
+- No new bugs discovered this session. TD-0017 (appointment walk-in
+  midnight flake) remains open and unrelated to this module.
+
+### Recommended next task
+**Milestone 9 — Billing & Insurance**, per `.ai/NEXT.md` — a larger
+milestone bundling two sub-domains (service catalog/invoicing/payments/
+GST and insurance claims/TPA workflow); check whether a checkpoint split
+is warranted once the actual shape of the work is clearer, per the
+precedent in ADR-0005/0006/0009/0011 (but don't split preemptively —
+Laboratory and Radiology were each completed in one session despite
+looking similarly sized on paper).
+
+### Estimated completion
+- **Overall project**: ~53% (8 of 15 roadmap milestones fully complete:
+  Doctors, Scheduling, Appointments, Medical Records/EMR, Prescriptions,
+  Laboratory, and now Radiology — all backend+frontend+tests+docs;
+  everything else still provisional/unaudited).
+- **Radiology module**: 100% for Milestone 8's scope (AI interpretation/
+  PACS explicitly and only excluded by instruction, tracked in TD-0019).
+- **Billing/Insurance modules**: 0% — not started, next up.
+
+---
+
+## Session: 2026-08-02 (Milestone 7 — Laboratory Management, complete)
+
+### What was completed
+Picked up `.ai/NEXT.md` exactly as left by the prior session (explicit
+user go-ahead to resume). Completed **all** of Milestone 7 (Laboratory
+Management) in one session — no checkpoint split was needed. Per the
+reading policy, scope stayed to Laboratory, Encounter (consultation-order
+link), Patients, and shared types; Radiology (`apps/api/src/modules/radiology/`,
+any `Radiology*` Prisma model, radiology frontend) was not touched, per
+the explicit exclusion in `NEXT.md`/ADR-0011.
+
+- Audited `apps/api/src/modules/laboratory/` first — confirmed it was
+  still the 3-line no-op scaffold (same pattern hit before every prior
+  milestone's module), and that `LabTest`/`LabTestItem` already existed
+  in `schema.prisma` from the original scaffolding commit but had no
+  `encounterId` and no catalog concept, matching what `NEXT.md` flagged
+  as needing verification.
+- **Schema** (migration `20260801191909_lab_management`, applied to both
+  `medicore_dev`/`medicore_test`): added `LabTest.encounterId` +
+  `Encounter.labTests` back-relation; added new `LabTestCatalogItem`
+  model (numeric range + text range + optional critical bounds,
+  org-scoped); added denormalized `catalogItemId`/`referenceRangeLow/High`/
+  `criticalLow/High` to `LabTestItem`. Recorded **ADR-0012** for these
+  three decisions plus the own-scope call (see below).
+- **Own-scope decision**: `laboratory.read`/`create`/`update` changed
+  from all-scope to own-scope for the Doctor role in `seed.ts`
+  (`OWN_SCOPE_PERMISSIONS` + `ROLE_SPECS`), mirroring `prescriptions.*`
+  exactly. Lab Technician/Nurse deliberately left all-scope (unchanged)
+  — they need to see every order in the queue, not just ones a specific
+  doctor placed. Re-ran `pnpm db:seed` against `medicore_dev`; `
+  syncRolePermissions` (TD-0011's fix) topped up the role correctly with
+  zero manual intervention, same as every session since it landed.
+- **Backend** (`apps/api/src/modules/laboratory/`, rebuilt from scratch):
+  `LabTestsService`/`Controller` (order CRUD, sample collection, result
+  entry with server-computed abnormal flagging, external report upload,
+  structured PDF generation, a `CANCELLED`-only generic status route,
+  own-scope enforcement) and `LabCatalogService`/`Controller` (catalog
+  CRUD, no own-scope check). `abnormal-flagging.ts` is a pure function
+  with the exact flagging rule disclosed in a code comment (numeric-only;
+  explicit-or-derived-20%-multiplier critical bounds). `lab-report-pdf.ts`
+  mirrors `prescription-pdf.ts`'s `pdfkit` approach.
+- **Audit integration**: `audit.listener.ts` gained 3 new `@OnEvent`
+  handlers (`lab_test.ordered`/`status_changed`/`results_entered`);
+  `AuditService.listForDoctor`'s resource list grew to include `LabTest`
+  (`audit.service.spec.ts` updated to match).
+- **Tests**: 33 new unit tests (`abnormal-flagging.spec.ts`,
+  `lab-catalog.service.spec.ts`, `lab-tests.service.spec.ts`) + 19 new
+  e2e tests (`apps/api/test/laboratory.e2e-spec.ts`) — full order
+  lifecycle, catalog CRUD, own-scope enforcement, abnormal-value cases
+  (normal/HIGH/LOW/CRITICAL_HIGH/CRITICAL_LOW/non-numeric), invalid
+  status transitions. All passing (208 unit / 121 e2e total, no flakes).
+- **Frontend**: `apps/web/src/lib/api/laboratory.ts` + a Lab Orders tab
+  on the encounter detail page + a "Recent lab orders" panel on the
+  patient timeline + a new `/dashboard/laboratory` org-wide queue page
+  with a catalog-management dialog.
+- **AI-powered lab report summarization: explicitly deferred**
+  (**TD-0018**, credential-blocked) — verified no code anywhere reads
+  `OPENAI_API_KEY`/`ANTHROPIC_API_KEY`/`AI_PROVIDER` despite those names
+  existing as unset placeholders in `.env.example`; `apps/api/src/modules/ai/`
+  is still a 3-file no-op scaffold. Not faked, per `CLAUDE.md`.
+- **Full verification, all green**: `pnpm --filter @medicore/database
+  db:generate`, `pnpm lint`, `pnpm typecheck`, `pnpm test` (208 api unit +
+  6 web), `pnpm test:e2e` (121/121 across 9 suites), `pnpm build` (all 6
+  packages, `turbo run build --force`).
+- **Browser-verified end to end**: two stale `pnpm dev` processes were
+  running from before this session's build (TD-0004 addendum) — killed
+  the port-4000/3000 listeners and restarted `pnpm dev` fresh before
+  driving the browser check. `chromium-cli` is not available in this
+  environment (checked, per TD-0010); installed `playwright@1.62.1` ad
+  hoc into the session scratch dir (reusing the already-cached Chromium
+  binary from a prior session) and drove it with a small Node script
+  instead. Logged in as `admin@medicore.demo`, added a catalog item,
+  created a real lab order from an existing patient's encounter,
+  collected the sample, entered an abnormal result (250 mg/dL against a
+  70–110 range) and confirmed a "Critical high" badge rendered correctly,
+  downloaded a genuine PDF report. 9 screenshots under `docs/screens/`
+  (`lab-*.png`).
+- Updated `.ai/NEXT.md`: replaced entirely with **Milestone 8 —
+  Radiology Management**.
+
+### Files modified/created
+- Schema: `packages/database/prisma/schema.prisma`,
+  `packages/database/prisma/migrations/20260801191909_lab_management/`,
+  `packages/database/prisma/seed.ts` (own-scope grants).
+- Shared types: `packages/types/src/enums.ts` (`AbnormalType`),
+  `packages/types/src/laboratory.ts` (full rewrite: catalog + order DTOs).
+- Backend: `apps/api/src/modules/laboratory/*` (new: `lab-tests.service.ts`
+  + `.controller.ts` + `.spec.ts`, `lab-catalog.service.ts` + `.controller.ts`
+  + `.spec.ts`, `abnormal-flagging.ts` + `.spec.ts`, `lab-report-pdf.ts`,
+  `dto/*`; rewrote `laboratory.module.ts`; deleted the old
+  `laboratory.controller.ts`/`.service.ts` placeholders),
+  `apps/api/src/modules/audit/audit.listener.ts` +
+  `audit.service.ts`/`.spec.ts`, `apps/api/test/laboratory.e2e-spec.ts`.
+- Frontend: `apps/web/src/lib/api/laboratory.ts` (new),
+  `apps/web/src/app/dashboard/laboratory/page.tsx` (new),
+  `apps/web/src/app/dashboard/medical-records/[encounterId]/page.tsx`
+  (Lab Orders tab), `apps/web/src/app/dashboard/medical-records/page.tsx`
+  (Recent lab orders panel).
+- Docs: `.ai/DECISIONS.md` (ADR-0012), `.ai/TECH_DEBT.md` (TD-0018),
+  `.ai/PROGRESS.md`, `.ai/CHANGELOG.md`, `.ai/MODULE_STATUS.md`,
+  `.ai/PROJECT_CONTEXT.md`, `.ai/NEXT.md` (replaced), 9 new
+  `docs/screens/lab-*.png`.
+
+### Architectural decisions made
+See **ADR-0012** in `DECISIONS.md`: `LabTest.encounterId` addition,
+`LabTestCatalogItem`'s numeric+text hybrid shape with denormalization
+onto `LabTestItem` at order time, and own-scope `laboratory.*` for the
+Doctor role (Lab Technician/Nurse stay all-scope).
+
+### Known issues
+- **TD-0018** (tracking only): AI-powered lab report summarization is
+  genuinely credential-blocked, not implemented. Pick up once the user
+  supplies LLM provider credentials.
+- No new bugs discovered this session. TD-0017 (appointment walk-in
+  midnight flake) remains open and unrelated to this module.
+
+### Recommended next task
+**Milestone 8 — Radiology Management**, per `.ai/NEXT.md` (radiology
+order creation from consultation, report upload/viewing, frontend order
+queue) — a smaller milestone than Laboratory, likely completable in one
+session by reusing the Laboratory module's exact patterns
+(`RadiologyOrder` already exists in `schema.prisma` from the original
+scaffolding commit, alongside `RadiologyStatus`/`Priority`).
+
+### Estimated completion
+- **Overall project**: ~46% (7 of 15 roadmap milestones fully complete:
+  Doctors, Scheduling, Appointments, Medical Records/EMR, Prescriptions,
+  and now Laboratory — all backend+frontend+tests+docs; everything else
+  still provisional/unaudited).
+- **Laboratory module**: 100% for Milestone 7's scope (AI summarization
+  explicitly and only excluded, tracked in TD-0018).
+- **Radiology module**: 0% — not started, explicitly out of scope this
+  session.
+
+---
+
 ## Session: 2026-08-01 (Post-Milestone-6 stop instruction: autonomous loop paused, Milestone 7 rescoped)
 
 ### What was completed

@@ -63,6 +63,16 @@ export enum InvoiceStatus {
   REFUNDED = 'REFUNDED',
 }
 
+export enum InvoiceType {
+  OPD = 'OPD',
+  IPD = 'IPD',
+  LABORATORY = 'LABORATORY',
+  RADIOLOGY = 'RADIOLOGY',
+  PHARMACY = 'PHARMACY',
+  PROCEDURE = 'PROCEDURE',
+  MISCELLANEOUS = 'MISCELLANEOUS',
+}
+
 export enum PaymentMode {
   CASH = 'CASH',
   CARD = 'CARD',
@@ -71,6 +81,48 @@ export enum PaymentMode {
   RTGS = 'RTGS',
   CHEQUE = 'CHEQUE',
   INSURANCE = 'INSURANCE',
+}
+
+export enum PaymentStatus {
+  PENDING = 'PENDING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+  REFUNDED = 'REFUNDED',
+}
+
+export enum ChargeSourceModule {
+  APPOINTMENT = 'APPOINTMENT',
+  CONSULTATION = 'CONSULTATION',
+  LABORATORY = 'LABORATORY',
+  RADIOLOGY = 'RADIOLOGY',
+  PHARMACY = 'PHARMACY',
+  PROCEDURE = 'PROCEDURE',
+  MISCELLANEOUS = 'MISCELLANEOUS',
+}
+
+export enum ChargeStatus {
+  PENDING = 'PENDING',
+  INVOICED = 'INVOICED',
+  VOIDED = 'VOIDED',
+}
+
+export enum DiscountType {
+  FLAT = 'FLAT',
+  PERCENTAGE = 'PERCENTAGE',
+}
+
+export enum DiscountApprovalStatus {
+  NONE = 'NONE',
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+}
+
+export enum RefundStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  COMPLETED = 'COMPLETED',
 }
 
 export enum LabTestStatus {
@@ -86,6 +138,13 @@ export enum Priority {
   ROUTINE = 'ROUTINE',
   URGENT = 'URGENT',
   STAT = 'STAT',
+}
+
+export enum AbnormalType {
+  HIGH = 'HIGH',
+  LOW = 'LOW',
+  CRITICAL_HIGH = 'CRITICAL_HIGH',
+  CRITICAL_LOW = 'CRITICAL_LOW',
 }
 
 export enum BedStatus {
@@ -235,4 +294,31 @@ export enum MedicationRoute {
   SUBCUTANEOUS = 'SUBCUTANEOUS',
   INHALED = 'INHALED',
   OTHER = 'OTHER',
+}
+
+export enum RadiologyStatus {
+  ORDERED = 'ORDERED',
+  SCHEDULED = 'SCHEDULED',
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
+  REPORTED = 'REPORTED',
+  CANCELLED = 'CANCELLED',
+  REJECTED = 'REJECTED',
+}
+
+export enum RadiologyAttachmentType {
+  IMAGE = 'IMAGE',
+  EXTERNAL_IMAGING = 'EXTERNAL_IMAGING',
+  DICOM_PLACEHOLDER = 'DICOM_PLACEHOLDER',
+  PDF = 'PDF',
+  OTHER = 'OTHER',
+}
+
+export enum DispenseStatus {
+  PENDING = 'PENDING',
+  PREPARING = 'PREPARING',
+  READY = 'READY',
+  DISPENSED = 'DISPENSED',
+  CANCELLED = 'CANCELLED',
+  RETURNED = 'RETURNED',
 }

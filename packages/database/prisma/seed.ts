@@ -45,6 +45,16 @@ const OWN_SCOPE_PERMISSIONS: Array<{ resource: string; action: string }> = [
   { resource: 'prescriptions', action: 'read' },
   { resource: 'prescriptions', action: 'create' },
   { resource: 'prescriptions', action: 'update' },
+  { resource: 'laboratory', action: 'read' },
+  { resource: 'laboratory', action: 'create' },
+  { resource: 'laboratory', action: 'update' },
+  // Own-scoped for the same reason as laboratory (ADR-0013): a doctor only
+  // orders/views/updates radiology studies for patients they're treating.
+  // Radiology Technician stays all-scope below — they process every study
+  // in the queue regardless of which doctor ordered it.
+  { resource: 'radiology', action: 'read' },
+  { resource: 'radiology', action: 'create' },
+  { resource: 'radiology', action: 'update' },
   { resource: 'doctors.schedule', action: 'read' },
   { resource: 'doctors.leave', action: 'read' },
   { resource: 'doctors.leave', action: 'manage' },
@@ -142,10 +152,19 @@ const ROLE_SPECS: RoleSpec[] = [
       { resource: 'prescriptions', action: 'update', scope: 'own' },
       { resource: 'appointments', action: 'read' },
       { resource: 'appointments', action: 'update', scope: 'own' },
-      { resource: 'laboratory', action: 'read' },
-      { resource: 'laboratory', action: 'create' },
-      { resource: 'radiology', action: 'read' },
-      { resource: 'radiology', action: 'create' },
+      // Own-scoped, mirroring prescriptions/medical_records (ADR-0012): a
+      // doctor only orders/views/updates lab tests for patients they're
+      // treating. Lab Technician/Nurse stay all-scope below — they process
+      // and view every order regardless of which doctor placed it.
+      { resource: 'laboratory', action: 'read', scope: 'own' },
+      { resource: 'laboratory', action: 'create', scope: 'own' },
+      { resource: 'laboratory', action: 'update', scope: 'own' },
+      // Own-scoped, mirroring laboratory (ADR-0013): a doctor only
+      // orders/views/updates radiology studies for patients they're
+      // treating. Radiology Technician stays all-scope below.
+      { resource: 'radiology', action: 'read', scope: 'own' },
+      { resource: 'radiology', action: 'create', scope: 'own' },
+      { resource: 'radiology', action: 'update', scope: 'own' },
     ],
     user: { email: 'doctor@medicore.demo', firstName: 'Priya', lastName: 'Sharma' },
   },
@@ -158,6 +177,7 @@ const ROLE_SPECS: RoleSpec[] = [
       { resource: 'appointments', action: 'read' },
       { resource: 'medical_records', action: 'read' },
       { resource: 'laboratory', action: 'read' },
+      { resource: 'radiology', action: 'read' },
     ],
     user: { email: 'nurse@medicore.demo', firstName: 'Anjali', lastName: 'Verma' },
   },
@@ -189,6 +209,23 @@ const ROLE_SPECS: RoleSpec[] = [
     user: { email: 'labtech@medicore.demo', firstName: 'Rahul', lastName: 'Iyer' },
   },
   {
+    // `SystemRole.RADIOLOGY_TECHNICIAN` already existed in the enum from the
+    // original scaffolding commit but had no ROLE_SPEC (same situation
+    // `LAB_TECHNICIAN` was in before Milestone 7) — mirrors `lab-technician`
+    // exactly, since a radiology technician needs to see/process every
+    // study in the queue regardless of which doctor ordered it (ADR-0013).
+    slug: 'radiology-technician',
+    name: 'Radiology Technician',
+    systemRole: SystemRole.RADIOLOGY_TECHNICIAN,
+    permissions: [
+      { resource: 'radiology', action: 'read' },
+      { resource: 'radiology', action: 'create' },
+      { resource: 'radiology', action: 'update' },
+      { resource: 'patients', action: 'read' },
+    ],
+    user: { email: 'radiologytech@medicore.demo', firstName: 'Suresh', lastName: 'Patil' },
+  },
+  {
     slug: 'pharmacist',
     name: 'Pharmacist',
     systemRole: SystemRole.PHARMACIST,
@@ -197,6 +234,9 @@ const ROLE_SPECS: RoleSpec[] = [
       { resource: 'pharmacy', action: 'create' },
       { resource: 'pharmacy', action: 'update' },
       { resource: 'prescriptions', action: 'read' },
+      // Completing a dispense transitions the source Prescription to
+      // COMPLETED via PrescriptionsService.updateStatus — see ADR-0014.
+      { resource: 'prescriptions', action: 'update' },
       { resource: 'inventory', action: 'read' },
     ],
     user: { email: 'pharmacist@medicore.demo', firstName: 'Karan', lastName: 'Mehta' },

@@ -4,10 +4,15 @@ import {
   DiagnosisType,
   EncounterAttachmentType,
   EncounterStatus,
+  LabTestStatus,
   MedicationRoute,
+  Priority,
   PrescriptionStatus,
+  RadiologyStatus,
   type CreateClinicalNoteDto,
   type CreatePrescriptionItemDto,
+  type LabTestCatalogItem,
+  type RadiologyCatalogItem,
 } from '@medicore/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -17,14 +22,18 @@ import {
   ClipboardList,
   Download,
   FileText,
+  FlaskConical,
   History,
   Loader2,
   Pill,
   Plus,
+  Scan,
+  TestTube,
   Trash2,
   Upload,
   X,
 } from 'lucide-react'
+import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import {
@@ -52,6 +61,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import {
+  collectLabSample,
+  createLabOrder,
+  downloadLabReportPdf,
+  enterLabResults,
+  listLabCatalog,
+  listLabOrders,
+  updateLabTestStatus,
+  uploadLabReportFile,
+} from '@/lib/api/laboratory'
+import {
   createClinicalNoteVersion,
   createDiagnosis,
   createProcedure,
@@ -68,12 +87,14 @@ import {
   updateEncounterStatus,
   uploadEncounterAttachment,
 } from '@/lib/api/medical-records'
+import { createDispenseOrder } from '@/lib/api/pharmacy'
 import {
   createPrescription,
   downloadPrescriptionPdf,
   listPrescriptions,
   updatePrescriptionStatus,
 } from '@/lib/api/prescriptions'
+import { createRadiologyOrder, listRadiologyCatalog, listRadiologyOrders } from '@/lib/api/radiology'
 import { useAuth } from '@/lib/auth/auth-context'
 
 function getErrorMessage(error: unknown): string {
@@ -107,6 +128,10 @@ export default function EncounterDetailPage() {
 
   const canUpdate = hasPermission('medical_records.update')
   const canPrescribe = hasPermission('prescriptions.create')
+  const canOrderLab = hasPermission('laboratory.create')
+  const canUpdateLab = hasPermission('laboratory.update')
+  const canOrderRadiology = hasPermission('radiology.create')
+  const canDispense = hasPermission('pharmacy.create')
 
   const encounterQuery = useQuery({
     queryKey: ['encounters', 'detail', encounterId],
@@ -183,6 +208,8 @@ export default function EncounterDetailPage() {
           <TabsTrigger value="assessment">Assessment</TabsTrigger>
           <TabsTrigger value="plan">Plan</TabsTrigger>
           <TabsTrigger value="prescriptions">Prescriptions</TabsTrigger>
+          <TabsTrigger value="lab-orders">Lab Orders</TabsTrigger>
+          <TabsTrigger value="radiology">Radiology</TabsTrigger>
           <TabsTrigger value="attachments">Attachments</TabsTrigger>
         </TabsList>
 
@@ -199,7 +226,13 @@ export default function EncounterDetailPage() {
           <PlanTab encounterId={encounterId} canUpdate={canUpdate} notes={encounter.notes} />
         </TabsContent>
         <TabsContent value="prescriptions">
-          <PrescriptionsTab encounterId={encounterId} canPrescribe={canPrescribe} canUpdate={canUpdate} />
+          <PrescriptionsTab encounterId={encounterId} canPrescribe={canPrescribe} canUpdate={canUpdate} canDispense={canDispense} />
+        </TabsContent>
+        <TabsContent value="lab-orders">
+          <LabOrdersTab encounterId={encounterId} canOrder={canOrderLab} canUpdate={canUpdateLab} />
+        </TabsContent>
+        <TabsContent value="radiology">
+          <RadiologyTab encounterId={encounterId} canOrder={canOrderRadiology} />
         </TabsContent>
         <TabsContent value="attachments">
           <AttachmentsTab encounterId={encounterId} canUpdate={canUpdate} />
@@ -863,13 +896,16 @@ function PrescriptionsTab({
   encounterId,
   canPrescribe,
   canUpdate,
+  canDispense,
 }: {
   encounterId: string
   canPrescribe: boolean
   canUpdate: boolean
+  canDispense: boolean
 }) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
+  const router = useRouter()
   const [items, setItems] = useState<ItemDraft[]>([blankItemDraft()])
   const [notes, setNotes] = useState('')
   const [lastWarnings, setLastWarnings] = useState<
@@ -918,6 +954,17 @@ function PrescriptionsTab({
     },
     onError: (error) => {
       toast({ variant: 'destructive', title: 'Update failed', description: getErrorMessage(error) })
+    },
+  })
+
+  const dispenseMutation = useMutation({
+    mutationFn: (prescriptionId: string) => createDispenseOrder({ prescriptionId }),
+    onSuccess: (order) => {
+      toast({ title: 'Dispense order created' })
+      router.push(`/dashboard/pharmacy/${order.id}`)
+    },
+    onError: (error) => {
+      toast({ variant: 'destructive', title: 'Could not create dispense order', description: getErrorMessage(error) })
     },
   })
 
@@ -1077,6 +1124,17 @@ function PrescriptionsTab({
                       <Download className="h-3.5 w-3.5" />
                       PDF
                     </Button>
+                    {canDispense && rx.status === PrescriptionStatus.ACTIVE && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => dispenseMutation.mutate(rx.id)}
+                        disabled={dispenseMutation.isPending}
+                      >
+                        <Pill className="h-3.5 w-3.5" />
+                        Dispense
+                      </Button>
+                    )}
                     {canUpdate && rx.status === PrescriptionStatus.ACTIVE && (
                       <>
                         <Button
@@ -1117,6 +1175,551 @@ function PrescriptionsTab({
           </ul>
         ) : (
           <p className="p-4 text-sm text-muted-foreground">No prescriptions for this encounter yet.</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+const LAB_STATUS_BADGE: Record<LabTestStatus, 'secondary' | 'success' | 'destructive' | 'outline'> = {
+  [LabTestStatus.ORDERED]: 'secondary',
+  [LabTestStatus.SAMPLE_COLLECTED]: 'outline',
+  [LabTestStatus.IN_PROGRESS]: 'outline',
+  [LabTestStatus.COMPLETED]: 'success',
+  [LabTestStatus.REPORTED]: 'success',
+  [LabTestStatus.CANCELLED]: 'destructive',
+}
+
+interface LabItemDraft {
+  catalogItemId: string
+  testName: string
+  testCode: string
+  category: string
+  referenceRange: string
+}
+
+function blankLabItemDraft(): LabItemDraft {
+  return { catalogItemId: '', testName: '', testCode: '', category: '', referenceRange: '' }
+}
+
+function LabOrdersTab({
+  encounterId,
+  canOrder,
+  canUpdate,
+}: {
+  encounterId: string
+  canOrder: boolean
+  canUpdate: boolean
+}) {
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
+  const [items, setItems] = useState<LabItemDraft[]>([blankLabItemDraft()])
+  const [priority, setPriority] = useState<Priority>(Priority.ROUTINE)
+  const [notes, setNotes] = useState('')
+  const [resultsOrderId, setResultsOrderId] = useState<string | null>(null)
+  const [resultDrafts, setResultDrafts] = useState<Record<string, { result: string; isAbnormalOverride: boolean }>>({})
+
+  const catalogQuery = useQuery({
+    queryKey: ['laboratory', 'catalog', 'active'],
+    queryFn: () => listLabCatalog({ isActive: true }),
+  })
+
+  const ordersQuery = useQuery({
+    queryKey: ['laboratory', 'encounter', encounterId],
+    queryFn: () => listLabOrders({ encounterId, limit: 50 }),
+  })
+
+  function invalidate() {
+    void queryClient.invalidateQueries({ queryKey: ['laboratory', 'encounter', encounterId] })
+  }
+
+  const createMutation = useMutation({
+    mutationFn: () =>
+      createLabOrder({
+        encounterId,
+        priority,
+        notes: notes || undefined,
+        items: items.map((item) =>
+          item.catalogItemId
+            ? { catalogItemId: item.catalogItemId }
+            : {
+                testName: item.testName,
+                testCode: item.testCode || undefined,
+                category: item.category || undefined,
+                referenceRange: item.referenceRange || undefined,
+              },
+        ),
+      }),
+    onSuccess: () => {
+      toast({ title: 'Lab order created' })
+      setItems([blankLabItemDraft()])
+      setNotes('')
+      invalidate()
+    },
+    onError: (error) => {
+      toast({ variant: 'destructive', title: 'Could not create lab order', description: getErrorMessage(error) })
+    },
+  })
+
+  const collectMutation = useMutation({
+    mutationFn: (id: string) => collectLabSample(id, {}),
+    onSuccess: () => {
+      toast({ title: 'Sample collected' })
+      invalidate()
+    },
+    onError: (error) => {
+      toast({ variant: 'destructive', title: 'Could not record sample collection', description: getErrorMessage(error) })
+    },
+  })
+
+  const resultsMutation = useMutation({
+    mutationFn: ({ id, drafts }: { id: string; drafts: Record<string, { result: string; isAbnormalOverride: boolean }> }) =>
+      enterLabResults(id, {
+        items: Object.entries(drafts)
+          .filter(([, v]) => v.result.trim() !== '')
+          .map(([itemId, v]) => ({ itemId, result: v.result, isAbnormalOverride: v.isAbnormalOverride })),
+      }),
+    onSuccess: () => {
+      toast({ title: 'Results saved' })
+      setResultsOrderId(null)
+      setResultDrafts({})
+      invalidate()
+    },
+    onError: (error) => {
+      toast({ variant: 'destructive', title: 'Could not save results', description: getErrorMessage(error) })
+    },
+  })
+
+  const statusMutation = useMutation({
+    mutationFn: (id: string) => updateLabTestStatus(id, { status: LabTestStatus.CANCELLED }),
+    onSuccess: () => {
+      toast({ title: 'Lab order cancelled' })
+      invalidate()
+    },
+    onError: (error) => {
+      toast({ variant: 'destructive', title: 'Could not cancel lab order', description: getErrorMessage(error) })
+    },
+  })
+
+  const uploadReportMutation = useMutation({
+    mutationFn: ({ id, file }: { id: string; file: File }) => uploadLabReportFile(id, file),
+    onSuccess: () => {
+      toast({ title: 'Report uploaded' })
+      invalidate()
+    },
+    onError: (error) => {
+      toast({ variant: 'destructive', title: 'Upload failed', description: getErrorMessage(error) })
+    },
+  })
+
+  function updateItem(index: number, patch: Partial<LabItemDraft>) {
+    setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)))
+  }
+
+  function removeItem(index: number) {
+    setItems((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  function openResultsFor(order: { id: string; items: Array<{ id: string; result: string | null }> }) {
+    setResultsOrderId(order.id)
+    setResultDrafts(
+      Object.fromEntries(
+        order.items.map((item) => [item.id, { result: item.result ?? '', isAbnormalOverride: false }]),
+      ),
+    )
+  }
+
+  const canSubmit = items.every((item) => item.catalogItemId || item.testName)
+
+  return (
+    <div className="space-y-4">
+      {canOrder && (
+        <div className="space-y-3 rounded-lg border bg-card p-4">
+          <h3 className="text-sm font-semibold text-foreground">New lab order</h3>
+          {items.map((item, index) => (
+            <div key={index} className="space-y-2 rounded-md border p-3">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <Select
+                  value={item.catalogItemId || '__adhoc__'}
+                  onValueChange={(v) => updateItem(index, { catalogItemId: v === '__adhoc__' ? '' : v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a test" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__adhoc__">Ad hoc (enter manually)</SelectItem>
+                    {catalogQuery.data?.map((c: LabTestCatalogItem) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.testName} ({c.testCode}) — {c.category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {items.length > 1 && (
+                  <Button variant="ghost" size="sm" className="justify-self-start" onClick={() => removeItem(index)}>
+                    <X className="h-3.5 w-3.5" />
+                    Remove
+                  </Button>
+                )}
+              </div>
+              {!item.catalogItemId && (
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <Input
+                    placeholder="Test name *"
+                    value={item.testName}
+                    onChange={(e) => updateItem(index, { testName: e.target.value })}
+                  />
+                  <Input
+                    placeholder="Test code"
+                    value={item.testCode}
+                    onChange={(e) => updateItem(index, { testCode: e.target.value })}
+                  />
+                  <Input
+                    placeholder="Category"
+                    value={item.category}
+                    onChange={(e) => updateItem(index, { category: e.target.value })}
+                  />
+                  <Input
+                    placeholder="Reference range (e.g. Negative)"
+                    value={item.referenceRange}
+                    onChange={(e) => updateItem(index, { referenceRange: e.target.value })}
+                  />
+                </div>
+              )}
+            </div>
+          ))}
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setItems((prev) => [...prev, blankLabItemDraft()])}>
+              <Plus className="h-3.5 w-3.5" />
+              Add test
+            </Button>
+            <Select value={priority} onValueChange={(v) => setPriority(v as Priority)}>
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.values(Priority).map((p) => (
+                  <SelectItem key={p} value={p}>
+                    {formatEnumLabel(p)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Notes (optional)</label>
+            <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </div>
+
+          <Button onClick={() => createMutation.mutate()} disabled={!canSubmit || createMutation.isPending}>
+            {createMutation.isPending && <Loader2 className="animate-spin" />}
+            Save lab order
+          </Button>
+        </div>
+      )}
+
+      <div className="rounded-lg border bg-card">
+        <div className="border-b p-3">
+          <h3 className="text-sm font-semibold text-foreground">Lab orders for this encounter</h3>
+        </div>
+        {ordersQuery.isLoading ? (
+          <div className="flex h-16 items-center justify-center">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          </div>
+        ) : ordersQuery.data?.data.length ? (
+          <ul className="divide-y">
+            {ordersQuery.data.data.map((order) => (
+              <li key={order.id} className="space-y-2 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <FlaskConical className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-mono text-xs text-muted-foreground">{order.labOrderNumber}</span>
+                    <Badge variant={LAB_STATUS_BADGE[order.status]}>{formatEnumLabel(order.status)}</Badge>
+                    <Badge variant="outline">{formatEnumLabel(order.priority)}</Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(order.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {canUpdate && order.status === LabTestStatus.ORDERED && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => collectMutation.mutate(order.id)}
+                        disabled={collectMutation.isPending}
+                      >
+                        <TestTube className="h-3.5 w-3.5" />
+                        Collect sample
+                      </Button>
+                    )}
+                    {canUpdate &&
+                      (order.status === LabTestStatus.SAMPLE_COLLECTED || order.status === LabTestStatus.IN_PROGRESS) && (
+                        <Button variant="outline" size="sm" onClick={() => openResultsFor(order)}>
+                          Enter results
+                        </Button>
+                      )}
+                    {(order.status === LabTestStatus.COMPLETED || order.status === LabTestStatus.REPORTED) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void downloadLabReportPdf(order.id, order.labOrderNumber)}
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        PDF
+                      </Button>
+                    )}
+                    {canUpdate && order.status === LabTestStatus.COMPLETED && (
+                      <label className="inline-flex cursor-pointer items-center gap-1 text-xs text-muted-foreground hover:underline">
+                        <Upload className="h-3.5 w-3.5" />
+                        Upload report
+                        <input
+                          type="file"
+                          accept="application/pdf,image/png,image/jpeg,image/webp"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) uploadReportMutation.mutate({ id: order.id, file })
+                          }}
+                        />
+                      </label>
+                    )}
+                    {canUpdate &&
+                      [LabTestStatus.ORDERED, LabTestStatus.SAMPLE_COLLECTED, LabTestStatus.IN_PROGRESS].includes(
+                        order.status,
+                      ) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-destructive"
+                          onClick={() => statusMutation.mutate(order.id)}
+                          disabled={statusMutation.isPending}
+                        >
+                          Cancel
+                        </Button>
+                      )}
+                  </div>
+                </div>
+
+                <ul className="space-y-1 pl-6 text-sm">
+                  {order.items.map((item) => (
+                    <li key={item.id} className="flex flex-wrap items-center gap-2">
+                      <span>{item.testName}</span>
+                      {item.result && (
+                        <span className="text-muted-foreground">
+                          {item.result} {item.unit ?? ''}
+                          {item.referenceRange ? ` (Ref: ${item.referenceRange})` : ''}
+                        </span>
+                      )}
+                      {item.isAbnormal && (
+                        <Badge variant="destructive">{item.abnormalType ? formatEnumLabel(item.abnormalType) : 'Abnormal'}</Badge>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+
+                {resultsOrderId === order.id && (
+                  <div className="space-y-2 rounded-md border bg-muted/30 p-3">
+                    <h4 className="text-xs font-semibold text-foreground">Enter results</h4>
+                    {order.items.map((item) => (
+                      <div key={item.id} className="flex flex-wrap items-center gap-2">
+                        <span className="w-40 shrink-0 text-xs">{item.testName}</span>
+                        <Input
+                          className="w-40"
+                          placeholder="Result"
+                          value={resultDrafts[item.id]?.result ?? ''}
+                          onChange={(e) =>
+                            setResultDrafts((prev) => ({
+                              ...prev,
+                              [item.id]: { result: e.target.value, isAbnormalOverride: prev[item.id]?.isAbnormalOverride ?? false },
+                            }))
+                          }
+                        />
+                        <span className="text-xs text-muted-foreground">{item.unit}</span>
+                        <label className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <input
+                            type="checkbox"
+                            checked={resultDrafts[item.id]?.isAbnormalOverride ?? false}
+                            onChange={(e) =>
+                              setResultDrafts((prev) => ({
+                                ...prev,
+                                [item.id]: { result: prev[item.id]?.result ?? '', isAbnormalOverride: e.target.checked },
+                              }))
+                            }
+                          />
+                          Mark abnormal (non-numeric results only)
+                        </label>
+                      </div>
+                    ))}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => resultsMutation.mutate({ id: order.id, drafts: resultDrafts })}
+                        disabled={resultsMutation.isPending}
+                      >
+                        {resultsMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                        Save results
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => setResultsOrderId(null)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {order.reportFileUrl && (
+                  <p className="pl-6 text-xs text-muted-foreground">
+                    External report:{' '}
+                    <a href={order.reportFileUrl} target="_blank" rel="noreferrer" className="hover:underline">
+                      view file
+                    </a>
+                  </p>
+                )}
+                {order.notes && <p className="pl-6 text-xs text-muted-foreground">{order.notes}</p>}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="p-4 text-sm text-muted-foreground">No lab orders for this encounter yet.</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+const RADIOLOGY_STATUS_BADGE: Record<RadiologyStatus, 'secondary' | 'success' | 'destructive' | 'outline'> = {
+  [RadiologyStatus.ORDERED]: 'secondary',
+  [RadiologyStatus.SCHEDULED]: 'outline',
+  [RadiologyStatus.IN_PROGRESS]: 'outline',
+  [RadiologyStatus.COMPLETED]: 'success',
+  [RadiologyStatus.REPORTED]: 'success',
+  [RadiologyStatus.CANCELLED]: 'destructive',
+  [RadiologyStatus.REJECTED]: 'destructive',
+}
+
+function RadiologyTab({ encounterId, canOrder }: { encounterId: string; canOrder: boolean }) {
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
+  const [catalogItemId, setCatalogItemId] = useState('')
+  const [modality, setModality] = useState('')
+  const [bodyPart, setBodyPart] = useState('')
+  const [priority, setPriority] = useState<Priority>(Priority.ROUTINE)
+  const [clinicalIndication, setClinicalIndication] = useState('')
+
+  const catalogQuery = useQuery({
+    queryKey: ['radiology', 'catalog', 'active'],
+    queryFn: () => listRadiologyCatalog({ isActive: true }),
+  })
+
+  const ordersQuery = useQuery({
+    queryKey: ['radiology', 'encounter', encounterId],
+    queryFn: () => listRadiologyOrders({ encounterId, limit: 50 }),
+  })
+
+  const createMutation = useMutation({
+    mutationFn: () =>
+      createRadiologyOrder({
+        encounterId,
+        priority,
+        clinicalIndication: clinicalIndication || undefined,
+        catalogItemId: catalogItemId || undefined,
+        modality: catalogItemId ? undefined : modality || undefined,
+        bodyPart: catalogItemId ? undefined : bodyPart || undefined,
+      }),
+    onSuccess: () => {
+      toast({ title: 'Radiology order created' })
+      setCatalogItemId('')
+      setModality('')
+      setBodyPart('')
+      setClinicalIndication('')
+      void queryClient.invalidateQueries({ queryKey: ['radiology', 'encounter', encounterId] })
+    },
+    onError: (error) => {
+      toast({ variant: 'destructive', title: 'Could not create radiology order', description: getErrorMessage(error) })
+    },
+  })
+
+  const canSubmit = Boolean(catalogItemId || (modality && bodyPart))
+
+  return (
+    <div className="space-y-4">
+      {canOrder && (
+        <div className="space-y-3 rounded-lg border bg-card p-4">
+          <h3 className="text-sm font-semibold text-foreground">New radiology order</h3>
+          <Select value={catalogItemId || '__adhoc__'} onValueChange={(v) => setCatalogItemId(v === '__adhoc__' ? '' : v)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Choose a study" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__adhoc__">Ad hoc (enter manually)</SelectItem>
+              {catalogQuery.data?.map((c: RadiologyCatalogItem) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name} ({c.code}) — {c.modality} · {c.bodyPart}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {!catalogItemId && (
+            <div className="grid grid-cols-2 gap-2">
+              <Input placeholder="Modality * (e.g. X_RAY, CT, MRI)" value={modality} onChange={(e) => setModality(e.target.value)} />
+              <Input placeholder="Body part *" value={bodyPart} onChange={(e) => setBodyPart(e.target.value)} />
+            </div>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={priority} onValueChange={(v) => setPriority(v as Priority)}>
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.values(Priority).map((p) => (
+                  <SelectItem key={p} value={p}>
+                    {formatEnumLabel(p)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Clinical indication</label>
+            <Textarea rows={2} value={clinicalIndication} onChange={(e) => setClinicalIndication(e.target.value)} />
+          </div>
+          <Button onClick={() => createMutation.mutate()} disabled={!canSubmit || createMutation.isPending}>
+            {createMutation.isPending && <Loader2 className="animate-spin" />}
+            Save radiology order
+          </Button>
+        </div>
+      )}
+
+      <div className="rounded-lg border bg-card">
+        <div className="border-b p-3">
+          <h3 className="text-sm font-semibold text-foreground">Radiology orders for this encounter</h3>
+        </div>
+        {ordersQuery.isLoading ? (
+          <div className="flex h-16 items-center justify-center">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          </div>
+        ) : ordersQuery.data?.data.length ? (
+          <ul className="divide-y">
+            {ordersQuery.data.data.map((order) => (
+              <li key={order.id} className="p-4">
+                <Link
+                  href={`/dashboard/radiology/${order.id}`}
+                  className="flex flex-wrap items-center gap-2 text-sm hover:underline"
+                >
+                  <Scan className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-mono text-xs text-muted-foreground">{order.orderNumber}</span>
+                  <Badge variant={RADIOLOGY_STATUS_BADGE[order.status]}>{formatEnumLabel(order.status)}</Badge>
+                  <Badge variant="outline">{formatEnumLabel(order.priority)}</Badge>
+                  <span>
+                    {order.modality} — {order.bodyPart}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="p-4 text-sm text-muted-foreground">No radiology orders for this encounter yet.</p>
         )}
       </div>
     </div>

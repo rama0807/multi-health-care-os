@@ -1,10 +1,21 @@
-import { Controller } from '@nestjs/common'
-import { ApiTags } from '@nestjs/swagger'
+import { Controller, Get } from '@nestjs/common'
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
 
-import { BillingService } from './billing.service'
+import { CurrentUser } from '../../common/decorators/current-user.decorator'
+import { RequirePermissions } from '../../common/decorators/permissions.decorator'
 
-@ApiTags('billing')
+import { BillingDashboardService } from './billing-dashboard.service'
+
+/** Revenue dashboard — see ADR-0015. */
+@ApiTags('billing-dashboard')
+@ApiBearerAuth()
 @Controller({ path: 'billing', version: '1' })
 export class BillingController {
-  constructor(_billingService: BillingService) {}
+  constructor(private readonly dashboardService: BillingDashboardService) {}
+
+  @Get('dashboard-stats')
+  @RequirePermissions('billing.read')
+  getDashboardStats(@CurrentUser('orgId') orgId: string) {
+    return this.dashboardService.getStats(orgId)
+  }
 }

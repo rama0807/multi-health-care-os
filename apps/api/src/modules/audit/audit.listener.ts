@@ -84,6 +84,83 @@ interface PrescriptionEventPayload {
   toStatus?: string
 }
 
+interface LabTestEventPayload {
+  labTestId: string
+  doctorId: string
+  patientId: string
+  organizationId: string
+  userId?: string
+  fromStatus?: string
+  toStatus?: string
+}
+
+interface RadiologyOrderEventPayload {
+  radiologyOrderId: string
+  doctorId: string
+  patientId: string
+  organizationId: string
+  userId?: string
+  fromStatus?: string
+  toStatus?: string
+  reason?: string
+}
+
+interface DispenseOrderEventPayload {
+  dispenseOrderId: string
+  patientId: string
+  organizationId: string
+  userId?: string
+  fromStatus?: string
+  toStatus?: string
+  reason?: string
+}
+
+interface DrugReturnEventPayload {
+  dispenseOrderId: string
+  drugReturnId: string
+  patientId: string
+  organizationId: string
+  userId?: string
+}
+
+interface ChargeEventPayload {
+  chargeId: string
+  patientId: string
+  organizationId: string
+  userId?: string
+  sourceModule?: string
+}
+
+interface InvoiceEventPayload {
+  invoiceId: string
+  patientId: string
+  organizationId: string
+  userId?: string
+  fromStatus?: string
+  toStatus?: string
+  reason?: string
+}
+
+interface PaymentEventPayload {
+  paymentId: string
+  invoiceId: string
+  patientId: string
+  organizationId: string
+  userId?: string
+  amount?: number
+  paymentMode?: string
+}
+
+interface RefundEventPayload {
+  refundId: string
+  invoiceId: string
+  patientId: string
+  organizationId: string
+  userId?: string
+  amount?: number
+  reason?: string
+}
+
 @Injectable()
 export class AuditListener {
   private readonly logger = new Logger(AuditListener.name)
@@ -268,6 +345,150 @@ export class AuditListener {
     )
   }
 
+  @OnEvent('lab_test.ordered')
+  onLabTestOrdered(payload: LabTestEventPayload) {
+    return this.persistLabTestEvent(payload, 'lab_test.ordered')
+  }
+
+  @OnEvent('lab_test.status_changed')
+  onLabTestStatusChanged(payload: LabTestEventPayload) {
+    return this.persistLabTestEvent(payload, `lab_test.status_changed_to_${(payload.toStatus ?? '').toLowerCase()}`)
+  }
+
+  @OnEvent('lab_test.results_entered')
+  onLabTestResultsEntered(payload: LabTestEventPayload) {
+    return this.persistLabTestEvent(payload, 'lab_test.results_entered')
+  }
+
+  @OnEvent('radiology_order.ordered')
+  onRadiologyOrderOrdered(payload: RadiologyOrderEventPayload) {
+    return this.persistRadiologyOrderEvent(payload, 'radiology_order.ordered')
+  }
+
+  @OnEvent('radiology_order.status_changed')
+  onRadiologyOrderStatusChanged(payload: RadiologyOrderEventPayload) {
+    return this.persistRadiologyOrderEvent(
+      payload,
+      `radiology_order.status_changed_to_${(payload.toStatus ?? '').toLowerCase()}`,
+    )
+  }
+
+  @OnEvent('radiology_order.report_drafted')
+  onRadiologyOrderReportDrafted(payload: RadiologyOrderEventPayload) {
+    return this.persistRadiologyOrderEvent(payload, 'radiology_order.report_drafted')
+  }
+
+  @OnEvent('dispense_order.created')
+  onDispenseOrderCreated(payload: DispenseOrderEventPayload) {
+    return this.persistDispenseOrderEvent(payload, 'dispense_order.created')
+  }
+
+  @OnEvent('dispense_order.status_changed')
+  onDispenseOrderStatusChanged(payload: DispenseOrderEventPayload) {
+    return this.persistDispenseOrderEvent(
+      payload,
+      `dispense_order.status_changed_to_${(payload.toStatus ?? '').toLowerCase()}`,
+    )
+  }
+
+  @OnEvent('dispense_order.partially_dispensed')
+  onDispenseOrderPartiallyDispensed(payload: DispenseOrderEventPayload) {
+    return this.persistDispenseOrderEvent(payload, 'dispense_order.partially_dispensed')
+  }
+
+  @OnEvent('drug_return.created')
+  onDrugReturnCreated(payload: DrugReturnEventPayload) {
+    return this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action: 'drug_return.created',
+      resource: 'DrugReturn',
+      resourceId: payload.drugReturnId,
+      after: { dispenseOrderId: payload.dispenseOrderId, patientId: payload.patientId },
+    })
+  }
+
+  @OnEvent('charge.created')
+  onChargeCreated(payload: ChargeEventPayload) {
+    return this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action: 'charge.created',
+      resource: 'Charge',
+      resourceId: payload.chargeId,
+      after: { patientId: payload.patientId, sourceModule: payload.sourceModule },
+    })
+  }
+
+  @OnEvent('charge.voided')
+  onChargeVoided(payload: ChargeEventPayload) {
+    return this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action: 'charge.voided',
+      resource: 'Charge',
+      resourceId: payload.chargeId,
+      after: { patientId: payload.patientId },
+    })
+  }
+
+  @OnEvent('invoice.created')
+  onInvoiceCreated(payload: InvoiceEventPayload) {
+    return this.persistInvoiceEvent(payload, 'invoice.created')
+  }
+
+  @OnEvent('invoice.item_added')
+  onInvoiceItemAdded(payload: InvoiceEventPayload) {
+    return this.persistInvoiceEvent(payload, 'invoice.item_added')
+  }
+
+  @OnEvent('invoice.status_changed')
+  onInvoiceStatusChanged(payload: InvoiceEventPayload) {
+    return this.persistInvoiceEvent(payload, `invoice.status_changed_to_${(payload.toStatus ?? '').toLowerCase()}`)
+  }
+
+  @OnEvent('invoice.discount_requested')
+  onInvoiceDiscountRequested(payload: InvoiceEventPayload) {
+    return this.persistInvoiceEvent(payload, 'invoice.discount_requested')
+  }
+
+  @OnEvent('invoice.discount_approved')
+  onInvoiceDiscountApproved(payload: InvoiceEventPayload) {
+    return this.persistInvoiceEvent(payload, 'invoice.discount_approved')
+  }
+
+  @OnEvent('invoice.discount_rejected')
+  onInvoiceDiscountRejected(payload: InvoiceEventPayload) {
+    return this.persistInvoiceEvent(payload, 'invoice.discount_rejected')
+  }
+
+  @OnEvent('payment.recorded')
+  onPaymentRecorded(payload: PaymentEventPayload) {
+    return this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action: 'payment.recorded',
+      resource: 'Payment',
+      resourceId: payload.paymentId,
+      after: { invoiceId: payload.invoiceId, patientId: payload.patientId, amount: payload.amount, paymentMode: payload.paymentMode },
+    })
+  }
+
+  @OnEvent('refund.requested')
+  onRefundRequested(payload: RefundEventPayload) {
+    return this.persistRefundEvent(payload, 'refund.requested')
+  }
+
+  @OnEvent('refund.completed')
+  onRefundCompleted(payload: RefundEventPayload) {
+    return this.persistRefundEvent(payload, 'refund.completed')
+  }
+
+  @OnEvent('refund.rejected')
+  onRefundRejected(payload: RefundEventPayload) {
+    return this.persistRefundEvent(payload, 'refund.rejected')
+  }
+
   private async persistDoctorEvent(payload: DoctorEventPayload, action: string) {
     await this.auditService.record({
       organizationId: payload.organizationId,
@@ -346,6 +567,82 @@ export class AuditListener {
         fromStatus: payload.fromStatus,
         toStatus: payload.toStatus,
       },
+    })
+  }
+
+  private async persistLabTestEvent(payload: LabTestEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'LabTest',
+      resourceId: payload.labTestId,
+      after: {
+        doctorId: payload.doctorId,
+        patientId: payload.patientId,
+        fromStatus: payload.fromStatus,
+        toStatus: payload.toStatus,
+      },
+    })
+  }
+
+  private async persistRadiologyOrderEvent(payload: RadiologyOrderEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'RadiologyOrder',
+      resourceId: payload.radiologyOrderId,
+      after: {
+        doctorId: payload.doctorId,
+        patientId: payload.patientId,
+        fromStatus: payload.fromStatus,
+        toStatus: payload.toStatus,
+        reason: payload.reason,
+      },
+    })
+  }
+
+  private async persistDispenseOrderEvent(payload: DispenseOrderEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'DispenseOrder',
+      resourceId: payload.dispenseOrderId,
+      after: {
+        patientId: payload.patientId,
+        fromStatus: payload.fromStatus,
+        toStatus: payload.toStatus,
+        reason: payload.reason,
+      },
+    })
+  }
+
+  private async persistInvoiceEvent(payload: InvoiceEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'Invoice',
+      resourceId: payload.invoiceId,
+      after: {
+        patientId: payload.patientId,
+        fromStatus: payload.fromStatus,
+        toStatus: payload.toStatus,
+        reason: payload.reason,
+      },
+    })
+  }
+
+  private async persistRefundEvent(payload: RefundEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'Refund',
+      resourceId: payload.refundId,
+      after: { invoiceId: payload.invoiceId, patientId: payload.patientId, amount: payload.amount, reason: payload.reason },
     })
   }
 

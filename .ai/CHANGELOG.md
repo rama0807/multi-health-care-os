@@ -6,6 +6,145 @@
 ## [Unreleased]
 
 ### Added
+- **Milestone 10 — Billing (complete):** narrowed to Billing only per
+  explicit instruction — Insurance carved out to its own Milestone 11
+  (see ADR-0015).
+  - Charge Engine (`GET/POST /billing/charges`, `POST
+    /billing/charges/:id/void`) — the reusable entity any clinical
+    module (or a manual cashier action) bills a patient through, via a
+    `sourceModule`/`sourceId` pair rather than a hard FK.
+  - Service catalog with pricing (`GET/POST /billing/catalog`, `PATCH
+    /billing/catalog/:id`), org-scoped.
+  - Invoice creation (`POST /billing/invoices`) from manual line items
+    and/or by sweeping a patient's existing pending charges; manual
+    line-item addition to a draft (`POST /billing/invoices/:id/items`).
+  - Discount management — flat or percentage, with an approval workflow
+    (`POST /billing/invoices/:id/discount`, `.../discount/approve`,
+    `.../discount/reject`) — a `billing.manage` holder's request is
+    auto-approved, anyone else's lands pending.
+  - GST-compliant invoicing — per-item and invoice-level tax breakdown,
+    reusing `Organization.settings.gstRate`.
+  - Multiple payment modes (cash, card, UPI, bank transfer/NEFT/RTGS,
+    cheque) via `POST /billing/invoices/:id/payments` — split and
+    partial payments both work by calling it more than once.
+  - Refunds — partial or full (`POST /billing/invoices/:id/refunds`,
+    `.../refunds/:id/approve`, `.../reject`), same approval-workflow
+    shape as discounts.
+  - Invoice and payment-receipt PDF generation (`GET
+    /billing/invoices/:id/pdf`, `GET /billing/payments/:id/receipt/pdf`)
+    — hospital branding, itemized GST breakdown, a disclosed QR
+    placeholder (no payment gateway is configured in this repo).
+  - Auto-invoice generation from a completed appointment — a
+    consultation charge priced from the doctor's consultation fee,
+    swept into a new draft invoice.
+  - Revenue dashboard (`GET /billing/dashboard-stats` — today's revenue,
+    pending invoices, outstanding balance, refunds today, pending
+    discount/refund approvals, 7-day collection trend).
+  - All-scope RBAC on `billing.*` (staff-facing, no doctor own-scope),
+    pagination/filtering, audit-trail integration.
+  - Frontend: a Billing dashboard, an Invoices list + create dialog +
+    detail page (discount/payment/refund actions, PDF download), a
+    Payments list, and a Refunds list.
+- **Milestone 9 — Pharmacy Management (complete):** reordered ahead of
+  Billing & Insurance per explicit instruction — see ADR-0014.
+  - Drug catalog, org-scoped (`GET/POST /pharmacy/catalog`, `PATCH
+    /pharmacy/catalog/:id`, `POST /pharmacy/catalog/:id/adjust-stock`) —
+    one row per batch (generic/brand name, strength, dosage form,
+    manufacturer, batch number, expiry, price, tax, active,
+    current/reserved/available stock, minimum stock, reorder level).
+    Replaces the unused `Medication` model from the original scaffolding
+    commit.
+  - Dispensing workflow (`POST /pharmacy/dispense` from a prescription,
+    `.../prepare` batch selection, `.../ready`, `.../dispense-partial`,
+    `.../dispense-complete`, `.../reject`, `.../cancel`) — full
+    `PENDING → PREPARING → READY → DISPENSED` state machine plus
+    `CANCELLED`/`RETURNED`. Completing a dispense reuses
+    `PrescriptionsService.updateStatus` to mark the source prescription
+    `COMPLETED`.
+  - Medicine returns (`POST/GET /pharmacy/dispense/:id/returns`) —
+    restocks the drug and moves the order to `RETURNED`, fully audited.
+  - Dashboard stats (`GET /pharmacy/dispense/dashboard-stats` — pending,
+    ready, dispensed today, low stock, expiring medicines).
+  - All-scope RBAC on the `pharmacy.*` permission resource (staff-facing,
+    like billing/insurance — no doctor own-scope), pagination/filtering/
+    sorting, audit-trail integration.
+  - Frontend: a Pharmacy dashboard, drug catalog management page, a
+    dispensing queue with a "New dispense" picker, a dispense detail page
+    (batch selection, workflow actions, returns), a stock page (low-stock/
+    expiring filters, inline stock adjustment), and a "Dispense" button on
+    an encounter's Prescriptions tab.
+- **Milestone 8 — Radiology Management (complete):**
+  - Radiology catalog, org-scoped (`GET/POST /radiology/catalog`,
+    `PATCH /radiology/catalog/:id`) — name/code/category/modality/body
+    part/contrast-required/price/estimated-duration.
+  - Radiology order creation from an encounter (`POST /radiology`),
+    catalog-sourced or ad hoc. Order numbers follow
+    `RAD-<orgPrefix>-<year>-NNNNNN`. Full status state machine
+    (`ORDERED → SCHEDULED → IN_PROGRESS → COMPLETED → REPORTED`,
+    `CANCELLED` from any non-terminal state, `REJECTED` from `ORDERED`).
+  - Scheduling (`POST /radiology/:id/schedule`) — appointment date/time,
+    room, machine, technician, radiologist, duration; supports
+    rescheduling.
+  - Versioned radiology reports (clinical indication, technique,
+    findings, impression, recommendations) with a sequential
+    verify → release workflow (`POST /radiology/:id/reports`,
+    `.../reports/verify`, `.../reports/release`) — release requires
+    verification first.
+  - Image/external/DICOM-placeholder attachments (`POST
+    /radiology/:id/attachments/file`, `.../attachments/external`) — real
+    file uploads for images/PDFs via `StorageService`, metadata-only
+    references (accession number / external URL / study instance UID)
+    for imaging held in an outside PACS. No real PACS/DICOM integration
+    exists — this is the designed extension point for one.
+  - A structured, system-generated PDF report (`GET
+    /radiology/:id/report/pdf`, `pdfkit`) and an independent external
+    report-file upload path (`POST /radiology/:id/report-file`).
+  - Dashboard stats (`GET /radiology/dashboard-stats` — today's studies,
+    pending reporting, completed, cancelled, urgent).
+  - Own/all-scope RBAC on the `radiology.*` permission resource (Doctor
+    is own-scoped; a new Radiology Technician role and Nurse remain
+    all-scope), audit-trail integration.
+  - Frontend: a Radiology dashboard, an org-wide orders queue, a catalog
+    management page, an order detail page (Scheduling/Report/Attachments
+    tabs), a Radiology tab on the encounter detail page, and a "Recent
+    imaging" panel on the patient timeline.
+  - AI-powered image interpretation and real PACS/DICOM server
+    integration are explicitly out of scope by instruction (see
+    TECH_DEBT TD-0019), not faked.
+- **Milestone 7 — Laboratory Management (complete):**
+  - Lab test catalog, org-scoped (`GET/POST /laboratory/catalog`,
+    `PATCH /laboratory/catalog/:id`) — supports numeric reference ranges,
+    text reference ranges (for qualitative tests), or both, plus optional
+    explicit critical thresholds.
+  - Lab order creation from an encounter (`POST /laboratory`), each item
+    either picked from the catalog (auto-populating name/code/category/
+    reference range) or entered ad hoc. Order numbers follow
+    `LAB-<orgPrefix>-<year>-NNNNNN`.
+  - Sample collection tracking (`POST /laboratory/:id/collect-sample`)
+    and a full status state machine (`ORDERED → SAMPLE_COLLECTED →
+    IN_PROGRESS → COMPLETED → REPORTED`, `CANCELLED` from any non-terminal
+    state).
+  - Structured, per-item result entry (`POST /laboratory/:id/results`)
+    with server-computed abnormal-value flagging (HIGH/LOW/CRITICAL_HIGH/
+    CRITICAL_LOW) — numeric results are auto-flagged against the item's
+    reference range (with a disclosed, documented critical-threshold
+    rule); qualitative results are never auto-flagged and instead support
+    a manual override.
+  - Two independent report paths: an uploaded external report file
+    (`POST /laboratory/:id/report`, any lab-tech-sourced PDF/image) and a
+    structured, system-generated PDF (`GET /laboratory/:id/report/pdf`,
+    `pdfkit`) built directly from the order's own result data.
+  - Own/all-scope RBAC on the `laboratory.*` permission resource (Doctor
+    is own-scoped; Lab Technician/Nurse remain all-scope), audit-trail
+    integration.
+  - Frontend: a Lab Orders tab on the encounter detail page, a "Recent lab
+    orders" panel on the patient timeline, and a new `/dashboard/laboratory`
+    org-wide queue page with a catalog-management dialog.
+  - AI-powered lab report summarization explicitly deferred
+    (credential-blocked — no AI/LLM provider is configured anywhere in
+    this repo; see TECH_DEBT TD-0018) rather than faked.
+  - Recorded ADR-0012 for the catalog schema shape, the `LabTest.encounterId`
+    addition, and the own-scope decision for the Doctor role.
 - **Milestone 6, Checkpoint 6.2 — Orders & Prescriptions (complete); Milestone 6 fully complete:**
   - Prescription CRUD from an encounter (`POST/GET /prescriptions`,
     `GET /prescriptions/:id`), reusing the pre-existing `Prescription`/

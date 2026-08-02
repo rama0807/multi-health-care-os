@@ -1,11 +1,17 @@
 import { Module } from '@nestjs/common'
 
-import { LaboratoryController } from './laboratory.controller'
-import { LaboratoryService } from './laboratory.service'
+import { MedicalRecordsModule } from '../medical-records/medical-records.module'
+import { SchedulingModule } from '../scheduling/scheduling.module'
+
+import { LabCatalogController } from './lab-catalog.controller'
+import { LabCatalogService } from './lab-catalog.service'
+import { LabTestsController } from './lab-tests.controller'
+import { LabTestsService } from './lab-tests.service'
 
 @Module({
-  controllers: [LaboratoryController],
-  providers: [LaboratoryService],
-  exports: [LaboratoryService],
+  imports: [MedicalRecordsModule, SchedulingModule],
+  controllers: [LabTestsController, LabCatalogController],
+  providers: [LabTestsService, LabCatalogService],
+  exports: [LabTestsService, LabCatalogService],
 })
 export class LaboratoryModule {}

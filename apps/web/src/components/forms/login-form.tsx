@@ -2,7 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod'
 import { LoginSchema, type LoginDto } from '@medicore/types'
-import { AlertCircle, Loader2 } from 'lucide-react'
+import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
@@ -25,6 +25,7 @@ export function LoginForm() {
   const router = useRouter()
   const { login } = useAuth()
   const [serverError, setServerError] = useState<string | null>(null)
+  const [showPassword, setShowPassword] = useState(false)
 
   const form = useForm<LoginDto>({
     resolver: zodResolver(LoginSchema),
@@ -66,7 +67,16 @@ export function LoginForm() {
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input type="email" placeholder="you@hospital.com" autoComplete="email" {...field} />
+                  <div className="relative">
+                    <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      type="email"
+                      placeholder="you@hospital.com"
+                      autoComplete="email"
+                      className="pl-9"
+                      {...field}
+                    />
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -88,7 +98,24 @@ export function LoginForm() {
                   </Link>
                 </div>
                 <FormControl>
-                  <Input type="password" autoComplete="current-password" {...field} />
+                  <div className="relative">
+                    <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete="current-password"
+                      className="pl-9 pr-9"
+                      {...field}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      tabIndex={-1}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>

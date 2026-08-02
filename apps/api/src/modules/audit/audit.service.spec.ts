@@ -21,7 +21,18 @@ describe('AuditService.listForDoctor', () => {
           OR: [
             { resource: 'Doctor', resourceId: 'doctor_1' },
             {
-              resource: { in: ['DoctorSchedule', 'DoctorLeave', 'DoctorDocument', 'Appointment', 'Encounter', 'Prescription'] },
+              resource: {
+                in: [
+                  'DoctorSchedule',
+                  'DoctorLeave',
+                  'DoctorDocument',
+                  'Appointment',
+                  'Encounter',
+                  'Prescription',
+                  'LabTest',
+                  'RadiologyOrder',
+                ],
+              },
               after: { path: ['doctorId'], equals: 'doctor_1' },
             },
           ],

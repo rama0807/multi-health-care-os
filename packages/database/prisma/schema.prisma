@@ -96,6 +96,46 @@ enum PaymentStatus {
   REFUNDED
 }
 
+// ─── Charge Engine — see ADR-0015. `Charge` is the reusable line-item entity
+// every clinical module (or a manual cashier action) creates one row of;
+// `sourceModule`/`sourceId` record where it came from without a hard FK into
+// each clinical module's own tables (mirrors the `sampleCollectedBy`-style
+// "actor" convention already used for cross-module references).
+enum ChargeSourceModule {
+  APPOINTMENT
+  CONSULTATION
+  LABORATORY
+  RADIOLOGY
+  PHARMACY
+  PROCEDURE
+  MISCELLANEOUS
+}
+
+enum ChargeStatus {
+  PENDING
+  INVOICED
+  VOIDED
+}
+
+enum DiscountType {
+  FLAT
+  PERCENTAGE
+}
+
+enum DiscountApprovalStatus {
+  NONE
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum RefundStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
 enum LabTestStatus {
   ORDERED
   SAMPLE_COLLECTED
@@ -112,6 +152,15 @@ enum RadiologyStatus {
   COMPLETED
   REPORTED
   CANCELLED
+  REJECTED
+}
+
+enum RadiologyAttachmentType {
+  IMAGE
+  EXTERNAL_IMAGING
+  DICOM_PLACEHOLDER
+  PDF
+  OTHER
 }
 
 enum Priority {
@@ -287,29 +336,36 @@ model Organization {
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
 
-  users           User[]
-  roles           Role[]
-  hospitals       Hospital[]
-  departments     Department[]
-  doctors         Doctor[]
-  patients        Patient[]
-  appointments    Appointment[]
-  encounters      Encounter[]
-  labTests        LabTest[]
-  radiologyOrders RadiologyOrder[]
-  invoices        Invoice[]
-  staff           Staff[]
-  beds            Bed[]
-  wards           Ward[]
-  medications     Medication[]
-  inventoryItems  InventoryItem[]
-  notifications   Notification[]
-  auditLogs       AuditLog[]
-  prescriptions   Prescription[]
-  admissions      Admission[]
-  insuranceClaims InsuranceClaim[]
-  doctorSchedules DoctorSchedule[]
-  doctorLeaves    DoctorLeave[]
+  users                 User[]
+  roles                 Role[]
+  hospitals             Hospital[]
+  departments           Department[]
+  doctors               Doctor[]
+  patients              Patient[]
+  appointments          Appointment[]
+  encounters            Encounter[]
+  labTests              LabTest[]
+  labTestCatalogItems   LabTestCatalogItem[]
+  radiologyOrders       RadiologyOrder[]
+  radiologyCatalogItems RadiologyCatalogItem[]
+  invoices              Invoice[]
+  serviceCatalogItems   ServiceCatalogItem[]
+  charges               Charge[]
+  refunds               Refund[]
+  staff                 Staff[]
+  beds                  Bed[]
+  wards                 Ward[]
+  drugs                 Drug[]
+  dispenseOrders        DispenseOrder[]
+  drugReturns           DrugReturn[]
+  inventoryItems        InventoryItem[]
+  notifications         Notification[]
+  auditLogs             AuditLog[]
+  prescriptions         Prescription[]
+  admissions            Admission[]
+  insuranceClaims       InsuranceClaim[]
+  doctorSchedules       DoctorSchedule[]
+  doctorLeaves          DoctorLeave[]
 
   @@index([slug])
   @@map("organizations")
@@ -664,6 +720,7 @@ model Patient {
   admissions      Admission[]
   insuranceClaims InsuranceClaim[]
   notifications   Notification[]
+  dispenseOrders  DispenseOrder[]
 
   @@unique([uhid, organizationId])
   @@unique([phone, organizationId])
@@ -718,13 +775,14 @@ model Appointment {
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
-  patient       Patient        @relation(fields: [patientId], references: [id])
-  doctor        Doctor         @relation(fields: [doctorId], references: [id])
-  department    Department?    @relation(fields: [departmentId], references: [id])
-  organization  Organization   @relation(fields: [organizationId], references: [id])
-  encounter     Encounter?
-  labTests      LabTest[]
-  invoice       Invoice?
+  patient      Patient      @relation(fields: [patientId], references: [id])
+  doctor       Doctor       @relation(fields: [doctorId], references: [id])
+  department   Department?  @relation(fields: [departmentId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+  encounter    Encounter?
+  labTests     LabTest[]
+  invoice      Invoice?
+  charges      Charge[]
 
   @@unique([appointmentNumber, organizationId])
   @@index([organizationId])
@@ -784,16 +842,20 @@ model Encounter {
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
-  patient       Patient               @relation(fields: [patientId], references: [id])
-  doctor        Doctor                @relation(fields: [doctorId], references: [id])
-  appointment   Appointment?          @relation(fields: [appointmentId], references: [id])
-  organization  Organization          @relation(fields: [organizationId], references: [id])
-  clinicalNotes ClinicalNote[]
-  vitals        Vital[]
-  diagnoses     Diagnosis[]
-  procedures    Procedure[]
-  attachments   EncounterAttachment[]
-  prescriptions Prescription[]
+  patient         Patient               @relation(fields: [patientId], references: [id])
+  doctor          Doctor                @relation(fields: [doctorId], references: [id])
+  appointment     Appointment?          @relation(fields: [appointmentId], references: [id])
+  organization    Organization          @relation(fields: [organizationId], references: [id])
+  clinicalNotes   ClinicalNote[]
+  vitals          Vital[]
+  diagnoses       Diagnosis[]
+  procedures      Procedure[]
+  attachments     EncounterAttachment[]
+  prescriptions   Prescription[]
+  labTests        LabTest[]
+  radiologyOrders RadiologyOrder[]
+  invoice         Invoice?
+  charges         Charge[]
 
   @@index([patientId, organizationId])
   @@index([doctorId, organizationId])
@@ -834,7 +896,7 @@ model Vital {
   weightKg               Float?
   /// Computed server-side from height/weight at write time — denormalized
   /// so trend/chart queries don't recompute float math per row.
-  bmi                     Float?
+  bmi                    Float?
   bloodPressureSystolic  Int?
   bloodPressureDiastolic Int?
   pulse                  Int?
@@ -905,7 +967,7 @@ model EncounterAttachment {
 }
 
 model Prescription {
-  id                 String   @id @default(cuid())
+  id                 String             @id @default(cuid())
   prescriptionNumber String
   patientId          String
   doctorId           String
@@ -913,15 +975,16 @@ model Prescription {
   organizationId     String
   status             PrescriptionStatus @default(ACTIVE)
   notes              String?
-  prescribedAt       DateTime @default(now())
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  prescribedAt       DateTime           @default(now())
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 
-  patient      Patient            @relation(fields: [patientId], references: [id])
-  doctor       Doctor             @relation(fields: [doctorId], references: [id])
-  encounter    Encounter?         @relation(fields: [encounterId], references: [id])
-  organization Organization       @relation(fields: [organizationId], references: [id])
-  items        PrescriptionItem[]
+  patient       Patient            @relation(fields: [patientId], references: [id])
+  doctor        Doctor             @relation(fields: [doctorId], references: [id])
+  encounter     Encounter?         @relation(fields: [encounterId], references: [id])
+  organization  Organization       @relation(fields: [organizationId], references: [id])
+  items         PrescriptionItem[]
+  dispenseOrder DispenseOrder?
 
   @@unique([prescriptionNumber, organizationId])
   @@index([patientId, organizationId])
@@ -944,7 +1007,8 @@ model PrescriptionItem {
   quantity       Int      @default(1)
   createdAt      DateTime @default(now())
 
-  prescription Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  prescription Prescription  @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  dispenseItem DispenseItem?
 
   @@index([prescriptionId])
   @@map("prescription_items")
@@ -952,12 +1016,44 @@ model PrescriptionItem {
 
 // ─── Laboratory ────────────────────────────────────────────────────────────
 
+/// Org-scoped, configurable catalog of orderable lab tests — see ADR-0012.
+/// Supports both a numeric reference range (`referenceRangeLow`/`High`, used
+/// for automatic abnormal-value flagging) and a free-text range (for
+/// qualitative tests like "Negative"/"Non-reactive" where a numeric bound
+/// makes no sense) — either or both may be set. `criticalLow`/`criticalHigh`
+/// are optional explicit critical thresholds; when absent, callers fall back
+/// to a documented multiplier of the normal range (see `abnormal-flagging.ts`).
+model LabTestCatalogItem {
+  id                 String   @id @default(cuid())
+  organizationId     String
+  testCode           String
+  testName           String
+  category           String
+  unit               String?
+  referenceRangeLow  Float?
+  referenceRangeHigh Float?
+  referenceRangeText String?
+  criticalLow        Float?
+  criticalHigh       Float?
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  items        LabTestItem[]
+
+  @@unique([organizationId, testCode])
+  @@index([organizationId])
+  @@map("lab_test_catalog_items")
+}
+
 model LabTest {
   id                String        @id @default(cuid())
   labOrderNumber    String
   patientId         String
   doctorId          String
   appointmentId     String?
+  encounterId       String?
   organizationId    String
   status            LabTestStatus @default(ORDERED)
   priority          Priority      @default(ROUTINE)
@@ -972,6 +1068,7 @@ model LabTest {
   patient      Patient       @relation(fields: [patientId], references: [id])
   doctor       Doctor        @relation(fields: [doctorId], references: [id])
   appointment  Appointment?  @relation(fields: [appointmentId], references: [id])
+  encounter    Encounter?    @relation(fields: [encounterId], references: [id])
   organization Organization  @relation(fields: [organizationId], references: [id])
   items        LabTestItem[]
 
@@ -979,58 +1076,181 @@ model LabTest {
   @@index([patientId, organizationId])
   @@index([organizationId])
   @@index([status, organizationId])
+  @@index([encounterId])
   @@map("lab_tests")
 }
 
 model LabTestItem {
-  id             String        @id @default(cuid())
-  labTestId      String
-  testName       String
-  testCode       String
-  category       String
-  result         String?
-  unit           String?
-  referenceRange String?
-  isAbnormal     Boolean       @default(false)
-  abnormalType   AbnormalType?
-  interpretation String?
-  createdAt      DateTime      @default(now())
+  id                 String        @id @default(cuid())
+  labTestId          String
+  catalogItemId      String?
+  testName           String
+  testCode           String
+  category           String
+  result             String?
+  unit               String?
+  referenceRange     String?
+  /// Denormalized from the catalog item (or explicit ad-hoc bounds) at order
+  /// time, not looked up again at result-entry time — so a later edit or
+  /// deactivation of the catalog item never changes how an already-ordered
+  /// item's abnormal flag is computed. See `abnormal-flagging.ts`.
+  referenceRangeLow  Float?
+  referenceRangeHigh Float?
+  criticalLow        Float?
+  criticalHigh       Float?
+  isAbnormal         Boolean       @default(false)
+  abnormalType       AbnormalType?
+  interpretation     String?
+  createdAt          DateTime      @default(now())
 
-  labTest LabTest @relation(fields: [labTestId], references: [id], onDelete: Cascade)
+  labTest     LabTest             @relation(fields: [labTestId], references: [id], onDelete: Cascade)
+  catalogItem LabTestCatalogItem? @relation(fields: [catalogItemId], references: [id], onDelete: SetNull)
 
   @@index([labTestId])
+  @@index([catalogItemId])
   @@map("lab_test_items")
 }
 
 // ─── Radiology ─────────────────────────────────────────────────────────────
+
+/// Org-configurable catalog of orderable radiology studies (Milestone 8,
+/// mirrors LabTestCatalogItem's shape/role — ADR-0013). `modality`/`bodyPart`
+/// stay free-text `String` (not enums), matching the pre-existing
+/// `RadiologyOrder.modality`/`bodyPart` columns from the original scaffold —
+/// real-world modality vocabularies (DICOM's CR/CT/MR/US/MG/NM/PT/XA/...)
+/// are broad and this keeps the door open for a future PACS integration to
+/// supply its own values without a schema change.
+model RadiologyCatalogItem {
+  id                       String   @id @default(cuid())
+  organizationId           String
+  code                     String
+  name                     String
+  category                 String
+  modality                 String
+  bodyPart                 String
+  contrastRequired         Boolean  @default(false)
+  price                    Decimal  @db.Decimal(10, 2)
+  estimatedDurationMinutes Int
+  isActive                 Boolean  @default(true)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id])
+  orders       RadiologyOrder[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@map("radiology_catalog_items")
+}
 
 model RadiologyOrder {
   id                 String          @id @default(cuid())
   orderNumber        String
   patientId          String
   doctorId           String
+  encounterId        String?
+  catalogItemId      String?
   organizationId     String
   modality           String
   bodyPart           String
   clinicalIndication String?
   status             RadiologyStatus @default(ORDERED)
   priority           Priority        @default(ROUTINE)
-  reportFileUrl      String?
-  findings           String?
-  impression         String?
-  reportedBy         String?
-  reportedAt         DateTime?
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
 
-  patient      Patient      @relation(fields: [patientId], references: [id])
-  doctor       Doctor       @relation(fields: [doctorId], references: [id])
-  organization Organization @relation(fields: [organizationId], references: [id])
+  // Scheduling — appointment date/time, room, machine, and staff assignment.
+  // `technicianUserId` stays a plain String (no FK), matching the existing
+  // "actor" convention (ADR-0008 point 5, e.g. LabTest.sampleCollectedBy) —
+  // there is no dedicated RadiologyTechnician profile model, just a User
+  // with the RADIOLOGY_TECHNICIAN system role. `radiologistDoctorId` is a
+  // real FK to Doctor since a radiologist is a Doctor profile (by
+  // specialization), the same reuse `LabTest.doctorId` already relies on.
+  scheduledAt         DateTime?
+  room                String?
+  machine             String?
+  technicianUserId    String?
+  radiologistDoctorId String?
+  durationMinutes     Int?
+
+  // Report — current/released snapshot, denormalized from the latest
+  // RadiologyReport version below for cheap reads (list/queue views) without
+  // an extra join; the versioned history itself lives in `reports`.
+  technique        String?
+  findings         String?
+  impression       String?
+  recommendations  String?
+  reportFileUrl    String?
+  reportedBy       String?
+  reportedAt       DateTime?
+  verifiedByUserId String?
+  verifiedAt       DateTime?
+  releasedByUserId String?
+  releasedAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  patient      Patient               @relation(fields: [patientId], references: [id])
+  doctor       Doctor                @relation(fields: [doctorId], references: [id])
+  encounter    Encounter?            @relation(fields: [encounterId], references: [id])
+  catalogItem  RadiologyCatalogItem? @relation(fields: [catalogItemId], references: [id], onDelete: SetNull)
+  organization Organization          @relation(fields: [organizationId], references: [id])
+  reports      RadiologyReport[]
+  attachments  RadiologyAttachment[]
 
   @@unique([orderNumber, organizationId])
   @@index([patientId, organizationId])
   @@index([organizationId])
+  @@index([status, organizationId])
+  @@index([encounterId])
   @@map("radiology_orders")
+}
+
+/// Append-only, versioned radiology report — same "never overwrite" pattern
+/// as `ClinicalNote` (ADR-0008): an edit inserts a new row with
+/// `version = previous + 1` rather than updating in place. The current
+/// (highest-version) row's content is denormalized onto `RadiologyOrder`
+/// itself for cheap reads; verification/release act on that current version.
+model RadiologyReport {
+  id                 String   @id @default(cuid())
+  radiologyOrderId   String
+  version            Int
+  clinicalIndication String?
+  technique          String?
+  findings           String?
+  impression         String?
+  recommendations    String?
+  createdByUserId    String?
+  createdAt          DateTime @default(now())
+
+  radiologyOrder RadiologyOrder @relation(fields: [radiologyOrderId], references: [id], onDelete: Cascade)
+
+  @@index([radiologyOrderId])
+  @@map("radiology_reports")
+}
+
+/// Image/document attachments for a radiology order. `EXTERNAL_IMAGING` and
+/// `DICOM_PLACEHOLDER` support a study referenced from an outside PACS/imaging
+/// center without a real file (metadata-only — accession number, external
+/// URL, study instance UID placeholder); `IMAGE`/`PDF` require a real
+/// uploaded file via the existing `StorageService`. No real PACS/DICOM server
+/// integration exists — see TECH_DEBT.
+model RadiologyAttachment {
+  id               String                  @id @default(cuid())
+  radiologyOrderId String
+  organizationId   String
+  type             RadiologyAttachmentType @default(OTHER)
+  fileName         String?
+  fileUrl          String?
+  mimeType         String?
+  fileSizeBytes    Int?
+  metadata         Json?
+  uploadedByUserId String?
+  uploadedAt       DateTime                @default(now())
+
+  radiologyOrder RadiologyOrder @relation(fields: [radiologyOrderId], references: [id], onDelete: Cascade)
+
+  @@index([radiologyOrderId])
+  @@map("radiology_attachments")
 }
 
 // ─── Inpatient ─────────────────────────────────────────────────────────────
@@ -1108,30 +1328,49 @@ model Admission {
 // ─── Billing ───────────────────────────────────────────────────────────────
 
 model Invoice {
-  id             String        @id @default(cuid())
-  invoiceNumber  String
-  patientId      String
-  appointmentId  String?       @unique
-  organizationId String
-  status         InvoiceStatus @default(DRAFT)
-  type           InvoiceType   @default(OPD)
-  subtotal       Decimal       @db.Decimal(12, 2)
-  discountAmount Decimal       @default(0) @db.Decimal(12, 2)
-  taxAmount      Decimal       @default(0) @db.Decimal(12, 2)
-  totalAmount    Decimal       @db.Decimal(12, 2)
-  paidAmount     Decimal       @default(0) @db.Decimal(12, 2)
-  balanceDue     Decimal       @db.Decimal(12, 2)
-  currency       String        @default("INR")
-  notes          String?
-  dueDate        DateTime?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  id                        String                 @id @default(cuid())
+  invoiceNumber             String
+  patientId                 String
+  appointmentId             String?                @unique
+  encounterId               String?                @unique
+  organizationId            String
+  status                    InvoiceStatus          @default(DRAFT)
+  type                      InvoiceType            @default(OPD)
+  subtotal                  Decimal                @db.Decimal(12, 2)
+  discountAmount            Decimal                @default(0) @db.Decimal(12, 2)
+  taxAmount                 Decimal                @default(0) @db.Decimal(12, 2)
+  totalAmount               Decimal                @db.Decimal(12, 2)
+  paidAmount                Decimal                @default(0) @db.Decimal(12, 2)
+  balanceDue                Decimal                @db.Decimal(12, 2)
+  currency                  String                 @default("INR")
+  notes                     String?
+  dueDate                   DateTime?
+  createdByUserId           String?
+  // Discount workflow — see ADR-0015. A discount applied by a `billing.manage`
+  // scope holder is auto-approved; anyone else's request lands `PENDING`
+  // until a manage-scope holder approves/rejects it. Only an `APPROVED`
+  // discount is ever reflected in `discountAmount`/`totalAmount`/`balanceDue`.
+  discountType              DiscountType?
+  discountValue             Decimal?               @db.Decimal(10, 2)
+  discountReason            String?
+  discountApprovalStatus    DiscountApprovalStatus @default(NONE)
+  discountRequestedByUserId String?
+  discountApprovedByUserId  String?
+  discountApprovedAt        DateTime?
+  finalizedAt               DateTime?
+  cancelledAt               DateTime?
+  cancelReason              String?
+  createdAt                 DateTime               @default(now())
+  updatedAt                 DateTime               @updatedAt
 
   patient        Patient         @relation(fields: [patientId], references: [id])
   appointment    Appointment?    @relation(fields: [appointmentId], references: [id])
+  encounter      Encounter?      @relation(fields: [encounterId], references: [id])
   organization   Organization    @relation(fields: [organizationId], references: [id])
   items          InvoiceItem[]
   payments       Payment[]
+  refunds        Refund[]
+  charges        Charge[]
   insuranceClaim InsuranceClaim?
 
   @@unique([invoiceNumber, organizationId])
@@ -1174,7 +1413,8 @@ model Payment {
   paidAt          DateTime      @default(now())
   createdAt       DateTime      @default(now())
 
-  invoice Invoice @relation(fields: [invoiceId], references: [id])
+  invoice Invoice  @relation(fields: [invoiceId], references: [id])
+  refunds Refund[]
 
   @@unique([paymentNumber, organizationId])
   @@index([invoiceId])
@@ -1210,26 +1450,242 @@ model InsuranceClaim {
   @@map("insurance_claims")
 }
 
-// ─── Pharmacy & Inventory ──────────────────────────────────────────────────
-
-model Medication {
+/// Configurable pricing catalog ("service catalog with pricing") — see
+/// ADR-0015. `category` stays free-text (mirrors `RadiologyCatalogItem
+/// .modality`/`bodyPart`'s precedent) rather than an enum, since billable
+/// service categories vary per organization. `taxPercent` defaults from
+/// `Organization.settings.gstRate` at creation time, editable per item.
+model ServiceCatalogItem {
   id             String   @id @default(cuid())
-  name           String
-  genericName    String?
-  manufacturer   String?
-  strength       String?
-  form           String?
-  category       String
   organizationId String
+  code           String
+  name           String
+  category       String
+  price          Decimal  @db.Decimal(10, 2)
+  taxPercent     Decimal  @default(0) @db.Decimal(5, 2)
   isActive       Boolean  @default(true)
-  unitPrice      Decimal  @default(0) @db.Decimal(10, 2)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id])
+  charges      Charge[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@map("service_catalog_items")
+}
+
+/// The reusable Charge Engine entity — see ADR-0015. Every clinical module
+/// (or a manual cashier action) creates one `Charge` row; invoice generation
+/// (auto from a completed appointment, or manual) sweeps every `PENDING`
+/// charge for a patient/encounter into `InvoiceItem` rows and flips them to
+/// `INVOICED`. Denormalizes `description`/`unitPrice`/`taxPercent` at
+/// creation time (from the catalog item or ad-hoc) — the same "denormalize
+/// at order time" idiom as `LabTestItem`/`RadiologyOrder`/`DispenseItem`, so
+/// a later catalog edit never retroactively changes an already-billed charge.
+model Charge {
+  id              String             @id @default(cuid())
+  organizationId  String
+  patientId       String
+  encounterId     String?
+  appointmentId   String?
+  sourceModule    ChargeSourceModule @default(MISCELLANEOUS)
+  sourceId        String?
+  catalogItemId   String?
+  description     String
+  quantity        Int                @default(1)
+  unitPrice       Decimal            @db.Decimal(10, 2)
+  discountPercent Decimal            @default(0) @db.Decimal(5, 2)
+  discountAmount  Decimal            @default(0) @db.Decimal(10, 2)
+  taxPercent      Decimal            @default(0) @db.Decimal(5, 2)
+  taxAmount       Decimal            @default(0) @db.Decimal(10, 2)
+  totalAmount     Decimal            @db.Decimal(12, 2)
+  status          ChargeStatus       @default(PENDING)
+  invoiceId       String?
+  createdByUserId String?
+  createdAt       DateTime           @default(now())
+
+  organization Organization        @relation(fields: [organizationId], references: [id])
+  encounter    Encounter?          @relation(fields: [encounterId], references: [id])
+  appointment  Appointment?        @relation(fields: [appointmentId], references: [id])
+  catalogItem  ServiceCatalogItem? @relation(fields: [catalogItemId], references: [id])
+  invoice      Invoice?            @relation(fields: [invoiceId], references: [id])
+
+  @@index([organizationId, patientId])
+  @@index([status, organizationId])
+  @@index([encounterId])
+  @@index([appointmentId])
+  @@map("charges")
+}
+
+/// Partial or full refund against a `Payment`/`Invoice` — see ADR-0015. A
+/// `billing.manage` scope holder's request is auto-approved+completed;
+/// anyone else's lands `PENDING` until a manage-scope holder approves it —
+/// the same approval-workflow shape as `Invoice`'s discount fields.
+model Refund {
+  id                String       @id @default(cuid())
+  refundNumber      String
+  organizationId    String
+  invoiceId         String
+  paymentId         String?
+  amount            Decimal      @db.Decimal(12, 2)
+  reason            String
+  refundMode        PaymentMode?
+  status            RefundStatus @default(PENDING)
+  requestedByUserId String
+  approvedByUserId  String?
+  approvedAt        DateTime?
+  rejectionReason   String?
+  refundedAt        DateTime?
+  createdAt         DateTime     @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  invoice      Invoice      @relation(fields: [invoiceId], references: [id])
+  payment      Payment?     @relation(fields: [paymentId], references: [id])
+
+  @@unique([refundNumber, organizationId])
+  @@index([invoiceId])
+  @@index([organizationId, status])
+  @@map("refunds")
+}
+
+// ─── Pharmacy & Inventory ──────────────────────────────────────────────────
+
+// ─── Pharmacy ───────────────────────────────────────────────────────────────
+
+enum DispenseStatus {
+  PENDING
+  PREPARING
+  READY
+  DISPENSED
+  CANCELLED
+  RETURNED
+}
+
+/// Org-scoped pharmacy catalog — see ADR-0014. One row is one batch of a
+/// drug: batch number and expiry are first-class catalog fields (per the
+/// roadmap's own "Drug Catalog CRUD Fields" list), not a separate child
+/// table — restocking the same generic/brand drug with a new batch creates
+/// a new `Drug` row rather than a join. Replaces the unused `Medication`
+/// model from the original scaffolding commit (confirmed zero references
+/// anywhere before this milestone), whose shape was missing brand name,
+/// batch, expiry, tax, and stock-level fields.
+model Drug {
+  id             String   @id @default(cuid())
+  organizationId String
+  genericName    String
+  brandName      String?
+  strength       String?
+  dosageForm     String
+  manufacturer   String?
+  batchNumber    String
+  expiryDate     DateTime
+  price          Decimal  @default(0) @db.Decimal(10, 2)
+  taxPercent     Decimal  @default(0) @db.Decimal(5, 2)
+  isActive       Boolean  @default(true)
+  /// Physical quantity on hand, including any reserved portion.
+  currentStock   Int      @default(0)
+  /// Portion of `currentStock` earmarked by an in-progress `DispenseOrder`
+  /// (status `PREPARING`/`READY`) — not yet deducted. See ADR-0014 point 6.
+  reservedStock  Int      @default(0)
+  minStockLevel  Int      @default(10)
+  reorderLevel   Int      @default(20)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization  Organization   @relation(fields: [organizationId], references: [id])
+  dispenseItems DispenseItem[]
+  drugReturns   DrugReturn[]
 
   @@index([organizationId])
-  @@map("medications")
+  @@index([organizationId, expiryDate])
+  @@index([organizationId, isActive])
+  @@map("drugs")
+}
+
+/// One dispense order per prescription (`prescriptionId` unique) — tracks
+/// the full fulfillment lifecycle of that prescription, the same
+/// one-central-record-per-source-document idiom as `Encounter` per
+/// consultation. See ADR-0014 for the status-machine design (partial vs.
+/// complete dispense, reject vs. cancel, returned).
+model DispenseOrder {
+  id                String         @id @default(cuid())
+  dispenseNumber    String
+  prescriptionId    String         @unique
+  patientId         String
+  organizationId    String
+  status            DispenseStatus @default(PENDING)
+  preparedByUserId  String?
+  dispensedByUserId String?
+  dispensedAt       DateTime?
+  /// Distinguishes a pharmacist-initiated reject from a requester cancel —
+  /// both land on `CANCELLED` (see ADR-0014 point 5).
+  rejected          Boolean        @default(false)
+  cancelReason      String?
+  notes             String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  prescription Prescription   @relation(fields: [prescriptionId], references: [id])
+  patient      Patient        @relation(fields: [patientId], references: [id])
+  organization Organization   @relation(fields: [organizationId], references: [id])
+  items        DispenseItem[]
+  returns      DrugReturn[]
+
+  @@unique([dispenseNumber, organizationId])
+  @@index([organizationId, status])
+  @@index([patientId, organizationId])
+  @@map("dispense_orders")
+}
+
+/// Mirrors a `PrescriptionItem` 1:1 (`prescriptionItemId` unique),
+/// denormalizing `medicationName` at creation time — same idiom as
+/// `LabTestItem`/`RadiologyOrder`. `drugId` is null until the pharmacist
+/// resolves the prescribed medication to a catalog batch ("Batch
+/// selection" in the roadmap's frontend feature list).
+model DispenseItem {
+  id                 String   @id @default(cuid())
+  dispenseOrderId    String
+  prescriptionItemId String   @unique
+  drugId             String?
+  medicationName     String
+  quantityRequested  Int
+  quantityDispensed  Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  dispenseOrder    DispenseOrder    @relation(fields: [dispenseOrderId], references: [id], onDelete: Cascade)
+  prescriptionItem PrescriptionItem @relation(fields: [prescriptionItemId], references: [id])
+  drug             Drug?            @relation(fields: [drugId], references: [id])
+  drugReturns      DrugReturn[]
+
+  @@index([dispenseOrderId])
+  @@index([drugId])
+  @@map("dispense_items")
+}
+
+/// A medicine return against an already-dispensed item — restocks
+/// `Drug.currentStock` and moves the parent `DispenseOrder` to `RETURNED`
+/// (see ADR-0014 point 5). Audited like every other pharmacy mutation.
+model DrugReturn {
+  id               String   @id @default(cuid())
+  dispenseOrderId  String
+  dispenseItemId   String
+  drugId           String?
+  organizationId   String
+  quantityReturned Int
+  reason           String
+  returnedByUserId String
+  returnedAt       DateTime @default(now())
+
+  dispenseOrder DispenseOrder @relation(fields: [dispenseOrderId], references: [id])
+  dispenseItem  DispenseItem  @relation(fields: [dispenseItemId], references: [id])
+  drug          Drug?         @relation(fields: [drugId], references: [id])
+  organization  Organization  @relation(fields: [organizationId], references: [id])
+
+  @@index([dispenseOrderId])
+  @@index([organizationId])
+  @@map("drug_returns")
 }
 
 model InventoryItem {

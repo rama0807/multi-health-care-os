@@ -3,12 +3,13 @@
 import {
   EncounterStatus,
   EncounterType,
+  LabTestStatus,
   PrescriptionStatus,
   type CreateEncounterDto,
   type Patient,
 } from '@medicore/types'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { ClipboardPlus, Loader2, Pill, Search, Stethoscope } from 'lucide-react'
+import { ClipboardPlus, FlaskConical, Loader2, Pill, Scan, Search, Stethoscope } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
@@ -37,9 +38,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { listDoctors } from '@/lib/api/doctors'
+import { listLabOrders } from '@/lib/api/laboratory'
 import { createEncounter, listEncounters, listPatientVitals } from '@/lib/api/medical-records'
 import { listPatients } from '@/lib/api/patients'
 import { listPrescriptions } from '@/lib/api/prescriptions'
+import { listRadiologyOrders } from '@/lib/api/radiology'
 import { useAuth } from '@/lib/auth/auth-context'
 
 function getErrorMessage(error: unknown): string {
@@ -61,6 +64,25 @@ const PRESCRIPTION_STATUS_BADGE: Record<PrescriptionStatus, 'secondary' | 'succe
   [PrescriptionStatus.ACTIVE]: 'secondary',
   [PrescriptionStatus.COMPLETED]: 'success',
   [PrescriptionStatus.DISCONTINUED]: 'destructive',
+}
+
+const LAB_STATUS_BADGE: Record<LabTestStatus, 'secondary' | 'success' | 'destructive' | 'outline'> = {
+  [LabTestStatus.ORDERED]: 'secondary',
+  [LabTestStatus.SAMPLE_COLLECTED]: 'outline',
+  [LabTestStatus.IN_PROGRESS]: 'outline',
+  [LabTestStatus.COMPLETED]: 'success',
+  [LabTestStatus.REPORTED]: 'success',
+  [LabTestStatus.CANCELLED]: 'destructive',
+}
+
+const RADIOLOGY_STATUS_BADGE: Record<string, 'secondary' | 'success' | 'destructive' | 'outline'> = {
+  ORDERED: 'secondary',
+  SCHEDULED: 'outline',
+  IN_PROGRESS: 'outline',
+  COMPLETED: 'success',
+  REPORTED: 'success',
+  CANCELLED: 'destructive',
+  REJECTED: 'destructive',
 }
 
 export default function MedicalRecordsPage() {
@@ -95,6 +117,18 @@ export default function MedicalRecordsPage() {
   const prescriptionsQuery = useQuery({
     queryKey: ['prescriptions', 'patient', patientFilter?.id],
     queryFn: () => listPrescriptions({ patientId: patientFilter!.id, limit: 5 }),
+    enabled: Boolean(patientFilter),
+  })
+
+  const labOrdersQuery = useQuery({
+    queryKey: ['laboratory', 'patient', patientFilter?.id],
+    queryFn: () => listLabOrders({ patientId: patientFilter!.id, limit: 5 }),
+    enabled: Boolean(patientFilter),
+  })
+
+  const radiologyOrdersQuery = useQuery({
+    queryKey: ['radiology', 'patient', patientFilter?.id],
+    queryFn: () => listRadiologyOrders({ patientId: patientFilter!.id, limit: 5, sortBy: 'createdAt', sortOrder: 'desc' }),
     enabled: Boolean(patientFilter),
   })
 
@@ -155,7 +189,11 @@ export default function MedicalRecordsPage() {
         </Select>
       </div>
 
-      {patientFilter && (weightSeries.length > 1 || prescriptionsQuery.data?.data.length) && (
+      {patientFilter &&
+        (weightSeries.length > 1 ||
+          prescriptionsQuery.data?.data.length ||
+          labOrdersQuery.data?.data.length ||
+          radiologyOrdersQuery.data?.data.length) && (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {weightSeries.length > 1 && (
             <div className="rounded-lg border bg-card p-4">
@@ -192,6 +230,56 @@ export default function MedicalRecordsPage() {
                       <Badge variant={PRESCRIPTION_STATUS_BADGE[rx.status]}>{formatEnumLabel(rx.status)}</Badge>
                       <span className="text-xs text-muted-foreground">
                         {rx.items.map((i) => i.medicationName).join(', ')}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {Boolean(labOrdersQuery.data?.data.length) && (
+            <div className="rounded-lg border bg-card p-4">
+              <h3 className="mb-3 text-sm font-semibold text-foreground">
+                Recent lab orders — {patientFilter.fullName}
+              </h3>
+              <ul className="space-y-2">
+                {labOrdersQuery.data?.data.map((order) => (
+                  <li key={order.id}>
+                    <Link
+                      href={order.encounterId ? `/dashboard/medical-records/${order.encounterId}` : '#'}
+                      className="flex items-center gap-2 text-sm hover:underline"
+                    >
+                      <FlaskConical className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="font-mono text-xs text-muted-foreground">{order.labOrderNumber}</span>
+                      <Badge variant={LAB_STATUS_BADGE[order.status]}>{formatEnumLabel(order.status)}</Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {order.items.map((i) => i.testName).join(', ')}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {Boolean(radiologyOrdersQuery.data?.data.length) && (
+            <div className="rounded-lg border bg-card p-4">
+              <h3 className="mb-3 text-sm font-semibold text-foreground">
+                Recent imaging — {patientFilter.fullName}
+              </h3>
+              <ul className="space-y-2">
+                {radiologyOrdersQuery.data?.data.map((order) => (
+                  <li key={order.id}>
+                    <Link
+                      href={`/dashboard/radiology/${order.id}`}
+                      className="flex items-center gap-2 text-sm hover:underline"
+                    >
+                      <Scan className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="font-mono text-xs text-muted-foreground">{order.orderNumber}</span>
+                      <Badge variant={RADIOLOGY_STATUS_BADGE[order.status]}>{formatEnumLabel(order.status)}</Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {order.modality} — {order.bodyPart}
                       </span>
                     </Link>
                   </li>

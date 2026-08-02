@@ -56,7 +56,18 @@ export class AuditService {
         OR: [
           { resource: 'Doctor', resourceId: doctorId },
           {
-            resource: { in: ['DoctorSchedule', 'DoctorLeave', 'DoctorDocument', 'Appointment', 'Encounter', 'Prescription'] },
+            resource: {
+              in: [
+                'DoctorSchedule',
+                'DoctorLeave',
+                'DoctorDocument',
+                'Appointment',
+                'Encounter',
+                'Prescription',
+                'LabTest',
+                'RadiologyOrder',
+              ],
+            },
             after: { path: ['doctorId'], equals: doctorId },
           },
         ],

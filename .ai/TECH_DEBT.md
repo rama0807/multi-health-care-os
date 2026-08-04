@@ -1161,3 +1161,47 @@ future session — record it as an ADR rather than merging silently. A
 biometric hook, if ever required, is an external hardware integration
 with no vendor chosen yet — same category as the payment-gateway/PACS
 gaps above.
+
+---
+
+## TD-0040: Seed-written `Json` columns aren't covered by any automated contract test
+
+Opened: 2026-08-05
+Status: Open
+Severity: Medium
+
+**Description:** `GET /api/v1/doctors/stats/dashboard` returned 500 on
+every call because the demo seed wrote `DoctorScheduleDay.shifts` with
+`start`/`end` keys while the application reads the canonical
+`startTime`/`endTime` (`ScheduleShiftSchema`, `packages/types/src/
+doctor-schedule.ts`). `shifts` is an untyped Prisma `Json` column and
+the seed cast its literal directly to `Prisma.InputJsonValue`, so the
+mismatch was invisible to TypeScript, to Prisma, and to the whole test
+suite. Fixed at the write site (the seed now `.parse()`s through
+`ScheduleShiftSchema`), but the *general* gap remains: nothing
+automatically verifies that what the seeds write matches what the
+services read.
+
+Why the 513-test suite did not catch it: `availability.service.spec.ts`
+mocks `doctorSchedule.findMany` with hand-written fixtures already in
+the correct `startTime`/`endTime` shape, so it proved the *reader*
+correct against an assumed contract while the *writer* violated it.
+Every unit test passed against a database whose schedule data no
+service could read.
+
+**Impact:** Any future `Json` column written by a seed (or by any code
+path that casts to `InputJsonValue`) can silently diverge from its Zod
+contract and only surface as a runtime 500 in the browser. In this
+instance one bad seed literal broke the doctors dashboard tile and,
+silently, every schedule read — `/availability`, `/availability/today`
+and slot generation — across all 8 seeded doctors.
+
+**Resolution plan:** Two complementary options, neither done yet:
+(1) an integration test that runs the demo seed against
+`medicore_test` and asserts the seeded rows parse cleanly against
+their Zod schemas — this is the one that generalises; (2) a lint rule
+or convention banning bare `as unknown as Prisma.InputJsonValue` in
+favour of a `toJson(schema, value)` helper that parses before casting.
+Also worth auditing the other `Json` columns (`Doctor.
+languagesSpoken`, `Organization.settings`) for the same class of
+writer/reader drift.

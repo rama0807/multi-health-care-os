@@ -6,6 +6,105 @@
 
 ---
 
+## Session: 2026-08-05 (Bugfix — doctors dashboard-stats 500)
+
+### What was completed
+Single-issue bugfix session, driven by a user screenshot of the
+Dashboard with DevTools open: `GET /api/v1/doctors/stats/dashboard`
+→ **500 Internal Server Error**, and the "Total Doctors"/"Active
+Doctors" tiles reading 0 despite 8 seeded doctors.
+
+**Root cause.** The demo seed wrote `DoctorScheduleDay.shifts` as
+`{start, end, slotDurationMinutes, breaks:[{start, end}]}`, but the
+canonical contract (`ScheduleShiftSchema`, `packages/types/src/
+doctor-schedule.ts`) is `{startTime, endTime, slotDurationMinutes,
+breaks:[{startTime, endTime}]}`. `AvailabilityService.
+getDashboardStats` → `isNowWithinShift` → `toMinutes(shift.startTime)`
+therefore called `.split(':')` on `undefined`:
+
+```
+TypeError: Cannot read properties of undefined (reading 'split')
+    at toMinutes (availability.util.js:32:35)
+    at isNowWithinShift (availability.util.js:82:19)
+    at AvailabilityService.getDashboardStats (availability.service.js:149:25)
+```
+
+`shifts` is an untyped Prisma `Json` column and the seed cast its
+literal straight to `Prisma.InputJsonValue`, so neither TypeScript,
+Prisma, nor the 513-test suite could see the drift.
+
+**How it was diagnosed** (worth reusing): the API's `HttpExceptionFilter`
+returns a generic `"An unexpected error occurred"` and logs the stack
+only to the dev server's stdout, which wasn't readable. Ran a second
+API instance off the existing build — `PORT=4001 node dist/main.js >
+api.log` — reproduced against it, and read the real stack from the
+captured log. Confirmed first that every underlying Prisma query
+succeeded (standalone `tsx` script), which correctly ruled out the DB
+layer and pointed at the JS mapping.
+
+### Files modified
+- `packages/database/prisma/demo/foundation.ts` — shifts literal now
+  uses `startTime`/`endTime` and is parsed through
+  `ScheduleShiftSchema.array().parse(...)` before the
+  `InputJsonValue` cast, so a future shape drift fails the seed loudly
+  instead of silently poisoning the database.
+- `packages/database/package.json` — added `@medicore/types`
+  (`workspace:*`) as a **devDependency** so the seed can import the
+  canonical schema. No cycle (`@medicore/types` depends only on zod);
+  devDep, so `apps/api` is unaffected. Ran `pnpm install`.
+- `.ai/CHANGELOG.md`, `.ai/TECH_DEBT.md` (TD-0040), `.ai/SESSION_LOG.md`.
+
+Data repaired by re-running `pnpm db:seed:demo` (idempotent —
+`resetDemoData` deletes `doctorScheduleDay`/`doctorSchedule` first).
+**Any other developer's already-seeded database needs the same re-run.**
+
+### Architectural decisions made
+None — no ADR. This was a contract-conformance bug, not a design
+change; the canonical shape in `packages/types` was already correct
+and was treated as ground truth.
+
+### Known issues
+- **TD-0040 (new, Medium):** nothing automatically checks that
+  seed-written `Json` columns match the Zod contract the services read
+  by. `availability.service.spec.ts` mocks `doctorSchedule.findMany`
+  with fixtures already in the correct shape, so it validated the
+  reader against an assumed contract while the writer violated it —
+  all 513 tests passed against a database no service could read. The
+  fix above closes the one site; the general gap is open.
+- Other `Json` columns (`Doctor.languagesSpoken`,
+  `Organization.settings`) have not been audited for the same drift.
+- No regression test was added for this specific bug — the meaningful
+  test is the seed-vs-schema integration test described in TD-0040,
+  not another mock-based unit test, which by construction could not
+  have caught it.
+
+### Verification
+`pnpm lint`, `pnpm typecheck`, `pnpm test` (513 passed, 68 suites),
+`pnpm build` — all green. Endpoint verified live against the running
+dev server on :4000: `HTTP 200`, `{totalDoctors: 8, activeDoctors: 8,
+availableToday: 8, onLeaveToday: 0, offDutyToday: 8, upcomingLeave:
+[1 entry]}` (`offDutyToday: 8` is correct — checked at 04:49, outside
+both the 09:00–13:00 and 17:00–20:00 shifts). Also re-verified the
+endpoints the same bad data was silently breaking:
+`/doctors/:id/schedule` 200, `/doctors/:id/availability/today` 200
+(`nextShiftStart: 2026-08-05T09:00:00`), and
+`/doctors/:id/availability?date=…` 200 with correctly generated
+15-minute slots. Not browser-verified (no screenshot captured).
+
+### Recommended next task
+`NEXT.md` is unchanged by this session — resume the milestone work it
+points to. If picking up the debt instead, TD-0040's option (1) — a
+seed-output-vs-Zod integration test against `medicore_test` — is the
+highest-value follow-up, since it generalises to every `Json` column.
+
+### Completion percentage
+Unchanged — this was a defect fix against already-delivered
+functionality, not new scope. Milestone 4.2 (Doctor Scheduling &
+Availability) was previously marked complete but was in practice
+non-functional against seeded data; it is now genuinely working.
+
+---
+
 ## Session: 2026-08-05 (Milestone 14 — Staff & Attendance, complete)
 
 ### What was completed

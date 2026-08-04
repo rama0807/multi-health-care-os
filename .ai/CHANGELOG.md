@@ -59,6 +59,21 @@
     user/department/store, log and complete maintenance records.
 
 ### Fixed
+- **`GET /api/v1/doctors/stats/dashboard` returned 500 on every call**,
+  breaking the main Dashboard's Total/Active Doctors tiles. The demo
+  seed wrote `DoctorScheduleDay.shifts` with `start`/`end` keys while
+  the whole application reads the canonical `startTime`/`endTime`
+  (`ScheduleShiftSchema`), so `toMinutes(shift.startTime)` threw
+  `Cannot read properties of undefined (reading 'split')`. `shifts` is
+  an untyped `Json` column and the seed cast its literal straight to
+  `Prisma.InputJsonValue`, so nothing — not TypeScript, not Prisma —
+  caught the mismatch. The seed now parses the literal through
+  `ScheduleShiftSchema` before writing, which fails the seed loudly on
+  any future drift; `@medicore/types` added as a `devDependency` of
+  `@medicore/database` for it. Re-running `pnpm db:seed:demo` repairs
+  already-seeded databases. The same bad data was silently breaking
+  every other schedule read (`/availability`, `/availability/today`,
+  slot generation) — all verified working after the fix. See TD-0040.
 - Sidebar's Inventory nav item was gated on a nonexistent permission
   (`inventory.read`), making it unreachable for every role. Corrected
   to `inventory.items.read` (Checkpoint 1).

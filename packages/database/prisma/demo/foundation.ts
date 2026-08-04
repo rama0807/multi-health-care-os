@@ -1,3 +1,4 @@
+import { ScheduleShiftSchema } from '@medicore/types'
 import { Prisma, PrismaClient } from '@prisma/client'
 import * as argon2 from 'argon2'
 
@@ -178,10 +179,20 @@ export async function seedFoundation(
 
   // ── Weekly schedules (Mon–Sat morning + evening OPD, Sunday off) ────────
   const WEEKDAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'] as const
-  const shifts = [
-    { start: '09:00', end: '13:00', slotDurationMinutes: 15, breaks: [{ start: '11:00', end: '11:15' }] },
-    { start: '17:00', end: '20:00', slotDurationMinutes: 15, breaks: [] },
-  ] as unknown as Prisma.InputJsonValue
+  // Parsed through the canonical schema rather than cast straight to
+  // InputJsonValue: `shifts` is an untyped Json column, so a blind cast lets
+  // the seed write a shape the application cannot read (this previously
+  // seeded `start`/`end` instead of `startTime`/`endTime`, which made every
+  // availability read throw). Validating here fails the seed loudly instead.
+  const shifts = ScheduleShiftSchema.array().parse([
+    {
+      startTime: '09:00',
+      endTime: '13:00',
+      slotDurationMinutes: 15,
+      breaks: [{ startTime: '11:00', endTime: '11:15' }],
+    },
+    { startTime: '17:00', endTime: '20:00', slotDurationMinutes: 15, breaks: [] },
+  ]) as unknown as Prisma.InputJsonValue
 
   for (const doc of doctors) {
     const schedule = await prisma.doctorSchedule.create({

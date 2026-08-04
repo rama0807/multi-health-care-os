@@ -633,6 +633,42 @@ export enum AssetMaintenanceStatus {
   CANCELLED = 'CANCELLED',
 }
 
+// ─── Staff & Attendance (Milestone 14) ─────────────────────────────────────
+
+export enum EmploymentType {
+  FULL_TIME = 'FULL_TIME',
+  PART_TIME = 'PART_TIME',
+  CONTRACT = 'CONTRACT',
+  INTERN = 'INTERN',
+  CONSULTANT = 'CONSULTANT',
+}
+
+export enum EmploymentStatus {
+  ACTIVE = 'ACTIVE',
+  ON_LEAVE = 'ON_LEAVE',
+  SUSPENDED = 'SUSPENDED',
+  TERMINATED = 'TERMINATED',
+  RESIGNED = 'RESIGNED',
+}
+
+export enum StaffDocumentType {
+  ID_PROOF = 'ID_PROOF',
+  EDUCATIONAL_CERTIFICATE = 'EDUCATIONAL_CERTIFICATE',
+  EXPERIENCE_CERTIFICATE = 'EXPERIENCE_CERTIFICATE',
+  CONTRACT = 'CONTRACT',
+  OTHER = 'OTHER',
+}
+
+export enum AttendanceStatus {
+  PRESENT = 'PRESENT',
+  LATE = 'LATE',
+  HALF_DAY = 'HALF_DAY',
+  ABSENT = 'ABSENT',
+  ON_LEAVE = 'ON_LEAVE',
+  HOLIDAY = 'HOLIDAY',
+  WEEK_OFF = 'WEEK_OFF',
+}
+
 export enum StockAuditStatus {
   DRAFT = 'DRAFT',
   IN_PROGRESS = 'IN_PROGRESS',

@@ -4,6 +4,85 @@
 > after every completed task. Pair with `CHANGELOG.md` (human-facing summary)
 > and `MODULE_STATUS.md` (per-module state).
 
+## 2026-08-05 — Milestone 14 (Staff & Attendance) — complete
+
+Continued from the now-replaced `NEXT.md`, which framed this as a
+Staff/Attendance/Shift/Leave milestone for non-doctor employees, on
+top of an unaudited pre-existing `Staff` model + 3-line `staff` module
+scaffold. Audited both before touching anything, then built the full
+scope this session's instruction gave (Staff Management/Attendance/
+Leave Management/Shift Scheduling/Payroll Preparation/Dashboard/RBAC).
+See **ADR-0022** for the full design (scope boundary vs. the existing
+doctor-specific scheduling system, schema, RBAC).
+
+- **Schema** (migration `20260804210705_staff_attendance_management`,
+  applied to both `medicore_dev`/`medicore_test`): `Staff` extended
+  with `hospitalId`, `employmentType`/`employmentStatus` enums
+  (replacing `isActive`/`shiftType`), `reportsToId` (self-relation),
+  `dateOfLeaving`, `monthlySalary`. New models: `StaffDocument`
+  (mirrors `DoctorDocument`), `Shift` (org-scoped catalog), `ShiftRoster`
+  (one row per staff per date), `Attendance` (one row per staff per
+  date, server-derived status), `Holiday`, `LeaveTypeConfig` (per-org
+  annual-day quota per `LeaveType`), `StaffLeave` (mirrors
+  `DoctorLeave`).
+- **RBAC**: `staff`/`staff.documents` (mirrors `doctors`/`doctors.
+  documents`), new `attendance`/`leave`/`shifts`/`shifts.roster`
+  namespaces. Every non-doctor role (Nurse/Receptionist/Lab
+  Technician/Radiology Technician/Pharmacist/Cashier/Inventory
+  Manager) granted `.own`-scoped self-service (clock in/out, apply/
+  cancel own leave, view own roster); HR granted the full all-scope
+  admin set plus its own self-service.
+- **Backend** (`apps/api/src/modules/staff/`, 20 new files):
+  `StaffRefService` (mirrors `DoctorRefService`), `StaffService`
+  (onboarding via the existing generic `StaffOnboardingService`, CRUD,
+  employment-status transitions), `StaffDocumentsService`+`Controller`
+  (mirrors `DoctorDocumentService` exactly), `ShiftsService` (catalog
+  CRUD + `standardMinutes` — the shift-length calculation shared with
+  attendance/payroll), `ShiftRosterService` (assign/bulk-assign/list),
+  `AttendanceService` (clock-in/out with server-derived Present/Late/
+  Half-Day from the day's roster + shift grace period, manual `mark()`
+  override, `correct()`, monthly calendar, dashboard stats),
+  `HolidaysService`, `LeaveTypesService`, `StaffLeaveService` (mirrors
+  `DoctorLeaveService` — apply/approve/reject/cancel, overlap
+  conflict, computed leave balance), `StaffDashboardService`,
+  `PayrollService` (attendance/leave/overtime summary + hand-built
+  CSV export — Payroll Prep only, no pay-run processing).
+- **Audit integration**: `audit.listener.ts` gained 13 new `@OnEvent`
+  handlers across staff/document/attendance/leave lifecycle events.
+- **Tests**: 8 new unit spec files (49 tests, covering onboarding
+  conflicts, the late/half-day/week-off derivation rules, leave
+  overlap + balance computation, payroll overtime/deduction math) +
+  `apps/api/test/staff.e2e-spec.ts` (14 e2e tests — the full golden
+  path: staff creation with a real provisioned login, shift + roster
+  assignment, clock-in/out, correction, document upload, leave-type
+  config → apply → approve → balance, holiday calendar, staff/
+  attendance dashboards, payroll summary + CSV export, employment
+  status change). All passing (513 API unit / 278 e2e total across
+  the whole API, zero failures).
+- **Frontend** (`apps/web/src/lib/api/{staff,shifts,attendance,leave,
+  payroll}.ts` + `apps/web/src/app/dashboard/staff/**`, 7 routes):
+  Dashboard (stat tiles, self clock-in/out widget), Directory (search/
+  filter + add-staff dialog with a real hospital/department picker),
+  Profile page (`[staffId]`, tabs: Overview/Documents/Attendance-
+  calendar/Leave-with-balance), Shifts (catalog CRUD), Roster (weekly
+  grid + assign dialog — the first real staff-picker Select in this
+  repo's frontend), Attendance (org-wide list + correction dialog),
+  Leave (requests/leave-types/holidays tabs), Payroll Prep (summary
+  table + CSV export). Reused the pre-existing dormant sidebar "Staff"
+  link (`/dashboard/staff`, `staff.read`-gated) unchanged — no sidebar
+  edit needed.
+- **Full verification, all green**: `pnpm lint`/`typecheck`/`test`
+  (513 api unit + 6 web)/`test:e2e` (278/278)/`build`, all clean
+  across all 6 packages.
+- **Not browser-verified** — this session's own instructions said not
+  to use Playwright, open a browser, or generate screenshots (TD-0036,
+  mirrors Milestone 13's TD-0035 under the same kind of explicit
+  instruction).
+- Replaced `.ai/NEXT.md` with **Milestone 15 — AI Features** (not
+  started).
+
+---
+
 ## 2026-08-05 — Milestone 13 (General Inventory) — complete
 
 Continued directly from Frontend Checkpoint 1 (below) per an explicit

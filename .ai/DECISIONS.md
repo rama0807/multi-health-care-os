@@ -1434,3 +1434,129 @@ screenshots) are both opened in `TECH_DEBT.md`. If a future session
 adds a real staff/user directory endpoint or picker component, both
 `StoresPage`'s manager-assignment dialog and `AssetDetailPage`'s
 assign dialog should be revisited to replace the free-text ID input.
+
+## ADR-0022: Milestone 14 — Staff & Attendance scope (non-doctor staff only), schema design, and RBAC
+
+Date: 2026-08-05
+Status: Accepted
+
+**Context:** `docs/roadmap.md`'s Milestone 14 deliverable list:
+"Staff profiles and employee records, Department and role assignment,
+Shift management, Attendance marking (manual + biometric hook), Leave
+management, Doctor duty roster, Staff reports, Frontend: staff
+management, Frontend: attendance dashboard." This session's actual
+instruction gave a materially more detailed breakdown (Staff
+Management/Attendance/Leave Management/Shift Scheduling/Payroll
+Preparation/Dashboard/RBAC, each with named sub-items), which this ADR
+treats as the authoritative scope per this repo's precedent of later,
+more specific instructions superseding the roadmap's original framing
+(mirrors ADR-0013/ADR-0016's pattern). A `Staff` model and a 3-line
+no-op `staff` module scaffold already existed, unaudited, from the
+original scaffolding migration — the same category of pre-existing
+scaffold as `Medication` (ADR-0014), the flat `MedicalRecord`
+(ADR-0008), and `Ward`/`Bed`/`Admission` (ADR-0018) before their own
+milestones. Read and audited before any schema change.
+
+**Decision:**
+
+1. **Scope is the non-doctor employee population** (Nurse,
+   Receptionist, Lab Technician, Radiology Technician, Pharmacist,
+   Cashier, HR, Inventory Manager — every `SystemRole` other than
+   `DOCTOR`/`SUPER_ADMIN`/`ORG_ADMIN`). Doctors already have their own
+   complete scheduling/leave system (`DoctorSchedule`/`DoctorLeave`/
+   `AvailabilityService`, Checkpoint 4.2) — this session did not build
+   a second, competing roster for them or attempt to merge the two
+   systems into one. "Doctor duty roster" from the roadmap's original
+   framing is therefore *already satisfied* by the existing
+   Checkpoint 4.2 system, not a gap — recorded explicitly in TD-0039
+   rather than left ambiguous.
+2. **`Staff` (extended, not replaced)** gained `hospitalId` (it was
+   missing — every other professional-profile model in this repo has
+   one), `employmentType`/`employmentStatus` enums (replacing the
+   scaffold's `isActive` boolean and unused `shiftType` field — mirrors
+   the `Ward`/`Room`/`Bed` precedent of ADR-0018: "dedicated Status
+   enums... rather than this repo's usual `isActive` boolean"),
+   `reportsToId` (a self-relation for the reporting-hierarchy
+   deliverable), `dateOfLeaving`, and `monthlySalary` (nullable —
+   Payroll Prep's only compensation input). The scaffold's `shiftType:
+   ShiftType` field (MORNING/AFTERNOON/NIGHT/ROTATING, a simple enum
+   with no timing data) is dropped in favor of a real `Shift` catalog +
+   `ShiftRoster` assignment table below — the enum itself
+   (`ShiftType`) is kept unremoved since `NursingNote.shift` (Milestone
+   12) still uses it for shift-handover tagging, unrelated to this
+   milestone.
+3. **New models**: `StaffDocument` (mirrors `DoctorDocument` exactly —
+   same upload/list/delete service shape, reuses `StorageService`).
+   `Shift` (org-scoped catalog — name/code/`HH:mm` start+end/break/
+   grace-period/night-shift flag, mirrors `DoctorScheduleDay`'s
+   "HH:mm string, read/written as a whole unit" convention).
+   `ShiftRoster` (one row per staff per date — `@@unique([staffId,
+   date])` — rather than `DoctorSchedule`'s versioned weekly-template
+   design; a roster is inherently per-day-assignable (rotating/night
+   shifts change day to day for the same person), whereas a doctor's
+   schedule is a stable weekly pattern with rare version changes. Two
+   different real-world shapes, two different models — not a
+   duplicated concept). `Attendance` (one row per staff per date,
+   `AttendanceStatus` enum PRESENT/LATE/HALF_DAY/ABSENT/ON_LEAVE/
+   HOLIDAY/WEEK_OFF, derived server-side at clock-in/out from the
+   day's `ShiftRoster` entry and the shift's grace period/half-day
+   threshold — mirrors `laboratory/abnormal-flagging.ts`'s "disclosed,
+   documented rule" precedent). `Holiday` (org-scoped calendar).
+   `LeaveTypeConfig` (per-org annual-day quota per `LeaveType` —
+   reuses the existing `LeaveType`/`LeaveStatus` enums seeded for
+   `DoctorLeave`, since the same leave taxonomy applies to any
+   employee). `StaffLeave` (mirrors `DoctorLeave` exactly — apply/
+   approve/reject/cancel, overlap conflict check, `days` computed on
+   read rather than stored).
+4. **Leave balance is computed, not a mutable counter**:
+   `annualDays` (from `LeaveTypeConfig`) minus the sum of approved
+   `StaffLeave` day-spans starting in the requested calendar year —
+   mirrors this repo's standing preference for computed fields
+   (`Vital.bmi`, `IntakeOutputRecord`'s balance) over a counter that
+   can drift from the source rows. A leave spanning a year boundary is
+   attributed to its start-date year only — a disclosed simplification
+   (see TECH_DEBT), not a fabricated one.
+5. **Payroll Prep has no new persisted model** — it's a read-only
+   computation over `Attendance`/`StaffLeave`/`ShiftRoster`/`Staff.
+   monthlySalary` for a given month, plus a CSV export (hand-built
+   string, no new dependency — mirrors no other module needing a CSV
+   library either). Deliberately stops at preparation/export; no
+   pay-run, payslip, or disbursement model — that's a materially
+   different feature (bank file generation, statutory deductions,
+   payslip PDFs) explicitly deferred, not attempted partially.
+6. **RBAC**: `staff`/`staff.documents` mirror `doctors`/`doctors.
+   documents`'s precedent. Three new namespaces — `attendance`
+   (`read`/`create`/`update`/`manage` — `create` covers both self
+   clock-in/out and HR bulk-marking depending on scope; `manage` gates
+   HR's backdated `mark()` override and the Payroll Prep endpoints,
+   since both are administrative reads/writes over the same
+   attendance data), `leave` (`read`/`approve`/`manage` — deliberately
+   mirrors `doctors.leave`'s exact action set, where `manage` covers
+   apply+cancel and also gates holiday-calendar CRUD, since both are
+   "the staff-leave-and-calendar surface" rather than two distinct
+   resources), `shifts`/`shifts.roster` (catalog vs. assignment, same
+   split rationale as `ipd.beds` vs. `ipd.transfer`). Every non-doctor
+   role in `seed.ts` (Nurse/Receptionist/Lab Technician/Radiology
+   Technician/Pharmacist/Cashier/Inventory Manager) is granted
+   `.own`-scoped `attendance.read`/`create`/`update`,
+   `leave.read`/`manage`, and `shifts.roster.read` — genuine
+   self-service, resolved the same way `ipd.admissions`' own-scope
+   carve-out resolves a doctor's own profile (a new `StaffRefService.
+   findStaffProfileForUser`, mirroring `DoctorRefService`). HR gets
+   the full all-scope set across every new namespace plus its own
+   self-service grants (an HR employee is themselves staff). Doctors
+   are **not** granted any of the new namespaces — their attendance/
+   leave stays on the existing `DoctorSchedule`/`DoctorLeave` system,
+   deliberately, per point 1.
+
+**Consequences:** Two parallel "time-and-leave" systems now exist in
+this repo — Doctor-specific (`DoctorSchedule`/`DoctorLeave`) and
+generic-staff (`Shift`/`ShiftRoster`/`Attendance`/`StaffLeave`) — by
+design, not oversight (TD-0039). If a future milestone wants one
+unified system, that is a deliberate migration decision, not a
+silent merge. No biometric hardware integration exists (TD-0039); no
+per-organization payroll policy configuration exists yet (TD-0037);
+attendance corrections apply immediately with no approval gate
+(TD-0038); no browser walkthrough this session (TD-0036), matching
+Milestone 13's TD-0035 precedent under the same kind of explicit
+instruction.

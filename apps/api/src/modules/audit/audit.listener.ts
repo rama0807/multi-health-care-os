@@ -46,6 +46,34 @@ interface DoctorDocumentEventPayload {
   documentId: string
 }
 
+interface StaffEventPayload {
+  staffId: string
+  organizationId: string
+  userId?: string
+  status?: string
+}
+
+interface StaffDocumentEventPayload {
+  staffId: string
+  organizationId: string
+  userId?: string
+  documentId: string
+}
+
+interface StaffAttendanceEventPayload {
+  attendanceId: string
+  staffId: string
+  organizationId: string
+  userId?: string
+}
+
+interface StaffLeaveEventPayload {
+  leaveId: string
+  staffId: string
+  organizationId: string
+  userId?: string
+}
+
 interface AppointmentEventPayload {
   appointmentId: string
   doctorId: string
@@ -493,6 +521,71 @@ export class AuditListener {
   @OnEvent('doctor.document_deleted')
   onDoctorDocumentDeleted(payload: DoctorDocumentEventPayload) {
     return this.persistDoctorDocumentEvent(payload, 'doctor.document_deleted')
+  }
+
+  @OnEvent('staff.created')
+  onStaffCreated(payload: StaffEventPayload) {
+    return this.persistStaffEvent(payload, 'staff.created')
+  }
+
+  @OnEvent('staff.updated')
+  onStaffUpdated(payload: StaffEventPayload) {
+    return this.persistStaffEvent(payload, 'staff.updated')
+  }
+
+  @OnEvent('staff.employment_status_changed')
+  onStaffEmploymentStatusChanged(payload: StaffEventPayload) {
+    return this.persistStaffEvent(payload, 'staff.employment_status_changed')
+  }
+
+  @OnEvent('staff.document_uploaded')
+  onStaffDocumentUploaded(payload: StaffDocumentEventPayload) {
+    return this.persistStaffDocumentEvent(payload, 'staff.document_uploaded')
+  }
+
+  @OnEvent('staff.document_deleted')
+  onStaffDocumentDeleted(payload: StaffDocumentEventPayload) {
+    return this.persistStaffDocumentEvent(payload, 'staff.document_deleted')
+  }
+
+  @OnEvent('staff.attendance.clocked_in')
+  onAttendanceClockedIn(payload: StaffAttendanceEventPayload) {
+    return this.persistAttendanceEvent(payload, 'staff.attendance.clocked_in')
+  }
+
+  @OnEvent('staff.attendance.clocked_out')
+  onAttendanceClockedOut(payload: StaffAttendanceEventPayload) {
+    return this.persistAttendanceEvent(payload, 'staff.attendance.clocked_out')
+  }
+
+  @OnEvent('staff.attendance.marked')
+  onAttendanceMarked(payload: StaffAttendanceEventPayload) {
+    return this.persistAttendanceEvent(payload, 'staff.attendance.marked')
+  }
+
+  @OnEvent('staff.attendance.corrected')
+  onAttendanceCorrected(payload: StaffAttendanceEventPayload) {
+    return this.persistAttendanceEvent(payload, 'staff.attendance.corrected')
+  }
+
+  @OnEvent('staff.leave.requested')
+  onStaffLeaveRequested(payload: StaffLeaveEventPayload) {
+    return this.persistStaffLeaveEvent(payload, 'staff.leave.requested')
+  }
+
+  @OnEvent('staff.leave.approved')
+  onStaffLeaveApproved(payload: StaffLeaveEventPayload) {
+    return this.persistStaffLeaveEvent(payload, 'staff.leave.approved')
+  }
+
+  @OnEvent('staff.leave.rejected')
+  onStaffLeaveRejected(payload: StaffLeaveEventPayload) {
+    return this.persistStaffLeaveEvent(payload, 'staff.leave.rejected')
+  }
+
+  @OnEvent('staff.leave.cancelled')
+  onStaffLeaveCancelled(payload: StaffLeaveEventPayload) {
+    return this.persistStaffLeaveEvent(payload, 'staff.leave.cancelled')
   }
 
   @OnEvent('appointment.created')
@@ -1142,6 +1235,50 @@ export class AuditListener {
       resource: 'DoctorDocument',
       resourceId: payload.documentId,
       after: { doctorId: payload.doctorId },
+    })
+  }
+
+  private async persistStaffEvent(payload: StaffEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'Staff',
+      resourceId: payload.staffId,
+      after: payload.status ? { status: payload.status } : undefined,
+    })
+  }
+
+  private async persistStaffDocumentEvent(payload: StaffDocumentEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'StaffDocument',
+      resourceId: payload.documentId,
+      after: { staffId: payload.staffId },
+    })
+  }
+
+  private async persistAttendanceEvent(payload: StaffAttendanceEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'Attendance',
+      resourceId: payload.attendanceId,
+      after: { staffId: payload.staffId },
+    })
+  }
+
+  private async persistStaffLeaveEvent(payload: StaffLeaveEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'StaffLeave',
+      resourceId: payload.leaveId,
+      after: { staffId: payload.staffId },
     })
   }
 

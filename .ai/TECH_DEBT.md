@@ -1053,3 +1053,111 @@ would not be caught by any of the checks that did run.
 and no explicit instruction against it should walk every new page
 end-to-end per the Milestone Completion Checklist, capture
 `docs/screens/inventory-*.png`, and close this item.
+
+## TD-0036: No browser-verified screenshots for Milestone 14
+
+Opened: 2026-08-05
+Status: Open — explicitly instructed, not an oversight
+Severity: Low
+
+**Description:** This session's instructions explicitly said "Do NOT
+use Playwright. Do NOT open a browser. Do NOT generate screenshots,"
+overriding the standing Screenshot policy in `CLAUDE.md` — the same
+situation Milestone 13's frontend session was in (TD-0035). All 7 new
+`/dashboard/staff/*` routes have passed `lint`/`typecheck`/`build`/
+unit+e2e `test`, but no golden path (add a staff member, assign a
+shift, clock in/out, apply and approve leave, generate a payroll
+export) has been clicked through in a real browser.
+
+**Impact:** A UI-only bug (a broken dialog binding, a Select that
+never fires `onValueChange`, a permission check that always renders
+false) would not be caught by any check that did run.
+
+**Resolution plan:** Next session with browser-tool access and no
+explicit instruction against it should walk every new page end-to-end
+per the Milestone Completion Checklist, capture
+`docs/screens/staff-*.png`, and close this item.
+
+## TD-0037: Payroll Prep's per-day/per-hour rate is a disclosed convention, not a configurable pay policy
+
+Opened: 2026-08-05
+Status: Open
+Severity: Low
+
+**Description:** `PayrollService.getSummary` derives a per-day rate as
+`Staff.monthlySalary / 30` (a common Indian payroll convention,
+independent of the month's actual length) and an overtime per-minute
+rate as `perDayRate / thatDay's shift.standardMinutes`. Neither is
+configurable per-organization, and a day with `workedMinutes` recorded
+but no `shiftId` (e.g. a `mark()`-created manual PRESENT row) is
+excluded from the overtime calculation entirely rather than falling
+back to a default shift length.
+
+**Impact:** Low — Payroll Prep is explicitly a preparation/export
+step, not a pay-run; a real payroll run downstream is expected to
+apply the organization's actual compensation policy. Disclosed on the
+Payroll Prep page itself ("no pay-run processing").
+
+**Resolution plan:** If a full Payroll Processing milestone is ever
+built, move the day-count convention and overtime multiplier into
+per-organization settings (mirroring `Organization.settings.gstRate`'s
+precedent) rather than a hardcoded constant.
+
+## TD-0038: Attendance corrections apply immediately — no HR approval gate
+
+Opened: 2026-08-05
+Status: Open
+Severity: Low
+
+**Description:** `AttendanceController.correct` (`attendance.update`)
+applies a correction the moment it's submitted — there is no
+pending/approved distinction, unlike `StaffLeave`'s apply→approve/
+reject workflow or `DoctorLeave`'s precedent. A staff member holding
+`attendance.update` at `.own` scope could in principle correct their
+own record without a second approver, though in practice only HR/Admin
+roles are seeded with `attendance.update` (self-service roles only
+hold it to request a fix on their own row, and no self-service role in
+`seed.ts` is granted it — see `packages/database/prisma/seed.ts`).
+
+**Impact:** Low today (no role is actually seeded with this gap
+exploitable), but worth closing before granting broader self-service
+correction rights.
+
+**Resolution plan:** If self-service correction requests become a
+real requirement, add a `PENDING`/`APPROVED` distinction to
+`Attendance` corrections mirroring `StaffLeave.status`, gated by a new
+`attendance.approve` action (mirrors `leave.approve`).
+
+## TD-0039: Doctor duty roster and biometric attendance hardware are explicitly out of scope
+
+Opened: 2026-08-05
+Status: Open — by design, not an oversight
+Severity: Low
+
+**Description:** `docs/roadmap.md`'s Milestone 14 deliverable list
+named "Doctor duty roster" and "Attendance marking (manual + biometric
+hook)." This session built a generic Staff/Shift/Attendance/Leave
+system for **non-doctor** employees (Nurse/Receptionist/Lab
+Technician/Radiology Technician/Pharmacist/Cashier/HR/Inventory
+Manager) — see ADR-0022 for the reasoning. Doctors already have their
+own dedicated `DoctorSchedule`/`DoctorLeave`/`AvailabilityService`
+system (Checkpoint 4.2); this session did not build a second,
+competing roster for them, nor merge the two systems. "Manual"
+attendance marking (self clock-in/out via the app, or HR's `mark()`
+override) is real; there is no biometric device integration of any
+kind — no hardware, SDK, or vendor is configured anywhere in this
+repo, matching this repo's standing precedent for credential-blocked
+integrations (SMS, AI providers, payment gateways, PACS/DICOM — see
+TD-0015/TD-0018/TD-0027/TD-0019).
+
+**Impact:** None today — no doctor-roster or biometric requirement has
+been raised against this milestone's actual deliverable list; flagging
+so a future session doesn't assume either exists.
+
+**Resolution plan:** If doctor duty rostering needs to move onto the
+generic `Shift`/`ShiftRoster` model (e.g. to unify with non-doctor
+staff scheduling), that is a deliberate architecture decision for a
+future session — record it as an ADR rather than merging silently. A
+biometric hook, if ever required, is an external hardware integration
+with no vendor chosen yet — same category as the payment-gateway/PACS
+gaps above.

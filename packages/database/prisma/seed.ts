@@ -72,7 +72,22 @@ const RESOURCE_ACTIONS: Record<string, string[]> = {
   'ipd.tasks': ['read', 'create', 'update'],
   'ipd.mar': ['read', 'create', 'update'],
   'ipd.discharge': ['read', 'create', 'update', 'manage'],
+  // Staff & Attendance (Milestone 14 / ADR-0022) — `staff`/`staff.documents`
+  // mirror `doctors`/`doctors.documents`'s precedent for the non-doctor
+  // employee directory (Nurse/Receptionist/Lab Technician/Radiology
+  // Technician/Pharmacist/Cashier/HR/Inventory Manager — Doctors keep their
+  // own dedicated module). `attendance`/`leave`/`shifts`/`shifts.roster` are
+  // new namespaces: `leave` covers both leave requests and the holiday
+  // calendar (`manage` gates holiday CRUD, same action that gates
+  // apply/cancel on one's own leave — mirrors `doctors.leave`'s action set).
+  // `attendance.manage` also gates the Payroll Prep summary/export, since
+  // it's an administrative read over the same data, not a distinct workflow.
   staff: ['read', 'create', 'update', 'delete'],
+  'staff.documents': ['read', 'manage'],
+  attendance: ['read', 'create', 'update', 'manage'],
+  leave: ['read', 'approve', 'manage'],
+  shifts: ['read', 'create', 'update', 'delete'],
+  'shifts.roster': ['read', 'create', 'update'],
   users: ['read', 'create', 'update', 'manage'],
   roles: ['read', 'create', 'update'],
   organizations: ['read', 'update'],
@@ -112,6 +127,16 @@ const OWN_SCOPE_PERMISSIONS: Array<{ resource: string; action: string }> = [
   { resource: 'ipd.admissions', action: 'read' },
   { resource: 'ipd.admissions', action: 'create' },
   { resource: 'ipd.admissions', action: 'update' },
+  // Every non-doctor staff role clocks itself in/out, requests its own
+  // corrections, applies for/cancels its own leave, and views its own
+  // roster — mirrors the `ipd.admissions` own-scope carve-out above, just
+  // for self-service HR actions rather than patient-care ones.
+  { resource: 'attendance', action: 'read' },
+  { resource: 'attendance', action: 'create' },
+  { resource: 'attendance', action: 'update' },
+  { resource: 'leave', action: 'read' },
+  { resource: 'leave', action: 'manage' },
+  { resource: 'shifts.roster', action: 'read' },
 ]
 
 /**
@@ -276,6 +301,14 @@ const ROLE_SPECS: RoleSpec[] = [
       { resource: 'inventory.stock', action: 'read' },
       { resource: 'inventory.requests', action: 'read' },
       { resource: 'inventory.requests', action: 'create' },
+      // Self-service: clock in/out, request corrections, apply/cancel own
+      // leave, view own roster (Milestone 14 / ADR-0022).
+      { resource: 'attendance', action: 'read', scope: 'own' },
+      { resource: 'attendance', action: 'create', scope: 'own' },
+      { resource: 'attendance', action: 'update', scope: 'own' },
+      { resource: 'leave', action: 'read', scope: 'own' },
+      { resource: 'leave', action: 'manage', scope: 'own' },
+      { resource: 'shifts.roster', action: 'read', scope: 'own' },
     ],
     user: { email: 'nurse@medicore.demo', firstName: 'Anjali', lastName: 'Verma' },
   },
@@ -301,6 +334,14 @@ const ROLE_SPECS: RoleSpec[] = [
       // Read-only visibility into discharge status for exit/billing
       // formalities — front desk doesn't approve or finalize discharge.
       { resource: 'ipd.discharge', action: 'read' },
+      // Self-service: clock in/out, request corrections, apply/cancel own
+      // leave, view own roster (Milestone 14 / ADR-0022).
+      { resource: 'attendance', action: 'read', scope: 'own' },
+      { resource: 'attendance', action: 'create', scope: 'own' },
+      { resource: 'attendance', action: 'update', scope: 'own' },
+      { resource: 'leave', action: 'read', scope: 'own' },
+      { resource: 'leave', action: 'manage', scope: 'own' },
+      { resource: 'shifts.roster', action: 'read', scope: 'own' },
     ],
     user: { email: 'receptionist@medicore.demo', firstName: 'Neha', lastName: 'Kapoor' },
   },
@@ -313,6 +354,14 @@ const ROLE_SPECS: RoleSpec[] = [
       { resource: 'laboratory', action: 'create' },
       { resource: 'laboratory', action: 'update' },
       { resource: 'patients', action: 'read' },
+      // Self-service: clock in/out, request corrections, apply/cancel own
+      // leave, view own roster (Milestone 14 / ADR-0022).
+      { resource: 'attendance', action: 'read', scope: 'own' },
+      { resource: 'attendance', action: 'create', scope: 'own' },
+      { resource: 'attendance', action: 'update', scope: 'own' },
+      { resource: 'leave', action: 'read', scope: 'own' },
+      { resource: 'leave', action: 'manage', scope: 'own' },
+      { resource: 'shifts.roster', action: 'read', scope: 'own' },
     ],
     user: { email: 'labtech@medicore.demo', firstName: 'Rahul', lastName: 'Iyer' },
   },
@@ -330,6 +379,14 @@ const ROLE_SPECS: RoleSpec[] = [
       { resource: 'radiology', action: 'create' },
       { resource: 'radiology', action: 'update' },
       { resource: 'patients', action: 'read' },
+      // Self-service: clock in/out, request corrections, apply/cancel own
+      // leave, view own roster (Milestone 14 / ADR-0022).
+      { resource: 'attendance', action: 'read', scope: 'own' },
+      { resource: 'attendance', action: 'create', scope: 'own' },
+      { resource: 'attendance', action: 'update', scope: 'own' },
+      { resource: 'leave', action: 'read', scope: 'own' },
+      { resource: 'leave', action: 'manage', scope: 'own' },
+      { resource: 'shifts.roster', action: 'read', scope: 'own' },
     ],
     user: { email: 'radiologytech@medicore.demo', firstName: 'Suresh', lastName: 'Patil' },
   },
@@ -348,6 +405,14 @@ const ROLE_SPECS: RoleSpec[] = [
       { resource: 'inventory.stock', action: 'read' },
       { resource: 'inventory.requests', action: 'read' },
       { resource: 'inventory.requests', action: 'create' },
+      // Self-service: clock in/out, request corrections, apply/cancel own
+      // leave, view own roster (Milestone 14 / ADR-0022).
+      { resource: 'attendance', action: 'read', scope: 'own' },
+      { resource: 'attendance', action: 'create', scope: 'own' },
+      { resource: 'attendance', action: 'update', scope: 'own' },
+      { resource: 'leave', action: 'read', scope: 'own' },
+      { resource: 'leave', action: 'manage', scope: 'own' },
+      { resource: 'shifts.roster', action: 'read', scope: 'own' },
     ],
     user: { email: 'pharmacist@medicore.demo', firstName: 'Karan', lastName: 'Mehta' },
   },
@@ -368,6 +433,14 @@ const ROLE_SPECS: RoleSpec[] = [
       { resource: 'insurance.preauth', action: 'create' },
       { resource: 'insurance.preauth', action: 'update' },
       { resource: 'insurance.settlement', action: 'read' },
+      // Self-service: clock in/out, request corrections, apply/cancel own
+      // leave, view own roster (Milestone 14 / ADR-0022).
+      { resource: 'attendance', action: 'read', scope: 'own' },
+      { resource: 'attendance', action: 'create', scope: 'own' },
+      { resource: 'attendance', action: 'update', scope: 'own' },
+      { resource: 'leave', action: 'read', scope: 'own' },
+      { resource: 'leave', action: 'manage', scope: 'own' },
+      { resource: 'shifts.roster', action: 'read', scope: 'own' },
     ],
     user: { email: 'cashier@medicore.demo', firstName: 'Sunita', lastName: 'Rao' },
   },
@@ -390,6 +463,31 @@ const ROLE_SPECS: RoleSpec[] = [
       { resource: 'staff', action: 'create' },
       { resource: 'staff', action: 'update' },
       { resource: 'staff', action: 'delete' },
+      { resource: 'staff.documents', action: 'read' },
+      { resource: 'staff.documents', action: 'manage' },
+      // HR runs Attendance/Leave/Shifts/Payroll Prep end to end for every
+      // staff member, plus the same self-service actions on their own
+      // record (Milestone 14 / ADR-0022).
+      { resource: 'attendance', action: 'read' },
+      { resource: 'attendance', action: 'create' },
+      { resource: 'attendance', action: 'update' },
+      { resource: 'attendance', action: 'manage' },
+      { resource: 'leave', action: 'read' },
+      { resource: 'leave', action: 'approve' },
+      { resource: 'leave', action: 'manage' },
+      { resource: 'shifts', action: 'read' },
+      { resource: 'shifts', action: 'create' },
+      { resource: 'shifts', action: 'update' },
+      { resource: 'shifts', action: 'delete' },
+      { resource: 'shifts.roster', action: 'read' },
+      { resource: 'shifts.roster', action: 'create' },
+      { resource: 'shifts.roster', action: 'update' },
+      { resource: 'attendance', action: 'read', scope: 'own' },
+      { resource: 'attendance', action: 'create', scope: 'own' },
+      { resource: 'attendance', action: 'update', scope: 'own' },
+      { resource: 'leave', action: 'read', scope: 'own' },
+      { resource: 'leave', action: 'manage', scope: 'own' },
+      { resource: 'shifts.roster', action: 'read', scope: 'own' },
       { resource: 'users', action: 'read' },
       { resource: 'departments', action: 'read' },
     ],
@@ -436,6 +534,14 @@ const ROLE_SPECS: RoleSpec[] = [
       { resource: 'inventory.audit', action: 'create' },
       { resource: 'inventory.audit', action: 'update' },
       { resource: 'inventory.audit', action: 'manage' },
+      // Self-service: clock in/out, request corrections, apply/cancel own
+      // leave, view own roster (Milestone 14 / ADR-0022).
+      { resource: 'attendance', action: 'read', scope: 'own' },
+      { resource: 'attendance', action: 'create', scope: 'own' },
+      { resource: 'attendance', action: 'update', scope: 'own' },
+      { resource: 'leave', action: 'read', scope: 'own' },
+      { resource: 'leave', action: 'manage', scope: 'own' },
+      { resource: 'shifts.roster', action: 'read', scope: 'own' },
     ],
     user: { email: 'inventorymanager@medicore.demo', firstName: 'Deepak', lastName: 'Joshi' },
   },

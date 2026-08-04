@@ -6,6 +6,32 @@
 ## [Unreleased]
 
 ### Added
+- **Milestone 14 — Staff & Attendance (complete):** see ADR-0022 for
+  the full design (scope, schema, RBAC). Non-doctor staff only —
+  doctors keep their existing dedicated scheduling/leave system.
+  - Staff directory — employment records (employment type/status,
+    reporting hierarchy, department/hospital), documents, onboarding
+    with a real provisioned login (reuses `StaffOnboardingService`).
+  - Shift catalog + weekly/rotating/night shift roster (per staff, per
+    date), with a bulk staff-assignment action.
+  - Attendance — clock in/out with server-derived Present/Late/
+    Half-Day/Week-Off, manual marking, corrections, a monthly
+    calendar, and a dashboard.
+  - Leave management — per-org leave-type quotas, apply/approve/
+    reject/cancel, a computed leave balance, and a holiday calendar.
+  - Payroll Preparation — attendance/leave/overtime summary and a CSV
+    export (no pay-run processing — explicitly out of scope).
+  - Staff Dashboard — headcount, attendance, leave, and shift-coverage
+    stats.
+  - RBAC: `staff`/`staff.documents`/`attendance`/`leave`/`shifts`/
+    `shifts.roster`, with genuine own-scope self-service for every
+    non-doctor role.
+  - Frontend: `/dashboard/staff` (dashboard), `/directory`,
+    `/[staffId]` (profile), `/shifts`, `/roster`, `/attendance`,
+    `/leave`, `/payroll` — 7 routes, reusing the pre-existing dormant
+    sidebar "Staff" link unchanged.
+  - 513 API unit / 278 e2e tests passing; lint/typecheck/build clean.
+    Not browser-verified this session (TD-0036, explicit instruction).
 - **Milestone 13 — General Inventory (complete):** see ADR-0020 (backend
   design, recorded retroactively) and ADR-0021 (frontend decisions).
   Backend landed in commit `e7f4abb`; frontend built across two

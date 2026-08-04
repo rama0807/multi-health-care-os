@@ -86,9 +86,10 @@ Foundation and Checkpoint 6.2 Orders & Prescriptions), Milestone 7
 Milestone 9 (Pharmacy Management), Milestone 10 (Billing),
 Milestone 11 (Insurance Management), Milestone 12 (IPD & Bed
 Management — both Checkpoint 12.1 Admission/Wards/Beds and
-Checkpoint 12.2 Nursing/MAR/Discharge), and Milestone 13 (General
-Inventory) are complete end-to-end (backend, frontend, tests, docs);
-everything else's percentage is still provisional.**
+Checkpoint 12.2 Nursing/MAR/Discharge), Milestone 13 (General
+Inventory), and Milestone 14 (Staff & Attendance) are complete
+end-to-end (backend, frontend, tests, docs); everything else's
+percentage is still provisional.**
 
 See `MODULE_STATUS.md` for the authoritative, maintained breakdown. Until a
 session performs a full audit of each module's actual implementation depth,
@@ -622,7 +623,68 @@ decisions).
   and asset-user assignment take a free-text internal user ID
   (same shape as the pre-existing TD-0028).
 
-See `.ai/NEXT.md` for **Milestone 14 — Staff & Attendance**, next.
+## Milestone 14 — Staff & Attendance: Complete
+
+Completed in a single session (2026-08-05), no checkpoint split
+needed. Scope is the non-doctor employee population (Nurse,
+Receptionist, Lab Technician, Radiology Technician, Pharmacist,
+Cashier, HR, Inventory Manager) — Doctors keep their existing
+dedicated `DoctorSchedule`/`DoctorLeave` system from Checkpoint 4.2,
+deliberately not merged or duplicated. See **ADR-0022** for the full
+schema/RBAC design.
+
+- Staff directory (`Staff` model extended, not replaced — gained
+  `hospitalId`, `employmentType`/`employmentStatus` enums, a
+  `reportsToId` self-relation for reporting hierarchy, `dateOfLeaving`,
+  `monthlySalary`), `StaffDocument` (mirrors `DoctorDocument`),
+  onboarding via the existing generic `StaffOnboardingService`.
+- Shift catalog (`Shift` — name/code/`HH:mm` start+end/break/grace-
+  period/night-shift flag) and per-staff-per-date roster
+  (`ShiftRoster`) supporting weekly, rotating, and night-shift
+  assignment, including a bulk staff-assignment action.
+- Attendance (`Attendance`, one row per staff per date) — clock in/
+  out with a server-derived Present/Late/Half-Day/Week-Off status
+  (disclosed rule based on the day's roster shift's grace period and
+  standard hours), manual marking, corrections (applied immediately —
+  TD-0038), a monthly calendar, and a dashboard.
+- Leave management — per-org annual-day quota per `LeaveType`
+  (`LeaveTypeConfig`), `StaffLeave` (mirrors `DoctorLeave` — apply/
+  approve/reject/cancel, overlap conflict check), a computed leave
+  balance (quota minus approved day-spans, not a mutable counter), and
+  a holiday calendar (`Holiday`).
+- Payroll Preparation — a read-only summary (present/late/half-day/
+  absent days, paid/unpaid leave days, overtime minutes/amount, a
+  leave-deduction amount, net payable days) over existing Attendance/
+  StaffLeave/Shift data plus a CSV export. No pay-run, payslip, or
+  disbursement processing — explicitly out of scope (TD-0037).
+- Staff Dashboard (headcount, today's present/late/absent/on-leave,
+  pending leave approvals, staff-by-department, shift coverage).
+- RBAC: `staff`/`staff.documents` (mirrors `doctors`/`doctors.
+  documents`), new `attendance`/`leave`/`shifts`/`shifts.roster`
+  namespaces — every non-doctor role granted genuine `.own`-scoped
+  self-service (clock in/out, apply/cancel own leave, view own
+  roster), HR granted the full all-scope admin set.
+- Frontend: a Staff Dashboard (`/dashboard/staff`, with a self clock-
+  in/out widget), Directory (`/directory`, search/filter + add-staff
+  dialog with a real hospital/department picker), a Profile page
+  (`/[staffId]` — Overview/Documents/Attendance-calendar/Leave-with-
+  balance tabs), Shifts (`/shifts`, catalog CRUD), Roster (`/roster`,
+  weekly grid + assign dialog — the first real staff-picker `Select`
+  in this repo's frontend), Attendance (`/attendance`, org-wide list +
+  correction dialog), Leave (`/leave`, requests/leave-types/holidays
+  tabs), and Payroll Prep (`/payroll`, summary table + CSV export).
+  Reused the pre-existing dormant sidebar "Staff" link unchanged.
+- Unit (513 API total) + e2e (278 total) tests passing; lint/
+  typecheck/build clean across all 6 packages.
+- **Deferred, disclosed, not faked**: no browser-verified screenshots
+  this session (TD-0036, explicit instruction, mirrors Milestone 13's
+  TD-0035); no biometric attendance-hardware integration exists
+  anywhere in this repo (TD-0039, same category as the SMS/AI-
+  provider/payment-gateway/PACS credential-blocked gaps); the
+  per-day/per-hour payroll rate is a disclosed convention
+  (`monthlySalary / 30`), not a configurable pay policy (TD-0037).
+
+See `.ai/NEXT.md` for **Milestone 15 — AI Features**, next.
 
 ## Milestone Screenshots
 

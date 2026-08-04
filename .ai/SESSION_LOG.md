@@ -6,6 +6,230 @@
 
 ---
 
+## Session: 2026-08-05 (Milestone 14 — Staff & Attendance, complete)
+
+### What was completed
+Continued directly from Milestone 13 per an explicit instruction
+giving the full Milestone 14 deliverable list (Staff Management/
+Attendance/Leave Management/Shift Scheduling/Payroll Preparation/
+Dashboard/RBAC). Read `CLAUDE.md`/`NEXT.md`/`PROJECT_CONTEXT.md`/
+`SESSION_LOG.md` first per the session's own instruction, then
+inspected the existing `Staff` model (schema.prisma) and the 3-line
+no-op `staff` module scaffold before designing anything — confirmed
+both were unaudited pre-existing scaffolding, the same category as
+`Medication`/`MedicalRecord`/`Ward`-`Bed`-`Admission` before their own
+milestones. Also read `DoctorSchedule`/`DoctorLeave`/`AvailabilityService`
+(Checkpoint 4.2) and their exact own-scope-resolution pattern
+(`PermissionsService.getScope` + a `*RefService.findProfileForUser`
+helper) before deciding Milestone 14's scope boundary. Recorded the
+full design as **ADR-0022**: this milestone covers the **non-doctor**
+employee population only (Nurse/Receptionist/Lab Technician/Radiology
+Technician/Pharmacist/Cashier/HR/Inventory Manager) — Doctors keep
+their existing Checkpoint-4.2 scheduling/leave system unmerged and
+un-duplicated (recorded as TD-0039, not left ambiguous). Per the
+reading policy, work touched Staff (new), Departments/Hospitals
+(`DepartmentsService`/`HospitalsService.getById` reuse, mirroring
+`DoctorsService`'s pattern), Scheduling (`availability.util.ts`'s
+date-helpers reused directly, not duplicated), the Prisma schema, and
+shared types. Did not re-scan Inventory/IPD/Billing/Insurance.
+
+- **Schema** (migration `20260804210705_staff_attendance_management`,
+  applied to both `medicore_dev`/`medicore_test`): `Staff` extended
+  with `hospitalId` (was missing), `employmentType`/`employmentStatus`
+  enums (replacing the scaffold's `isActive`/`shiftType` — mirrors the
+  `Ward`/`Room`/`Bed` "dedicated Status enum" precedent, ADR-0018),
+  `reportsToId` self-relation, `dateOfLeaving`, `monthlySalary`. New
+  models: `StaffDocument` (mirrors `DoctorDocument`), `Shift`
+  (org-scoped catalog — `HH:mm` start/end, break/grace-period minutes,
+  night-shift flag), `ShiftRoster` (one row per staff per date,
+  `@@unique([staffId, date])`), `Attendance` (one row per staff per
+  date, `AttendanceStatus` enum), `Holiday`, `LeaveTypeConfig`
+  (per-org annual-day quota per the existing `LeaveType` enum),
+  `StaffLeave` (mirrors `DoctorLeave`). The scaffold's `ShiftType`
+  enum itself was kept (still used by `NursingNote.shift` from
+  Milestone 12, unrelated to this milestone) — only `Staff`'s use of
+  it was dropped.
+- **RBAC** (`packages/database/prisma/seed.ts`): `staff`/`staff.
+  documents` (mirrors `doctors`/`doctors.documents`), new `attendance`
+  (`read`/`create`/`update`/`manage`), `leave` (`read`/`approve`/
+  `manage` — deliberately matches `doctors.leave`'s action set),
+  `shifts`/`shifts.roster` namespaces. Every non-doctor role
+  (Nurse/Receptionist/Lab Technician/Radiology Technician/Pharmacist/
+  Cashier/Inventory Manager) granted `.own`-scoped self-service
+  (`attendance.read/create/update`, `leave.read/manage`,
+  `shifts.roster.read`); HR granted the full all-scope admin set on
+  every new namespace plus its own self-service grants.
+- **Backend** (`apps/api/src/modules/staff/`, 20 new files, rewrote
+  the 3-line scaffold): `StaffRefService` (mirrors `DoctorRefService`),
+  `StaffService` (onboarding via the existing generic
+  `StaffOnboardingService`, list/get/create/update/employment-status),
+  `StaffDocumentsService`+`.controller.ts` (mirrors
+  `DoctorDocumentService` exactly — same upload/list/delete shape,
+  reuses `StorageService`), `ShiftsService` (catalog CRUD +
+  `standardMinutes` — a static helper shared with attendance/payroll
+  for shift-length calculation, crossing midnight for a night shift),
+  `ShiftRosterService` (assign/bulk-assign/list, feeds
+  `AttendanceService`'s lateness/half-day derivation), `AttendanceService`
+  (`clockIn`/`clockOut` — server-derives Present/Late/Half-Day/Week-Off
+  from the day's roster entry's shift grace-period/standard-minutes;
+  `mark()` — HR backdated override; `correct()` — recomputes
+  `workedMinutes`, flags `isCorrected`; monthly `calendar()`;
+  `getDashboardStats()`), `HolidaysService`, `LeaveTypesService`
+  (lists every `LeaveType` even if unconfigured, defaulting to 0
+  days), `StaffLeaveService` (mirrors `DoctorLeaveService` — apply/
+  approve/reject/cancel with an overlap conflict check; `getBalance()`
+  computes annualDays-minus-approved-day-spans rather than storing a
+  mutable counter, mirroring `Vital.bmi`/`IntakeOutputRecord`'s
+  computed-field precedent), `StaffDashboardService` (headcount,
+  today's attendance breakdown, pending leave approvals, by-department,
+  shift coverage), `PayrollService` (`getSummary()` — present/late/
+  half-day/absent days, paid/unpaid leave days split by
+  `LeaveTypeConfig.isPaid`, overtime minutes/amount using a disclosed
+  `monthlySalary / 30` per-day-rate convention, a leave-deduction
+  amount, net payable days; `toCsv()` — hand-built CSV string, no new
+  dependency).
+- **Audit integration**: `audit.listener.ts` gained 13 new `@OnEvent`
+  handlers (staff created/updated/employment-status-changed,
+  document uploaded/deleted, attendance clocked-in/clocked-out/marked/
+  corrected, leave requested/approved/rejected/cancelled).
+- **Tests**: 8 new unit spec files (49 tests — `StaffService`'s
+  onboarding-conflict paths, `ShiftsService`'s `standardMinutes` calc
+  including a night-shift midnight-crossing case, `AttendanceService`'s
+  full clock-in/out status-derivation matrix using
+  `jest.useFakeTimers().setSystemTime(...)` for deterministic
+  lateness, `StaffLeaveService`'s overlap + balance computation,
+  `PayrollService`'s overtime/deduction math and CSV shape,
+  `HolidaysService`/`ShiftRosterService`'s conflict/bulk-assign paths)
+  + `apps/api/test/staff.e2e-spec.ts` (14 e2e tests — the full golden
+  path against a real registered org: staff creation with a genuinely
+  provisioned login account, a full-day shift + roster assignment
+  chosen specifically to avoid wall-clock-time flakiness in lateness
+  assertions, clock-in/clock-out/duplicate-clock-in-rejection,
+  a manual correction, a document upload, leave-type config → apply →
+  approve → balance reflecting the approved days, holiday-calendar
+  CRUD, both dashboards, a payroll summary + a real downloaded CSV
+  confirmed to contain the header row and the staff member's data, and
+  an employment-status transition). All passing (513 API unit / 278
+  e2e total across the whole API, zero failures — up from 471/264
+  after Milestone 13).
+- **Frontend** (`apps/web/src/lib/api/{staff,shifts,attendance,leave,
+  payroll}.ts` — 5 new files; `apps/web/src/app/dashboard/staff/**` —
+  7 new routes): Dashboard (`page.tsx` — stat tiles, a self clock-in/
+  out widget gated on having a linked `Staff` profile, department/
+  shift-coverage breakdowns), Directory (`directory/page.tsx` —
+  search/filter/paginate + an add-staff dialog with real
+  `listHospitals`/`listDepartments` pickers and a non-doctor
+  `systemRole` select), Profile (`[staffId]/page.tsx` — Overview/
+  Documents/Attendance-calendar/Leave-with-balance tabs, inline in one
+  file rather than split into `_components/*` — a deliberate scope-
+  saving deviation from the IPD-admission-detail-page precedent, not
+  tech debt), Shifts (`shifts/page.tsx` — catalog CRUD with a
+  night-shift checkbox), Roster (`roster/page.tsx` — a real
+  week-navigable staff-by-date grid + an assign dialog using a real
+  staff-picker `Select` — the first one in this repo's frontend, now
+  that a real staff directory exists, replacing the free-text-ID
+  precedent from Milestone 13/TD-0028 for this specific use case),
+  Attendance (`attendance/page.tsx` — org-wide list with status/date
+  filters + a correction dialog), Leave (`leave/page.tsx` — three tabs:
+  Requests with approve/reject, Leave Types with inline quota editing,
+  Holidays with an add dialog), Payroll (`payroll/page.tsx` — a month
+  picker, a summary table, and a CSV export button reusing the
+  `downloadBlob` pattern from `lib/api/billing.ts`). Reused the
+  pre-existing dormant sidebar "Staff" nav item (`/dashboard/staff`,
+  `staff.read`-gated) completely unchanged — no sidebar edit needed.
+- **Full verification, all green**: `pnpm lint` / `pnpm typecheck` /
+  `pnpm build` clean across all 6 packages; `pnpm test` — 513 API unit
+  + 6 web, all passing; `pnpm test:e2e` — 278/278 passing. Both
+  `medicore_dev`/`medicore_test` databases migrated and reseeded
+  (permission catalog grew from ~171 to 191 rows) using the
+  already-running, correctly-mapped `medicore-postgres`/
+  `medicore-redis` containers (dash-named, ports 5434/6381) — no
+  container-naming gotcha hit this session, unlike Milestone 13's.
+- **No browser walkthrough, no screenshots** — this session's own
+  verification instructions explicitly said not to (Playwright, a
+  browser, screenshots, and manual walkthroughs were all named as
+  "Do NOT"), mirroring Milestone 13's TD-0035 under the exact same
+  kind of explicit instruction. Disclosed as **TD-0036** rather than
+  claimed as browser-verified.
+- Replaced `.ai/NEXT.md` with **Milestone 15 — AI Features**.
+
+### Files modified/created
+- Schema: `packages/database/prisma/schema.prisma`,
+  `packages/database/prisma/migrations/20260804210705_staff_attendance_management/`.
+- RBAC: `packages/database/prisma/seed.ts`.
+- Shared types: `packages/types/src/enums.ts` (4 new enums),
+  `packages/types/src/staff.ts`, `staff-document.ts`, `shift.ts`,
+  `attendance.ts`, `staff-leave.ts`, `payroll.ts` (all new),
+  `packages/types/src/index.ts`.
+- Backend: `apps/api/src/modules/staff/*` (rewrote the 3-line
+  scaffold; new: `staff-ref.service.ts`, `staff.service.ts`(+spec)+
+  `.controller.ts`, `staff-documents.service.ts`(+spec)+
+  `.controller.ts`, `shifts.service.ts`(+spec)+`.controller.ts`,
+  `shift-roster.service.ts`(+spec)+`.controller.ts`,
+  `attendance.service.ts`(+spec)+`.controller.ts`,
+  `holidays.service.ts`(+spec), `leave-types.service.ts`,
+  `staff-leave.service.ts`(+spec), `leave.controller.ts`,
+  `staff-dashboard.service.ts`+`.controller.ts`,
+  `payroll.service.ts`(+spec)+`.controller.ts`, `staff.module.ts`,
+  `dto/*`), `apps/api/src/modules/audit/audit.listener.ts` (extended),
+  `apps/api/test/staff.e2e-spec.ts` (new).
+- Frontend: `apps/web/src/lib/api/staff.ts`/`shifts.ts`/
+  `attendance.ts`/`leave.ts`/`payroll.ts` (new), `apps/web/src/app/
+  dashboard/staff/page.tsx` (new), `.../directory/page.tsx` (new),
+  `.../[staffId]/page.tsx` (new), `.../shifts/page.tsx` (new),
+  `.../roster/page.tsx` (new), `.../attendance/page.tsx` (new),
+  `.../leave/page.tsx` (new), `.../payroll/page.tsx` (new).
+- Docs: `.ai/PROJECT_CONTEXT.md`, `.ai/PROGRESS.md`,
+  `.ai/MODULE_STATUS.md`, `.ai/CHANGELOG.md`, `.ai/DECISIONS.md`
+  (ADR-0022), `.ai/TECH_DEBT.md` (TD-0036, TD-0037, TD-0038, TD-0039),
+  `.ai/NEXT.md` (replaced).
+
+### Architectural decisions made
+See **ADR-0022** in `DECISIONS.md` for the full reasoning — summary:
+Milestone 14 covers non-doctor staff only (Doctors keep their existing
+Checkpoint-4.2 system, deliberately not merged); `Staff` extended
+in-place rather than replaced; `ShiftRoster` is a per-day assignment
+table (not a versioned weekly template like `DoctorSchedule`) since
+rotating/night shifts genuinely vary day to day; leave balance is
+computed on read, not a mutable counter; Payroll Prep has no new
+persisted model and stops at preparation/export by design; RBAC
+namespacing mirrors `doctors.*`/`ipd.*`'s established sub-resource
+pattern.
+
+### Known issues
+- TD-0036: No browser-verified screenshots for Milestone 14 — this
+  session was explicitly told not to attempt it (mirrors TD-0035).
+- TD-0037: Payroll Prep's per-day/per-hour rate (`monthlySalary / 30`)
+  is a disclosed convention, not a configurable per-org pay policy.
+- TD-0038: Attendance corrections apply immediately — no HR approval
+  gate like `StaffLeave`'s apply→approve/reject workflow (low risk
+  today since no self-service role is seeded with `attendance.update`).
+- TD-0039: No doctor-duty-roster integration (by design — doctors keep
+  their existing system) and no biometric attendance-hardware
+  integration exists anywhere in this repo (same category as the
+  SMS/AI-provider/payment-gateway/PACS credential-blocked gaps).
+
+### Recommended next task
+**Milestone 15 — AI Features**, per `docs/roadmap.md` and the
+now-replaced `.ai/NEXT.md`. Do not re-implement or re-verify anything
+from Milestone 14. Likely credential-blocked in this environment (no
+real `OPENAI_API_KEY`/`ANTHROPIC_API_KEY`) — read `TECH_DEBT.md`'s
+prior credential-blocked disclosures (TD-0015/TD-0018/TD-0019) before
+starting, and raise the question with the user rather than fabricating
+provider responses.
+
+### Estimated project completion
+**Overall: ~15 of 18 roadmap milestones/checkpoints fully complete
+end-to-end** (Doctors/Scheduling, Appointments, Clinical/EMR,
+Laboratory, Radiology, Pharmacy, Billing, Insurance, IPD — both
+checkpoints — General Inventory, Staff & Attendance — plus
+foundational auth/RBAC/multi-tenancy scaffolding). **Staff module:
+100% for Milestone 14** (backend + frontend both complete; TD-0036–
+TD-0039 tracked, not blocking). Everything else's percentage remains
+provisional per `MODULE_STATUS.md`.
+
+---
+
 ## Session: 2026-08-05 (Milestone 13 — General Inventory, complete)
 
 ### What was completed

@@ -273,6 +273,46 @@ enum LeaveStatus {
   CANCELLED
 }
 
+// ─── Staff & Attendance (Milestone 14) ─────────────────────────────────────
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERN
+  CONSULTANT
+}
+
+enum EmploymentStatus {
+  ACTIVE
+  ON_LEAVE
+  SUSPENDED
+  TERMINATED
+  RESIGNED
+}
+
+enum StaffDocumentType {
+  ID_PROOF
+  EDUCATIONAL_CERTIFICATE
+  EXPERIENCE_CERTIFICATE
+  CONTRACT
+  OTHER
+}
+
+// One row per staff per calendar day — derived at clock-out (or by a manual
+// correction) from the day's ShiftRoster assignment, mirrors the abnormal-
+// flagging precedent (laboratory/abnormal-flagging.ts): a disclosed,
+// documented rule, not a clinically/legally certified attendance policy.
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  HALF_DAY
+  ABSENT
+  ON_LEAVE
+  HOLIDAY
+  WEEK_OFF
+}
+
 enum SystemRole {
   SUPER_ADMIN
   ORG_ADMIN
@@ -497,6 +537,13 @@ model Organization {
   medicationAdministrations MedicationAdministration[]
   dischargeChecklistItems   DischargeChecklistItem[]
   dischargeSummaries        DischargeSummary[]
+  staffDocuments            StaffDocument[]
+  shifts                    Shift[]
+  shiftRosters              ShiftRoster[]
+  attendanceRecords         Attendance[]
+  holidays                  Holiday[]
+  leaveTypeConfigs          LeaveTypeConfig[]
+  staffLeaves               StaffLeave[]
 
   @@index([slug])
   @@map("organizations")
@@ -615,6 +662,7 @@ model Hospital {
   departments  Department[]
   userRoles    UserRole[]
   doctors      Doctor[]
+  staff        Staff[]
 
   @@unique([code, organizationId])
   @@index([organizationId])
@@ -797,25 +845,205 @@ model DoctorDocument {
 }
 
 model Staff {
-  id             String    @id @default(cuid())
-  userId         String    @unique
-  employeeId     String
-  designation    String
-  departmentId   String?
+  id               String           @id @default(cuid())
+  userId           String           @unique
+  employeeId       String
+  designation      String
+  departmentId     String?
+  hospitalId       String
+  organizationId   String
+  employmentType   EmploymentType   @default(FULL_TIME)
+  employmentStatus EmploymentStatus @default(ACTIVE)
+  reportsToId      String?
+  joiningDate      DateTime
+  dateOfLeaving    DateTime?
+  // Monthly gross, used only to derive a per-day rate for unpaid-leave
+  // deduction and an hourly rate for overtime in Payroll Prep (see
+  // PayrollService) — not a full payroll/compensation-management feature.
+  monthlySalary    Decimal?         @db.Decimal(10, 2)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  user          User            @relation(fields: [userId], references: [id])
+  department    Department?     @relation(fields: [departmentId], references: [id])
+  hospital      Hospital        @relation(fields: [hospitalId], references: [id])
+  organization  Organization    @relation(fields: [organizationId], references: [id])
+  reportsTo     Staff?          @relation("StaffHierarchy", fields: [reportsToId], references: [id])
+  directReports Staff[]         @relation("StaffHierarchy")
+  documents     StaffDocument[]
+  shiftRosters  ShiftRoster[]
+  attendance    Attendance[]
+  leaves        StaffLeave[]
+
+  @@unique([employeeId, organizationId])
+  @@index([organizationId])
+  @@index([hospitalId])
+  @@index([departmentId])
+  @@index([reportsToId])
+  @@map("staff")
+}
+
+model StaffDocument {
+  id             String            @id @default(cuid())
+  staffId        String
   organizationId String
-  shiftType      ShiftType @default(MORNING)
-  joiningDate    DateTime
+  documentType   StaffDocumentType
+  fileName       String
+  fileUrl        String
+  mimeType       String
+  fileSizeBytes  Int
+  uploadedAt     DateTime          @default(now())
+
+  staff        Staff        @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  Organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([staffId])
+  @@map("staff_documents")
+}
+
+// Shift catalog — org-scoped definitions (a hospital typically has a
+// handful: Morning/Afternoon/Night). startTime/endTime are "HH:mm" strings,
+// mirroring DoctorScheduleDay's ScheduleShift JSON convention, since a shift
+// is always read/written as a whole unit and never queried by time range.
+model Shift {
+  id                 String   @id @default(cuid())
+  organizationId     String
+  name               String
+  code               String
+  startTime          String
+  endTime            String
+  breakMinutes       Int      @default(0)
+  gracePeriodMinutes Int      @default(15)
+  isNightShift       Boolean  @default(false)
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  rosters      ShiftRoster[]
+  attendance   Attendance[]
+
+  @@unique([code, organizationId])
+  @@index([organizationId])
+  @@map("shifts")
+}
+
+// One row per staff per date — the weekly/rotating roster is just this
+// table filtered to a date range and grouped by staff. `isOff` marks an
+// explicit day off (week-off) without needing a shift row.
+model ShiftRoster {
+  id              String   @id @default(cuid())
+  staffId         String
+  shiftId         String?
+  organizationId  String
+  date            DateTime @db.Date
+  isOff           Boolean  @default(false)
+  notes           String?
+  createdByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  staff        Staff        @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  shift        Shift?       @relation(fields: [shiftId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([staffId, date])
+  @@index([organizationId, date])
+  @@index([shiftId])
+  @@map("shift_rosters")
+}
+
+model Attendance {
+  id                String           @id @default(cuid())
+  staffId           String
+  shiftId           String?
+  organizationId    String
+  date              DateTime         @db.Date
+  clockInAt         DateTime?
+  clockOutAt        DateTime?
+  status            AttendanceStatus @default(ABSENT)
+  workedMinutes     Int?
+  lateByMinutes     Int?
+  notes             String?
+  isCorrected       Boolean          @default(false)
+  correctedByUserId String?
+  correctionReason  String?
+  correctedAt       DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  staff        Staff        @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  shift        Shift?       @relation(fields: [shiftId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([staffId, date])
+  @@index([organizationId, date])
+  @@index([staffId])
+  @@map("attendance")
+}
+
+model Holiday {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  date           DateTime @db.Date
+  isOptional     Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, date])
+  @@index([organizationId])
+  @@map("holidays")
+}
+
+// Per-org, per-leave-type annual quota. Leave *balance* is computed on read
+// (annualDays minus the sum of approved StaffLeave day-spans this calendar
+// year), not stored as a mutable counter — mirrors this repo's preference
+// for computed fields (Vital.bmi, IntakeOutputRecord's balance) over a
+// counter that can drift out of sync with the source rows.
+model LeaveTypeConfig {
+  id             String    @id @default(cuid())
+  organizationId String
+  leaveType      LeaveType
+  annualDays     Int
+  isPaid         Boolean   @default(true)
   isActive       Boolean   @default(true)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  user         User         @relation(fields: [userId], references: [id])
-  department   Department?  @relation(fields: [departmentId], references: [id])
   organization Organization @relation(fields: [organizationId], references: [id])
 
-  @@unique([employeeId, organizationId])
+  @@unique([organizationId, leaveType])
   @@index([organizationId])
-  @@map("staff")
+  @@map("leave_type_configs")
+}
+
+model StaffLeave {
+  id              String      @id @default(cuid())
+  staffId         String
+  organizationId  String
+  leaveType       LeaveType
+  startDate       DateTime    @db.Date
+  endDate         DateTime    @db.Date
+  reason          String?
+  status          LeaveStatus @default(PENDING)
+  appliedByUserId String
+  decidedByUserId String?
+  decidedAt       DateTime?
+  decisionNote    String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  staff        Staff        @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([staffId])
+  @@index([organizationId])
+  @@index([status, organizationId])
+  @@index([staffId, startDate, endDate])
+  @@map("staff_leaves")
 }
 
 // ─── Patient ───────────────────────────────────────────────────────────────

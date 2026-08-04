@@ -5,69 +5,66 @@
 
 ## Immediate Next Task
 
-**Milestone 14 — Staff & Attendance**, per `docs/roadmap.md`. Milestone 13
-(General Inventory) is now fully complete — backend (commit `e7f4abb`,
-retroactively documented as ADR-0020) and frontend (Checkpoint 1 +
-this session, 20 routes) both done, tests green. Do not re-implement or
-re-verify anything from Milestone 13.
+**Milestone 15 — AI Features**, per `docs/roadmap.md`. Milestone 14
+(Staff & Attendance) is now fully complete — backend, frontend, tests,
+docs all done, all verification green. Do not re-implement or
+re-verify anything from Milestone 14.
 
 ### Scope, per `docs/roadmap.md`
 
-- Staff profiles and employee records
-- Department and role assignment
-- Shift management
-- Attendance marking (manual + biometric hook)
-- Leave management
-- Doctor duty roster
-- Staff reports
-- Frontend: staff management
-- Frontend: attendance dashboard
+- Provider abstraction layer (OpenAI + Anthropic adapters)
+- Prompt management system (DB-stored, versioned)
+- Lab report PDF → text extraction → AI summarization
+- Prescription image OCR → structured data extraction
+- Voice recording → Whisper transcription → SOAP note extraction
+- Appointment scheduling chatbot (streaming)
+- AI usage tracking per org
+- Frontend: AI features in context (summary panel, OCR review, chatbot
+  widget)
 
 ### What's already in the repo — verify before assuming either way
 
 A quick look (not a full audit — do that first) found:
-- `apps/api/src/modules/staff/` already exists (`staff.controller.ts`/
-  `staff.service.ts`/`staff.module.ts`) — check whether it's a 3-line
-  no-op scaffold (the `billing`/`insurance`/`pharmacy` precedent before
-  their milestones) or something real.
-- A `Staff` model already exists in `packages/database/prisma/
-  schema.prisma` (line ~799) — **read it before designing anything
-  new**. Every prior milestone in this repo (Medication → Drug,
-  MedicalRecord → Encounter, Ward/Bed/Admission → extended) found an
-  unaudited pre-existing scaffold model that shaped the actual design;
-  assume this one does too until proven otherwise.
-- No `Attendance`/`Shift`/`Leave`(staff-side)/`DutyRoster` models exist
-  yet in the schema — these are likely new.
-- `StaffOnboardingService` (`apps/api/src/common/onboarding/`) is the
-  existing generic staff-onboarding path used by Doctor/Nurse/etc. —
-  reuse it, don't reimplement user-linking.
-- Doctor scheduling (`apps/api/src/modules/scheduling/`) already has
-  weekly schedules + leave management for doctors specifically
-  (Checkpoint 4.2) — decide explicitly whether Milestone 14's "Shift
-  management"/"Leave management"/"Doctor duty roster" reuse/extend that
-  module or are a separate general-staff system; record the decision as
-  an ADR either way, don't silently duplicate or silently merge.
+- `apps/api/src/modules/ai/` already exists (controller/service/module)
+  — check whether it's a no-op scaffold (the standing precedent in this
+  repo before every AI-adjacent milestone) or something real.
+- **This milestone is genuinely credential-blocked** in this
+  environment: no `OPENAI_API_KEY`/`ANTHROPIC_API_KEY` (real values —
+  `apps/api/.env` currently holds placeholder `sk-xxxxxxxxxxxx`-style
+  strings), and prior sessions have consistently disclosed rather than
+  faked AI features for exactly this reason (see TECH_DEBT TD-0015
+  SMS, TD-0018 lab-report AI summarization, TD-0019 image
+  interpretation/PACS). Read `TECH_DEBT.md` for the full list before
+  starting, and raise the credential question with the user rather
+  than fabricating provider responses.
+- Every prior milestone in this repo found an unaudited pre-existing
+  scaffold that shaped the actual design (`Medication`→`Drug`,
+  `MedicalRecord`→`Encounter`, `Ward`/`Bed`/`Admission`, `Staff`) —
+  check whether any AI-related schema/enum already exists
+  unaudited before designing new models.
+- Lab report PDFs (`laboratory` module), prescription images
+  (`StorageService`-backed uploads on `Prescription`/encounter
+  attachments), and voice recordings (no existing upload path — would
+  be new) are the three real input sources named above; read each
+  relevant module's existing PDF/attachment generation before deciding
+  how AI summarization/OCR would plug in, rather than inventing a
+  parallel storage path.
 
 ### Process reminders (from `CLAUDE.md`)
 
-- Per the repository reading policy: this task touches Staff/HR only.
-  Do not re-scan Inventory/IPD/Nursing/Insurance/Billing beyond reading
-  one page as a UI pattern reference if needed.
+- Per the repository reading policy: this task touches a new `ai`
+  module plus read-only integration points into Laboratory,
+  Prescriptions, Appointments, and Organizations (for per-org usage
+  tracking). Do not re-scan Staff/Attendance/Inventory/IPD/Billing
+  beyond reading one page as a UI-pattern reference if needed.
 - Run full verification before calling any task done: `pnpm lint &&
   pnpm typecheck && pnpm test && pnpm test:e2e && pnpm build`. The test
   DB containers are named `medicore-postgres`/`medicore-redis` (mapped
   to host ports 5434/6381 per `apps/api/.env`) — start them with
   `docker start medicore-postgres medicore-redis`, not `docker compose
-  up`, which creates a *different*, unmapped container pair
-  (`medicore_postgres`/`medicore_redis`, no matching `.env` port) that
-  will silently fail to connect. If Docker Desktop itself isn't
-  running, `open -a Docker` and wait for `docker info` to succeed.
-- Take screenshots under `docs/screens/` and browser-verify the golden
-  path once a working UI flow exists, unless explicitly instructed
-  otherwise for that session (Milestone 13's frontend session was told
-  not to — see TD-0035 — that was an explicit override, not a new
-  default).
-- Given the scope above is large (8 deliverables, 2 frontend areas),
-  treat this as at least one checkpoint; split further if the Staff
-  profile/shift/attendance/leave/roster pieces turn out to be as
-  substantial as Milestone 13's procurement chain was.
+  up`, which creates a *different*, unmapped container pair.
+- If real AI provider credentials are genuinely unavailable, disclose
+  the gap explicitly (mirroring TD-0015/TD-0018/TD-0019/TD-0027)
+  rather than fabricating a response — ask the user whether to build
+  the full pipeline against a real key they'll provide, stub the
+  provider-adapter interface only, or defer the feature entirely.

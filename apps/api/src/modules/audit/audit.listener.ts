@@ -161,6 +161,119 @@ interface RefundEventPayload {
   reason?: string
 }
 
+interface PreAuthEventPayload {
+  preAuthId: string
+  patientId?: string
+  status?: string
+  organizationId: string
+  userId?: string
+}
+
+interface ClaimEventPayload {
+  claimId: string
+  patientId?: string
+  status?: string
+  insuranceShare?: number
+  organizationId: string
+  userId?: string
+}
+
+interface AdmissionEventPayload {
+  admissionId: string
+  patientId?: string
+  attendingDoctorId?: string
+  status?: string
+  organizationId: string
+  userId?: string
+}
+
+interface BedAllocationEventPayload {
+  admissionId: string
+  bedId?: string
+  fromBedId?: string
+  toBedId?: string
+  patientId?: string
+  organizationId: string
+  userId?: string
+}
+
+interface NursingNoteEventPayload {
+  nursingNoteId: string
+  admissionId: string
+  patientId: string
+  organizationId: string
+  userId?: string
+  isEscalated?: boolean
+}
+
+interface NursingAssessmentEventPayload {
+  nursingAssessmentId: string
+  admissionId: string
+  patientId: string
+  organizationId: string
+  userId?: string
+  fallRiskLevel?: string | null
+  bradenRiskLevel?: string | null
+}
+
+interface IntakeOutputEventPayload {
+  intakeOutputRecordId: string
+  admissionId: string
+  patientId: string
+  organizationId: string
+  userId?: string
+}
+
+interface IpdOrderEventPayload {
+  ipdOrderId: string
+  admissionId: string
+  patientId?: string
+  organizationId: string
+  userId?: string
+  category?: string
+}
+
+interface NursingTaskEventPayload {
+  nursingTaskId: string
+  admissionId: string
+  patientId?: string
+  organizationId: string
+  userId?: string
+  priority?: string
+  fromStatus?: string
+  toStatus?: string
+}
+
+interface MarScheduledEventPayload {
+  admissionId: string
+  prescriptionItemId: string
+  patientId: string
+  organizationId: string
+  userId?: string
+  count: number
+}
+
+interface MedicationAdministrationEventPayload {
+  medicationAdministrationId: string
+  admissionId: string
+  patientId?: string
+  organizationId: string
+  userId?: string
+  type?: string
+  fromStatus?: string
+  toStatus?: string
+}
+
+interface DischargeEventPayload {
+  admissionId: string
+  patientId?: string
+  organizationId: string
+  userId?: string
+  itemKey?: string
+  completed?: boolean
+  daysStayed?: number
+}
+
 @Injectable()
 export class AuditListener {
   private readonly logger = new Logger(AuditListener.name)
@@ -487,6 +600,317 @@ export class AuditListener {
   @OnEvent('refund.rejected')
   onRefundRejected(payload: RefundEventPayload) {
     return this.persistRefundEvent(payload, 'refund.rejected')
+  }
+
+  @OnEvent('insurance.preauth_created')
+  onPreAuthCreated(payload: PreAuthEventPayload) {
+    return this.persistPreAuthEvent(payload, 'insurance.preauth_created')
+  }
+
+  @OnEvent('insurance.preauth_submitted')
+  onPreAuthSubmitted(payload: PreAuthEventPayload) {
+    return this.persistPreAuthEvent(payload, 'insurance.preauth_submitted')
+  }
+
+  @OnEvent('insurance.preauth_under_review')
+  onPreAuthUnderReview(payload: PreAuthEventPayload) {
+    return this.persistPreAuthEvent(payload, 'insurance.preauth_under_review')
+  }
+
+  @OnEvent('insurance.preauth_decided')
+  onPreAuthDecided(payload: PreAuthEventPayload) {
+    return this.persistPreAuthEvent(payload, `insurance.preauth_decided_${(payload.status ?? '').toLowerCase()}`)
+  }
+
+  @OnEvent('insurance.preauth_cancelled')
+  onPreAuthCancelled(payload: PreAuthEventPayload) {
+    return this.persistPreAuthEvent(payload, 'insurance.preauth_cancelled')
+  }
+
+  @OnEvent('insurance.preauth_attachment_uploaded')
+  onPreAuthAttachmentUploaded(payload: PreAuthEventPayload) {
+    return this.persistPreAuthEvent(payload, 'insurance.preauth_attachment_uploaded')
+  }
+
+  @OnEvent('insurance.claim_created')
+  onClaimCreated(payload: ClaimEventPayload) {
+    return this.persistClaimEvent(payload, 'insurance.claim_created')
+  }
+
+  @OnEvent('insurance.claim_submitted')
+  onClaimSubmitted(payload: ClaimEventPayload) {
+    return this.persistClaimEvent(payload, 'insurance.claim_submitted')
+  }
+
+  @OnEvent('insurance.claim_under_review')
+  onClaimUnderReview(payload: ClaimEventPayload) {
+    return this.persistClaimEvent(payload, 'insurance.claim_under_review')
+  }
+
+  @OnEvent('insurance.claim_decided')
+  onClaimDecided(payload: ClaimEventPayload) {
+    return this.persistClaimEvent(payload, `insurance.claim_decided_${(payload.status ?? '').toLowerCase()}`)
+  }
+
+  @OnEvent('insurance.claim_settled')
+  onClaimSettled(payload: ClaimEventPayload) {
+    return this.persistClaimEvent(payload, `insurance.claim_settled_${(payload.status ?? '').toLowerCase()}`)
+  }
+
+  @OnEvent('insurance.claim_closed')
+  onClaimClosed(payload: ClaimEventPayload) {
+    return this.persistClaimEvent(payload, 'insurance.claim_closed')
+  }
+
+  @OnEvent('ipd.admission_created')
+  onAdmissionCreated(payload: AdmissionEventPayload) {
+    return this.persistAdmissionEvent(payload, 'ipd.admission_created')
+  }
+
+  @OnEvent('ipd.admission_updated')
+  onAdmissionUpdated(payload: AdmissionEventPayload) {
+    return this.persistAdmissionEvent(payload, 'ipd.admission_updated')
+  }
+
+  @OnEvent('ipd.admission_cancelled')
+  onAdmissionCancelled(payload: AdmissionEventPayload) {
+    return this.persistAdmissionEvent(payload, 'ipd.admission_cancelled')
+  }
+
+  @OnEvent('ipd.bed_allocated')
+  onBedAllocated(payload: BedAllocationEventPayload) {
+    return this.persistBedAllocationEvent(payload, 'ipd.bed_allocated')
+  }
+
+  @OnEvent('ipd.bed_reserved')
+  onBedReserved(payload: BedAllocationEventPayload) {
+    return this.persistBedAllocationEvent(payload, 'ipd.bed_reserved')
+  }
+
+  @OnEvent('ipd.bed_reservation_cancelled')
+  onBedReservationCancelled(payload: BedAllocationEventPayload) {
+    return this.persistBedAllocationEvent(payload, 'ipd.bed_reservation_cancelled')
+  }
+
+  @OnEvent('ipd.bed_vacated')
+  onBedVacated(payload: BedAllocationEventPayload) {
+    return this.persistBedAllocationEvent(payload, 'ipd.bed_vacated')
+  }
+
+  @OnEvent('ipd.bed_transferred')
+  onBedTransferred(payload: BedAllocationEventPayload) {
+    return this.persistBedAllocationEvent(payload, 'ipd.bed_transferred')
+  }
+
+  @OnEvent('ipd.nursing_note_created')
+  onNursingNoteCreated(payload: NursingNoteEventPayload) {
+    return this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action: payload.isEscalated ? 'ipd.nursing_note_created_escalated' : 'ipd.nursing_note_created',
+      resource: 'NursingNote',
+      resourceId: payload.nursingNoteId,
+      after: { admissionId: payload.admissionId, patientId: payload.patientId },
+    })
+  }
+
+  @OnEvent('ipd.nursing_assessment_created')
+  onNursingAssessmentCreated(payload: NursingAssessmentEventPayload) {
+    return this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action: 'ipd.nursing_assessment_created',
+      resource: 'NursingAssessment',
+      resourceId: payload.nursingAssessmentId,
+      after: {
+        admissionId: payload.admissionId,
+        patientId: payload.patientId,
+        fallRiskLevel: payload.fallRiskLevel,
+        bradenRiskLevel: payload.bradenRiskLevel,
+      },
+    })
+  }
+
+  @OnEvent('ipd.intake_output_recorded')
+  onIntakeOutputRecorded(payload: IntakeOutputEventPayload) {
+    return this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action: 'ipd.intake_output_recorded',
+      resource: 'IntakeOutputRecord',
+      resourceId: payload.intakeOutputRecordId,
+      after: { admissionId: payload.admissionId, patientId: payload.patientId },
+    })
+  }
+
+  @OnEvent('ipd.order_created')
+  onIpdOrderCreated(payload: IpdOrderEventPayload) {
+    return this.persistIpdOrderEvent(payload, 'ipd.order_created')
+  }
+
+  @OnEvent('ipd.order_discontinued')
+  onIpdOrderDiscontinued(payload: IpdOrderEventPayload) {
+    return this.persistIpdOrderEvent(payload, 'ipd.order_discontinued')
+  }
+
+  @OnEvent('ipd.nursing_task_created')
+  onNursingTaskCreated(payload: NursingTaskEventPayload) {
+    return this.persistNursingTaskEvent(payload, 'ipd.nursing_task_created')
+  }
+
+  @OnEvent('ipd.nursing_task_status_changed')
+  onNursingTaskStatusChanged(payload: NursingTaskEventPayload) {
+    return this.persistNursingTaskEvent(
+      payload,
+      `ipd.nursing_task_status_changed_to_${(payload.toStatus ?? '').toLowerCase()}`,
+    )
+  }
+
+  @OnEvent('ipd.mar_scheduled')
+  onMarScheduled(payload: MarScheduledEventPayload) {
+    return this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action: 'ipd.mar_scheduled',
+      resource: 'MedicationAdministration',
+      resourceId: payload.prescriptionItemId,
+      after: { admissionId: payload.admissionId, patientId: payload.patientId, count: payload.count },
+    })
+  }
+
+  @OnEvent('ipd.mar_dose_created')
+  onMarDoseCreated(payload: MedicationAdministrationEventPayload) {
+    return this.persistMarDoseEvent(payload, 'ipd.mar_dose_created')
+  }
+
+  @OnEvent('ipd.mar_dose_status_changed')
+  onMarDoseStatusChanged(payload: MedicationAdministrationEventPayload) {
+    return this.persistMarDoseEvent(payload, `ipd.mar_dose_status_changed_to_${(payload.toStatus ?? '').toLowerCase()}`)
+  }
+
+  @OnEvent('ipd.discharge_approved')
+  onDischargeApproved(payload: DischargeEventPayload) {
+    return this.persistDischargeEvent(payload, 'ipd.discharge_approved')
+  }
+
+  @OnEvent('ipd.discharge_checklist_item_updated')
+  onDischargeChecklistItemUpdated(payload: DischargeEventPayload) {
+    return this.persistDischargeEvent(payload, 'ipd.discharge_checklist_item_updated')
+  }
+
+  @OnEvent('ipd.discharge_summary_saved')
+  onDischargeSummarySaved(payload: DischargeEventPayload) {
+    return this.persistDischargeEvent(payload, 'ipd.discharge_summary_saved')
+  }
+
+  @OnEvent('ipd.discharge_completed')
+  onDischargeCompleted(payload: DischargeEventPayload) {
+    return this.persistDischargeEvent(payload, 'ipd.discharge_completed')
+  }
+
+  private async persistIpdOrderEvent(payload: IpdOrderEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'IpdOrder',
+      resourceId: payload.ipdOrderId,
+      after: { admissionId: payload.admissionId, patientId: payload.patientId, category: payload.category },
+    })
+  }
+
+  private async persistNursingTaskEvent(payload: NursingTaskEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'NursingTask',
+      resourceId: payload.nursingTaskId,
+      after: {
+        admissionId: payload.admissionId,
+        patientId: payload.patientId,
+        priority: payload.priority,
+        fromStatus: payload.fromStatus,
+        toStatus: payload.toStatus,
+      },
+    })
+  }
+
+  private async persistMarDoseEvent(payload: MedicationAdministrationEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'MedicationAdministration',
+      resourceId: payload.medicationAdministrationId,
+      after: {
+        admissionId: payload.admissionId,
+        patientId: payload.patientId,
+        type: payload.type,
+        fromStatus: payload.fromStatus,
+        toStatus: payload.toStatus,
+      },
+    })
+  }
+
+  private async persistDischargeEvent(payload: DischargeEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'Admission',
+      resourceId: payload.admissionId,
+      after: {
+        patientId: payload.patientId,
+        itemKey: payload.itemKey,
+        completed: payload.completed,
+        daysStayed: payload.daysStayed,
+      },
+    })
+  }
+
+  private async persistAdmissionEvent(payload: AdmissionEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'Admission',
+      resourceId: payload.admissionId,
+      after: { patientId: payload.patientId, attendingDoctorId: payload.attendingDoctorId, status: payload.status },
+    })
+  }
+
+  private async persistBedAllocationEvent(payload: BedAllocationEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'Admission',
+      resourceId: payload.admissionId,
+      after: { bedId: payload.bedId, fromBedId: payload.fromBedId, toBedId: payload.toBedId, patientId: payload.patientId },
+    })
+  }
+
+  private async persistPreAuthEvent(payload: PreAuthEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'PreAuthorization',
+      resourceId: payload.preAuthId,
+      after: { patientId: payload.patientId, status: payload.status },
+    })
+  }
+
+  private async persistClaimEvent(payload: ClaimEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'InsuranceClaim',
+      resourceId: payload.claimId,
+      after: { patientId: payload.patientId, status: payload.status, insuranceShare: payload.insuranceShare },
+    })
   }
 
   private async persistDoctorEvent(payload: DoctorEventPayload, action: string) {

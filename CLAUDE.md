@@ -202,6 +202,27 @@ Reuse .ai documentation instead of rediscovering architecture.
 
 Avoid long planning phases for small tasks.
 
+---
+
+## Verification Policy
+
+Automated verification is the default.
+
+Required:
+
+- pnpm lint
+- pnpm typecheck
+- pnpm test
+- pnpm test:e2e
+- pnpm build
+
+Do not perform browser walkthroughs or capture screenshots unless:
+
+1. explicitly requested by the user,
+2. a workflow cannot be validated through automated tests,
+3. or a UI regression is suspected.
+
+Prefer automated verification over browser verification.
 
 ---
 

@@ -61,6 +61,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import {
+  createInsuranceClaim,
+  createPreAuthorization,
+  listInsuranceClaims,
+  listPatientCoverages,
+  listPreAuthorizations,
+} from '@/lib/api/insurance'
+import {
   collectLabSample,
   createLabOrder,
   downloadLabReportPdf,
@@ -132,6 +139,7 @@ export default function EncounterDetailPage() {
   const canUpdateLab = hasPermission('laboratory.update')
   const canOrderRadiology = hasPermission('radiology.create')
   const canDispense = hasPermission('pharmacy.create')
+  const canRequestPreAuth = hasPermission('insurance.preauth.create')
 
   const encounterQuery = useQuery({
     queryKey: ['encounters', 'detail', encounterId],
@@ -211,6 +219,7 @@ export default function EncounterDetailPage() {
           <TabsTrigger value="lab-orders">Lab Orders</TabsTrigger>
           <TabsTrigger value="radiology">Radiology</TabsTrigger>
           <TabsTrigger value="attachments">Attachments</TabsTrigger>
+          <TabsTrigger value="insurance">Insurance</TabsTrigger>
         </TabsList>
 
         <TabsContent value="subjective">
@@ -236,6 +245,9 @@ export default function EncounterDetailPage() {
         </TabsContent>
         <TabsContent value="attachments">
           <AttachmentsTab encounterId={encounterId} canUpdate={canUpdate} />
+        </TabsContent>
+        <TabsContent value="insurance">
+          <EncounterInsuranceTab encounterId={encounterId} patientId={encounter.patientId} canCreate={canRequestPreAuth} />
         </TabsContent>
       </Tabs>
     </div>
@@ -857,6 +869,294 @@ function AttachmentsTab({ encounterId, canUpdate }: { encounterId: string; canUp
         )}
       </div>
     </div>
+  )
+}
+
+const PREAUTH_STATUS_BADGE: Record<string, 'secondary' | 'success' | 'destructive' | 'warning' | 'outline'> = {
+  DRAFT: 'secondary',
+  SUBMITTED: 'outline',
+  UNDER_REVIEW: 'warning',
+  APPROVED: 'success',
+  PARTIALLY_APPROVED: 'warning',
+  REJECTED: 'destructive',
+  CANCELLED: 'secondary',
+}
+
+const CLAIM_STATUS_BADGE: Record<string, 'secondary' | 'success' | 'destructive' | 'warning' | 'outline'> = {
+  DRAFT: 'secondary',
+  SUBMITTED: 'outline',
+  UNDER_REVIEW: 'warning',
+  APPROVED: 'warning',
+  PARTIALLY_APPROVED: 'warning',
+  REJECTED: 'destructive',
+  SETTLED: 'success',
+  PARTIALLY_SETTLED: 'success',
+  CLOSED: 'secondary',
+}
+
+function EncounterInsuranceTab({
+  encounterId,
+  patientId,
+  canCreate,
+}: {
+  encounterId: string
+  patientId: string
+  canCreate: boolean
+}) {
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
+  const [preAuthDialogOpen, setPreAuthDialogOpen] = useState(false)
+  const [claimDialogOpen, setClaimDialogOpen] = useState(false)
+
+  const coveragesQuery = useQuery({
+    queryKey: ['insurance', 'patient-coverages', patientId],
+    queryFn: () => listPatientCoverages(patientId),
+  })
+  const preAuthQuery = useQuery({
+    queryKey: ['insurance', 'preauth', 'list', 'encounter', encounterId],
+    queryFn: () => listPreAuthorizations({ encounterId, limit: 50 }),
+  })
+  const claimsQuery = useQuery({
+    queryKey: ['insurance', 'claims', 'list', 'encounter', encounterId],
+    queryFn: () => listInsuranceClaims({ encounterId, limit: 50 }),
+  })
+
+  function invalidate() {
+    void queryClient.invalidateQueries({ queryKey: ['insurance', 'preauth', 'list', 'encounter', encounterId] })
+    void queryClient.invalidateQueries({ queryKey: ['insurance', 'claims', 'list', 'encounter', encounterId] })
+  }
+
+  const preAuths = preAuthQuery.data?.data ?? []
+  const claims = claimsQuery.data?.data ?? []
+  const coverages = coveragesQuery.data ?? []
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-lg border bg-card">
+        <div className="flex items-center justify-between border-b p-3">
+          <h3 className="text-sm font-semibold text-foreground">Pre-Authorizations</h3>
+          {canCreate && coverages.length > 0 && (
+            <Button size="sm" variant="outline" onClick={() => setPreAuthDialogOpen(true)}>
+              <Plus className="h-3.5 w-3.5" />
+              Request pre-auth
+            </Button>
+          )}
+        </div>
+        {preAuths.length === 0 ? (
+          <p className="p-4 text-sm text-muted-foreground">
+            {coverages.length === 0 ? 'This patient has no insurance coverage on file yet.' : 'No pre-authorizations for this encounter.'}
+          </p>
+        ) : (
+          <ul className="divide-y">
+            {preAuths.map((p) => (
+              <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
+                <span className="font-mono text-xs text-muted-foreground">{p.authNumber}</span>
+                <span>₹{p.requestedAmount}</span>
+                <Badge variant={PREAUTH_STATUS_BADGE[p.status]}>{formatEnumLabel(p.status)}</Badge>
+                <Link href="/dashboard/insurance/preauth" className="text-xs text-primary hover:underline">
+                  View queue
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="rounded-lg border bg-card">
+        <div className="flex items-center justify-between border-b p-3">
+          <h3 className="text-sm font-semibold text-foreground">Insurance Claims</h3>
+          {canCreate && coverages.length > 0 && (
+            <Button size="sm" variant="outline" onClick={() => setClaimDialogOpen(true)}>
+              <Plus className="h-3.5 w-3.5" />
+              File claim
+            </Button>
+          )}
+        </div>
+        {claims.length === 0 ? (
+          <p className="p-4 text-sm text-muted-foreground">
+            {coverages.length === 0 ? 'This patient has no insurance coverage on file yet.' : 'No insurance claims for this encounter.'}
+          </p>
+        ) : (
+          <ul className="divide-y">
+            {claims.map((c) => (
+              <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
+                <Link href={`/dashboard/insurance/${c.id}`} className="font-mono text-xs hover:underline">
+                  {c.claimNumber}
+                </Link>
+                <span>₹{c.claimedAmount}</span>
+                <Badge variant={CLAIM_STATUS_BADGE[c.status]}>{formatEnumLabel(c.status)}</Badge>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <RequestPreAuthDialog
+        open={preAuthDialogOpen}
+        onOpenChange={setPreAuthDialogOpen}
+        encounterId={encounterId}
+        coverages={coverages}
+        onCreated={() => {
+          invalidate()
+          toast({ title: 'Pre-authorization requested' })
+        }}
+      />
+      <FileClaimDialog
+        open={claimDialogOpen}
+        onOpenChange={setClaimDialogOpen}
+        encounterId={encounterId}
+        coverages={coverages}
+        onCreated={() => {
+          invalidate()
+          toast({ title: 'Claim filed' })
+        }}
+      />
+    </div>
+  )
+}
+
+function RequestPreAuthDialog({
+  open,
+  onOpenChange,
+  encounterId,
+  coverages,
+  onCreated,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  encounterId: string
+  coverages: Array<{ id: string; provider: { name: string } }>
+  onCreated: () => void
+}) {
+  const { toast } = useToast()
+  const [patientInsuranceId, setPatientInsuranceId] = useState('')
+  const [requestedAmount, setRequestedAmount] = useState('')
+  const [clinicalNotes, setClinicalNotes] = useState('')
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      createPreAuthorization({
+        encounterId,
+        patientInsuranceId,
+        requestedAmount: Number(requestedAmount),
+        clinicalNotes: clinicalNotes || undefined,
+      }),
+    onSuccess: () => {
+      setRequestedAmount('')
+      setClinicalNotes('')
+      onOpenChange(false)
+      onCreated()
+    },
+    onError: (error) => toast({ variant: 'destructive', title: 'Could not request pre-authorization', description: getErrorMessage(error) }),
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Request pre-authorization</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-2">
+          <Select value={patientInsuranceId} onValueChange={setPatientInsuranceId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Coverage" />
+            </SelectTrigger>
+            <SelectContent>
+              {coverages.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.provider.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input
+            type="number"
+            placeholder="Requested amount ₹"
+            value={requestedAmount}
+            onChange={(e) => setRequestedAmount(e.target.value)}
+          />
+          <Textarea placeholder="Clinical notes (optional)" value={clinicalNotes} onChange={(e) => setClinicalNotes(e.target.value)} />
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={() => mutation.mutate()} disabled={!patientInsuranceId || !requestedAmount || mutation.isPending}>
+            {mutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            Submit request
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function FileClaimDialog({
+  open,
+  onOpenChange,
+  encounterId,
+  coverages,
+  onCreated,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  encounterId: string
+  coverages: Array<{ id: string; provider: { name: string } }>
+  onCreated: () => void
+}) {
+  const { toast } = useToast()
+  const [patientInsuranceId, setPatientInsuranceId] = useState('')
+  const [invoiceId, setInvoiceId] = useState('')
+  const [claimedAmount, setClaimedAmount] = useState('')
+
+  const mutation = useMutation({
+    mutationFn: () => createInsuranceClaim({ encounterId, patientInsuranceId, invoiceId, claimedAmount: Number(claimedAmount) }),
+    onSuccess: () => {
+      setInvoiceId('')
+      setClaimedAmount('')
+      onOpenChange(false)
+      onCreated()
+    },
+    onError: (error) => toast({ variant: 'destructive', title: 'Could not file claim', description: getErrorMessage(error) }),
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>File insurance claim</DialogTitle>
+          <DialogDescription>The invoice ID is available on this encounter&apos;s invoice in Billing.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2">
+          <Select value={patientInsuranceId} onValueChange={setPatientInsuranceId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Coverage" />
+            </SelectTrigger>
+            <SelectContent>
+              {coverages.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.provider.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input placeholder="Invoice ID" value={invoiceId} onChange={(e) => setInvoiceId(e.target.value)} />
+          <Input type="number" placeholder="Claimed amount ₹" value={claimedAmount} onChange={(e) => setClaimedAmount(e.target.value)} />
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => mutation.mutate()}
+            disabled={!patientInsuranceId || !invoiceId.trim() || !claimedAmount || mutation.isPending}
+          >
+            {mutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            File claim
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 

@@ -874,3 +874,411 @@ TECH_DEBT). No dedicated frontend page manages the service catalog or
 raises ad-hoc charges outside the invoice-creation flow — the backend
 fully supports both, but building a standalone admin UI for either was
 not requested this session (see TECH_DEBT).
+
+---
+
+## ADR-0016: Milestone 11 (Insurance Management) — separate Provider/Plan/Coverage models, namespaced RBAC, settlement-as-Payment reuse, and document auto-attach design
+
+Date: 2026-08-04
+Status: Accepted
+
+**Context:** `NEXT.md` (written at the close of Milestone 10) framed
+Milestone 11 narrowly — reuse `InsuranceClaim`'s existing denormalized
+`insuranceProvider`/`policyNumber` fields, and explicitly flagged "no
+separate `InsurancePolicy` model exists... decide deliberately" as an
+open question rather than a settled answer. This session's instruction
+gave the full deliverable list directly: Insurance Company/TPA/
+Corporate Plan management with CRUD, Insurance Plans with coverage
+terms, per-patient Primary/Secondary coverage, a Pre-Authorization
+workflow with documents/audit, a Claims workflow with settlement
+(insurance share/patient share/adjustments/write-offs), automatic
+claim-document attachment from every other clinical/billing module,
+and six frontend routes plus two new tabs on existing pages. Per
+`CLAUDE.md`'s rule (only raise a settled decision again if new
+information directly contradicts it, and record the update rather than
+silently overriding it), this ADR records that expanded scope the same
+way ADR-0013/ADR-0014/ADR-0015 recorded theirs.
+
+**Decision:**
+
+1. **Four new models, not just extending `InsuranceClaim`'s
+   denormalized fields**: `InsuranceProvider` (Insurance Company/TPA/
+   Corporate, org-scoped, unique code), `InsurancePlan` (per provider —
+   coverage %/co-pay %/deductible/annual limit/per-visit limit/network
+   type), `PatientInsurance` (a patient's enrollment in a plan —
+   primary/secondary, member ID/policy number/dates/status), and
+   `PreAuthorization` (+ `PreAuthAttachment`). `InsuranceClaim` keeps
+   its original `insuranceProvider`/`policyNumber` string columns
+   (now denormalized *from* the resolved `InsuranceProvider`/
+   `PatientInsurance` at claim-creation time, the same "denormalize at
+   order time" idiom as `LabTestItem`/`RadiologyOrder`/`ServiceCatalog
+   Item`) rather than dropping them — a claim must always show a
+   provider name/policy number even if the structured records backing
+   it are later edited or deactivated. This resolves `NEXT.md`'s open
+   question: "insurance policy management" meant real, reusable,
+   patient-independent Provider/Plan records, not just claim-level
+   fields — the roadmap bullet undersold the actual surface needed for
+   pre-auth and claims to both reference the same coverage terms.
+
+2. **One active coverage per type, enforced in application code, not a
+   DB constraint** (`PatientInsuranceService.create` checks for an
+   existing `ACTIVE` row of the same `type` before inserting). A
+   unique-index approach would make a patient's coverage *history*
+   (an expired policy, later replaced) impossible to keep without
+   deleting rows — the same reasoning that kept `DoctorSchedule`
+   versioned instead of overwritten. Only `PatientInsurance.status`
+   needs to change (`ACTIVE` → `EXPIRED`/`INACTIVE`) to enroll a
+   replacement.
+
+3. **RBAC: the flat `insurance` resource (seeded read/create/update
+   for Milestone 10's placeholder) is split into five namespaced
+   sub-resources** — `insurance.providers`, `insurance.plans`,
+   `insurance.claims`, `insurance.preauth`, `insurance.settlement` —
+   mirroring `doctors.schedule`/`doctors.leave`/`doctors.documents`'s
+   precedent for a module with genuinely distinct sub-workflows rather
+   than one CRUD surface. `insurance.settlement` gets a `.manage`
+   action, admin-only (excluded from the seeded `Cashier` role, same
+   as `billing.manage`) — settling a claim fixes the final insurer-
+   vs-patient split and posts a real payment, the same "requester ≠
+   approver" separation `billing.manage` already established for
+   discounts/refunds; filing/tracking claims and pre-auths (read/
+   create/update) stays available to `Cashier`. Patient-coverage
+   endpoints reuse `insurance.claims.*` rather than adding a sixth
+   resource — coverage enrollment is prerequisite data for claims/
+   pre-auth, not an independent workflow with its own approval
+   semantics.
+
+4. **A settled claim's insurance share is recorded as a real
+   `Payment`** (`paymentMode: INSURANCE`, already present in the
+   `PaymentMode` enum since the original scaffold but excluded from
+   the frontend's payment-mode picker per ADR-0015 point 8) against
+   the linked invoice via the existing `PaymentsService.create` — not
+   a parallel "insurance payment" concept. This is the same mechanism
+   a cash/card payment already uses to reduce `Invoice.balanceDue`,
+   confirmed working end-to-end in this session's e2e tests and
+   browser verification. A consequence: settlement requires the
+   invoice to already be finalized (`PaymentsService.create` rejects
+   payments against a `DRAFT` invoice, unchanged from Milestone 10) —
+   the claim workflow doesn't finalize the invoice on the caller's
+   behalf, since that's a billing-side decision outside insurance's
+   scope.
+
+5. **Claim documents auto-attach by reusing each module's existing PDF
+   generator, plus one new purpose-built generator.** `ClaimDocuments
+   Service.autoAttachForClaim` calls `InvoicesService.generatePdf`,
+   `PrescriptionsService.generatePdf`, `LabTestsService.
+   generateReportPdf`, and `RadiologyOrdersService.generateReportPdf`
+   for whatever prescriptions/lab tests (status `REPORTED`)/radiology
+   orders (status `REPORTED`) exist for the claim's encounter, uploads
+   each buffer via the existing `StorageService`, and records a
+   `ClaimDocument` row (`autoAttached: true`). No such generator
+   existed for "the encounter itself" (clinical notes/diagnoses/
+   vitals/procedures combined), so a new `generateEncounterSummaryPdf`
+   was added, scoped to insurance auto-attach only — not exposed as a
+   standalone medical-records feature, since nothing else needs it
+   yet. **A generator failure is logged and skipped, not thrown** — a
+   missing/failed report shouldn't block filing the claim itself, and
+   the claim's document list always shows exactly what did attach
+   (verified with a unit test asserting the claim is still created
+   when the invoice-PDF generator throws).
+
+6. **Discharge Summary auto-attach is explicitly deferred, not
+   faked** — the milestone's own spec marks it "(future)"; there is no
+   `Admission`/discharge-summary model in this repo yet (IPD is
+   Milestone 12), so nothing exists to summarize. Recorded as an open
+   item, not a placeholder PDF.
+
+7. **The Encounter Insurance tab's "File claim" dialog asks for the
+   invoice ID as free text**, rather than a picker — no endpoint
+   resolves "the invoice for this encounter" today (`InvoicesController`
+   filters by `patientId`, not `encounterId`, even though the column
+   exists). Tracked as TD-0028 rather than scope-creeping a Billing
+   change into an Insurance-scoped session (the reading policy limited
+   this session to reusing Billing as-is).
+
+8. **The claim detail page's "Timeline" is synthesized from the
+   claim's own lifecycle timestamp columns** (`createdAt`/
+   `submittedAt`/`settledAt`/`closedAt`), not a real per-resource
+   audit-trail feed — every transition already emits an audited
+   `@OnEvent`, but no endpoint filters `AuditLog` by `resourceId` for a
+   single claim/pre-auth today (the Patient page's Timeline/Audit tabs
+   are patient-specific, not generic). Tracked as TD-0029.
+
+**Consequences:** `InsuranceClaim` gained `encounterId` (required —
+"every claim must reference Patient, Encounter, Invoice, Insurance," so
+one nullable-optional field would have violated the requirement) and
+structured FKs (`providerId`/`planId`/`patientInsuranceId`/
+`preAuthorizationId`, all nullable — a claim can exist even if its
+backing provider/plan is later deleted, though `onDelete: SetNull` is
+used rather than `Cascade` so historical claims never silently vanish).
+`InsuranceClaimStatus` gained `PARTIALLY_SETTLED`/`CLOSED` (the
+original scaffold only went as far as `SETTLED`). No `InsurancePolicy`
+model was created as a separate concept from `PatientInsurance` — the
+roadmap's "policy management" language and this session's "Patient
+Coverage" feature are the same thing, just named differently between
+the roadmap and the milestone brief.
+
+---
+
+## ADR-0017: Insert Milestone 12 — IPD & Bed Management ahead of General Inventory; every later milestone shifts by one
+
+Date: 2026-08-04
+Status: Accepted
+
+**Context:** The instruction that closed out this session's Milestone
+11 work explicitly directed `NEXT.md` to be replaced with "Milestone
+12 — IPD & Bed Management." No such milestone existed anywhere in
+`docs/roadmap.md` (Milestone 12 was "General Inventory") — this is a
+genuinely new milestone being inserted, not a rename or a scope
+clarification of an existing one. The `Ward`/`Bed`/`Admission` domain
+has no models in the schema yet, but the frontend sidebar already has
+a "Wards & Beds" nav item (`departments.read`-gated, pointing at
+`/dashboard/wards`) sitting unbuilt since at least Milestone 4 —
+consistent with IPD being planned but not yet scheduled anywhere.
+
+**Decision:** Mirroring ADR-0011/ADR-0013/ADR-0014/ADR-0015's
+insert-and-shift-everything-after precedent: `docs/roadmap.md` gets a
+new **Milestone 12 — IPD & Bed Management** (ward/bed inventory,
+admission → bed assignment/transfer → discharge, IPD billing
+integration reusing the Milestone 10 Charge Engine, bed occupancy
+dashboard), and every milestone from the old 12 onward shifts by one
+(General Inventory 12→13, Staff & Attendance 13→14, AI Features
+14→15, Reports & Analytics 15→16, Notifications 16→17, Production
+Hardening 17→18) — content unchanged for all of them, only the number
+and week label move. `NEXT.md` is replaced with Milestone 12 (IPD &
+Bed Management) per the instruction, not Milestone 13 (General
+Inventory) as the old numbering would have implied.
+
+**Consequences:** No code changes — this is a planning-document-only
+decision. The next session picking up Milestone 12 starts from a
+clean slate (no `Ward`/`Bed`/`Admission` models exist yet); it should
+decide bed/ward schema design fresh rather than assuming anything
+carries over from Insurance or Billing, beyond reusing the Charge
+Engine for IPD billing as explicitly scoped above.
+
+---
+
+## ADR-0018: Checkpoint 12.1 schema — extend the unaudited scaffolded `Ward`/`Bed`/`Admission` models, add `Room`/`BedAllocation`/`BedTransfer`, defer discharge/billing
+
+Date: 2026-08-04
+Status: Accepted
+
+**Context:** ADR-0017's claim that "no `Ward`/`Bed`/`Admission` models
+exist yet" was **wrong** — they do, and always have: `model Ward`,
+`model Bed`, and `model Admission` (plus `enum BedType`/`BedStatus`/
+`AdmissionStatus`) were all present in the very first scaffolding
+migration (`20260730185306_auth_org_rbac`) and never touched since —
+the exact same category of unaudited scaffold as `Medication` (replaced
+by `Drug`, ADR-0014) and the flat `MedicalRecord` (replaced by
+`Encounter`, ADR-0008). `patients.service.ts`'s `getTimeline()`/
+`getSummaryCounts()` already query `prisma.admission` using its
+existing `admissionNumber`/`admissionReason`/`admittedAt`/`status`/
+`patientId` fields (wired ahead of any real IPD module, like
+`PatientTimelineEntryType.ADMISSION` and `PatientSummaryCounts.
+admissions` in `@medicore/types`) — those field names are preserved
+so that code keeps working unmodified.
+
+This checkpoint (12.1) explicitly excludes Nursing Notes, Medication
+Administration, and Discharge Summary (Checkpoint 12.2), which in turn
+means the roadmap's "IPD billing integration reusing the Charge Engine"
+is also out of scope here — every prior milestone's charge-generation
+trigger point is a terminal clinical event (a completed appointment,
+a settled claim), and the only terminal event this checkpoint has is
+discharge, which doesn't exist yet. Billing integration is deferred to
+whichever session implements discharge (12.2), not invented as a
+mid-stay manual charge to hit today's scope.
+
+**Decisions:**
+
+1. **Hierarchy: `Hospital → Ward → Room → Bed`.** A `Room` model is
+   new (the scaffold never had one) — `Ward` is the clinical/admin
+   grouping (ICU, General, etc.), `Room` is the physical space with its
+   own capacity and per-day rate, `Bed` is the billable/allocatable unit
+   within a room. `Bed` keeps a denormalized `wardId` alongside `roomId`
+   (mirrors this repo's existing denormalization precedent — e.g.
+   `LabTest.patientId` next to `encounterId`) so ward-level occupancy
+   queries (dashboard, bed grid) don't need a join through `Room`.
+   `Ward.departmentId` (already in the scaffold) stays a single
+   optional FK — a ward's *home* department for org-chart purposes;
+   `Admission.departmentId` is captured independently per-admission
+   (the spec lists "Department" as its own Admission field), since the
+   admitting department doesn't have to match the ward's home
+   department (e.g. a Cardiology patient admitted into a shared ICU).
+2. **Dedicated `Status` enums for `Ward`/`Room`/`Bed`, not the
+   `isActive` boolean this repo otherwise defaults to for catalog
+   entities** (`Department`, `Drug`, `LabTestCatalogItem`, etc.) —
+   the checkpoint brief explicitly names "Status" as its own field for
+   all three, and `Bed` in particular needs a real operational state
+   machine (`AVAILABLE`/`RESERVED`/`OCCUPIED`/`CLEANING`/
+   `MAINTENANCE`/`BLOCKED` — the exact list the brief specifies, not
+   the scaffold's narrower `AVAILABLE`/`OCCUPIED`/`RESERVED`/
+   `UNDER_MAINTENANCE`). `WardType`/`BedType` are two separate enums
+   with the same value set (`GENERAL`/`SEMI_PRIVATE`/`PRIVATE`/`ICU`/
+   `NICU`/`PICU`/`HDU`) rather than one shared enum, matching this
+   repo's convention of a dedicated enum per domain concept even when
+   two enums' values overlap (e.g. `DiagnosisType` vs. other
+   primary/secondary splits).
+3. **`Admission.bedId`/`roomId` are optional at creation time.** The
+   brief lists "Bed Allocation" (`Allocate`/`Transfer`/`Vacate`/
+   `Reserve`/`History`/`Audit`) as its own section distinct from
+   "Admission," which reflects real intake flow — an Emergency
+   admission is often opened against a ward before a specific bed is
+   ready. Admission still *accepts* an optional `bedId`/`roomId` up
+   front for the common one-step case (ward round already knows the
+   bed); either path produces the same `BedAllocation` audit row and
+   the same `Bed.status → OCCUPIED` transition.
+4. **`Admission.encounterId` is optional and reused, not always
+   freshly created.** If the caller passes an existing encounter (the
+   natural shape for "Transfer from OPD" — the OPD encounter is still
+   the active clinical episode), it's validated and reused as-is; if
+   omitted, the admission creates a fresh `Encounter{type: IPD}` so
+   Checkpoint 12.2's nursing notes/vitals/discharge summary have
+   somewhere to attach. `EncounterType` gains an `IPD` member (it only
+   had `OPD`/`TELECONSULTATION`/`FOLLOW_UP`/`EMERGENCY`/`WALK_IN`).
+   One admission-creation code path handles all four `AdmissionType`s
+   (`EMERGENCY`/`SCHEDULED`/`INSURANCE`/`TRANSFER_FROM_OPD`) — the type
+   only changes which fields the frontend wizard collects, not the
+   backend logic.
+5. **`Admission.patientInsuranceId` (optional FK to the existing
+   `PatientInsurance`, Milestone 11)** is the entire "Insurance
+   Admission" implementation — it records which coverage the stay is
+   billed against. No new pre-auth/claim workflow is built; the
+   existing Insurance module's pre-authorization/claims pages already
+   do that once billing exists to claim against (12.2+).
+6. **`AdmissionStatus` keeps `DISCHARGED`/`ABSCONDED` as enum values
+   this checkpoint never sets** — only `ADMITTED` (on create) and
+   `CANCELLED` (a same-stay "admission was opened in error, no
+   clinical care occurred" cancel action, which also releases any
+   allocated bed) are reachable via the API here. This mirrors
+   `InvoiceStatus.OVERDUE` (TD-0026) — an enum value that exists for a
+   workflow this repo hasn't built the trigger for yet, not a fake
+   implementation. Discharge (12.2) is what will make `DISCHARGED`
+   reachable.
+7. **Bed transfer history gets two models, not one:** `BedAllocation`
+   (every allocate/reserve/vacate/reservation-cancel event against a
+   single bed, tied to one admission) and `BedTransfer` (a from→to pair
+   across bed/room/ward, tied to one admission) — a transfer is
+   logically "vacate bed A, allocate bed B" but the brief asks to
+   "track complete history" of transfers *as transfers* (so the UI can
+   render "Bed 204 → Bed 310" in one row), which a pair of independent
+   `BedAllocation` rows can't cleanly express. Both are audited via the
+   existing `@OnEvent` + `AuditLog` mechanism, same as every other
+   module.
+
+**Consequences:** `Bed`'s unique constraint moves from
+`[bedNumber, wardId]` to `[bedNumber, roomId]` (a room, not a ward, is
+the natural uniqueness scope for a bed number in real hospitals — e.g.
+"Bed 1" and "Bed 2" repeat in every room). The scaffold's `Ward.
+totalBeds` denormalized counter is dropped — every other dashboard
+stat in this repo (pharmacy low-stock, billing revenue, radiology
+today's-studies) is computed by query at read time, not maintained as
+a write-time counter, and a ward's bed count is cheap to `count()`.
+`AdmissionStatus.TRANSFERRED` is dropped — a mid-stay transfer is a
+`BedTransfer` event, not a change to the admission's own status (the
+admission stays `ADMITTED` throughout). IPD billing integration and
+discharge remain explicitly deferred to Checkpoint 12.2, tracked in
+`TECH_DEBT.md`.
+
+---
+
+## ADR-0019: Checkpoint 12.2 — Nursing/MAR/Discharge schema, reuse decisions, all-scope RBAC, and billing trigger
+
+Date: 2026-08-04
+Status: Accepted
+
+**Context:** `NEXT.md` framed four judgment calls to check before
+building: whether nursing notes are a genuinely separate model from
+`ClinicalNote`, whether IPD vitals charting needs a new model, how
+discharge reaches `AdmissionStatus.DISCHARGED`, and whether MAR reuses
+`Prescription`/`PrescriptionItem` with an admin-log child table (the
+`DispenseOrder`/`DispenseItem` precedent) or is a standalone model.
+
+**Decisions:**
+
+1. **Nursing notes/assessments/I-O charting/orders/tasks are
+   admission-scoped, new models — not `ClinicalNote` reuse.**
+   `ClinicalNote` is doctor-authored, per-consultation, and versioned
+   (one row per edit, `@@unique([encounterId, version])`); IPD nursing
+   documentation is nurse-authored, materially higher-frequency
+   (multiple entries per shift), and conceptually tied to the *stay*
+   (`admissionId`) rather than any single consultation. Five new
+   models: `NursingNote` (general/shift-handover/assessment/incident +
+   an `isEscalated` flag — the "escalation flag" deliverable, since no
+   paging/notification system exists in this repo), `NursingAssessment`
+   (one consolidated row per charting event for pain score, fall risk,
+   Braden score, and GCS — mirrors `Vital`'s "one row, many fields"
+   shape rather than one model per scale), `IntakeOutputRecord`,
+   `IpdOrder` (doctor's diet/fluid/activity/oxygen/isolation orders),
+   and `NursingTask` (nurse to-dos, optionally spawned from an
+   `IpdOrder` via `sourceOrderId`).
+2. **Vitals charting reuses the existing encounter-scoped `Vital`
+   model as-is — no new model.** Every admission has a real
+   `encounterId` (ADR-0018), and `Vital` already supports arbitrarily
+   frequent entries (no charting-frequency assumption baked into its
+   schema); the existing `VitalsService.create`/list on the Objective
+   tab already handles IPD's higher charting cadence without a new
+   query shape. A dedicated IPD vitals-trend endpoint was judged
+   unnecessary — the existing per-encounter history list already
+   serves this.
+3. **MAR reuses `Prescription`/`PrescriptionItem` as the source of
+   truth for what's prescribed; `MedicationAdministration` is the
+   admin-log child table** — directly mirroring `DispenseOrder`/
+   `DispenseItem`'s precedent (Milestone 9) rather than a parallel
+   prescribing model. One row per scheduled/PRN/STAT dose instance
+   (`type`, `scheduledAt`, `status`: `PENDING → ADMINISTERED`/
+   `MISSED`/`REFUSED`/`HELD`/`DELAYED`). `barcodeVerified`/
+   `scannedCode` are the disclosed "barcode-ready architecture" hook
+   (TD-0033) — no physical scanner integration exists in this repo.
+   `nurseSignature` is a typed-name attestation, not a cryptographic
+   signature; the full audit trail is the existing `AuditLog` via
+   `AuditListener`, not a duplicate log table.
+4. **All new IPD sub-resources (`ipd.nursing`/`ipd.orders`/
+   `ipd.tasks`/`ipd.mar`/`ipd.discharge`) are all-scope only** —
+   mirroring `ipd.beds`/`ipd.transfer`'s precedent (any nurse/doctor
+   manages any patient's ward-level operations) rather than
+   `ipd.admissions`' own-scope carve-out. `ipd.discharge` splits
+   `create` (doctor approval), `update` (nursing checklist + summary
+   edits), and `manage` (finalize) — mirroring `billing.manage`'s
+   requester/approver separation. This means a doctor can approve/
+   finalize discharge for any admission, not only ones where they're
+   attending (TD-0032, disclosed rather than silently accepted).
+5. **Discharge is a four-step workflow, not a single action:**
+   `approve` (doctor; stamps `dischargeApprovedAt`/`ByUserId`, seeds
+   all 8 `DischargeChecklistItem` rows idempotently) → nurse toggles
+   checklist items + drafts `DischargeSummary` (one row per admission,
+   not versioned like `ClinicalNote`/`RadiologyReport` — a discharge
+   summary is a single evolving draft until finalized, not a clinical
+   history that must preserve every edit) → `complete` (requires
+   approval + every checklist item `completed` + a summary with a
+   final diagnosis; vacates the bed via the existing
+   `BedAllocationService.vacate`, raises the room charge, closes the
+   encounter, sets `AdmissionStatus.DISCHARGED`).
+6. **IPD billing: `days-stayed = ceil(elapsed time since admittedAt /
+   24h), minimum 1` × `Room.chargesPerDay`**, raised as a real `Charge`
+   row (`sourceModule: ChargeSourceModule.IPD` — a new enum member —
+   `sourceId: admission.id`) via the existing Charge Engine
+   (`ChargesService.create`) at discharge finalize, closing TD-0030.
+   This is a straightforward elapsed-time rounding rule, not "both
+   admission and discharge date count as a full day" — simpler to
+   reason about and to test.
+7. **Fall-risk and Braden risk levels are derived server-side from
+   disclosed, documented score thresholds** (Morse-style: <25 Low,
+   25-44 Medium, ≥45 High; Braden: ≥19 Low, 15-18 Moderate, 13-14 High,
+   ≤9 Severe) — mirrors `laboratory`'s `abnormal-flagging.ts` precedent
+   (ADR-0012) of a disclosed, non-clinically-validated scoring rule
+   rather than a black-box "AI" assessment.
+
+**Consequences:** Eight new Prisma models (`NursingNote`,
+`NursingAssessment`, `IntakeOutputRecord`, `IpdOrder`, `NursingTask`,
+`MedicationAdministration`, `DischargeChecklistItem`,
+`DischargeSummary`) plus two new `Admission` fields
+(`dischargeApprovedAt`/`dischargeApprovedByUserId`) and one new
+`ChargeSourceModule` enum member (`IPD`). RBAC gains five new
+resources (`ipd.nursing`/`ipd.orders`/`ipd.tasks`/`ipd.mar`/
+`ipd.discharge`). The Admission Detail page gained four new tabs
+(Nursing, Orders & Tasks, MAR, Discharge) alongside the existing
+Overview tab; new top-level pages `/dashboard/nursing`,
+`/dashboard/nursing/tasks`, `/dashboard/nursing/patients`, and
+`/dashboard/ipd/discharges`. TD-0030 (IPD billing/discharge deferred)
+is now resolved; TD-0032 (all-scope discharge RBAC) and TD-0033
+(barcode hardware) are opened, disclosed rather than silently accepted.

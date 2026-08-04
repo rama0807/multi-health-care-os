@@ -227,17 +227,62 @@ and refund. Insurance is its own follow-up milestone — see ADR-0015.
 **Goal:** Insurance policy management and TPA/cashless claim workflow —
 carved out of the original "Billing & Insurance" milestone (see ADR-0015),
 building on the `InsuranceClaim` model and `Invoice.insuranceClaim` relation
-already in the schema.
+already in the schema. Expanded to full Provider/Plan/Coverage/Pre-Auth/
+Claims/Settlement management per this session's instruction — see ADR-0016.
 
 ### Deliverables
-- [ ] Insurance policy management
-- [ ] TPA/cashless claim workflow
-- [ ] Claim status tracking
-- [ ] Frontend: insurance claim management
+- [x] Insurance Company/TPA/Corporate Plan provider management
+- [x] Insurance Plan management (coverage/co-pay/deductible/limits/network type)
+- [x] Per-patient primary/secondary coverage
+- [x] Cashless/TPA pre-authorization workflow
+- [x] TPA/cashless claim workflow
+- [x] Claim status tracking
+- [x] Settlement (insurance share/patient share/adjustments/write-offs)
+- [x] Automatic claim-document attachment (invoice/prescription/lab/radiology/encounter summary)
+- [x] Insurance dashboard
+- [x] Frontend: insurance claim management
+- [x] Tests (unit + e2e + browser-verified)
 
 ---
 
-## Milestone 12 — General Inventory (Week 14)
+## Milestone 12 — IPD & Bed Management (Week 14)
+
+**Goal:** In-patient department workflow — ward/bed inventory, admission
+through discharge, and the nursing/clinical record that runs alongside it.
+Inserted ahead of General Inventory per explicit instruction at the close of
+Milestone 11 — see ADR-0017; General Inventory and every later milestone
+shift by one (13–17 → 14–18, unchanged in content). Split into two
+checkpoints (see ADR-0018) mirroring Milestones 4/5/6's precedent — the
+`Ward`/`Bed`/`Admission` domain surface is large enough to warrant the same
+tight-scope-per-session discipline.
+
+### Checkpoint 12.1 — Admission, Wards & Bed Management — ✅ Complete
+- [x] Ward and bed inventory (ward/room/bed hierarchy, bed status: available/
+      reserved/occupied/cleaning/maintenance/blocked)
+- [x] Admission workflow (from an encounter or directly), attending doctor
+      assignment — Emergency/Scheduled/Insurance/Transfer-from-OPD
+- [x] Bed assignment / transfer between wards, rooms, or beds during a stay
+      (allocate/reserve/cancel-reservation/vacate/transfer, full history)
+- [x] Bed occupancy dashboard
+- [x] Frontend: ward/room/bed management, a color-coded Bed Grid, an
+      Admit Patient wizard, admission detail page
+- [x] Tests (unit + e2e + browser-verified)
+
+### Checkpoint 12.2 — Nursing, Medication Administration & Discharge — ✅ Complete
+- [x] Nursing notes and IPD vitals charting (reuses/extends the existing
+      `Vital` model where it fits)
+- [x] Medication administration record (MAR) for IPD
+- [x] Discharge workflow (discharge summary, discharge date, outcome) —
+      sets `AdmissionStatus.DISCHARGED`
+- [x] IPD billing integration — a stay's charges accumulate the same way
+      OPD `Charge` rows already do, reusing the Milestone 10 Charge Engine
+      (triggered at discharge — see TD-0030)
+- [x] Frontend: nursing/MAR charting UI, discharge flow, IPD encounter view
+- [x] Tests (unit + e2e + browser-verified)
+
+---
+
+## Milestone 13 — General Inventory (Week 15)
 
 **Goal:** Non-drug hospital inventory management (equipment, consumables, supplies).
 
@@ -250,7 +295,7 @@ already in the schema.
 
 ---
 
-## Milestone 13 — Staff & Attendance (Week 15)
+## Milestone 14 — Staff & Attendance (Week 16)
 
 **Goal:** HR and attendance management for hospital staff.
 
@@ -267,7 +312,7 @@ already in the schema.
 
 ---
 
-## Milestone 14 — AI Features (Week 16–17)
+## Milestone 15 — AI Features (Week 17–18)
 
 **Goal:** Integrate all planned AI capabilities.
 
@@ -283,7 +328,7 @@ already in the schema.
 
 ---
 
-## Milestone 15 — Reports & Analytics (Week 18)
+## Milestone 16 — Reports & Analytics (Week 19)
 
 **Goal:** Operational intelligence for hospital administrators.
 
@@ -300,7 +345,7 @@ already in the schema.
 
 ---
 
-## Milestone 16 — Notifications & Communication (Week 19)
+## Milestone 17 — Notifications & Communication (Week 20)
 
 **Goal:** Multi-channel patient and staff communication.
 
@@ -317,7 +362,7 @@ already in the schema.
 
 ---
 
-## Milestone 17 — Production Hardening (Week 20)
+## Milestone 18 — Production Hardening (Week 21)
 
 **Goal:** Secure, observable, deployable to production.
 

@@ -2,9 +2,11 @@
 
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
+  AdmissionStatus,
   BloodGroup,
   DocumentType,
   Gender,
+  PatientInsuranceType,
   UpdatePatientSchema,
   type PatientTimelineEntryType,
   type UpdatePatientDto,
@@ -21,6 +23,7 @@ import {
   type LucideIcon,
   Pencil,
   Pill,
+  Plus,
   Receipt,
   RotateCcw,
   Scan,
@@ -28,6 +31,7 @@ import {
   Upload,
   User,
 } from 'lucide-react'
+import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -48,6 +52,8 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
+import { createPatientCoverage, listInsurancePlans, listInsuranceProviders, listPatientCoverages } from '@/lib/api/insurance'
+import { listAdmissions } from '@/lib/api/ipd'
 import {
   deletePatient,
   deletePatientDocument,
@@ -171,6 +177,7 @@ export default function PatientDetailPage() {
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="medical">Medical Summary</TabsTrigger>
           <TabsTrigger value="insurance">Insurance</TabsTrigger>
+          <TabsTrigger value="admissions">Admissions</TabsTrigger>
           <TabsTrigger value="emergency">Emergency Contact</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
@@ -194,13 +201,10 @@ export default function PatientDetailPage() {
           />
         </TabsContent>
         <TabsContent value="insurance">
-          <StatGrid
-            items={[
-              ['Insurance Claims', patient.summary.insuranceClaims],
-              ['Invoices', patient.summary.invoices],
-            ]}
-            note="Claim-level detail is available once the Insurance module ships — these are live counts from this patient's linked records."
-          />
+          <PatientInsuranceTab patientId={patientId} canUpdate={canUpdate} />
+        </TabsContent>
+        <TabsContent value="admissions">
+          <PatientAdmissionsTab patientId={patientId} />
         </TabsContent>
         <TabsContent value="emergency">
           <EmergencyContactTab patient={patient} canUpdate={canUpdate} />
@@ -726,6 +730,266 @@ function DocumentsTab({ patientId, canUpdate }: { patientId: string; canUpdate: 
           </ul>
         ) : (
           <p className="p-4 text-sm text-muted-foreground">No documents uploaded yet.</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+const COVERAGE_STATUS_BADGE: Record<string, 'secondary' | 'success' | 'destructive'> = {
+  ACTIVE: 'success',
+  EXPIRED: 'secondary',
+  INACTIVE: 'destructive',
+}
+
+function PatientInsuranceTab({ patientId, canUpdate }: { patientId: string; canUpdate: boolean }) {
+  const queryClient = useQueryClient()
+  const [dialogOpen, setDialogOpen] = useState(false)
+
+  const coveragesQuery = useQuery({
+    queryKey: ['insurance', 'patient-coverages', patientId],
+    queryFn: () => listPatientCoverages(patientId),
+  })
+
+  return (
+    <div className="space-y-4">
+      {canUpdate && (
+        <div className="flex justify-end">
+          <Button size="sm" onClick={() => setDialogOpen(true)}>
+            <Plus className="h-3.5 w-3.5" />
+            Add coverage
+          </Button>
+        </div>
+      )}
+
+      <div className="rounded-lg border bg-card">
+        {coveragesQuery.isLoading ? (
+          <div className="flex h-24 items-center justify-center">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : coveragesQuery.data?.length ? (
+          <ul className="divide-y">
+            {coveragesQuery.data.map((c) => (
+              <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 p-4 text-sm">
+                <div>
+                  <p className="font-medium text-foreground">
+                    {c.provider.name} · {c.plan.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatEnumLabel(c.type)} · Member {c.memberId} · Policy {c.policyNumber}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>
+                    {new Date(c.effectiveDate).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
+                    {c.expiryDate ? ` – ${new Date(c.expiryDate).toLocaleDateString('en-IN', { dateStyle: 'medium' })}` : ''}
+                  </span>
+                  <Badge variant={COVERAGE_STATUS_BADGE[c.status]}>{formatEnumLabel(c.status)}</Badge>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="p-4 text-sm text-muted-foreground">No insurance coverage on file for this patient.</p>
+        )}
+      </div>
+
+      <AddCoverageDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        patientId={patientId}
+        onAdded={() => void queryClient.invalidateQueries({ queryKey: ['insurance', 'patient-coverages', patientId] })}
+      />
+    </div>
+  )
+}
+
+function AddCoverageDialog({
+  open,
+  onOpenChange,
+  patientId,
+  onAdded,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  patientId: string
+  onAdded: () => void
+}) {
+  const { toast } = useToast()
+  const providersQuery = useQuery({
+    queryKey: ['insurance', 'providers', 'list'],
+    queryFn: () => listInsuranceProviders({ limit: 100, isActive: true }),
+    enabled: open,
+  })
+  const [providerId, setProviderId] = useState('')
+  const plansQuery = useQuery({
+    queryKey: ['insurance', 'plans', 'list', providerId],
+    queryFn: () => listInsurancePlans({ providerId, limit: 100, isActive: true }),
+    enabled: open && Boolean(providerId),
+  })
+  const [planId, setPlanId] = useState('')
+  const [type, setType] = useState<PatientInsuranceType>(PatientInsuranceType.PRIMARY)
+  const [memberId, setMemberId] = useState('')
+  const [policyNumber, setPolicyNumber] = useState('')
+  const [effectiveDate, setEffectiveDate] = useState('')
+  const [expiryDate, setExpiryDate] = useState('')
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      createPatientCoverage(patientId, {
+        providerId,
+        planId,
+        type,
+        memberId,
+        policyNumber,
+        effectiveDate: new Date(effectiveDate),
+        expiryDate: expiryDate ? new Date(expiryDate) : undefined,
+      }),
+    onSuccess: () => {
+      toast({ title: 'Coverage added' })
+      onAdded()
+      onOpenChange(false)
+    },
+    onError: (error) => toast({ variant: 'destructive', title: 'Could not add coverage', description: getErrorMessage(error) }),
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add insurance coverage</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-2">
+          <Select value={type} onValueChange={(v) => setType(v as PatientInsuranceType)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.values(PatientInsuranceType).map((t) => (
+                <SelectItem key={t} value={t}>
+                  {formatEnumLabel(t)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={providerId}
+            onValueChange={(v) => {
+              setProviderId(v)
+              setPlanId('')
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Provider" />
+            </SelectTrigger>
+            <SelectContent>
+              {providersQuery.data?.data.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={planId} onValueChange={setPlanId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Plan" />
+            </SelectTrigger>
+            <SelectContent>
+              {plansQuery.data?.data.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name} ({p.coveragePercent}% coverage)
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input placeholder="Member ID" value={memberId} onChange={(e) => setMemberId(e.target.value)} />
+          <Input placeholder="Policy number" value={policyNumber} onChange={(e) => setPolicyNumber(e.target.value)} />
+          <div className="grid grid-cols-2 gap-2">
+            <Input type="date" value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} />
+            <Input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} placeholder="Expiry (optional)" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => mutation.mutate()}
+            disabled={!providerId || !planId || !memberId.trim() || !policyNumber.trim() || !effectiveDate || mutation.isPending}
+          >
+            {mutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            Add
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+const ADMISSION_STATUS_BADGE: Record<AdmissionStatus, 'success' | 'secondary' | 'destructive' | 'outline'> = {
+  ADMITTED: 'success',
+  DISCHARGED: 'secondary',
+  ABSCONDED: 'destructive',
+  CANCELLED: 'outline',
+}
+
+function PatientAdmissionsTab({ patientId }: { patientId: string }) {
+  const admissionsQuery = useQuery({
+    queryKey: ['ipd', 'admissions', 'list', 'patient', patientId],
+    queryFn: () => listAdmissions({ patientId, limit: 50 }),
+  })
+  const admissions = admissionsQuery.data?.data ?? []
+  const current = admissions.find((a) => a.status === AdmissionStatus.ADMITTED)
+
+  return (
+    <div className="space-y-4">
+      {current && (
+        <div className="rounded-lg border border-primary/40 bg-primary/5 p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-primary">Current admission</p>
+          <p className="mt-1 text-sm font-medium text-foreground">
+            {current.admissionNumber} · {current.ward.name}
+            {current.bed ? ` · Bed ${current.bed.bedNumber}` : ' · Bed not yet allocated'}
+          </p>
+          <p className="text-xs text-muted-foreground">Attending: {current.attendingDoctor.fullName}</p>
+          <Link href={`/dashboard/ipd/${current.id}`} className="text-xs text-primary hover:underline">
+            View admission →
+          </Link>
+        </div>
+      )}
+
+      <div className="rounded-lg border bg-card">
+        {admissionsQuery.isLoading ? (
+          <div className="flex h-24 items-center justify-center">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : admissions.length === 0 ? (
+          <p className="p-4 text-sm text-muted-foreground">No IPD admissions on file for this patient.</p>
+        ) : (
+          <ul className="divide-y">
+            {admissions.map((a) => (
+              <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 p-4 text-sm">
+                <div>
+                  <Link href={`/dashboard/ipd/${a.id}`} className="font-mono text-xs text-primary hover:underline">
+                    {a.admissionNumber}
+                  </Link>
+                  <p className="font-medium text-foreground">
+                    {a.ward.name}
+                    {a.bed ? ` · Bed ${a.bed.bedNumber}` : ''}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{a.admissionReason}</p>
+                  {a.encounterId && (
+                    <Link href={`/dashboard/medical-records/${a.encounterId}`} className="text-xs text-primary hover:underline">
+                      Linked encounter →
+                    </Link>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>{new Date(a.admittedAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}</span>
+                  <Badge variant={ADMISSION_STATUS_BADGE[a.status]}>{formatEnumLabel(a.status)}</Badge>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
     </div>

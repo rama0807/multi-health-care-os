@@ -83,9 +83,12 @@ Milestone 4 (Doctors + Scheduling), Milestone 5 (Appointment Management),
 Milestone 6 (Clinical: Medical Records — both Checkpoint 6.1 EMR
 Foundation and Checkpoint 6.2 Orders & Prescriptions), Milestone 7
 (Laboratory Management), Milestone 8 (Radiology Management),
-Milestone 9 (Pharmacy Management), and Milestone 10 (Billing) are
-complete end-to-end (backend, frontend, tests, docs); everything else's
-percentage is still provisional.**
+Milestone 9 (Pharmacy Management), Milestone 10 (Billing),
+Milestone 11 (Insurance Management), and Milestone 12 (IPD & Bed
+Management — both Checkpoint 12.1 Admission/Wards/Beds and
+Checkpoint 12.2 Nursing/MAR/Discharge) are complete end-to-end
+(backend, frontend, tests, docs); everything else's percentage is
+still provisional.**
 
 See `MODULE_STATUS.md` for the authoritative, maintained breakdown. Until a
 session performs a full audit of each module's actual implementation depth,
@@ -370,7 +373,211 @@ scope decision and roadmap split (Insurance is now its own Milestone 11).
   built (TD-0024); `InvoiceStatus.OVERDUE` is never automatically set,
   since no scheduled-job infrastructure exists in this repo (TD-0026).
 
-See `.ai/NEXT.md` for **Milestone 11 — Insurance Management**, next.
+See `.ai/DECISIONS.md` ADR-0016 for the Milestone 11 scope decision.
+
+## Milestone 11 — Insurance Management: Complete
+
+Completed in a single session (2026-08-04), no checkpoint split needed.
+The session's instruction gave a materially larger deliverable list
+than `NEXT.md`'s prior framing — see **ADR-0016** for the full scope
+decision and reasoning.
+
+- Insurance Provider (`InsuranceProvider` — Insurance Company/TPA/
+  Corporate) and Plan (`InsurancePlan` — coverage %/co-pay %/
+  deductible/annual limit/per-visit limit/network type) management,
+  org-scoped.
+- Per-patient coverage (`PatientInsurance` — primary/secondary, member
+  ID/policy number/effective+expiry dates); one active coverage per
+  type enforced at the application layer, not a DB constraint, so a
+  patient's coverage history (expired enrollments) stays queryable.
+- Cashless/TPA pre-authorization workflow (`PreAuthorization` — Draft →
+  Submitted → Under Review → Approved/Partially Approved/Rejected/
+  Cancelled) with clinical notes and file attachments (reuses the
+  existing `StorageService`).
+- Claims workflow plus settlement (`InsuranceClaim` — Draft →
+  Submitted → Under Review → Approved/Partially Approved/Rejected →
+  Settled/Partially Settled → Closed). Settling a claim records the
+  insurance share as a real `Payment` (`paymentMode: INSURANCE`)
+  against the linked invoice via the existing `PaymentsService` — the
+  same mechanism a cash/card payment already uses.
+- Automatic claim-document attachment (`ClaimDocument`) — Invoice,
+  Prescription, Lab Report, and Radiology Report PDFs are auto-attached
+  by reusing each module's existing PDF generator, plus a new
+  purpose-built Encounter Summary generator; manual uploads also
+  supported. A generator failure is logged and skipped rather than
+  blocking claim creation.
+- Insurance dashboard (today's claims, pending approval, rejected,
+  settled, insurance revenue, outstanding claims).
+- All-scope RBAC split into `insurance.providers`/`plans`/`claims`/
+  `preauth`/`settlement` (the last `.manage`-gated admin-only, mirroring
+  `billing.manage`'s requester/approver separation), audit integration —
+  all in `apps/api/src/modules/insurance/`.
+- Frontend: an Insurance dashboard (`/dashboard/insurance`), Providers
+  and Plans list pages, a Pre-Authorization queue, a Claims queue, a
+  claim detail page (`/dashboard/insurance/[claimId]` — settlement
+  panel, lifecycle timeline, document list, every workflow action). The
+  Patient detail page's placeholder "Insurance" tab now shows real
+  coverage records; the Encounter detail page gained a new "Insurance"
+  tab (pre-auth/claim list + request-preauth/file-claim actions).
+- Unit + e2e tests passing (46 new unit, 11 new e2e — 359 unit / 210
+  e2e total); lint/typecheck/test/build all clean; browser-verified end
+  to end (provider/plan creation, patient coverage, a pre-auth walked to
+  Approved, a claim filed with real auto-attached documents and walked
+  through Submit → Under Review → Approved → Settled → Closed,
+  confirming a real `Payment` landed against the invoice). One real bug
+  caught and fixed during this pass: the "Add provider" dialog sent
+  empty strings instead of `undefined` for unfilled optional fields,
+  which broke `email`'s Zod format validation.
+- **Deferred, disclosed, not faked**: Discharge Summary auto-attach
+  (explicitly future — IPD/discharge doesn't exist yet); an
+  encounter→invoice lookup endpoint, so filing a claim from the
+  Encounter Insurance tab asks for the invoice ID as free text
+  (TD-0028); the claim detail page's "Timeline" is synthesized from the
+  claim's own lifecycle timestamps, not a full audit-trail feed like the
+  Patient page's dedicated Timeline/Audit tabs (TD-0029).
+
+## Milestone 12, Checkpoint 12.1 — IPD Admission, Wards & Bed Management: Complete
+
+Completed in a single session (2026-08-04). The `Ward`/`Bed`/
+`Admission` models existed unaudited since the original scaffolding
+migration (never wired to any module) — extended rather than built
+from scratch; see **ADR-0018** for the full schema audit and design
+decisions.
+
+- Ward (name/code/floor/block/type/status), Room (room number/ward/
+  floor/capacity/charges-per-day/status), and Bed (bed number/room/
+  ward/type/status — `AVAILABLE`/`RESERVED`/`OCCUPIED`/`CLEANING`/
+  `MAINTENANCE`/`BLOCKED`) inventory CRUD, all org-scoped, soft-
+  deactivate only.
+- Admission workflow (`Admission`, sequential `ADM-` numbering) —
+  supports Emergency/Scheduled/Insurance/Transfer-from-OPD via one
+  code path; auto-creates a fresh `IPD`-type `Encounter` or reuses a
+  passed-in one (the natural shape for Transfer-from-OPD); accepts an
+  optional bed at creation or leaves the admission ward-only for later
+  allocation; a cancel action releases any held bed.
+- Bed Allocation workflow (`BedAllocation`/`BedTransfer`) — allocate/
+  reserve/cancel-reservation/vacate/transfer, each producing a full
+  audit trail; a vacated or transferred-from bed lands in `CLEANING`
+  (a real ward workflow), not directly back in `AVAILABLE`.
+- IPD dashboard (available/occupied beds, ICU occupancy, admissions
+  today, transfers today, and a discharges-today stat that's a real
+  query but always reads 0 this checkpoint since nothing sets
+  `AdmissionStatus.DISCHARGED` yet).
+- All-scope RBAC on `ipd.wards`/`ipd.rooms`/`ipd.beds`/`ipd.transfer`,
+  own-scope-capable `ipd.admissions` (a doctor manages only admissions
+  where they're attending, mirroring `medical_records`/
+  `prescriptions`), audit integration — all in
+  `apps/api/src/modules/ipd/`.
+- Frontend: an IPD dashboard (`/dashboard/ipd`), Wards/Rooms list pages
+  with add/edit dialogs, a color-coded Bed Grid (`/dashboard/ipd/beds`,
+  grouped by ward/room, deep-linkable via `?wardId=`/`?roomId=`), an
+  Admissions queue with a 5-step Admit Patient wizard
+  (`/dashboard/ipd/admissions`), and an admission detail page
+  (`/dashboard/ipd/[admissionId]` — allocate/reserve/cancel-
+  reservation/vacate/transfer actions, a merged bed-allocation-and-
+  transfer history timeline). The Patient detail page gained a real
+  "Admissions" tab (current admission + full history, encounter link).
+  The sidebar's dormant "Wards & Beds" nav item (unbuilt since
+  Milestone 4) is now "IPD & Beds", pointing at `/dashboard/ipd`.
+- Unit + e2e tests passing (47 new unit, 16 new e2e — 406 unit / 226
+  e2e total across the whole API, zero failures); lint/typecheck/build
+  all clean; browser-verified end to end (ward/room/bed creation, a
+  full Admit Patient wizard walkthrough producing a real
+  `ADM-MED-2026-000002` admission with an auto-created IPD encounter,
+  a bed transfer with the vacated bed correctly landing in "Cleaning,"
+  the bed grid and dashboard reflecting real live counts, the
+  patient's new Admissions tab).
+- **Deferred, disclosed, not faked**: Nursing Notes, Medication
+  Administration, and Discharge Summary are explicitly Checkpoint
+  12.2 by instruction; IPD billing integration is deferred alongside
+  discharge, since a per-stay charge's only sensible trigger is
+  discharge itself (TD-0030 — resolved in Checkpoint 12.2). Deactivating
+  a ward/room doesn't check for occupied beds inside it, unlike
+  bed-level deactivation which already blocks on `OCCUPIED` (TD-0031).
+
+## Milestone 12, Checkpoint 12.2 — Nursing, Medication Administration & Discharge: Complete
+
+Completed in a single session (2026-08-04). See **ADR-0019** for the
+reuse decisions (nursing docs as new admission-scoped models vs.
+`ClinicalNote` reuse, vitals reusing the existing `Vital` model as-is,
+MAR reusing `Prescription`/`PrescriptionItem` with an admin-log child
+table) and the discharge/billing workflow design.
+
+- Nursing documentation — `NursingNote` (general/shift-handover/
+  assessment/incident + an `isEscalated` flag), `NursingAssessment`
+  (one consolidated row per charting event: pain score, fall risk
+  score + server-derived level, Braden score + server-derived
+  pressure-ulcer risk level, Glasgow Coma Scale eye/verbal/motor +
+  server-computed total, general notes), `IntakeOutputRecord`
+  (server-computed total intake/output/balance) — all admission-scoped,
+  nurse-authored, distinct from the doctor-authored `ClinicalNote`.
+  IPD vitals charting reuses the existing encounter-scoped `Vital`
+  model unchanged.
+- IPD Orders (`IpdOrder` — diet/fluid/activity/oxygen/isolation
+  precautions, doctor-placed, discontinuable) and Nursing Tasks
+  (`NursingTask` — an org-wide queue across every ward, optionally
+  spawned from an order via `sourceOrderId`, priority/status
+  workflow ending in Completed/Missed/Cancelled).
+- Medication Administration Record (`MedicationAdministration`, one
+  row per scheduled/PRN/STAT dose instance against a
+  `PrescriptionItem`) — schedule multiple doses at once (times × days),
+  ad hoc PRN/STAT recording, administer (with dose given/route/nurse
+  signature/barcode-verified+scanned-code hooks) or record an
+  exception (missed/refused/held/delayed with a required reason), a
+  full medication timeline/dose-history per admission.
+- Discharge workflow — doctor approval (seeds an 8-item nursing
+  checklist idempotently) → nursing completes the checklist and
+  drafts a discharge summary (final diagnosis, hospital course,
+  procedures, condition at discharge, medication reconciliation,
+  follow-up instructions/appointment/doctor, optional linked discharge
+  prescription) → finalize (`DischargeService.complete` — requires
+  every checklist item complete and a summary with a final diagnosis;
+  vacates the bed via the existing `BedAllocationService.vacate`,
+  raises a real per-stay room `Charge` via the Charge Engine
+  — `days-stayed × Room.chargesPerDay`, elapsed time rounded up to
+  the next whole day, minimum 1 — closes the linked encounter, and
+  sets `AdmissionStatus.DISCHARGED`). A structured, system-generated
+  discharge-summary PDF (`pdfkit`) is downloadable once discharge is
+  finalized.
+- IPD dashboard now reports real `inpatients`/`occupancyPercent`/
+  `pendingDischarge`/`pendingNursingTasks` alongside the existing
+  bed/ICU/admissions/discharges/transfers stats.
+- All-scope RBAC on `ipd.nursing`/`ipd.orders`/`ipd.tasks`/`ipd.mar`
+  (mirrors `ipd.beds`/`ipd.transfer`'s precedent) and `ipd.discharge`
+  split into `create` (doctor approval)/`update` (nursing checklist +
+  summary)/`manage` (finalize, mirrors `billing.manage`), audit
+  integration on every new action — all in
+  `apps/api/src/modules/ipd/`.
+- Frontend: four new tabs on the Admission Detail page (Nursing,
+  Orders & Tasks, MAR, Discharge — alongside the existing Overview),
+  a Discharges queue (`/dashboard/ipd/discharges`), a Nursing
+  Dashboard (`/dashboard/nursing`), a Nursing Tasks queue
+  (`/dashboard/nursing/tasks`), and an Assigned Patients / patient
+  census page (`/dashboard/nursing/patients`). New "Nursing" sidebar
+  nav item.
+- Unit + e2e tests passing (35 new unit, 15 new e2e — 441 unit / 241
+  e2e total across the whole API, zero failures); lint/typecheck/
+  test/build all clean; browser-verified end to end (a real admission
+  walked through nursing note → assessment with a real derived "High"
+  fall-risk badge → I/O chart with a real computed balance → a doctor
+  order spawning a nursing task, completed → a real vitals entry on
+  the linked encounter → MAR dose scheduling and administration with
+  a real nurse signature and a missed-dose exception → discharge
+  approval → all 8 checklist items completed → discharge summary
+  saved → discharge finalized with the bed correctly landing in
+  "Cleaning" → a genuine downloaded discharge-summary PDF → the
+  Discharges queue, Nursing Dashboard, Nursing Tasks queue, and IPD
+  dashboard all reflecting the real activity).
+- **Deferred, disclosed, not faked**: no per-nurse ward-assignment
+  model exists, so "Assigned patients" is the full patient census
+  (TD noted in-page); discharge-approval/finalize RBAC is all-scope
+  rather than doctor-own-scoped, mirroring `ipd.transfer`'s existing
+  precedent (TD-0032); MAR's barcode-ready fields have no real
+  scanner hardware integration (TD-0033).
+
+**Milestone 12 is now fully complete.**
+
+See `.ai/NEXT.md` for **Milestone 13 — General Inventory**, next.
 
 ## Milestone Screenshots
 
@@ -590,3 +797,100 @@ See `.ai/NEXT.md` for **Milestone 11 — Insurance Management**, next.
 - `docs/screens/billing-dashboard-populated.png` — Dashboard with real
   counts (₹800 today's revenue, 2 pending invoices, ₹200 refunds today)
   and a rendered 7-day collection-trend chart.
+- `docs/screens/insurance-dashboard.png` — Insurance dashboard: six
+  stat tiles and the claim-status breakdown bar chart with real data.
+- `docs/screens/insurance-providers.png` — Providers list showing the
+  created "Star Health Insurance" provider.
+- `docs/screens/insurance-plans.png` — Plans list showing the "Gold
+  Plan" (80% coverage, 20% co-pay, ₹500 deductible) under that provider.
+- `docs/screens/insurance-patient-coverage-tab.png` — Patient detail
+  page's Insurance tab, showing a real primary coverage record.
+- `docs/screens/insurance-encounter-tab-empty.png` — Encounter detail
+  page's new Insurance tab before any pre-auth/claim exists.
+- `docs/screens/insurance-encounter-tab-preauth.png` — Same tab after a
+  pre-authorization was submitted and marked Under Review.
+- `docs/screens/insurance-preauth-queue-under-review.png` and
+  `insurance-preauth-queue-approved.png` — Pre-Authorization queue
+  before and after approving that request.
+- `docs/screens/insurance-encounter-tab-claim.png` — Encounter Insurance
+  tab showing the filed claim linked to the approved pre-auth.
+- `docs/screens/insurance-claim-detail-under-review.png`,
+  `insurance-claim-detail-settled.png`, and
+  `insurance-claim-detail-closed.png` — the claim detail page at three
+  points in its lifecycle, the settled view showing a real ₹800
+  insurance-share payment recorded and the auto-attached Invoice +
+  Encounter Summary documents.
+- `docs/screens/insurance-claims-queue.png` — Claims queue showing the
+  settled claim.
+- `docs/screens/ipd-dashboard-empty.png` and `ipd-dashboard-populated.png`
+  — the IPD dashboard before and after real activity (2 admissions
+  today, 2 transfers today, ICU occupancy reflecting a live count).
+- `docs/screens/ipd-ward-dialog-filled.png` and `ipd-wards-list.png` —
+  Add-ward dialog filled in, then the Wards list showing occupancy.
+- `docs/screens/ipd-rooms-list.png` — Rooms list with capacity and
+  per-day charges.
+- `docs/screens/ipd-bed-grid-available.png` and
+  `ipd-bed-grid-mixed-status.png` — the color-coded Bed Grid, first
+  all-available then showing a real `CLEANING`/`AVAILABLE` mix after a
+  transfer and vacate.
+- `docs/screens/ipd-admissions-queue.png` and
+  `ipd-admissions-queue-populated.png` — Admissions queue empty, then
+  showing two real admissions (one Admitted, one Cancelled).
+- `docs/screens/ipd-admit-wizard-step1.png` through `-step4.png` and
+  `ipd-admit-wizard-review.png` — the 5-step Admit Patient wizard
+  (Patient & Type → Care Team → Ward/Room/Bed → Details → Review) with
+  a real patient/doctor/bed selected.
+- `docs/screens/ipd-admission-detail-admitted.png`,
+  `ipd-transfer-dialog-filled.png`, `ipd-admission-detail-transferred.png`,
+  and `ipd-admission-detail-vacated.png` — the admission detail page
+  through allocate → transfer → vacate, each with the merged bed
+  allocation/transfer history timeline updating correctly and the
+  vacated bed correctly landing in "Cleaning."
+- `docs/screens/ipd-patient-admissions-tab.png` — the Patient detail
+  page's new Admissions tab, showing the current admission and linked
+  encounter.
+- `docs/screens/nursing-dashboard-before.png` and
+  `nursing-dashboard-after.png` — the Nursing Dashboard before and
+  after this session's activity (patient census, bed occupancy,
+  pending nursing tasks, pending discharge, STAT-task alert panel).
+- `docs/screens/admit-wizard-step1-patient.png`,
+  `admit-wizard-step3-bed.png`, `admit-wizard-review.png`, and
+  `admission-created-bed-assigned.png` — admitting Ramesh Gupta into
+  ICU Ward Bed 34 for Checkpoint 12.2's walkthrough.
+- `docs/screens/nursing-note-recorded.png`,
+  `nursing-assessment-recorded.png` (a real derived "Fall risk: High" /
+  "Pressure ulcer: Moderate" / "GCS 15/15"), and
+  `nursing-intake-output-recorded.png` (a real computed "Balance:
+  100ml") — the admission detail page's new Nursing tab.
+- `docs/screens/nursing-orders-and-tasks.png` — the Orders & Tasks tab
+  showing a real doctor order and a nursing task created from it,
+  completed.
+- `docs/screens/vitals-form-filled.png` and `vitals-recorded.png` — a
+  real vitals entry on the admission's linked encounter (Objective
+  tab), confirming IPD vitals charting reuses the existing `Vital`
+  feature unchanged.
+- `docs/screens/encounter-prescription-for-mar.png` — a prescription
+  added to the linked encounter, feeding the MAR tab.
+- `docs/screens/mar-tab-empty.png`, `mar-doses-scheduled.png`, and
+  `mar-dose-administered.png` — the MAR tab: scheduling three
+  Amoxicillin doses, then administering one with a real nurse
+  signature ("Nurse Anjali Verma").
+- `docs/screens/discharge-tab-before-approval.png`,
+  `discharge-approved-checklist-seeded.png` (all 8 checklist items
+  seeded, unchecked), `discharge-checklist-complete.png`,
+  `discharge-summary-saved.png`, and
+  `discharge-completed-bed-vacated.png` ("Patient discharged — bed
+  vacated" toast, status "Discharged") — the full Discharge tab
+  workflow.
+- `docs/screens/bed-grid-after-discharge.png` — Bed 34 correctly
+  landing in "Cleaning" (not directly back to "Available") after
+  discharge.
+- `docs/screens/discharges-queue-discharged.png` — the new Discharges
+  queue page showing the completed discharge.
+- `docs/screens/nursing-tasks-queue.png` and
+  `nursing-patients-census.png` — the org-wide Nursing Tasks queue and
+  the Assigned Patients / patient census page.
+- `docs/screens/ipd-dashboard-with-nursing-stats.png` — the IPD
+  dashboard showing real inpatients/occupancy/pending-discharge/
+  pending-nursing-tasks stats alongside the existing bed/ICU/
+  admissions/transfers stats.

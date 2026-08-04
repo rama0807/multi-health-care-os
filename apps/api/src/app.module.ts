@@ -28,6 +28,7 @@ import { HealthModule } from './modules/health/health.module'
 import { HospitalsModule } from './modules/hospitals/hospitals.module'
 import { InsuranceModule } from './modules/insurance/insurance.module'
 import { InventoryModule } from './modules/inventory/inventory.module'
+import { IpdModule } from './modules/ipd/ipd.module'
 import { LaboratoryModule } from './modules/laboratory/laboratory.module'
 import { MedicalRecordsModule } from './modules/medical-records/medical-records.module'
 import { NotificationsModule } from './modules/notifications/notifications.module'
@@ -99,6 +100,7 @@ import { PrismaModule } from './prisma/prisma.module'
     InsuranceModule,
     PharmacyModule,
     InventoryModule,
+    IpdModule,
     StaffModule,
     NotificationsModule,
     AiModule,

@@ -97,6 +97,7 @@ export enum ChargeSourceModule {
   RADIOLOGY = 'RADIOLOGY',
   PHARMACY = 'PHARMACY',
   PROCEDURE = 'PROCEDURE',
+  IPD = 'IPD',
   MISCELLANEOUS = 'MISCELLANEOUS',
 }
 
@@ -147,11 +148,141 @@ export enum AbnormalType {
   CRITICAL_LOW = 'CRITICAL_LOW',
 }
 
+export enum WardType {
+  GENERAL = 'GENERAL',
+  SEMI_PRIVATE = 'SEMI_PRIVATE',
+  PRIVATE = 'PRIVATE',
+  ICU = 'ICU',
+  NICU = 'NICU',
+  PICU = 'PICU',
+  HDU = 'HDU',
+}
+
+export enum WardStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+  UNDER_RENOVATION = 'UNDER_RENOVATION',
+}
+
+export enum RoomStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+  MAINTENANCE = 'MAINTENANCE',
+}
+
+export enum BedType {
+  GENERAL = 'GENERAL',
+  SEMI_PRIVATE = 'SEMI_PRIVATE',
+  PRIVATE = 'PRIVATE',
+  ICU = 'ICU',
+  NICU = 'NICU',
+  PICU = 'PICU',
+  HDU = 'HDU',
+}
+
 export enum BedStatus {
   AVAILABLE = 'AVAILABLE',
-  OCCUPIED = 'OCCUPIED',
   RESERVED = 'RESERVED',
-  UNDER_MAINTENANCE = 'UNDER_MAINTENANCE',
+  OCCUPIED = 'OCCUPIED',
+  CLEANING = 'CLEANING',
+  MAINTENANCE = 'MAINTENANCE',
+  BLOCKED = 'BLOCKED',
+}
+
+export enum AdmissionType {
+  EMERGENCY = 'EMERGENCY',
+  SCHEDULED = 'SCHEDULED',
+  INSURANCE = 'INSURANCE',
+  TRANSFER_FROM_OPD = 'TRANSFER_FROM_OPD',
+}
+
+export enum AdmissionStatus {
+  ADMITTED = 'ADMITTED',
+  DISCHARGED = 'DISCHARGED',
+  ABSCONDED = 'ABSCONDED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum BedAllocationAction {
+  ALLOCATED = 'ALLOCATED',
+  VACATED = 'VACATED',
+  RESERVED = 'RESERVED',
+  RESERVATION_CANCELLED = 'RESERVATION_CANCELLED',
+}
+
+export enum NursingNoteType {
+  GENERAL = 'GENERAL',
+  SHIFT_HANDOVER = 'SHIFT_HANDOVER',
+  ASSESSMENT = 'ASSESSMENT',
+  INCIDENT = 'INCIDENT',
+}
+
+export enum FallRiskLevel {
+  LOW = 'LOW',
+  MEDIUM = 'MEDIUM',
+  HIGH = 'HIGH',
+}
+
+export enum PressureUlcerRiskLevel {
+  LOW = 'LOW',
+  MODERATE = 'MODERATE',
+  HIGH = 'HIGH',
+  SEVERE = 'SEVERE',
+}
+
+export enum IpdOrderCategory {
+  DIET = 'DIET',
+  FLUID = 'FLUID',
+  ACTIVITY = 'ACTIVITY',
+  OXYGEN = 'OXYGEN',
+  ISOLATION = 'ISOLATION',
+}
+
+export enum IpdOrderStatus {
+  ACTIVE = 'ACTIVE',
+  COMPLETED = 'COMPLETED',
+  DISCONTINUED = 'DISCONTINUED',
+}
+
+export enum NursingTaskStatus {
+  PENDING = 'PENDING',
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
+  MISSED = 'MISSED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum NursingTaskPriority {
+  ROUTINE = 'ROUTINE',
+  URGENT = 'URGENT',
+  STAT = 'STAT',
+}
+
+export enum MedicationAdministrationType {
+  SCHEDULED = 'SCHEDULED',
+  PRN = 'PRN',
+  STAT = 'STAT',
+}
+
+export enum MedicationAdministrationStatus {
+  PENDING = 'PENDING',
+  ADMINISTERED = 'ADMINISTERED',
+  MISSED = 'MISSED',
+  REFUSED = 'REFUSED',
+  HELD = 'HELD',
+  DELAYED = 'DELAYED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum DischargeChecklistItemKey {
+  VITALS_STABLE = 'VITALS_STABLE',
+  MEDICATION_RECONCILIATION_DONE = 'MEDICATION_RECONCILIATION_DONE',
+  PATIENT_EDUCATION_GIVEN = 'PATIENT_EDUCATION_GIVEN',
+  BELONGINGS_RETURNED = 'BELONGINGS_RETURNED',
+  WOUND_CARE_INSTRUCTIONS_GIVEN = 'WOUND_CARE_INSTRUCTIONS_GIVEN',
+  EQUIPMENT_RETURNED = 'EQUIPMENT_RETURNED',
+  FOLLOWUP_EXPLAINED = 'FOLLOWUP_EXPLAINED',
+  TRANSPORT_ARRANGED = 'TRANSPORT_ARRANGED',
 }
 
 export enum ShiftType {
@@ -251,6 +382,57 @@ export enum InsuranceClaimStatus {
   PARTIALLY_APPROVED = 'PARTIALLY_APPROVED',
   REJECTED = 'REJECTED',
   SETTLED = 'SETTLED',
+  PARTIALLY_SETTLED = 'PARTIALLY_SETTLED',
+  CLOSED = 'CLOSED',
+}
+
+export enum InsuranceProviderType {
+  INSURANCE_COMPANY = 'INSURANCE_COMPANY',
+  TPA = 'TPA',
+  CORPORATE = 'CORPORATE',
+}
+
+export enum InsuranceNetworkType {
+  CASHLESS = 'CASHLESS',
+  REIMBURSEMENT = 'REIMBURSEMENT',
+  BOTH = 'BOTH',
+}
+
+export enum PatientInsuranceType {
+  PRIMARY = 'PRIMARY',
+  SECONDARY = 'SECONDARY',
+}
+
+export enum PatientInsuranceStatus {
+  ACTIVE = 'ACTIVE',
+  EXPIRED = 'EXPIRED',
+  INACTIVE = 'INACTIVE',
+}
+
+export enum PreAuthorizationStatus {
+  DRAFT = 'DRAFT',
+  SUBMITTED = 'SUBMITTED',
+  UNDER_REVIEW = 'UNDER_REVIEW',
+  APPROVED = 'APPROVED',
+  PARTIALLY_APPROVED = 'PARTIALLY_APPROVED',
+  REJECTED = 'REJECTED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum ClaimDocumentType {
+  INVOICE = 'INVOICE',
+  PRESCRIPTION = 'PRESCRIPTION',
+  LAB_REPORT = 'LAB_REPORT',
+  RADIOLOGY_REPORT = 'RADIOLOGY_REPORT',
+  ENCOUNTER_SUMMARY = 'ENCOUNTER_SUMMARY',
+  DISCHARGE_SUMMARY = 'DISCHARGE_SUMMARY',
+  MANUAL_UPLOAD = 'MANUAL_UPLOAD',
+}
+
+export enum ClaimPaymentStatus {
+  PENDING = 'PENDING',
+  PARTIAL = 'PARTIAL',
+  PAID = 'PAID',
 }
 
 export enum EncounterType {
@@ -259,6 +441,7 @@ export enum EncounterType {
   FOLLOW_UP = 'FOLLOW_UP',
   EMERGENCY = 'EMERGENCY',
   WALK_IN = 'WALK_IN',
+  IPD = 'IPD',
 }
 
 export enum EncounterStatus {

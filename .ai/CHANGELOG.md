@@ -6,6 +6,123 @@
 ## [Unreleased]
 
 ### Added
+- **Milestone 12, Checkpoint 12.2 — Nursing, Medication Administration
+  & Discharge (complete):** see ADR-0019. **Milestone 12 is now fully
+  complete.**
+  - Nursing documentation (`GET/POST /ipd/admissions/:id/nursing-notes|
+    nursing-assessments|intake-output`) — notes (general/shift-
+    handover/assessment/incident + an escalation flag), assessments
+    (pain score, fall risk + server-derived level, Braden score +
+    server-derived pressure-ulcer level, GCS eye/verbal/motor + a
+    server-computed total), and an intake/output chart with
+    server-computed total intake/output/balance.
+  - IPD Orders (`GET/POST /ipd/admissions/:id/orders`, `PATCH .../:id/
+    discontinue`) — diet/fluid/activity/oxygen/isolation, doctor-placed.
+  - Nursing Tasks (`GET/POST /ipd/admissions/:id/nursing-tasks`,
+    org-wide queue at `GET /ipd/nursing-tasks`, `PATCH /ipd/
+    nursing-tasks/:id/status`) — optionally spawned from an order.
+  - Medication Administration Record (`GET /ipd/admissions/:id/mar`,
+    `POST .../generate-scheduled|ad-hoc`, `PATCH .../:id/administer|
+    missed|refused|held|delayed`) — scheduled/PRN/STAT doses against a
+    `PrescriptionItem`, barcode-ready fields, a required nurse
+    signature on every action.
+  - Discharge workflow (`POST /ipd/admissions/:id/discharge/approve|
+    complete`, `GET/PATCH .../discharge/checklist(/:itemKey)`,
+    `GET/PUT .../discharge/summary`, `GET .../discharge/summary/pdf`) —
+    doctor approval seeds an 8-item nursing checklist; finalize
+    requires the checklist complete + a summary with a final
+    diagnosis, then vacates the bed, raises a real per-stay room
+    `Charge` (`days-stayed × Room.chargesPerDay` via the existing
+    Charge Engine — closes TD-0030), closes the linked encounter, and
+    sets `AdmissionStatus.DISCHARGED`. A structured, system-generated
+    discharge-summary PDF is downloadable once finalized.
+  - IPD dashboard (`GET /ipd/dashboard`) gained real `inpatients`/
+    `occupancyPercent`/`pendingDischarge`/`pendingNursingTasks` stats.
+  - Frontend: four new tabs on the Admission Detail page (Nursing,
+    Orders & Tasks, MAR, Discharge), `/dashboard/ipd/discharges`
+    (pending/discharged queue), `/dashboard/nursing` (dashboard),
+    `/dashboard/nursing/tasks` (org-wide queue), `/dashboard/nursing/
+    patients` (patient census). New "Nursing" sidebar nav item.
+  - RBAC: `ipd.nursing`/`ipd.orders`/`ipd.tasks`/`ipd.mar` (all-scope),
+    `ipd.discharge` split into `create`/`update`/`manage`.
+  - Deferred, disclosed, not faked: no per-nurse ward-assignment model
+    (TD noted in-page); discharge RBAC is all-scope, not doctor-
+    own-scoped (TD-0032); MAR's barcode-ready fields have no real
+    scanner hardware (TD-0033).
+- **Milestone 12, Checkpoint 12.1 — IPD Admission, Wards & Bed
+  Management (complete):** see ADR-0018.
+  - Ward/Room/Bed inventory CRUD (`GET/POST/PATCH/DELETE
+    /ipd/wards|rooms|beds`) — floor/block/type/status for wards,
+    capacity/charges-per-day for rooms, a 6-state bed status machine
+    (`AVAILABLE`/`RESERVED`/`OCCUPIED`/`CLEANING`/`MAINTENANCE`/
+    `BLOCKED`); `DELETE` soft-deactivates, blocked for an `OCCUPIED`
+    bed.
+  - Admission workflow (`GET/POST/PATCH /ipd/admissions`, `.../:id/
+    cancel`) — Emergency/Scheduled/Insurance/Transfer-from-OPD via one
+    code path; auto-creates a fresh IPD encounter or reuses a
+    passed-in one; sequential `ADM-<prefix>-<year>-<seq>` numbering.
+  - Bed Allocation workflow (`POST /ipd/admissions/:id/allocate|
+    reserve|cancel-reservation|vacate|transfer`, `GET .../allocations|
+    transfers`) — full audit + transfer history; a vacated/
+    transferred-from bed lands in `CLEANING`, not `AVAILABLE`.
+  - IPD dashboard (`GET /ipd/dashboard`) — available/occupied beds,
+    ICU occupancy, admissions/transfers today, and a discharges-today
+    stat that's real but always 0 this checkpoint (discharge is
+    Checkpoint 12.2).
+  - Frontend: `/dashboard/ipd` (dashboard), `/dashboard/ipd/wards`,
+    `/dashboard/ipd/rooms`, `/dashboard/ipd/beds` (color-coded bed
+    grid), `/dashboard/ipd/admissions` (queue + 5-step Admit Patient
+    wizard), `/dashboard/ipd/[admissionId]` (allocation/transfer
+    actions + merged history timeline). Sidebar's dormant "Wards &
+    Beds" item replaced with "IPD & Beds". New Patient "Admissions"
+    tab (current admission + history, encounter link).
+  - RBAC: `ipd.wards`/`ipd.rooms`/`ipd.beds`/`ipd.transfer`
+    (all-scope), `ipd.admissions` (own-scope-capable, mirrors
+    `medical_records`/`prescriptions`).
+  - Deferred, disclosed, not faked: Nursing Notes, Medication
+    Administration, Discharge Summary (Checkpoint 12.2 by
+    instruction); IPD billing integration deferred alongside
+    discharge (TD-0030); ward/room deactivation doesn't check for
+    occupied beds inside it (TD-0031).
+- **Milestone 11 — Insurance Management (complete):** see ADR-0016.
+  - Insurance Provider management (`GET/POST /insurance/providers`,
+    `PATCH /insurance/providers/:id`) — Insurance Company/TPA/Corporate,
+    org-scoped, unique code.
+  - Insurance Plan management (`GET/POST /insurance/plans`, `PATCH
+    /insurance/plans/:id`) — coverage %/co-pay %/deductible/annual
+    limit/per-visit limit/network type, per provider.
+  - Per-patient coverage (`GET/POST /insurance/patients/:patientId/
+    coverages`, `PATCH .../:id`) — primary/secondary, member ID/policy
+    number/effective+expiry dates; one active coverage per type
+    enforced at the application layer.
+  - Cashless/TPA pre-authorization workflow (`POST /insurance/preauth`,
+    `.../:id/submit`, `.../review`, `.../decide`, `.../cancel`,
+    `.../attachments`) — Draft → Submitted → Under Review → Approved/
+    Partially Approved/Rejected/Cancelled, clinical notes + file
+    attachments via the existing `StorageService`.
+  - Claims workflow plus settlement (`POST /insurance/claims`, `.../
+    submit`, `.../review`, `.../decide`, `.../settle`, `.../close`,
+    `.../documents`) — Draft → Submitted → Under Review → Approved/
+    Partially Approved/Rejected → Settled/Partially Settled → Closed;
+    settling a claim records a real `Payment` (`paymentMode:
+    INSURANCE`) against the linked invoice via the existing
+    `PaymentsService`.
+  - Automatic claim-document attachment — Invoice, Prescription, Lab
+    Report, and Radiology Report PDFs are auto-attached by reusing each
+    module's existing PDF generator, plus a new Encounter Summary
+    generator; manual uploads also supported. A generator failure is
+    logged and skipped rather than blocking claim creation.
+  - Insurance dashboard (`GET /insurance/dashboard-stats` — today's
+    claims, pending approval, rejected, settled, insurance revenue,
+    outstanding claims).
+  - All-scope RBAC split into `insurance.providers`/`plans`/`claims`/
+    `preauth`/`settlement` (the last gated `.manage`-only, mirroring
+    `billing.manage`'s requester/approver separation), audit-trail
+    integration.
+  - Frontend: an Insurance dashboard, Providers/Plans list pages,
+    a Pre-Authorization queue, a Claims queue, a claim detail page
+    (settlement/timeline/documents), a real Patient Insurance tab, and
+    a new Encounter Insurance tab.
 - **Milestone 10 — Billing (complete):** narrowed to Billing only per
   explicit instruction — Insurance carved out to its own Milestone 11
   (see ADR-0015).

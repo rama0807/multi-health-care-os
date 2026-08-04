@@ -14,6 +14,7 @@ import {
   Scan,
   Settings,
   Stethoscope,
+  Syringe,
   Users,
   UserCog,
 } from 'lucide-react'
@@ -23,7 +24,7 @@ import { usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/auth/auth-context'
 import { cn } from '@/lib/utils'
 
-interface NavItem {
+export interface NavItem {
   label: string
   href: string
   icon: React.ElementType
@@ -31,12 +32,12 @@ interface NavItem {
   permission?: string
 }
 
-interface NavSection {
+export interface NavSection {
   title: string
   items: NavItem[]
 }
 
-const navigation: NavSection[] = [
+export const navigation: NavSection[] = [
   {
     title: '',
     items: [
@@ -67,20 +68,21 @@ const navigation: NavSection[] = [
         permission: 'laboratory.read',
       },
       { label: 'Radiology', href: '/dashboard/radiology', icon: Scan, permission: 'radiology.read' },
+      { label: 'Nursing', href: '/dashboard/nursing', icon: Syringe, permission: 'ipd.nursing.read' },
     ],
   },
   {
     title: 'Operations',
     items: [
       { label: 'Billing', href: '/dashboard/billing', icon: CreditCard, permission: 'billing.read' },
-      { label: 'Insurance', href: '/dashboard/insurance', icon: FileText, permission: 'insurance.read' },
+      { label: 'Insurance', href: '/dashboard/insurance', icon: FileText, permission: 'insurance.claims.read' },
       { label: 'Pharmacy', href: '/dashboard/pharmacy', icon: Pill, permission: 'pharmacy.read' },
       { label: 'Inventory', href: '/dashboard/inventory', icon: Package, permission: 'inventory.read' },
       {
-        label: 'Wards & Beds',
-        href: '/dashboard/wards',
+        label: 'IPD & Beds',
+        href: '/dashboard/ipd',
         icon: Building2,
-        permission: 'departments.read',
+        permission: 'ipd.admissions.read',
       },
     ],
   },

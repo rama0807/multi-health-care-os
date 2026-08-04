@@ -62,6 +62,7 @@ packages/*/src/**/*.d.ts
 
 # Local file storage (StorageService "local" driver — dev/test uploads)
 apps/api/uploads/
+apps/api/uploads-e2e-test/
 
 # Docker
 .docker/volumes/
@@ -71,3 +72,4 @@ apps/api/uploads/
 *.key
 *.cert
 secrets/
+

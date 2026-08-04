@@ -6,6 +6,572 @@
 
 ---
 
+## Session: 2026-08-04 (Milestone 12, Checkpoint 12.2 — Nursing, Medication Administration & Discharge, complete)
+
+### What was completed
+Continued directly from Checkpoint 12.1 without re-implementing or
+re-verifying it. Resolved `NEXT.md`'s four framed judgment calls and
+recorded the full reasoning as **ADR-0019**: nursing notes/
+assessments/I-O charting/orders/tasks are new admission-scoped models
+(nurse-authored, higher-frequency, tied to the stay — not
+`ClinicalNote` reuse); IPD vitals charting reuses the existing
+encounter-scoped `Vital` model completely unchanged; MAR reuses
+`Prescription`/`PrescriptionItem` with a `MedicationAdministration`
+admin-log child table (mirrors `DispenseOrder`/`DispenseItem`);
+discharge is a four-step workflow (doctor approval → nursing checklist
++ summary → finalize) that closes TD-0030 by raising a real per-stay
+room `Charge` at finalize. Per the reading policy, work touched IPD
+(this session's own module, extending Checkpoint 12.1), Medical
+Records (`Vital` reuse decision; `EncountersService.updateStatus`
+reuse to close the encounter at discharge), Billing (`ChargesService.
+create` reuse — added a new `ChargeSourceModule.IPD` enum member),
+Prescriptions (`PrescriptionItem` reuse for MAR), Prisma schema, and
+shared types.
+
+- **Schema** (migrations `20260804220000_nursing_mar_discharge` and
+  `20260804221000_ipd_charge_source_module`, applied to both
+  `medicore_dev`/`medicore_test`): 8 new models — `NursingNote`
+  (type/shift/content/`isEscalated`+reason), `NursingAssessment` (one
+  consolidated row per event: pain score, fall risk score + server-
+  derived level, Braden score + server-derived level, GCS eye/verbal/
+  motor + server-computed total, general notes), `IntakeOutputRecord`
+  (8 intake/output fields), `IpdOrder` (category/instructions/status/
+  discontinue fields), `NursingTask` (optional `sourceOrderId`,
+  priority/status/assignment/completion), `MedicationAdministration`
+  (type/scheduledAt/administeredAt/status/doseGiven/route/
+  barcodeVerified+scannedCode/nurseSignature), `DischargeChecklistItem`
+  (8-key enum, `@@unique([admissionId, itemKey])`), `DischargeSummary`
+  (one row per admission, not versioned — final diagnosis/course/
+  procedures/condition/med-reconciliation/follow-up+doctor+
+  prescription link). `Admission` gained `dischargeApprovedAt`/
+  `dischargeApprovedByUserId`. `ChargeSourceModule` gained `IPD`
+  (second migration, since the first had already been applied before
+  this addition was noticed). Recorded **ADR-0019**.
+- **RBAC**: new namespaced resources `ipd.nursing` (notes/assessments/
+  I-O, all-scope read/create), `ipd.orders`/`ipd.tasks`/`ipd.mar`
+  (all-scope read/create/update), `ipd.discharge` split into `create`
+  (doctor approval)/`update` (nursing checklist+summary)/`manage`
+  (finalize — mirrors `billing.manage`'s requester/approver
+  separation). All-scope throughout, mirroring `ipd.beds`/
+  `ipd.transfer`'s precedent rather than `ipd.admissions`' own-scope
+  carve-out — disclosed as **TD-0032**, not silently accepted. Doctor
+  role granted orders read/create/update + discharge read/create/
+  manage + nursing/tasks/mar read-only; Nurse granted nursing/tasks/mar
+  full read-write + discharge read/update (not create/manage);
+  Receptionist granted discharge read-only.
+- **Backend** (`apps/api/src/modules/ipd/`): `NursingNotesService`,
+  `NursingAssessmentsService` (derives `FallRiskLevel`/
+  `PressureUlcerRiskLevel` from disclosed Morse-style/Braden-style
+  score thresholds, mirrors `laboratory`'s `abnormal-flagging.ts`
+  precedent; computes GCS total server-side), `IntakeOutputService`
+  (computes total intake/output/balance at read time, mirrors
+  `Vital.bmi`'s computed-field precedent), `IpdOrdersService` (create/
+  discontinue, blocks placing an order against a non-`ADMITTED`
+  admission), `NursingTasksService` (admission-scoped list + an
+  org-wide queue joined to patient/ward for display, optionally
+  spawned from an `IpdOrder`), `MedicationAdministrationService`
+  (`generateScheduled` — times-of-day × days, `createAdHoc` — PRN/STAT,
+  `administer`/`recordException` — missed/refused/held/delayed, every
+  action requiring a nurse signature; validates the prescription item
+  belongs to the admission's patient), `DischargeService` (`approve` —
+  idempotently seeds all 8 checklist items via `createMany` +
+  `skipDuplicates`, `updateChecklistItem`, `upsertSummary` — validates
+  `followUpDoctorId`/`dischargePrescriptionId`, `generateSummaryPdf` —
+  a new `discharge-summary-pdf.ts` generator mirroring `insurance`'s
+  encounter-summary-pdf pattern, `complete` — validates approval + every
+  checklist item complete + a summary with a final diagnosis, then
+  vacates the bed via the existing `BedAllocationService.vacate`,
+  computes `days-stayed = ceil(elapsed-ms / 24h), min 1` and raises a
+  `Charge` via `ChargesService.create` (`sourceModule: IPD`), closes
+  the linked encounter via `EncountersService.updateStatus` if not
+  already `COMPLETED`, and sets `AdmissionStatus.DISCHARGED`).
+  `IpdDashboardService` extended with `inpatients`/`occupancyPercent`/
+  `pendingDischarge`/`pendingNursingTasks`. `AdmissionsService.list`
+  gained a `pendingDischarge` filter (`status: ADMITTED AND
+  dischargeApprovedAt: not null`).
+- **Audit integration**: `audit.listener.ts` gained ~20 new `@OnEvent`
+  handlers across nursing notes/assessments, I-O, orders, tasks, MAR
+  doses, and every discharge-lifecycle step.
+- **Tests**: 7 new unit spec files (35 tests, including a full
+  `discharge.service.spec.ts` covering approve/checklist/complete
+  guard rails) + a new `apps/api/test/nursing-mar-discharge.e2e-
+  spec.ts` (15 e2e tests — full lifecycle from admission through
+  nursing docs, orders/tasks, MAR schedule+administer+missed, discharge
+  approve→checklist→summary→complete, a real downloaded PDF). All
+  passing (441 unit / 241 e2e total across the whole API, zero
+  failures). One existing test fixed: `ipd-dashboard.service.spec.ts`'s
+  mock Prisma object was missing the new `nursingTask` model, breaking
+  after the dashboard's `getStats` was extended.
+- **Frontend**: `apps/web/src/lib/api/nursing.ts`, `mar.ts`,
+  `discharge.ts` (new). Four new tabs on `/dashboard/ipd/
+  [admissionId]` (`_components/nursing-tab.tsx`, `orders-tab.tsx`,
+  `mar-tab.tsx`, `discharge-tab.tsx`) wrapped in a `Tabs` component
+  around the existing Overview content. New pages:
+  `/dashboard/ipd/discharges` (pending/discharged queue),
+  `/dashboard/nursing` (dashboard — census/occupancy/pending-tasks/
+  pending-discharge tiles + a STAT-task alert panel),
+  `/dashboard/nursing/tasks` (org-wide queue, status/priority filters),
+  `/dashboard/nursing/patients` (patient census — no per-nurse
+  ward-assignment model exists in this repo, disclosed on-page rather
+  than fabricated). Sidebar gained a "Nursing" nav item under
+  Clinical. IPD dashboard page gained 4 new stat tiles and
+  Discharges/Nursing quick-link buttons.
+- **Full verification, all green**: `pnpm --filter @medicore/database
+  db:generate`, `pnpm lint`, `pnpm typecheck`, `pnpm test` (441 api
+  unit + 6 web), `pnpm test:e2e` (241/241), `pnpm build` (all 6
+  packages).
+- **Browser-verified end to end**: killed two stale dev-server
+  processes squatting ports 3000/4000 from a previous session before
+  starting fresh (per the standing TD-0004-addendum guidance), reseeded
+  the dev DB to pick up the new permissions. Playwright installed ad
+  hoc into the session scratch directory again (TD-0010, still open).
+  One scripting gotcha hit: `waitForURL` with a loose regex
+  (`/\/dashboard\/ipd\/[a-z0-9]+$/`) false-matched the static
+  `/dashboard/ipd/admissions` list route (since "admissions" is itself
+  all lowercase letters) — fixed by waiting for a real page-specific
+  element instead of a URL pattern. Logged in as `admin@medicore.demo`,
+  admitted a real patient (Ramesh Gupta) into ICU Ward Bed 34, recorded
+  a nursing note + an assessment with a real derived "Fall risk: High"/
+  "Pressure ulcer: Moderate"/"GCS 15/15" + an I-O chart entry with a
+  real computed "Balance: 100ml", placed a doctor order that spawned a
+  nursing task (completed), recorded real vitals (BP 128/82, Pulse 88,
+  Temp 37.2°C, SpO2 96%) on the linked encounter, prescribed Amoxicillin
+  and scheduled/administered a real MAR dose with a genuine nurse
+  signature ("Nurse Anjali Verma") plus recorded a missed-dose
+  exception, then walked discharge through approve → all 8 checklist
+  items → summary → finalize — confirmed the bed correctly landed in
+  "Cleaning" (not directly "Available"), the encounter flipped to
+  "Completed", a real room `Charge` was created, and a genuine
+  discharge-summary PDF downloaded — and confirmed the Discharges
+  queue, Nursing Dashboard, Nursing Tasks queue, and IPD dashboard all
+  reflect the real resulting state. 30 screenshots under
+  `docs/screens/`.
+- Replaced `.ai/NEXT.md` with **Milestone 13 — General Inventory**.
+
+### Files modified/created
+- Schema: `packages/database/prisma/schema.prisma`,
+  `packages/database/prisma/migrations/20260804220000_nursing_mar_discharge/`,
+  `packages/database/prisma/migrations/20260804221000_ipd_charge_source_module/`.
+- RBAC: `packages/database/prisma/seed.ts`.
+- Shared types: `packages/types/src/enums.ts` (10 new enums + `IPD`
+  added to `ChargeSourceModule`), `packages/types/src/nursing.ts`
+  (new), `packages/types/src/mar.ts` (new), `packages/types/src/
+  discharge.ts` (new), `packages/types/src/ipd.ts` (extended
+  `Admission`/`AdmissionQuery`/`IpdDashboardStats`),
+  `packages/types/src/index.ts`.
+- Backend: `apps/api/src/modules/ipd/*` (new: `nursing-notes.*`,
+  `nursing-assessments.*`, `intake-output.*`, `ipd-orders.*`,
+  `nursing-tasks.*`, `medication-administration.*`,
+  `discharge.service.ts`(+spec)+`.controller.ts`,
+  `discharge-summary-pdf.ts`, `dto/*` — each with `.service.ts`+
+  `.spec.ts`+`.controller.ts`), `admissions.service.ts`/`.controller.ts`
+  (extended), `ipd-dashboard.service.ts`(+spec, extended),
+  `ipd.module.ts` (extended), `apps/api/src/modules/billing/` (no code
+  change — `ChargesService` reused as-is), `apps/api/src/modules/
+  audit/audit.listener.ts` (extended), `apps/api/test/
+  nursing-mar-discharge.e2e-spec.ts` (new).
+- Frontend: `apps/web/src/lib/api/nursing.ts`/`mar.ts`/`discharge.ts`
+  (new), `apps/web/src/app/dashboard/ipd/[admissionId]/page.tsx`
+  (extended with `Tabs`), `.../[admissionId]/_components/*.tsx` (new),
+  `apps/web/src/app/dashboard/ipd/discharges/page.tsx` (new),
+  `apps/web/src/app/dashboard/ipd/page.tsx` (extended),
+  `apps/web/src/app/dashboard/nursing/page.tsx`/`tasks/page.tsx`/
+  `patients/page.tsx` (new), `apps/web/src/components/layout/
+  sidebar.tsx` (new nav item).
+- Docs: `.ai/PROJECT_CONTEXT.md`, `.ai/PROGRESS.md`,
+  `.ai/MODULE_STATUS.md`, `.ai/CHANGELOG.md`, `.ai/DECISIONS.md`
+  (ADR-0019), `.ai/TECH_DEBT.md` (TD-0030 resolved, TD-0032/TD-0033
+  opened), `.ai/NEXT.md` (replaced).
+- Screenshots: `docs/screens/` — 30 new (`nursing-*.png`, `mar-*.png`,
+  `discharge-*.png`, `admit-wizard-step1-patient.png`,
+  `admit-wizard-step3-bed.png`, `admit-wizard-review.png`,
+  `admission-created-bed-assigned.png`, `vitals-form-filled.png`,
+  `vitals-recorded.png`, `bed-grid-after-discharge.png`,
+  `discharges-queue-discharged.png`,
+  `ipd-dashboard-with-nursing-stats.png`).
+
+### Architectural decisions made
+See **ADR-0019** in `DECISIONS.md` for the full reasoning — summary:
+nursing docs are new admission-scoped models, not `ClinicalNote`
+reuse; vitals charting reuses `Vital` unchanged; MAR reuses
+`Prescription`/`PrescriptionItem` with an admin-log child table; all
+new sub-resources are all-scope (not doctor-own-scoped, TD-0032);
+discharge is a 4-step workflow ending in a real Charge Engine
+integration (elapsed-time-based days-stayed, minimum 1); fall-risk/
+Braden levels are server-derived from disclosed, documented score
+thresholds (not a clinically-validated scoring service).
+
+### Known issues
+- TD-0030 (resolved this session): IPD billing integration and
+  discharge are now genuinely reachable.
+- TD-0032: nursing/MAR/discharge RBAC is all-scope, including for the
+  Doctor role — a doctor can approve/finalize discharge for any
+  admission, not only their own attended ones.
+- TD-0033 (tracking only, disclosed): MAR's barcode fields have no
+  real scanner hardware integration.
+- TD-0031 (pre-existing, still open): ward/room deactivation doesn't
+  check for occupied beds inside it.
+
+### Recommended next task
+**Milestone 13 — General Inventory**, per `docs/roadmap.md` (ADR-0017's
+renumbering) and the now-replaced `.ai/NEXT.md`. Do not re-implement or
+re-verify anything from Milestone 12 (either checkpoint).
+
+### Estimated project completion
+**Overall: ~13 of 18 roadmap milestones/checkpoints fully complete
+end-to-end** (Doctors/Scheduling, Appointments, Clinical/EMR,
+Laboratory, Radiology, Pharmacy, Billing, Insurance, IPD — both
+Checkpoint 12.1 and 12.2 — plus foundational auth/RBAC/multi-tenancy
+scaffolding). **IPD module: 100% for Milestone 12 (both checkpoints) —
+Milestone 12 is now fully complete.** Everything else's percentage
+remains provisional per `MODULE_STATUS.md`.
+
+---
+
+## Session: 2026-08-04 (Milestone 12, Checkpoint 12.1 — IPD Admission, Wards & Bed Management, complete)
+
+### What was completed
+Ran in Auto Mode. `NEXT.md` framed this as a clean schema slate for
+`Ward`/`Bed`/`Admission` (per ADR-0017) — that was wrong: all three
+models, plus `BedType`/`BedStatus`/`AdmissionStatus` enums, existed
+unaudited since the very first scaffolding migration
+(`20260730185306_auth_org_rbac`), the same category of unused scaffold
+as `Medication` (ADR-0014) and the flat `MedicalRecord` (ADR-0008).
+Confirmed via `git show 56857d3:.../schema.prisma`. Audited, extended
+(not replaced), and recorded the full schema/RBAC design as
+**ADR-0018**. Per the reading policy, work touched IPD (new module),
+Patients (`patients.service.ts`'s `getTimeline`/`getSummaryCounts`
+already queried `prisma.admission` — verified field-name compatibility
+before touching anything), Encounters (`EncountersService` reuse for
+auto-create-or-reuse-existing IPD encounter), Doctors
+(`DoctorRefService` reuse), Insurance (`PatientInsurance` reuse for
+"Insurance Admission"), Prisma schema, and shared types.
+
+- **Schema** (migration `20260804120000_ipd_bed_management`, applied
+  to both `medicore_dev`/`medicore_test`): new `Room`, `BedAllocation`,
+  `BedTransfer` models. `Ward` gained `floor`/`block`/`type`/`status`
+  (dropped the scaffold's `isActive`/`totalBeds` — bed counts are
+  computed by query, matching every other dashboard stat in this
+  repo). `Bed`'s unique constraint moved `[bedNumber, wardId]` →
+  `[bedNumber, roomId]` (a room, not a ward, is the natural uniqueness
+  scope); gained `roomId`. `Admission` gained `encounterId`/
+  `attendingDoctorId` (renamed from the scaffold's `doctorId`)/
+  `departmentId`/`roomId`/`patientInsuranceId`/`type`/
+  `expectedDischargeAt`/`cancelledAt`/`cancelReason`/
+  `createdByUserId`; `wardId` became required. New enums: `WardType`,
+  `WardStatus`, `RoomStatus`, `AdmissionType`, `BedAllocationAction`;
+  `BedType`/`BedStatus`/`AdmissionStatus` redefined to the checkpoint's
+  spec'd value sets (dropped `AdmissionStatus.TRANSFERRED` — a
+  mid-stay transfer is a `BedTransfer` event, not an admission-status
+  change); `EncounterType` gained `IPD`. The scaffolded field names
+  read by `patients.service.ts` (`admissionNumber`/`admissionReason`/
+  `admittedAt`/`status`/`patientId`) were kept unchanged.
+- **RBAC**: new `ipd.wards`/`ipd.rooms`/`ipd.beds` (inventory CRUD,
+  all-scope), `ipd.admissions` (admit/cancel, own-scope-capable —
+  Doctor role granted `.own`, mirroring `medical_records`/
+  `prescriptions`), `ipd.transfer` (allocate/reserve/vacate/transfer
+  workflow, all-scope, kept separate from `ipd.beds` since it's an
+  action on a bed rather than editing the bed record). Nurse granted
+  operational read + `ipd.beds.update` + `ipd.transfer.*`;
+  Receptionist granted admission read/create + inventory read.
+- **Backend** (`apps/api/src/modules/ipd/`, new module):
+  `WardsService`/`RoomsService`/`BedsService` (CRUD, soft-deactivate —
+  `BedsService` blocks deactivating an `OCCUPIED` bed; the ward/room
+  equivalents don't yet, see TD-0031), `AdmissionsService` (one code
+  path handles all four `AdmissionType`s; auto-creates a fresh `IPD`
+  encounter or reuses a passed-in one when the patient/encounter match;
+  cancel releases any held bed), `BedAllocationService`
+  (allocate/reserve/cancel-reservation/vacate/transfer — a
+  vacated/transferred-from bed lands in `CLEANING`, not directly
+  `AVAILABLE`, mirroring a real ward cleaning workflow),
+  `IpdDashboardService` (all real queries; discharges-today is a real
+  query that always reads 0 this checkpoint since nothing sets
+  `DISCHARGED` yet — a placeholder by construction, not faked).
+  Sequential `ADM-<prefix>-<year>-<seq>` numbering (advisory-locked,
+  mirrors `LAB-`/`RAD-` precedent).
+- **Audit integration**: `audit.listener.ts` gained 8 new `@OnEvent`
+  handlers (`ipd.admission_created/updated/cancelled`,
+  `ipd.bed_allocated/reserved/reservation_cancelled/vacated/
+  transferred`).
+- **Tests**: 6 new unit spec files (47 tests) + `apps/api/test/
+  ipd.e2e-spec.ts` (16 e2e tests — ward/room/bed CRUD with duplicate-
+  code/number conflicts, admitting directly into a bed vs. ward-only,
+  rejecting an already-occupied bed, transfer with real history,
+  vacate landing in `CLEANING`, the dashboard's real counts, cancel
+  releasing a re-allocated bed, 401 without a token). All passing
+  (406 unit / 226 e2e total across the whole API — zero failures). One
+  e2e setup gotcha hit and fixed: a register()-created test org has no
+  `SystemRole.DOCTOR` role row (unlike the seeded demo org), which
+  `StaffOnboardingService` requires — same gotcha `prescriptions.
+  e2e-spec.ts` already worked around, mirrored here.
+- **Frontend**: `apps/web/src/lib/api/ipd.ts` (new) + 6 new pages
+  (`/dashboard/ipd` dashboard, `/wards`, `/rooms`, `/beds` — a
+  color-coded Bed Grid grouped by ward/room, `?wardId=`/`?roomId=`
+  deep-linkable — `/admissions` — queue + a 5-step Admit Patient
+  wizard, `/[admissionId]` — allocate/reserve/cancel-reservation/
+  vacate/transfer actions plus a merged bed-allocation-+-transfer
+  history timeline). Sidebar's dormant "Wards & Beds" nav item
+  (`departments.read`-gated, pointing at `/dashboard/wards`, unbuilt
+  since Milestone 4) replaced with "IPD & Beds" → `/dashboard/ipd`,
+  gated on `ipd.admissions.read`. Patient detail page gained a real
+  "Admissions" tab (current admission + full history, encounter link).
+- **Full verification, all green**: `pnpm --filter @medicore/database
+  db:generate`, `pnpm lint`, `pnpm typecheck`, `pnpm test` (406 api unit
+  + 6 web), `pnpm test:e2e` (226/226), `pnpm build` (all 6 packages).
+- **Browser-verified end to end**: a stale `node dist/main.js` process
+  was squatting port 4000 from an earlier manual API smoke-test this
+  session — killed and restarted via `pnpm dev` before the browser
+  walkthrough, per the standing TD-0004-addendum guidance. Playwright
+  installed ad hoc into the session scratch directory again (TD-0010,
+  still open) — hit a real Radix Tabs gotcha along the way: `el.click()`
+  (native DOM click) doesn't trigger Radix Tabs' tab-switch (it listens
+  on `mousedown`, not `click`), so patient-page tab navigation needed a
+  real Playwright `.click()` instead; and the Admit Patient wizard's
+  final submit button shares its exact text ("Admit patient") with the
+  page-header trigger button, so the click needed `[role="dialog"]`
+  scoping to hit the right one. Logged in as `admin@medicore.demo`,
+  created an ICU ward + a General ward, rooms, and beds, then ran the
+  full 5-step Admit Patient wizard for a real patient (Rohan Mehta)
+  into a real bed with a real doctor (Priya Sharma) — produced
+  `ADM-MED-2026-000002` with a genuine auto-created IPD encounter —
+  then transferred the patient to a second bed (old bed correctly
+  landed in "Cleaning"), vacated it, and confirmed the Bed Grid,
+  dashboard, and the patient's new Admissions tab all reflected the
+  real state. 19 screenshots under `docs/screens/` (`ipd-*.png`).
+- Updated `.ai/NEXT.md`: replaced entirely with **Milestone 12,
+  Checkpoint 12.2 — Nursing, Medication Administration & Discharge**.
+
+### Files modified/created
+- Schema: `packages/database/prisma/schema.prisma`,
+  `packages/database/prisma/migrations/20260804120000_ipd_bed_management/`.
+- RBAC: `packages/database/prisma/seed.ts`.
+- Shared types: `packages/types/src/enums.ts` (7 new enums + `IPD` added
+  to `EncounterType`), `packages/types/src/ipd.ts` (new — full
+  interface/zod-schema set), `packages/types/src/index.ts`.
+- Backend: `apps/api/src/modules/ipd/*` (new: `wards.service.ts`
+  (+spec)+`.controller.ts`, `rooms.service.ts`(+spec)+`.controller.ts`,
+  `beds.service.ts`(+spec)+`.controller.ts`, `admissions.service.ts`
+  (+spec)+`.controller.ts`, `bed-allocation.service.ts`(+spec)+
+  `.controller.ts`, `ipd-dashboard.service.ts`(+spec)+`.controller.ts`,
+  `ipd.module.ts`, `dto/*`), `apps/api/src/app.module.ts`,
+  `apps/api/src/modules/audit/audit.listener.ts`,
+  `apps/api/test/ipd.e2e-spec.ts`.
+- Frontend: `apps/web/src/lib/api/ipd.ts` (new), `apps/web/src/app/
+  dashboard/ipd/page.tsx` (new), `.../wards/page.tsx` (new),
+  `.../rooms/page.tsx` (new), `.../beds/page.tsx` (new),
+  `.../admissions/page.tsx` (new), `.../[admissionId]/page.tsx` (new),
+  `apps/web/src/app/dashboard/patients/[id]/page.tsx` (new Admissions
+  tab), `apps/web/src/components/layout/sidebar.tsx` (nav item
+  replaced).
+- Docs: `docs/roadmap.md` (Milestone 12 split into Checkpoints 12.1/
+  12.2, 12.1 marked complete), `.ai/PROJECT_CONTEXT.md`,
+  `.ai/PROGRESS.md`, `.ai/MODULE_STATUS.md`, `.ai/CHANGELOG.md`,
+  `.ai/DECISIONS.md` (ADR-0018), `.ai/TECH_DEBT.md` (TD-0030, TD-0031),
+  `.ai/NEXT.md` (replaced).
+- Screenshots: `docs/screens/ipd-*.png` (19 new).
+
+### Architectural decisions made
+See **ADR-0018** in `DECISIONS.md` for the full reasoning — summary:
+`Ward → Room → Bed` hierarchy with `Bed`/`Admission` denormalizing
+`wardId` alongside the room-level FK; dedicated `Status` enums for
+Ward/Room/Bed rather than this repo's usual `isActive` boolean (the
+brief explicitly named "Status" as its own field, and `Bed` needs a
+real 6-state operational machine); `Admission.bedId`/`roomId` optional
+at creation (ward-only admission, bed allocated later, is a real
+intake pattern); `Admission.encounterId` reused-if-passed /
+auto-created-otherwise, handling all four admission types through one
+path; `Admission.patientInsuranceId` is the entire "Insurance
+Admission" implementation (no new pre-auth/claim workflow — the
+existing Insurance module UI does that once billing exists to claim
+against); `AdmissionStatus.DISCHARGED`/`ABSCONDED` kept as
+not-yet-reachable enum values (mirrors `InvoiceStatus.OVERDUE`,
+TD-0026); `BedAllocation` (single-bed event log) and `BedTransfer`
+(from→to pair) as two separate history models rather than deriving
+transfers from allocation pairs.
+
+### Known issues
+- TD-0030 (tracking only): IPD billing integration and discharge are
+  Checkpoint 12.2, not built this session — `AdmissionStatus.
+  DISCHARGED`/`ABSCONDED` exist but nothing sets them yet.
+- TD-0031: deactivating a Ward or Room doesn't check for occupied beds
+  inside it, unlike `BedsService.deactivate` which already blocks on
+  `OCCUPIED` — a missing prevention check, not a data-loss bug.
+
+### Recommended next task
+**Milestone 12, Checkpoint 12.2 — Nursing, Medication Administration &
+Discharge**, per `docs/roadmap.md` and the now-replaced `.ai/NEXT.md`.
+Do not re-implement or re-verify anything from Checkpoint 12.1.
+
+### Estimated project completion
+**Overall: ~12 of 18 roadmap milestones/checkpoints fully complete
+end-to-end** (Doctors/Scheduling, Appointments, Clinical/EMR,
+Laboratory, Radiology, Pharmacy, Billing, Insurance, IPD Checkpoint
+12.1 — plus foundational auth/RBAC/multi-tenancy scaffolding). **IPD
+module: 100% for Checkpoint 12.1** (Checkpoint 12.2 — Nursing/MAR/
+Discharge — still ahead). Everything else's percentage remains
+provisional per `MODULE_STATUS.md`.
+
+---
+
+## Session: 2026-08-04 (Milestone 11 — Insurance Management, complete)
+
+### What was completed
+Ran in Auto Mode. The instruction gave the full Milestone 11 deliverable
+list directly (Providers/Plans, Patient Coverage, Pre-Authorization,
+Claims + Settlement, auto-attached Claim Documents, RBAC, 6 frontend
+routes + 2 tabs, tests, docs) — materially larger than `NEXT.md`'s
+prior framing, which had only scoped a claim workflow reusing
+`InsuranceClaim`'s existing denormalized fields. Recorded as
+**ADR-0016**. This session picked up mid-flight: the insurance module
+already had `InsuranceProvider`/`InsurancePlan` scaffolding, the
+schema migration, and the RBAC seed changes in place from an
+interrupted prior pass (one file was left as a stray `.tmp.<pid>.
+<hash>` write) — verified and completed rather than redone. Per the
+reading policy, work touched Insurance, Billing (`InvoicesService`/
+`PaymentsService` reuse), Patients, Encounters, Laboratory, Radiology,
+Prescriptions, Prisma schema, and shared types.
+
+- **Schema** (migration `20260802224429_insurance_management`, applied
+  to both `medicore_dev`/`medicore_test`): `InsuranceProvider`,
+  `InsurancePlan`, `PatientInsurance`, `PreAuthorization` +
+  `PreAuthAttachment`, `ClaimDocument`; `InsuranceClaim` gained
+  `encounterId` + structured FKs + settlement fields +
+  `PARTIALLY_SETTLED`/`CLOSED` statuses. See ADR-0016 for the full
+  model-design reasoning (denormalization, nullable FKs with
+  `SetNull`, no `InsurancePolicy`-vs-`PatientInsurance` distinction).
+- **RBAC**: `packages/database/prisma/seed.ts`'s flat `insurance`
+  resource split into `insurance.providers`/`plans`/`claims`/`preauth`/
+  `settlement` (the last `.manage`-gated, admin-only); `Cashier` gets
+  read/create/update on providers/plans/claims/preauth plus
+  `settlement.read` only — mirrors `billing.manage`'s approver
+  separation.
+- **Backend** (`apps/api/src/modules/insurance/`): `InsuranceProviders
+  Service`/`Controller`, `InsurancePlansService`/`Controller`,
+  `PatientInsuranceService`/`Controller` (nested under `insurance/
+  patients/:patientId/coverages`), `PreAuthorizationService`/
+  `Controller` (Draft→Submitted→Under Review→Approved/Partially
+  Approved/Rejected/Cancelled, file attachments), `ClaimDocuments
+  Service` (auto-attach via `InvoicesService.generatePdf`/
+  `PrescriptionsService.generatePdf`/`LabTestsService.
+  generateReportPdf`/`RadiologyOrdersService.generateReportPdf` + a new
+  `generateEncounterSummaryPdf`; failures logged and skipped, not
+  thrown), `InsuranceClaimsService`/`Controller` (full lifecycle +
+  settlement, records a real `Payment` via `PaymentsService.create`),
+  `InsuranceDashboardService`/`Controller`. `insurance.controller.ts`/
+  `insurance.service.ts` (the old 3-line scaffold) repurposed into the
+  dashboard endpoint rather than left as dead code.
+- **Audit integration**: `audit.listener.ts` gained 12 new `@OnEvent`
+  handlers for pre-auth/claim lifecycle events.
+- **Tests**: 7 new unit spec files (46 tests) + `apps/api/test/
+  insurance.e2e-spec.ts` (11 e2e tests — provider/plan CRUD, the
+  one-active-coverage conflict, the full pre-auth workflow, claim
+  creation with real auto-attached documents, the duplicate-invoice-
+  claim conflict, the full claim workflow through a genuine settlement
+  payment, an out-of-order-transition rejection, and the cashier-
+  can't-settle RBAC split). All passing (359 unit / 210 e2e total
+  across the whole API — zero failures).
+- **Frontend**: `apps/web/src/lib/api/insurance.ts` + 6 new pages
+  (`/dashboard/insurance` dashboard, `/providers`, `/plans`,
+  `/preauth`, `/claims`, `/[claimId]`) + a real Patient Insurance tab
+  (replacing the Milestone 10-era placeholder) + a new Encounter
+  Insurance tab. Sidebar's "Insurance" link permission string updated
+  from the retired flat `insurance.read` to `insurance.claims.read`.
+- **Full verification, all green**: `pnpm --filter @medicore/database
+  db:generate`, `pnpm lint`, `pnpm typecheck`, `pnpm test` (359 api unit
+  + 6 web), `pnpm test:e2e` (210/210), `pnpm build` (all 6 packages).
+- **Browser-verified end to end**: port 3000 was occupied by an
+  unrelated project's dev server (`onehaul-front-app`) this session —
+  rather than killing another project's process without asking, the
+  user was asked and chose to run MediCore's web app on port 3100
+  instead (with `FRONTEND_URL` adjusted on the API side to match, since
+  CORS is origin-locked). Logged in as `admin@medicore.demo`, created a
+  provider + plan, added a patient's coverage, requested and approved a
+  pre-authorization from that patient's encounter, filed a claim
+  (confirmed real auto-attached Invoice + Encounter Summary PDFs), and
+  walked it through Submit → Under Review → Approved → Settled →
+  Closed, confirming a real ₹800 `Payment` (`paymentMode: INSURANCE`)
+  landed against the invoice. 12 screenshots under `docs/screens/`
+  (`insurance-*.png`). **One real bug found and fixed**: the "Add
+  provider" dialog sent empty strings instead of `undefined` for
+  unfilled optional fields, which broke `email`'s Zod `.email()`
+  format validation on every provider-creation attempt that left email
+  blank — fixed in `apps/web/src/app/dashboard/insurance/providers/
+  page.tsx`.
+- Updated `.ai/NEXT.md`: replaced entirely with **Milestone 12 — IPD &
+  Bed Management**.
+
+### Files modified/created
+- Schema: `packages/database/prisma/schema.prisma`,
+  `packages/database/prisma/migrations/20260802224429_insurance_management/`.
+- RBAC: `packages/database/prisma/seed.ts`.
+- Shared types: `packages/types/src/enums.ts` (7 new enums),
+  `packages/types/src/insurance.ts` (new — full interface/zod-schema
+  set), `packages/types/src/index.ts`.
+- Backend: `apps/api/src/modules/insurance/*` (new: `insurance-
+  providers.service.ts`(+spec)+`.controller.ts`, `insurance-plans.
+  service.ts`(+spec)+`.controller.ts`, `patient-insurance.service.ts`
+  (+spec)+`.controller.ts`, `pre-authorization.service.ts`(+spec)+
+  `.controller.ts`, `claim-documents.service.ts`(+spec),
+  `insurance-claims.service.ts`(+spec)+`.controller.ts`,
+  `insurance-dashboard.service.ts`(+spec), `insurance-encounter-
+  summary-pdf.ts`, `dto/*`; rewrote `insurance.module.ts`/
+  `insurance.controller.ts`; deleted the old `insurance.service.ts`
+  placeholder), `apps/api/src/modules/audit/audit.listener.ts`,
+  `apps/api/test/insurance.e2e-spec.ts`.
+- Frontend: `apps/web/src/lib/api/insurance.ts` (new), `apps/web/src/
+  app/dashboard/insurance/page.tsx` (new), `.../providers/page.tsx`
+  (new), `.../plans/page.tsx` (new), `.../preauth/page.tsx` (new),
+  `.../claims/page.tsx` (new), `.../[claimId]/page.tsx` (new),
+  `apps/web/src/app/dashboard/patients/[id]/page.tsx` (Insurance tab
+  replaced), `apps/web/src/app/dashboard/medical-records/
+  [encounterId]/page.tsx` (new Insurance tab), `apps/web/src/
+  components/layout/sidebar.tsx` (permission string fix).
+- Docs: `docs/roadmap.md` (Milestone 11 marked complete), `.ai/
+  PROJECT_CONTEXT.md`, `.ai/PROGRESS.md`, `.ai/MODULE_STATUS.md`,
+  `.ai/CHANGELOG.md`, `.ai/DECISIONS.md` (ADR-0016), `.ai/TECH_DEBT.md`
+  (TD-0028, TD-0029), `.ai/NEXT.md` (replaced).
+- Screenshots: `docs/screens/insurance-*.png` (12 new).
+
+### Architectural decisions made
+See **ADR-0016** in `DECISIONS.md` for the full reasoning — summary:
+separate `InsuranceProvider`/`InsurancePlan`/`PatientInsurance` models
+rather than extending `InsuranceClaim`'s denormalized fields; one
+active coverage per type enforced in application code, not a DB
+constraint; RBAC split into 5 namespaced sub-resources with
+`settlement.manage` admin-gated; settlement posts a real `Payment` via
+the existing `PaymentsService`, no parallel concept; claim documents
+auto-attach by reusing every other module's existing PDF generator
+(skip-and-log on failure) plus one new Encounter Summary generator;
+Discharge Summary auto-attach explicitly deferred (IPD doesn't exist
+yet); an encounter→invoice lookup gap (TD-0028) and a synthesized-vs-
+real claim timeline gap (TD-0029) both tracked rather than
+scope-creeped into Billing/Audit changes this session.
+
+### Known issues
+- TD-0028: no `encounterId` filter on `InvoicesController`'s list
+  endpoint, so the Encounter Insurance tab's "File claim" dialog asks
+  for the invoice ID as free text instead of a picker.
+- TD-0029: the claim detail page's "Timeline" is synthesized from the
+  claim's own lifecycle timestamp columns, not a real per-resource
+  audit-trail feed (the audit rows exist; no endpoint filters them by
+  `resourceId` for a single claim yet).
+- Discharge Summary auto-attach is explicitly out of scope — no
+  `Admission`/discharge model exists until Milestone 12 (IPD).
+
+### Recommended next task
+**Milestone 12 — IPD & Bed Management**, per `docs/roadmap.md` and the
+now-replaced `.ai/NEXT.md`. Do not re-implement or re-verify anything
+from Milestone 11.
+
+### Estimated project completion
+**Overall: ~11 of 17 roadmap milestones fully complete end-to-end**
+(Doctors/Scheduling, Appointments, Clinical/EMR, Laboratory, Radiology,
+Pharmacy, Billing, Insurance — plus foundational auth/RBAC/multi-tenancy
+scaffolding). **Insurance module: 100% for Milestone 11.** Everything
+else's percentage remains provisional per `MODULE_STATUS.md`.
+
+---
+
 ## Session: 2026-08-03 (Milestone 10 — Billing, complete)
 
 ### What was completed

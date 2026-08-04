@@ -1,6 +1,6 @@
 'use client'
 
-import { Bell, LogOut, Search, Settings, User } from 'lucide-react'
+import { Bell, LogOut, Settings, User } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -13,6 +13,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/lib/auth/auth-context'
+
+import { CommandPalette } from './command-palette'
 
 function initials(firstName: string, lastName: string): string {
   return `${firstName[0] ?? ''}${lastName[0] ?? ''}`.toUpperCase()
@@ -30,11 +32,7 @@ export function Header() {
   return (
     <header className="flex h-14 items-center justify-between border-b bg-card px-6">
       {/* Search */}
-      <div className="flex w-72 items-center gap-2 rounded-md border bg-background px-3 py-1.5 text-sm text-muted-foreground">
-        <Search className="h-3.5 w-3.5" />
-        <span>Search patients, appointments...</span>
-        <kbd className="ml-auto rounded bg-muted px-1.5 py-0.5 text-xs">⌘K</kbd>
-      </div>
+      <CommandPalette />
 
       {/* Right side */}
       <div className="flex items-center gap-2">

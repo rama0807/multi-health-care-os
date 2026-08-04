@@ -799,3 +799,197 @@ recovery path already in the UI.
 **Resolution plan:** Not planned — acceptable given the same pattern is
 already relied on elsewhere in this codebase. Revisit only if this
 proves to happen in practice.
+
+---
+
+## TD-0028: Encounter Insurance tab's "File claim" form asks for the invoice ID as free text
+
+Opened: 2026-08-04
+Status: Open
+Severity: Low (UX friction, not a correctness issue)
+
+**Description:** Filing an insurance claim requires an `invoiceId`
+(`InsuranceClaimsService.create`), but no endpoint resolves "the
+invoice for this encounter" — `InvoicesService.list` filters by
+`patientId`/`status`/`type`/date range, not `encounterId`, even though
+`Invoice.encounterId` exists as a column (added in Milestone 10). The
+Encounter Insurance tab's "File claim" dialog (`apps/web/src/app/
+dashboard/medical-records/[encounterId]/page.tsx`, `FileClaimDialog`)
+therefore asks staff to paste the invoice ID manually rather than
+picking it from a list, with a hint pointing them at the Billing
+module.
+
+**Impact:** Low — staff can still file a claim, just with one extra
+manual step (copying the invoice ID from Billing). No functional
+claims-workflow gap.
+
+**Resolution plan:** Add an `encounterId` filter to
+`InvoicesController`'s list endpoint (mirrors the existing `patientId`
+filter), then have `FileClaimDialog` fetch and offer a select instead
+of a free-text field. Small, low-risk change — deferred only because it
+touches the Billing module and this session's reading policy scoped
+Billing changes to reuse-as-is.
+
+---
+
+## TD-0029: Claim detail page's "Timeline" is synthesized from lifecycle timestamps, not a real audit-trail feed
+
+Opened: 2026-08-04
+Status: Open
+Severity: Low (cosmetic/completeness gap, not a data-loss issue)
+
+**Description:** The Patient detail page has a dedicated Timeline/Audit
+tab backed by a real per-patient event feed (`PatientTimelineEntry`,
+`GET /patients/:id/timeline`). No equivalent per-claim (or per-pre-
+authorization) audit feed exists, even though every claim/pre-auth
+lifecycle transition already emits an `@OnEvent` and is recorded via
+`AuditService` (see `audit.listener.ts`'s 12 new `insurance.*`
+handlers added this milestone) — the audit rows exist in the database,
+there's just no endpoint that filters them by `resourceId`/`resource:
+'InsuranceClaim'` for a single claim. The claim detail page's
+"Timeline" panel is a client-side list built from the claim's own
+`createdAt`/`submittedAt`/`settledAt`/`closedAt` columns instead —
+correct as far as it goes, but it can't show intermediate transitions
+(e.g. "Under Review" has no timestamp column) or who performed each
+action.
+
+**Impact:** Low — the settlement panel and status badge already carry
+the information that matters for day-to-day use; the timeline gap is a
+"nice to have," not a workflow blocker.
+
+**Resolution plan:** Add a generic `GET /audit-logs?resource=X&
+resourceId=Y` filter (or a per-claim `GET /insurance/claims/:id/audit`
+convenience endpoint) and swap the claim detail page's synthesized
+timeline for the real feed. Natural follow-up once a second module
+wants the same per-resource audit view — not deferred for a hard
+blocker, just not built preemptively for one caller.
+
+---
+
+## TD-0030 (tracking only, not a defect): IPD billing integration and discharge are Checkpoint 12.2, not built this session
+
+Opened: 2026-08-04
+Status: **Resolved (2026-08-04)** — closed by Checkpoint 12.2 (see ADR-0019):
+`DischargeService.complete` computes `days-stayed × Room.chargesPerDay`
+(elapsed time from `admittedAt`, rounded up to the next whole day,
+minimum 1) into a real `Charge` row (`sourceModule: IPD`, `sourceId:
+admission.id`) at discharge finalize, and `AdmissionStatus.DISCHARGED`
+is now genuinely reachable via the approve → checklist → summary →
+complete workflow.
+Severity: N/A (explicitly out of scope by instruction, not a gap in what was asked)
+
+**Description:** `docs/roadmap.md`'s Milestone 12 goal names "IPD billing
+integration — a stay's charges accumulate the same way [as the Charge
+Engine]," but Checkpoint 12.1's instructions explicitly excluded
+Nursing Notes, Medication Administration, and Discharge Summary,
+reserving them for 12.2 — and the only sensible trigger point for a
+per-day room/bed charge is discharge (days-stayed × `Room.
+chargesPerDay`), which doesn't exist yet. `AdmissionStatus.DISCHARGED`/
+`ABSCONDED` exist in the schema (per ADR-0018) but nothing in this
+checkpoint's API ever sets them — only `ADMITTED` (on create) and
+`CANCELLED` (the same-stay "opened in error" cancel action) are
+reachable. This mirrors `InvoiceStatus.OVERDUE` (TD-0026) — an enum
+value with no trigger built yet, not a fake implementation.
+
+**Impact:** None for 12.1's actual deliverables (ward/room/bed
+inventory, admission, bed allocation/transfer/reserve/vacate, dashboard
+— all fully implemented, tested, and browser-verified). A stay
+currently accrues no billing charges regardless of length.
+
+**Resolution plan:** Build in Checkpoint 12.2 alongside Discharge
+Summary — on discharge, compute `days-stayed × Room.chargesPerDay` (and
+any other per-stay charges) into the existing Charge Engine
+(`sourceModule: 'ipd'`, `sourceId: admission.id`), mirroring how
+Milestone 10 left ad-hoc `Charge` creation manual/event-driven rather
+than inventing a mid-stay charge to hit this checkpoint's scope.
+
+---
+
+## TD-0031: Deactivating a Ward or Room doesn't check for occupied beds inside it
+
+Opened: 2026-08-04
+Status: Open
+Severity: Low
+
+**Description:** `BedsService.deactivate` correctly blocks deactivating
+an `OCCUPIED` bed (`ConflictException`). `WardsService.deactivate` and
+`RoomsService.deactivate` don't have the equivalent guard — an admin
+holding `ipd.wards.delete`/`ipd.rooms.delete` could set a ward or room
+to `INACTIVE` while one or more of its beds still show a live
+`ADMITTED` patient in `Admission.bedId`. Deactivating the ward/room
+doesn't cascade any change to the beds or admissions themselves (the
+bed keeps its own `OCCUPIED` status and the admission is unaffected),
+so no data is lost or silently changed — this is a missing *prevention*
+check, not a correctness bug in what already happened.
+
+**Impact:** Low — an inactive ward/room with a live patient inside is
+confusing in the UI (it'd disappear from the default `status=ACTIVE`-
+filtered lists staff use day to day) but not unsafe; the admission and
+bed records remain fully queryable and correct.
+
+**Resolution plan:** Add the same `occupiedBedCount > 0` (or a direct
+`Bed.status: 'OCCUPIED'` query) guard `BedsService.deactivate` already
+has, to `WardsService.deactivate`/`RoomsService.deactivate`, throwing a
+`ConflictException` naming how many beds are still occupied. Small,
+mechanical follow-up — flagged now rather than fixed opportunistically
+mid-checkpoint since it isn't exercised by anything this checkpoint's
+UI does (nothing deactivates a ward/room with a live admission in the
+verified flow).
+
+---
+
+## TD-0032: Nursing/MAR/discharge sub-resources are all all-scope, including for the Doctor role
+
+Opened: 2026-08-04
+Status: Open
+Severity: Low
+
+**Description:** `ipd.nursing`/`ipd.orders`/`ipd.tasks`/`ipd.mar`/
+`ipd.discharge` are all-scope only (see ADR-0019) — mirroring `ipd.
+beds`/`ipd.transfer`'s precedent rather than `ipd.admissions`' own-scope
+carve-out (ADR-0018). A doctor holding `ipd.discharge.create`/`.manage`
+can approve or finalize discharge for *any* admission, not only ones
+where they're the attending physician, unlike `ipd.admissions.update`
+which is own-scope-checked via `AdmissionsService.assertOwnScopeOk`.
+
+**Impact:** Low in this repo's threat model — every demo/seeded role is
+trusted staff within one organization, and the same gap already exists
+for `ipd.transfer` (any nurse can transfer any patient) without having
+caused an issue. A doctor approving discharge for a colleague's patient
+while covering a shift is also a legitimate real-world scenario, not
+purely a bug.
+
+**Resolution plan:** If a future session wants doctor-scoped discharge
+approval, generalize `AdmissionsService.assertOwnScopeOk` to accept a
+resource name parameter (currently hardcoded to `ipd.admissions`) and
+call it from `DischargeController`/`IpdOrdersController` before
+approve/create actions, mirroring the existing pattern exactly.
+
+---
+
+## TD-0033: MAR's barcode-ready fields have no real scanner/hardware integration
+
+Opened: 2026-08-04
+Status: Open — explicitly disclosed, not a gap
+Severity: N/A (no barcode scanner hardware exists in this environment)
+
+**Description:** `MedicationAdministration.barcodeVerified`/
+`scannedCode` are the schema/API hook for a "barcode-ready
+architecture" (per `docs/roadmap.md`'s Checkpoint 12.2 deliverables) —
+the `administer` endpoint accepts and stores a scanned code and a
+verified flag, and the MAR tab has a "Barcode scanned/verified"
+checkbox + code field. No physical barcode scanner, camera-based
+scanning, or medication/patient wristband barcode format is wired up —
+a nurse manually types the code (or leaves it unchecked) exactly as
+`radiology`'s DICOM-placeholder precedent (TECH_DEBT for Milestone 8)
+disclosed the same shape of gap.
+
+**Impact:** None for anything this checkpoint claims — the
+architecture point (a real scan integration could POST into the same
+field without a schema change) is real; there is no fake scanning
+happening.
+
+**Resolution plan:** Wire a real barcode-scanning flow (camera-based
+web scanning library, or hardware scanner emitting keyboard input into
+the `scannedCode` field) if/when barcode hardware becomes available to
+test against — no code changes needed on the backend.

@@ -1,10 +1,21 @@
-import { Controller } from '@nestjs/common'
-import { ApiTags } from '@nestjs/swagger'
+import { Controller, Get } from '@nestjs/common'
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
 
-import { InsuranceService } from './insurance.service'
+import { CurrentUser } from '../../common/decorators/current-user.decorator'
+import { RequirePermissions } from '../../common/decorators/permissions.decorator'
 
-@ApiTags('insurance')
+import { InsuranceDashboardService } from './insurance-dashboard.service'
+
+/** "Today's Claims / Pending Approval / Rejected / Settled / Insurance Revenue / Outstanding" — see ADR-0016. */
+@ApiTags('insurance-dashboard')
+@ApiBearerAuth()
 @Controller({ path: 'insurance', version: '1' })
 export class InsuranceController {
-  constructor(_insuranceService: InsuranceService) {}
+  constructor(private readonly dashboardService: InsuranceDashboardService) {}
+
+  @Get('dashboard-stats')
+  @RequirePermissions('insurance.claims.read')
+  getDashboardStats(@CurrentUser('orgId') orgId: string) {
+    return this.dashboardService.getStats(orgId)
+  }
 }

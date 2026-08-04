@@ -108,6 +108,7 @@ enum ChargeSourceModule {
   RADIOLOGY
   PHARMACY
   PROCEDURE
+  IPD
   MISCELLANEOUS
 }
 
@@ -169,28 +170,66 @@ enum Priority {
   STAT
 }
 
+enum WardType {
+  GENERAL
+  SEMI_PRIVATE
+  PRIVATE
+  ICU
+  NICU
+  PICU
+  HDU
+}
+
+enum WardStatus {
+  ACTIVE
+  INACTIVE
+  UNDER_RENOVATION
+}
+
+enum RoomStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+}
+
 enum BedType {
   GENERAL
   SEMI_PRIVATE
   PRIVATE
   ICU
   NICU
+  PICU
   HDU
-  ISOLATION
 }
 
 enum BedStatus {
   AVAILABLE
-  OCCUPIED
   RESERVED
-  UNDER_MAINTENANCE
+  OCCUPIED
+  CLEANING
+  MAINTENANCE
+  BLOCKED
+}
+
+enum AdmissionType {
+  EMERGENCY
+  SCHEDULED
+  INSURANCE
+  TRANSFER_FROM_OPD
 }
 
 enum AdmissionStatus {
   ADMITTED
   DISCHARGED
-  TRANSFERRED
   ABSCONDED
+  CANCELLED
+}
+
+enum BedAllocationAction {
+  ALLOCATED
+  VACATED
+  RESERVED
+  RESERVATION_CANCELLED
 }
 
 enum ShiftType {
@@ -294,6 +333,9 @@ enum NotificationStatus {
   READ
 }
 
+/// See ADR-0016. `UNDER_REVIEW` already covers what a payer calls a claim
+/// "Pending" their decision — not duplicated as a separate value.
+/// `CLOSED`/`PARTIALLY_SETTLED` are new terminal states this milestone adds.
 enum InsuranceClaimStatus {
   DRAFT
   SUBMITTED
@@ -302,6 +344,57 @@ enum InsuranceClaimStatus {
   PARTIALLY_APPROVED
   REJECTED
   SETTLED
+  PARTIALLY_SETTLED
+  CLOSED
+}
+
+enum InsuranceProviderType {
+  INSURANCE_COMPANY
+  TPA
+  CORPORATE
+}
+
+enum InsuranceNetworkType {
+  CASHLESS
+  REIMBURSEMENT
+  BOTH
+}
+
+enum PatientInsuranceType {
+  PRIMARY
+  SECONDARY
+}
+
+enum PatientInsuranceStatus {
+  ACTIVE
+  EXPIRED
+  INACTIVE
+}
+
+enum PreAuthorizationStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  PARTIALLY_APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum ClaimDocumentType {
+  INVOICE
+  PRESCRIPTION
+  LAB_REPORT
+  RADIOLOGY_REPORT
+  ENCOUNTER_SUMMARY
+  DISCHARGE_SUMMARY
+  MANUAL_UPLOAD
+}
+
+enum ClaimPaymentStatus {
+  PENDING
+  PARTIAL
+  PAID
 }
 
 enum AbnormalType {
@@ -336,36 +429,51 @@ model Organization {
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
 
-  users                 User[]
-  roles                 Role[]
-  hospitals             Hospital[]
-  departments           Department[]
-  doctors               Doctor[]
-  patients              Patient[]
-  appointments          Appointment[]
-  encounters            Encounter[]
-  labTests              LabTest[]
-  labTestCatalogItems   LabTestCatalogItem[]
-  radiologyOrders       RadiologyOrder[]
-  radiologyCatalogItems RadiologyCatalogItem[]
-  invoices              Invoice[]
-  serviceCatalogItems   ServiceCatalogItem[]
-  charges               Charge[]
-  refunds               Refund[]
-  staff                 Staff[]
-  beds                  Bed[]
-  wards                 Ward[]
-  drugs                 Drug[]
-  dispenseOrders        DispenseOrder[]
-  drugReturns           DrugReturn[]
-  inventoryItems        InventoryItem[]
-  notifications         Notification[]
-  auditLogs             AuditLog[]
-  prescriptions         Prescription[]
-  admissions            Admission[]
-  insuranceClaims       InsuranceClaim[]
-  doctorSchedules       DoctorSchedule[]
-  doctorLeaves          DoctorLeave[]
+  users                     User[]
+  roles                     Role[]
+  hospitals                 Hospital[]
+  departments               Department[]
+  doctors                   Doctor[]
+  patients                  Patient[]
+  appointments              Appointment[]
+  encounters                Encounter[]
+  labTests                  LabTest[]
+  labTestCatalogItems       LabTestCatalogItem[]
+  radiologyOrders           RadiologyOrder[]
+  radiologyCatalogItems     RadiologyCatalogItem[]
+  invoices                  Invoice[]
+  serviceCatalogItems       ServiceCatalogItem[]
+  charges                   Charge[]
+  refunds                   Refund[]
+  staff                     Staff[]
+  beds                      Bed[]
+  wards                     Ward[]
+  rooms                     Room[]
+  bedAllocations            BedAllocation[]
+  bedTransfers              BedTransfer[]
+  drugs                     Drug[]
+  dispenseOrders            DispenseOrder[]
+  drugReturns               DrugReturn[]
+  inventoryItems            InventoryItem[]
+  notifications             Notification[]
+  auditLogs                 AuditLog[]
+  prescriptions             Prescription[]
+  admissions                Admission[]
+  insuranceClaims           InsuranceClaim[]
+  insuranceProviders        InsuranceProvider[]
+  insurancePlans            InsurancePlan[]
+  patientInsurances         PatientInsurance[]
+  preAuthorizations         PreAuthorization[]
+  doctorSchedules           DoctorSchedule[]
+  doctorLeaves              DoctorLeave[]
+  nursingNotes              NursingNote[]
+  nursingAssessments        NursingAssessment[]
+  intakeOutputRecords       IntakeOutputRecord[]
+  ipdOrders                 IpdOrder[]
+  nursingTasks              NursingTask[]
+  medicationAdministrations MedicationAdministration[]
+  dischargeChecklistItems   DischargeChecklistItem[]
+  dischargeSummaries        DischargeSummary[]
 
   @@index([slug])
   @@map("organizations")
@@ -508,6 +616,7 @@ model Department {
   staff        Staff[]
   wards        Ward[]
   appointments Appointment[]
+  admissions   Admission[]
 
   @@unique([code, hospitalId])
   @@index([organizationId])
@@ -535,18 +644,20 @@ model Doctor {
   createdAt          DateTime                 @default(now())
   updatedAt          DateTime                 @updatedAt
 
-  user            User             @relation(fields: [userId], references: [id])
-  department      Department?      @relation(fields: [departmentId], references: [id])
-  hospital        Hospital         @relation(fields: [hospitalId], references: [id])
-  organization    Organization     @relation(fields: [organizationId], references: [id])
-  appointments    Appointment[]
-  encounters      Encounter[]
-  prescriptions   Prescription[]
-  labTests        LabTest[]
-  radiologyOrders RadiologyOrder[]
-  schedules       DoctorSchedule[]
-  leaves          DoctorLeave[]
-  documents       DoctorDocument[]
+  user               User               @relation(fields: [userId], references: [id])
+  department         Department?        @relation(fields: [departmentId], references: [id])
+  hospital           Hospital           @relation(fields: [hospitalId], references: [id])
+  organization       Organization       @relation(fields: [organizationId], references: [id])
+  appointments       Appointment[]
+  encounters         Encounter[]
+  prescriptions      Prescription[]
+  labTests           LabTest[]
+  radiologyOrders    RadiologyOrder[]
+  schedules          DoctorSchedule[]
+  leaves             DoctorLeave[]
+  documents          DoctorDocument[]
+  admissions         Admission[]
+  dischargeFollowUps DischargeSummary[]
 
   @@unique([registrationNumber, organizationId])
   @@index([organizationId])
@@ -709,18 +820,20 @@ model Patient {
   createdAt             DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
 
-  organization    Organization      @relation(fields: [organizationId], references: [id])
-  documents       PatientDocument[]
-  appointments    Appointment[]
-  encounters      Encounter[]
-  prescriptions   Prescription[]
-  labTests        LabTest[]
-  radiologyOrders RadiologyOrder[]
-  invoices        Invoice[]
-  admissions      Admission[]
-  insuranceClaims InsuranceClaim[]
-  notifications   Notification[]
-  dispenseOrders  DispenseOrder[]
+  organization      Organization       @relation(fields: [organizationId], references: [id])
+  documents         PatientDocument[]
+  appointments      Appointment[]
+  encounters        Encounter[]
+  prescriptions     Prescription[]
+  labTests          LabTest[]
+  radiologyOrders   RadiologyOrder[]
+  invoices          Invoice[]
+  admissions        Admission[]
+  insuranceClaims   InsuranceClaim[]
+  patientInsurances PatientInsurance[]
+  preAuthorizations PreAuthorization[]
+  notifications     Notification[]
+  dispenseOrders    DispenseOrder[]
 
   @@unique([uhid, organizationId])
   @@unique([phone, organizationId])
@@ -809,6 +922,7 @@ enum EncounterType {
   FOLLOW_UP
   EMERGENCY
   WALK_IN
+  IPD
 }
 
 enum EncounterStatus {
@@ -842,20 +956,23 @@ model Encounter {
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
-  patient         Patient               @relation(fields: [patientId], references: [id])
-  doctor          Doctor                @relation(fields: [doctorId], references: [id])
-  appointment     Appointment?          @relation(fields: [appointmentId], references: [id])
-  organization    Organization          @relation(fields: [organizationId], references: [id])
-  clinicalNotes   ClinicalNote[]
-  vitals          Vital[]
-  diagnoses       Diagnosis[]
-  procedures      Procedure[]
-  attachments     EncounterAttachment[]
-  prescriptions   Prescription[]
-  labTests        LabTest[]
-  radiologyOrders RadiologyOrder[]
-  invoice         Invoice?
-  charges         Charge[]
+  patient           Patient               @relation(fields: [patientId], references: [id])
+  doctor            Doctor                @relation(fields: [doctorId], references: [id])
+  appointment       Appointment?          @relation(fields: [appointmentId], references: [id])
+  organization      Organization          @relation(fields: [organizationId], references: [id])
+  clinicalNotes     ClinicalNote[]
+  vitals            Vital[]
+  diagnoses         Diagnosis[]
+  procedures        Procedure[]
+  attachments       EncounterAttachment[]
+  prescriptions     Prescription[]
+  labTests          LabTest[]
+  radiologyOrders   RadiologyOrder[]
+  invoice           Invoice?
+  charges           Charge[]
+  preAuthorizations PreAuthorization[]
+  insuranceClaims   InsuranceClaim[]
+  admissions        Admission[]
 
   @@index([patientId, organizationId])
   @@index([doctorId, organizationId])
@@ -979,12 +1096,13 @@ model Prescription {
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
-  patient       Patient            @relation(fields: [patientId], references: [id])
-  doctor        Doctor             @relation(fields: [doctorId], references: [id])
-  encounter     Encounter?         @relation(fields: [encounterId], references: [id])
-  organization  Organization       @relation(fields: [organizationId], references: [id])
-  items         PrescriptionItem[]
-  dispenseOrder DispenseOrder?
+  patient          Patient            @relation(fields: [patientId], references: [id])
+  doctor           Doctor             @relation(fields: [doctorId], references: [id])
+  encounter        Encounter?         @relation(fields: [encounterId], references: [id])
+  organization     Organization       @relation(fields: [organizationId], references: [id])
+  items            PrescriptionItem[]
+  dispenseOrder    DispenseOrder?
+  dischargeSummary DischargeSummary?
 
   @@unique([prescriptionNumber, organizationId])
   @@index([patientId, organizationId])
@@ -1007,8 +1125,9 @@ model PrescriptionItem {
   quantity       Int      @default(1)
   createdAt      DateTime @default(now())
 
-  prescription Prescription  @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
-  dispenseItem DispenseItem?
+  prescription    Prescription               @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  dispenseItem    DispenseItem?
+  administrations MedicationAdministration[]
 
   @@index([prescriptionId])
   @@map("prescription_items")
@@ -1254,21 +1373,30 @@ model RadiologyAttachment {
 }
 
 // ─── Inpatient ─────────────────────────────────────────────────────────────
+// Hierarchy: Ward -> Room -> Bed. `Bed`/`Admission` denormalize `wardId`
+// alongside the room-level FK so ward-scoped occupancy queries (dashboard,
+// bed grid) don't need a join through Room — see ADR-0018.
 
 model Ward {
-  id             String   @id @default(cuid())
+  id             String     @id @default(cuid())
   name           String
   code           String
+  floor          String?
+  block          String?
+  type           WardType   @default(GENERAL)
   departmentId   String?
   organizationId String
-  totalBeds      Int      @default(0)
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
+  status         WardStatus @default(ACTIVE)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id])
-  department   Department?  @relation(fields: [departmentId], references: [id])
-  beds         Bed[]
-  admissions   Admission[]
+  organization  Organization  @relation(fields: [organizationId], references: [id])
+  department    Department?   @relation(fields: [departmentId], references: [id])
+  rooms         Room[]
+  beds          Bed[]
+  admissions    Admission[]
+  transfersFrom BedTransfer[] @relation("TransferFromWard")
+  transfersTo   BedTransfer[] @relation("TransferToWard")
 
   @@unique([code, organizationId])
   @@index([organizationId])
@@ -1276,9 +1404,35 @@ model Ward {
   @@map("wards")
 }
 
+model Room {
+  id             String     @id @default(cuid())
+  roomNumber     String
+  wardId         String
+  organizationId String
+  floor          String?
+  capacity       Int        @default(1)
+  chargesPerDay  Decimal    @db.Decimal(10, 2)
+  status         RoomStatus @default(ACTIVE)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  ward          Ward          @relation(fields: [wardId], references: [id])
+  organization  Organization  @relation(fields: [organizationId], references: [id])
+  beds          Bed[]
+  admissions    Admission[]
+  transfersFrom BedTransfer[] @relation("TransferFromRoom")
+  transfersTo   BedTransfer[] @relation("TransferToRoom")
+
+  @@unique([roomNumber, wardId])
+  @@index([organizationId])
+  @@index([wardId])
+  @@map("rooms")
+}
+
 model Bed {
   id             String    @id @default(cuid())
   bedNumber      String
+  roomId         String
   wardId         String
   organizationId String
   type           BedType   @default(GENERAL)
@@ -1286,43 +1440,456 @@ model Bed {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  ward         Ward         @relation(fields: [wardId], references: [id])
-  organization Organization @relation(fields: [organizationId], references: [id])
-  admissions   Admission[]
+  room          Room            @relation(fields: [roomId], references: [id])
+  ward          Ward            @relation(fields: [wardId], references: [id])
+  organization  Organization    @relation(fields: [organizationId], references: [id])
+  admissions    Admission[]
+  allocations   BedAllocation[]
+  transfersFrom BedTransfer[]   @relation("TransferFromBed")
+  transfersTo   BedTransfer[]   @relation("TransferToBed")
 
-  @@unique([bedNumber, wardId])
+  @@unique([bedNumber, roomId])
   @@index([organizationId])
   @@index([wardId, status])
+  @@index([roomId])
   @@map("beds")
 }
 
+/// The scaffolded field names (`admissionNumber`/`admissionReason`/
+/// `admittedAt`/`status`/`patientId`) predate this checkpoint and are
+/// already read by `patients.service.ts`'s timeline/summary queries — kept
+/// unchanged so that code (out of scope for this checkpoint) keeps working.
 model Admission {
-  id                 String          @id @default(cuid())
-  admissionNumber    String
-  patientId          String
-  doctorId           String?
-  bedId              String?
-  wardId             String?
-  organizationId     String
-  status             AdmissionStatus @default(ADMITTED)
-  admissionReason    String
-  diagnosis          String?
-  admittedAt         DateTime        @default(now())
-  dischargedAt       DateTime?
-  dischargeNotes     String?
-  dischargeCondition String?
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
+  id                        String          @id @default(cuid())
+  admissionNumber           String
+  patientId                 String
+  encounterId               String?
+  attendingDoctorId         String
+  departmentId              String?
+  wardId                    String
+  roomId                    String?
+  bedId                     String?
+  patientInsuranceId        String?
+  organizationId            String
+  type                      AdmissionType   @default(SCHEDULED)
+  status                    AdmissionStatus @default(ADMITTED)
+  admissionReason           String
+  diagnosis                 String?
+  admittedAt                DateTime        @default(now())
+  expectedDischargeAt       DateTime?
+  dischargedAt              DateTime?
+  dischargeNotes            String?
+  dischargeCondition        String?
+  /// Set when the attending doctor approves discharge (Checkpoint 12.2) —
+  /// admission stays `ADMITTED` ("pending discharge") until the nursing
+  /// checklist is complete and `completeDischarge` finalizes it.
+  dischargeApprovedAt       DateTime?
+  dischargeApprovedByUserId String?
+  cancelledAt               DateTime?
+  cancelReason              String?
+  createdByUserId           String?
+  createdAt                 DateTime        @default(now())
+  updatedAt                 DateTime        @updatedAt
 
-  patient      Patient      @relation(fields: [patientId], references: [id])
-  bed          Bed?         @relation(fields: [bedId], references: [id])
-  ward         Ward?        @relation(fields: [wardId], references: [id])
-  organization Organization @relation(fields: [organizationId], references: [id])
+  patient                   Patient                    @relation(fields: [patientId], references: [id])
+  encounter                 Encounter?                 @relation(fields: [encounterId], references: [id])
+  attendingDoctor           Doctor                     @relation(fields: [attendingDoctorId], references: [id])
+  department                Department?                @relation(fields: [departmentId], references: [id])
+  ward                      Ward                       @relation(fields: [wardId], references: [id])
+  room                      Room?                      @relation(fields: [roomId], references: [id])
+  bed                       Bed?                       @relation(fields: [bedId], references: [id])
+  patientInsurance          PatientInsurance?          @relation(fields: [patientInsuranceId], references: [id])
+  organization              Organization               @relation(fields: [organizationId], references: [id])
+  allocations               BedAllocation[]
+  transfers                 BedTransfer[]
+  nursingNotes              NursingNote[]
+  nursingAssessments        NursingAssessment[]
+  intakeOutputRecords       IntakeOutputRecord[]
+  ipdOrders                 IpdOrder[]
+  nursingTasks              NursingTask[]
+  medicationAdministrations MedicationAdministration[]
+  dischargeChecklistItems   DischargeChecklistItem[]
+  dischargeSummary          DischargeSummary?
 
   @@unique([admissionNumber, organizationId])
   @@index([patientId, organizationId])
-  @@index([organizationId])
+  @@index([organizationId, status])
+  @@index([bedId])
+  @@index([wardId])
   @@map("admissions")
+}
+
+/// One row per allocate/reserve/vacate/reservation-cancel event against a
+/// single bed — the audit trail for "Bed Allocation" (ADR-0018). A transfer
+/// is recorded separately in `BedTransfer` so the UI can render it as one
+/// from→to row rather than reconstructing it from a vacate+allocate pair.
+model BedAllocation {
+  id                String              @id @default(cuid())
+  admissionId       String
+  bedId             String
+  organizationId    String
+  action            BedAllocationAction
+  performedByUserId String?
+  reason            String?
+  occurredAt        DateTime            @default(now())
+
+  admission    Admission    @relation(fields: [admissionId], references: [id])
+  bed          Bed          @relation(fields: [bedId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([admissionId])
+  @@index([bedId])
+  @@index([organizationId])
+  @@map("bed_allocations")
+}
+
+/// A bed/room/ward transfer during a single admission, tracked as its own
+/// from→to record rather than derived from `BedAllocation` rows.
+model BedTransfer {
+  id                  String   @id @default(cuid())
+  admissionId         String
+  organizationId      String
+  fromBedId           String?
+  toBedId             String
+  fromRoomId          String?
+  toRoomId            String?
+  fromWardId          String?
+  toWardId            String
+  reason              String?
+  transferredByUserId String?
+  transferredAt       DateTime @default(now())
+
+  admission    Admission    @relation(fields: [admissionId], references: [id])
+  fromBed      Bed?         @relation("TransferFromBed", fields: [fromBedId], references: [id])
+  toBed        Bed          @relation("TransferToBed", fields: [toBedId], references: [id])
+  fromRoom     Room?        @relation("TransferFromRoom", fields: [fromRoomId], references: [id])
+  toRoom       Room?        @relation("TransferToRoom", fields: [toRoomId], references: [id])
+  fromWard     Ward?        @relation("TransferFromWard", fields: [fromWardId], references: [id])
+  toWard       Ward         @relation("TransferToWard", fields: [toWardId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([admissionId])
+  @@index([organizationId])
+  @@map("bed_transfers")
+}
+
+// ─── Nursing, MAR & Discharge — Milestone 12, Checkpoint 12.2 ─────────────
+// Nursing notes/assessments/I-O charting/orders/tasks are admission-scoped
+// rather than encounter-scoped like `ClinicalNote`/`Vital` — IPD nursing
+// documentation is materially higher-frequency (multiple entries per shift)
+// and nurse-authored, a genuinely distinct workflow from the doctor-
+// authored, per-consultation EMR entities in medical-records (see NEXT.md's
+// judgment-call framing / DECISIONS.md ADR-0019). Vitals charting reuses
+// the existing encounter-scoped `Vital` model as-is via the admission's
+// `encounterId` — no new model needed there. MAR reuses
+// `Prescription`/`PrescriptionItem` as the source of truth for what's
+// prescribed, with `MedicationAdministration` as the admin-log child table,
+// mirroring `DispenseOrder`/`DispenseItem`'s precedent rather than a
+// parallel prescribing model.
+
+enum NursingNoteType {
+  GENERAL
+  SHIFT_HANDOVER
+  ASSESSMENT
+  INCIDENT
+}
+
+enum FallRiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum PressureUlcerRiskLevel {
+  LOW
+  MODERATE
+  HIGH
+  SEVERE
+}
+
+enum IpdOrderCategory {
+  DIET
+  FLUID
+  ACTIVITY
+  OXYGEN
+  ISOLATION
+}
+
+enum IpdOrderStatus {
+  ACTIVE
+  COMPLETED
+  DISCONTINUED
+}
+
+enum NursingTaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  MISSED
+  CANCELLED
+}
+
+enum NursingTaskPriority {
+  ROUTINE
+  URGENT
+  STAT
+}
+
+enum MedicationAdministrationType {
+  SCHEDULED
+  PRN
+  STAT
+}
+
+enum MedicationAdministrationStatus {
+  PENDING
+  ADMINISTERED
+  MISSED
+  REFUSED
+  HELD
+  DELAYED
+  CANCELLED
+}
+
+enum DischargeChecklistItemKey {
+  VITALS_STABLE
+  MEDICATION_RECONCILIATION_DONE
+  PATIENT_EDUCATION_GIVEN
+  BELONGINGS_RETURNED
+  WOUND_CARE_INSTRUCTIONS_GIVEN
+  EQUIPMENT_RETURNED
+  FOLLOWUP_EXPLAINED
+  TRANSPORT_ARRANGED
+}
+
+/// Free-text nursing note, admission-scoped — covers general notes, shift
+/// handover, and ad hoc assessment narratives. `isEscalated` is the
+/// "escalation flag" scope item: a nurse flags a note for physician
+/// attention without a separate notification/paging system (none exists in
+/// this repo).
+model NursingNote {
+  id               String          @id @default(cuid())
+  admissionId      String
+  organizationId   String
+  type             NursingNoteType @default(GENERAL)
+  shift            ShiftType?
+  content          String
+  isEscalated      Boolean         @default(false)
+  escalationReason String?
+  createdByUserId  String
+  createdAt        DateTime        @default(now())
+
+  admission    Admission    @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([admissionId])
+  @@index([organizationId])
+  @@map("nursing_notes")
+}
+
+/// One consolidated structured assessment row per charting event — pain
+/// score, fall risk (Morse-style score + derived level), Braden pressure-
+/// ulcer risk (score + derived level), Glasgow Coma Scale (eye/verbal/motor
+/// + server-computed total), and free-text daily-assessment notes.
+/// Mirrors `Vital`'s "one row, many fields" shape rather than one model per
+/// scale.
+model NursingAssessment {
+  id               String                  @id @default(cuid())
+  admissionId      String
+  organizationId   String
+  painScore        Int?
+  fallRiskScore    Int?
+  fallRiskLevel    FallRiskLevel?
+  bradenScore      Int?
+  bradenRiskLevel  PressureUlcerRiskLevel?
+  gcsEye           Int?
+  gcsVerbal        Int?
+  gcsMotor         Int?
+  /// Computed server-side from eye+verbal+motor at write time, mirroring
+  /// `Vital.bmi`'s denormalized-computed-field precedent.
+  gcsTotal         Int?
+  generalNotes     String?
+  assessedByUserId String
+  assessedAt       DateTime                @default(now())
+
+  admission    Admission    @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([admissionId])
+  @@index([organizationId])
+  @@map("nursing_assessments")
+}
+
+/// Intake/Output chart — one row per recording event.
+model IntakeOutputRecord {
+  id               String   @id @default(cuid())
+  admissionId      String
+  organizationId   String
+  recordedAt       DateTime @default(now())
+  oralIntakeMl     Int?
+  ivFluidIntakeMl  Int?
+  otherIntakeMl    Int?
+  urineOutputMl    Int?
+  stoolOutputCount Int?
+  vomitusMl        Int?
+  drainOutputMl    Int?
+  otherOutputMl    Int?
+  notes            String?
+  recordedByUserId String
+
+  admission    Admission    @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([admissionId])
+  @@index([organizationId])
+  @@map("intake_output_records")
+}
+
+/// A doctor's order against an admission — diet/fluid/activity/oxygen/
+/// isolation-precaution instructions. Distinct from `NursingTask` (the
+/// nurse-facing to-do it may spawn) and from `Prescription` (medication
+/// orders, handled through MAR instead).
+model IpdOrder {
+  id                   String           @id @default(cuid())
+  admissionId          String
+  organizationId       String
+  category             IpdOrderCategory
+  instructions         String
+  status               IpdOrderStatus   @default(ACTIVE)
+  orderedByUserId      String
+  startedAt            DateTime         @default(now())
+  discontinuedAt       DateTime?
+  discontinuedReason   String?
+  discontinuedByUserId String?
+  createdAt            DateTime         @default(now())
+
+  admission    Admission     @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  nursingTasks NursingTask[]
+
+  @@index([admissionId])
+  @@index([organizationId])
+  @@map("ipd_orders")
+}
+
+/// A nursing to-do item — either standalone (a nurse's own checklist entry)
+/// or spawned from an `IpdOrder` (`sourceOrderId`). Backs the "Pending
+/// nursing tasks" dashboard stat and the `/dashboard/nursing/tasks` queue.
+model NursingTask {
+  id                String              @id @default(cuid())
+  admissionId       String
+  organizationId    String
+  sourceOrderId     String?
+  title             String
+  description       String?
+  priority          NursingTaskPriority @default(ROUTINE)
+  dueAt             DateTime?
+  status            NursingTaskStatus   @default(PENDING)
+  assignedToUserId  String?
+  completedByUserId String?
+  completedAt       DateTime?
+  completionNotes   String?
+  createdByUserId   String?
+  createdAt         DateTime            @default(now())
+
+  admission    Admission    @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+  sourceOrder  IpdOrder?    @relation(fields: [sourceOrderId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([admissionId])
+  @@index([organizationId, status])
+  @@map("nursing_tasks")
+}
+
+/// Medication Administration Record row — one per scheduled/PRN/STAT dose
+/// instance for a `PrescriptionItem` during an admission. `barcodeVerified`/
+/// `scannedCode` are the barcode-ready architecture hook (no physical
+/// scanner hardware/integration exists in this repo — see TECH_DEBT).
+/// `nurseSignature` is a typed-name attestation, not a cryptographic
+/// signature. The full administration audit trail is the existing
+/// `AuditLog` (via `AuditListener`), not a duplicate log table.
+model MedicationAdministration {
+  id                   String                         @id @default(cuid())
+  admissionId          String
+  prescriptionItemId   String
+  organizationId       String
+  type                 MedicationAdministrationType   @default(SCHEDULED)
+  scheduledAt          DateTime
+  administeredAt       DateTime?
+  status               MedicationAdministrationStatus @default(PENDING)
+  doseGiven            String?
+  route                String?
+  notes                String?
+  barcodeVerified      Boolean                        @default(false)
+  scannedCode          String?
+  administeredByUserId String?
+  nurseSignature       String?
+  createdByUserId      String?
+  createdAt            DateTime                       @default(now())
+  updatedAt            DateTime                       @updatedAt
+
+  admission        Admission        @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+  prescriptionItem PrescriptionItem @relation(fields: [prescriptionItemId], references: [id], onDelete: Cascade)
+  organization     Organization     @relation(fields: [organizationId], references: [id])
+
+  @@index([admissionId])
+  @@index([prescriptionItemId])
+  @@index([organizationId, status])
+  @@map("medication_administrations")
+}
+
+/// One row per discharge-checklist item, seeded (idempotently) when a
+/// doctor approves discharge. Every row must be `completed` before
+/// `AdmissionsService.completeDischarge` can finalize.
+model DischargeChecklistItem {
+  id                String                    @id @default(cuid())
+  admissionId       String
+  organizationId    String
+  itemKey           DischargeChecklistItemKey
+  completed         Boolean                   @default(false)
+  completedByUserId String?
+  completedAt       DateTime?
+  notes             String?
+  createdAt         DateTime                  @default(now())
+
+  admission    Admission    @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([admissionId, itemKey])
+  @@index([admissionId])
+  @@map("discharge_checklist_items")
+}
+
+/// The discharge summary document — final diagnosis, hospital course,
+/// medication reconciliation, follow-up instructions/appointment, and a
+/// link to the discharge prescription (a normal `Prescription` row tagged
+/// by this FK rather than a parallel model). One per admission; drafted
+/// after doctor approval, finalized (immutable in spirit, not enforced at
+/// the DB level) once discharge completes.
+model DischargeSummary {
+  id                       String    @id @default(cuid())
+  admissionId              String    @unique
+  organizationId           String
+  finalDiagnosis           String
+  courseInHospital         String?
+  proceduresPerformed      String?
+  conditionAtDischarge     String?
+  medicationReconciliation String?
+  followUpInstructions     String?
+  followUpAppointmentAt    DateTime?
+  followUpDoctorId         String?
+  dischargePrescriptionId  String?   @unique
+  preparedByUserId         String?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  admission             Admission     @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+  organization          Organization  @relation(fields: [organizationId], references: [id])
+  followUpDoctor        Doctor?       @relation(fields: [followUpDoctorId], references: [id])
+  dischargePrescription Prescription? @relation(fields: [dischargePrescriptionId], references: [id])
+
+  @@index([organizationId])
+  @@map("discharge_summaries")
 }
 
 // ─── Billing ───────────────────────────────────────────────────────────────
@@ -1422,32 +1989,219 @@ model Payment {
   @@map("payments")
 }
 
+/// See ADR-0016. `insuranceProvider`/`policyNumber` are denormalized at
+/// claim-creation time from the resolved `InsuranceProvider`/
+/// `PatientInsurance` (the same "denormalize at order time" idiom as
+/// `LabTestItem`/`RadiologyOrder`) — kept as the original scaffold's
+/// required display fields rather than dropped, since a claim must always
+/// show a provider name/policy number even if the structured records
+/// backing it are later edited or deactivated.
 model InsuranceClaim {
-  id                String               @id @default(cuid())
-  claimNumber       String
-  patientId         String
-  invoiceId         String               @unique
-  organizationId    String
-  insuranceProvider String
-  policyNumber      String
-  membershipId      String?
-  claimedAmount     Decimal              @db.Decimal(12, 2)
-  approvedAmount    Decimal?             @db.Decimal(12, 2)
-  rejectedAmount    Decimal?             @db.Decimal(12, 2)
-  status            InsuranceClaimStatus @default(DRAFT)
-  rejectionReason   String?
-  submittedAt       DateTime?
-  settledAt         DateTime?
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
+  id                 String               @id @default(cuid())
+  claimNumber        String
+  patientId          String
+  invoiceId          String               @unique
+  encounterId        String
+  organizationId     String
+  providerId         String?
+  planId             String?
+  patientInsuranceId String?
+  preAuthorizationId String?              @unique
+  insuranceProvider  String
+  policyNumber       String
+  membershipId       String?
+  claimedAmount      Decimal              @db.Decimal(12, 2)
+  approvedAmount     Decimal?             @db.Decimal(12, 2)
+  rejectedAmount     Decimal?             @db.Decimal(12, 2)
+  insuranceShare     Decimal?             @db.Decimal(12, 2)
+  patientShare       Decimal?             @db.Decimal(12, 2)
+  adjustmentAmount   Decimal              @default(0) @db.Decimal(12, 2)
+  writeOffAmount     Decimal              @default(0) @db.Decimal(12, 2)
+  outstandingAmount  Decimal?             @db.Decimal(12, 2)
+  paymentStatus      ClaimPaymentStatus   @default(PENDING)
+  status             InsuranceClaimStatus @default(DRAFT)
+  rejectionReason    String?
+  submittedAt        DateTime?
+  settledAt          DateTime?
+  closedAt           DateTime?
+  createdByUserId    String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
 
-  patient      Patient      @relation(fields: [patientId], references: [id])
-  invoice      Invoice      @relation(fields: [invoiceId], references: [id])
-  organization Organization @relation(fields: [organizationId], references: [id])
+  patient          Patient            @relation(fields: [patientId], references: [id])
+  invoice          Invoice            @relation(fields: [invoiceId], references: [id])
+  encounter        Encounter          @relation(fields: [encounterId], references: [id])
+  organization     Organization       @relation(fields: [organizationId], references: [id])
+  provider         InsuranceProvider? @relation(fields: [providerId], references: [id])
+  plan             InsurancePlan?     @relation(fields: [planId], references: [id])
+  patientInsurance PatientInsurance?  @relation(fields: [patientInsuranceId], references: [id])
+  preAuthorization PreAuthorization?  @relation(fields: [preAuthorizationId], references: [id])
+  documents        ClaimDocument[]
 
   @@unique([claimNumber, organizationId])
   @@index([patientId, organizationId])
+  @@index([status, organizationId])
   @@map("insurance_claims")
+}
+
+/// Insurance Company / TPA / Corporate Plan issuer — see ADR-0016.
+model InsuranceProvider {
+  id             String                @id @default(cuid())
+  organizationId String
+  name           String
+  code           String
+  type           InsuranceProviderType @default(INSURANCE_COMPANY)
+  contactPerson  String?
+  email          String?
+  phone          String?
+  address        String?
+  isActive       Boolean               @default(true)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  organization      Organization       @relation(fields: [organizationId], references: [id])
+  plans             InsurancePlan[]
+  patientInsurances PatientInsurance[]
+  claims            InsuranceClaim[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@map("insurance_providers")
+}
+
+/// A provider's plan — coverage terms a `PatientInsurance` enrollment
+/// inherits by default (a patient-level `coveragePercent` override is still
+/// possible on `PatientInsurance` itself for a negotiated exception).
+model InsurancePlan {
+  id              String               @id @default(cuid())
+  organizationId  String
+  providerId      String
+  name            String
+  code            String
+  coveragePercent Decimal              @default(100) @db.Decimal(5, 2)
+  coPayPercent    Decimal              @default(0) @db.Decimal(5, 2)
+  deductible      Decimal              @default(0) @db.Decimal(12, 2)
+  annualLimit     Decimal?             @db.Decimal(12, 2)
+  perVisitLimit   Decimal?             @db.Decimal(12, 2)
+  networkType     InsuranceNetworkType @default(CASHLESS)
+  isActive        Boolean              @default(true)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  organization      Organization       @relation(fields: [organizationId], references: [id])
+  provider          InsuranceProvider  @relation(fields: [providerId], references: [id])
+  patientInsurances PatientInsurance[]
+  claims            InsuranceClaim[]
+
+  @@unique([organizationId, providerId, code])
+  @@index([organizationId])
+  @@index([providerId])
+  @@map("insurance_plans")
+}
+
+/// A patient's enrollment in a plan — "each patient may have Primary
+/// Insurance, Secondary Insurance" (see ADR-0016). No DB-level constraint
+/// enforces "only one ACTIVE primary at a time" — application code does,
+/// leaving room for a patient's insurance history (expired enrollments)
+/// to stay queryable rather than being overwritten.
+model PatientInsurance {
+  id              String                 @id @default(cuid())
+  organizationId  String
+  patientId       String
+  providerId      String
+  planId          String
+  type            PatientInsuranceType   @default(PRIMARY)
+  memberId        String
+  policyNumber    String
+  effectiveDate   DateTime
+  expiryDate      DateTime?
+  coveragePercent Decimal?               @db.Decimal(5, 2)
+  status          PatientInsuranceStatus @default(ACTIVE)
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  organization      Organization       @relation(fields: [organizationId], references: [id])
+  patient           Patient            @relation(fields: [patientId], references: [id])
+  provider          InsuranceProvider  @relation(fields: [providerId], references: [id])
+  plan              InsurancePlan      @relation(fields: [planId], references: [id])
+  preAuthorizations PreAuthorization[]
+  claims            InsuranceClaim[]
+  admissions        Admission[]
+
+  @@index([organizationId, patientId])
+  @@map("patient_insurances")
+}
+
+/// Cashless/TPA pre-authorization request against a specific encounter —
+/// see ADR-0016. A settled claim can (optionally) trace back to the
+/// pre-auth that cleared it via `InsuranceClaim.preAuthorizationId`.
+model PreAuthorization {
+  id                 String                 @id @default(cuid())
+  authNumber         String
+  organizationId     String
+  patientId          String
+  encounterId        String
+  patientInsuranceId String
+  status             PreAuthorizationStatus @default(DRAFT)
+  clinicalNotes      String?
+  doctorNotes        String?
+  requestedAmount    Decimal                @db.Decimal(12, 2)
+  approvedAmount     Decimal?               @db.Decimal(12, 2)
+  rejectionReason    String?
+  submittedAt        DateTime?
+  decidedAt          DateTime?
+  decidedByUserId    String?
+  createdByUserId    String?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  organization     Organization        @relation(fields: [organizationId], references: [id])
+  patient          Patient             @relation(fields: [patientId], references: [id])
+  encounter        Encounter           @relation(fields: [encounterId], references: [id])
+  patientInsurance PatientInsurance    @relation(fields: [patientInsuranceId], references: [id])
+  attachments      PreAuthAttachment[]
+  claim            InsuranceClaim?
+
+  @@unique([authNumber, organizationId])
+  @@index([organizationId, patientId])
+  @@map("pre_authorizations")
+}
+
+model PreAuthAttachment {
+  id                 String   @id @default(cuid())
+  preAuthorizationId String
+  fileName           String
+  fileUrl            String
+  mimeType           String
+  size               Int
+  uploadedByUserId   String
+  createdAt          DateTime @default(now())
+
+  preAuthorization PreAuthorization @relation(fields: [preAuthorizationId], references: [id], onDelete: Cascade)
+
+  @@index([preAuthorizationId])
+  @@map("pre_auth_attachments")
+}
+
+/// A claim's supporting documents — auto-attached from other modules'
+/// existing PDF generators (invoice, prescription, lab/radiology reports,
+/// a new encounter-summary generator) at claim-creation time, plus manual
+/// uploads via the existing `StorageService` — see ADR-0016.
+model ClaimDocument {
+  id               String            @id @default(cuid())
+  claimId          String
+  organizationId   String
+  type             ClaimDocumentType
+  fileName         String
+  fileUrl          String
+  autoAttached     Boolean           @default(false)
+  uploadedByUserId String?
+  createdAt        DateTime          @default(now())
+
+  claim InsuranceClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@index([claimId])
+  @@map("claim_documents")
 }
 
 /// Configurable pricing catalog ("service catalog with pricing") — see

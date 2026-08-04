@@ -23,9 +23,40 @@ const RESOURCE_ACTIONS: Record<string, string[]> = {
   laboratory: ['read', 'create', 'update'],
   radiology: ['read', 'create', 'update'],
   billing: ['read', 'create', 'update', 'manage'],
-  insurance: ['read', 'create', 'update'],
+  // Split from a flat `insurance` resource into namespaced sub-resources
+  // (Milestone 11 / ADR-0016) — mirrors `doctors.schedule`/`doctors.leave`/
+  // `doctors.documents`'s precedent for a module with genuinely distinct
+  // sub-workflows rather than one CRUD surface.
+  'insurance.providers': ['read', 'create', 'update'],
+  'insurance.plans': ['read', 'create', 'update'],
+  'insurance.claims': ['read', 'create', 'update'],
+  'insurance.preauth': ['read', 'create', 'update'],
+  'insurance.settlement': ['read', 'manage'],
   pharmacy: ['read', 'create', 'update'],
   inventory: ['read', 'create', 'update', 'manage'],
+  // IPD & Bed Management (Milestone 12 / ADR-0018) — `ipd.wards`/`ipd.rooms`/
+  // `ipd.beds` are the ward/room/bed inventory CRUD surface; `ipd.admissions`
+  // is the admit/cancel workflow; `ipd.transfer` is the allocate/reserve/
+  // vacate/transfer workflow, kept separate from `ipd.beds` since it's an
+  // action on a bed rather than editing the bed record itself.
+  'ipd.wards': ['read', 'create', 'update', 'delete'],
+  'ipd.rooms': ['read', 'create', 'update', 'delete'],
+  'ipd.beds': ['read', 'create', 'update', 'delete'],
+  'ipd.admissions': ['read', 'create', 'update'],
+  'ipd.transfer': ['read', 'create'],
+  // Nursing, MAR & Discharge (Milestone 12 Checkpoint 12.2 / ADR-0019) — all
+  // all-scope, mirroring `ipd.beds`/`ipd.transfer`'s precedent rather than
+  // `ipd.admissions`' own-scope carve-out: these are ward-level operational
+  // surfaces run by whoever's on shift, not doctor-specific. `ipd.nursing`
+  // bundles notes/assessments/I-O charting (all nurse-authored charting).
+  // `ipd.discharge` splits `create` (doctor approval), `update` (nursing
+  // checklist + summary edits), and `manage` (finalize — mirrors
+  // `billing.manage`'s requester/approver separation).
+  'ipd.nursing': ['read', 'create'],
+  'ipd.orders': ['read', 'create', 'update'],
+  'ipd.tasks': ['read', 'create', 'update'],
+  'ipd.mar': ['read', 'create', 'update'],
+  'ipd.discharge': ['read', 'create', 'update', 'manage'],
   staff: ['read', 'create', 'update', 'delete'],
   users: ['read', 'create', 'update', 'manage'],
   roles: ['read', 'create', 'update'],
@@ -61,6 +92,11 @@ const OWN_SCOPE_PERMISSIONS: Array<{ resource: string; action: string }> = [
   { resource: 'doctors.documents', action: 'read' },
   { resource: 'doctors.documents', action: 'manage' },
   { resource: 'appointments', action: 'update' },
+  // A doctor only admits/manages IPD stays for patients they're the
+  // attending physician for — mirrors medical_records/prescriptions.
+  { resource: 'ipd.admissions', action: 'read' },
+  { resource: 'ipd.admissions', action: 'create' },
+  { resource: 'ipd.admissions', action: 'update' },
 ]
 
 /**
@@ -165,6 +201,23 @@ const ROLE_SPECS: RoleSpec[] = [
       { resource: 'radiology', action: 'read', scope: 'own' },
       { resource: 'radiology', action: 'create', scope: 'own' },
       { resource: 'radiology', action: 'update', scope: 'own' },
+      // Ward/room/bed inventory is not patient- or doctor-specific, so it
+      // stays all-scope even for a role that's otherwise own-scoped.
+      { resource: 'ipd.wards', action: 'read' },
+      { resource: 'ipd.rooms', action: 'read' },
+      { resource: 'ipd.beds', action: 'read' },
+      // A doctor places diet/fluid/activity/oxygen/isolation orders,
+      // approves discharge, and finalizes it — but reads (not writes)
+      // nurse-authored notes/MAR/tasks.
+      { resource: 'ipd.nursing', action: 'read' },
+      { resource: 'ipd.orders', action: 'read' },
+      { resource: 'ipd.orders', action: 'create' },
+      { resource: 'ipd.orders', action: 'update' },
+      { resource: 'ipd.tasks', action: 'read' },
+      { resource: 'ipd.mar', action: 'read' },
+      { resource: 'ipd.discharge', action: 'read' },
+      { resource: 'ipd.discharge', action: 'create' },
+      { resource: 'ipd.discharge', action: 'manage' },
     ],
     user: { email: 'doctor@medicore.demo', firstName: 'Priya', lastName: 'Sharma' },
   },
@@ -178,6 +231,30 @@ const ROLE_SPECS: RoleSpec[] = [
       { resource: 'medical_records', action: 'read' },
       { resource: 'laboratory', action: 'read' },
       { resource: 'radiology', action: 'read' },
+      // A nurse runs day-to-day ward operations: sees the bed grid, updates
+      // bed status (e.g. Cleaning -> Available), and handles allocations/
+      // transfers, but doesn't create/delete ward or room inventory records.
+      { resource: 'ipd.wards', action: 'read' },
+      { resource: 'ipd.rooms', action: 'read' },
+      { resource: 'ipd.beds', action: 'read' },
+      { resource: 'ipd.beds', action: 'update' },
+      { resource: 'ipd.admissions', action: 'read' },
+      { resource: 'ipd.transfer', action: 'read' },
+      { resource: 'ipd.transfer', action: 'create' },
+      // Nursing documentation, MAR administration, doctor-order visibility,
+      // nursing-task management, and discharge-checklist/summary editing —
+      // but not discharge approval or finalization (doctor-only).
+      { resource: 'ipd.nursing', action: 'read' },
+      { resource: 'ipd.nursing', action: 'create' },
+      { resource: 'ipd.orders', action: 'read' },
+      { resource: 'ipd.tasks', action: 'read' },
+      { resource: 'ipd.tasks', action: 'create' },
+      { resource: 'ipd.tasks', action: 'update' },
+      { resource: 'ipd.mar', action: 'read' },
+      { resource: 'ipd.mar', action: 'create' },
+      { resource: 'ipd.mar', action: 'update' },
+      { resource: 'ipd.discharge', action: 'read' },
+      { resource: 'ipd.discharge', action: 'update' },
     ],
     user: { email: 'nurse@medicore.demo', firstName: 'Anjali', lastName: 'Verma' },
   },
@@ -193,6 +270,16 @@ const ROLE_SPECS: RoleSpec[] = [
       { resource: 'appointments', action: 'create' },
       { resource: 'appointments', action: 'update' },
       { resource: 'billing', action: 'read' },
+      // Front desk opens the admission (ward/bed picked from what's
+      // available) but doesn't manage ward/room/bed inventory itself.
+      { resource: 'ipd.wards', action: 'read' },
+      { resource: 'ipd.rooms', action: 'read' },
+      { resource: 'ipd.beds', action: 'read' },
+      { resource: 'ipd.admissions', action: 'read' },
+      { resource: 'ipd.admissions', action: 'create' },
+      // Read-only visibility into discharge status for exit/billing
+      // formalities — front desk doesn't approve or finalize discharge.
+      { resource: 'ipd.discharge', action: 'read' },
     ],
     user: { email: 'receptionist@medicore.demo', firstName: 'Neha', lastName: 'Kapoor' },
   },
@@ -249,7 +336,15 @@ const ROLE_SPECS: RoleSpec[] = [
       { resource: 'billing', action: 'read' },
       { resource: 'billing', action: 'create' },
       { resource: 'billing', action: 'update' },
-      { resource: 'insurance', action: 'read' },
+      { resource: 'insurance.providers', action: 'read' },
+      { resource: 'insurance.plans', action: 'read' },
+      { resource: 'insurance.claims', action: 'read' },
+      { resource: 'insurance.claims', action: 'create' },
+      { resource: 'insurance.claims', action: 'update' },
+      { resource: 'insurance.preauth', action: 'read' },
+      { resource: 'insurance.preauth', action: 'create' },
+      { resource: 'insurance.preauth', action: 'update' },
+      { resource: 'insurance.settlement', action: 'read' },
     ],
     user: { email: 'cashier@medicore.demo', firstName: 'Sunita', lastName: 'Rao' },
   },

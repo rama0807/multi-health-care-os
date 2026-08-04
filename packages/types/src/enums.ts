@@ -505,3 +505,137 @@ export enum DispenseStatus {
   CANCELLED = 'CANCELLED',
   RETURNED = 'RETURNED',
 }
+
+// ─── General Inventory & Procurement (Milestone 13) ────────────────────────
+
+export enum InventoryItemType {
+  ASSET = 'ASSET',
+  CONSUMABLE = 'CONSUMABLE',
+}
+
+export enum InventoryStoreType {
+  CENTRAL = 'CENTRAL',
+  WARD = 'WARD',
+  ICU = 'ICU',
+  EMERGENCY = 'EMERGENCY',
+  OT = 'OT',
+  LABORATORY = 'LABORATORY',
+  RADIOLOGY = 'RADIOLOGY',
+  PHARMACY = 'PHARMACY',
+  HOUSEKEEPING = 'HOUSEKEEPING',
+  BIOMEDICAL = 'BIOMEDICAL',
+  GENERAL = 'GENERAL',
+}
+
+export enum StoreManagerRole {
+  MANAGER = 'MANAGER',
+  STAFF = 'STAFF',
+}
+
+export enum InventoryBatchStatus {
+  AVAILABLE = 'AVAILABLE',
+  RESERVED = 'RESERVED',
+  DAMAGED = 'DAMAGED',
+  EXPIRED = 'EXPIRED',
+  LOST = 'LOST',
+  CONSUMED = 'CONSUMED',
+}
+
+export enum InventoryAdjustmentType {
+  OPENING = 'OPENING',
+  DAMAGE = 'DAMAGE',
+  LOSS = 'LOSS',
+  EXPIRY = 'EXPIRY',
+  CORRECTION = 'CORRECTION',
+  AUDIT = 'AUDIT',
+  ISSUE = 'ISSUE',
+  RECEIPT = 'RECEIPT',
+  TRANSFER = 'TRANSFER',
+}
+
+export enum StockTransferStatus {
+  DRAFT = 'DRAFT',
+  IN_TRANSIT = 'IN_TRANSIT',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum PurchaseRequestStatus {
+  DRAFT = 'DRAFT',
+  SUBMITTED = 'SUBMITTED',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  CONVERTED = 'CONVERTED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum PurchaseOrderStatus {
+  DRAFT = 'DRAFT',
+  SUBMITTED = 'SUBMITTED',
+  APPROVED = 'APPROVED',
+  SENT = 'SENT',
+  PARTIALLY_RECEIVED = 'PARTIALLY_RECEIVED',
+  RECEIVED = 'RECEIVED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum GrnStatus {
+  DRAFT = 'DRAFT',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum VendorInvoiceStatus {
+  PENDING = 'PENDING',
+  VERIFIED = 'VERIFIED',
+  PAID = 'PAID',
+  DISPUTED = 'DISPUTED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum VendorReturnStatus {
+  DRAFT = 'DRAFT',
+  SENT = 'SENT',
+  ACKNOWLEDGED = 'ACKNOWLEDGED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum RequisitionStatus {
+  REQUESTED = 'REQUESTED',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  ISSUED = 'ISSUED',
+  PARTIALLY_ISSUED = 'PARTIALLY_ISSUED',
+  RECEIVED = 'RECEIVED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum AssetStatus {
+  IN_USE = 'IN_USE',
+  IN_STORE = 'IN_STORE',
+  UNDER_MAINTENANCE = 'UNDER_MAINTENANCE',
+  BREAKDOWN = 'BREAKDOWN',
+  DECOMMISSIONED = 'DECOMMISSIONED',
+}
+
+export enum AssetMaintenanceType {
+  PREVENTIVE = 'PREVENTIVE',
+  CALIBRATION = 'CALIBRATION',
+  AMC = 'AMC',
+  BREAKDOWN = 'BREAKDOWN',
+  REPAIR = 'REPAIR',
+}
+
+export enum AssetMaintenanceStatus {
+  SCHEDULED = 'SCHEDULED',
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum StockAuditStatus {
+  DRAFT = 'DRAFT',
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED',
+}

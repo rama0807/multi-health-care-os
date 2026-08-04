@@ -33,7 +33,22 @@ const RESOURCE_ACTIONS: Record<string, string[]> = {
   'insurance.preauth': ['read', 'create', 'update'],
   'insurance.settlement': ['read', 'manage'],
   pharmacy: ['read', 'create', 'update'],
-  inventory: ['read', 'create', 'update', 'manage'],
+  // General (non-drug) Inventory & Procurement (Milestone 13 / ADR-0020) —
+  // replaces the flat `inventory` resource (never actually built on) with
+  // namespaced sub-resources mirroring `insurance.*`/`ipd.*`'s precedent
+  // for a module with genuinely distinct sub-workflows. `.procurement`
+  // covers the Purchase Request -> PO -> GRN -> Vendor Invoice chain
+  // (`approve` gates PR/PO approval, `manage` gates vendor invoice/return
+  // handling); `.requests` is the internal ward/OT/ICU/lab/radiology
+  // requisition workflow (`approve` gates approving a requisition).
+  'inventory.items': ['read', 'create', 'update', 'delete'],
+  'inventory.stores': ['read', 'create', 'update', 'delete'],
+  'inventory.stock': ['read', 'create', 'update'],
+  'inventory.procurement': ['read', 'create', 'update', 'approve', 'manage'],
+  'inventory.vendors': ['read', 'create', 'update'],
+  'inventory.requests': ['read', 'create', 'update', 'approve'],
+  'inventory.assets': ['read', 'create', 'update'],
+  'inventory.audit': ['read', 'create', 'update', 'manage'],
   // IPD & Bed Management (Milestone 12 / ADR-0018) — `ipd.wards`/`ipd.rooms`/
   // `ipd.beds` are the ward/room/bed inventory CRUD surface; `ipd.admissions`
   // is the admit/cancel workflow; `ipd.transfer` is the allocate/reserve/
@@ -255,6 +270,12 @@ const ROLE_SPECS: RoleSpec[] = [
       { resource: 'ipd.mar', action: 'update' },
       { resource: 'ipd.discharge', action: 'read' },
       { resource: 'ipd.discharge', action: 'update' },
+      // A ward/ICU nurse raises stock requisitions against Central Store
+      // and sees their own store's stock levels, but doesn't manage the
+      // item master, procurement, or vendors.
+      { resource: 'inventory.stock', action: 'read' },
+      { resource: 'inventory.requests', action: 'read' },
+      { resource: 'inventory.requests', action: 'create' },
     ],
     user: { email: 'nurse@medicore.demo', firstName: 'Anjali', lastName: 'Verma' },
   },
@@ -324,7 +345,9 @@ const ROLE_SPECS: RoleSpec[] = [
       // Completing a dispense transitions the source Prescription to
       // COMPLETED via PrescriptionsService.updateStatus — see ADR-0014.
       { resource: 'prescriptions', action: 'update' },
-      { resource: 'inventory', action: 'read' },
+      { resource: 'inventory.stock', action: 'read' },
+      { resource: 'inventory.requests', action: 'read' },
+      { resource: 'inventory.requests', action: 'create' },
     ],
     user: { email: 'pharmacist@medicore.demo', firstName: 'Karan', lastName: 'Mehta' },
   },
@@ -371,6 +394,50 @@ const ROLE_SPECS: RoleSpec[] = [
       { resource: 'departments', action: 'read' },
     ],
     user: { email: 'hr@medicore.demo', firstName: 'Vikram', lastName: 'Nair' },
+  },
+  {
+    // `SystemRole.INVENTORY_MANAGER` already existed in the enum from the
+    // original scaffolding commit but had no ROLE_SPEC — the same
+    // situation `LAB_TECHNICIAN`/`RADIOLOGY_TECHNICIAN` were in before
+    // their own milestones (ADR-0012/ADR-0013). All-scope across every
+    // `inventory.*` sub-resource — a store/inventory manager runs the
+    // whole general-inventory-and-procurement workflow end to end.
+    slug: 'inventory-manager',
+    name: 'Inventory Manager',
+    systemRole: SystemRole.INVENTORY_MANAGER,
+    permissions: [
+      { resource: 'inventory.items', action: 'read' },
+      { resource: 'inventory.items', action: 'create' },
+      { resource: 'inventory.items', action: 'update' },
+      { resource: 'inventory.items', action: 'delete' },
+      { resource: 'inventory.stores', action: 'read' },
+      { resource: 'inventory.stores', action: 'create' },
+      { resource: 'inventory.stores', action: 'update' },
+      { resource: 'inventory.stores', action: 'delete' },
+      { resource: 'inventory.stock', action: 'read' },
+      { resource: 'inventory.stock', action: 'create' },
+      { resource: 'inventory.stock', action: 'update' },
+      { resource: 'inventory.procurement', action: 'read' },
+      { resource: 'inventory.procurement', action: 'create' },
+      { resource: 'inventory.procurement', action: 'update' },
+      { resource: 'inventory.procurement', action: 'approve' },
+      { resource: 'inventory.procurement', action: 'manage' },
+      { resource: 'inventory.vendors', action: 'read' },
+      { resource: 'inventory.vendors', action: 'create' },
+      { resource: 'inventory.vendors', action: 'update' },
+      { resource: 'inventory.requests', action: 'read' },
+      { resource: 'inventory.requests', action: 'create' },
+      { resource: 'inventory.requests', action: 'update' },
+      { resource: 'inventory.requests', action: 'approve' },
+      { resource: 'inventory.assets', action: 'read' },
+      { resource: 'inventory.assets', action: 'create' },
+      { resource: 'inventory.assets', action: 'update' },
+      { resource: 'inventory.audit', action: 'read' },
+      { resource: 'inventory.audit', action: 'create' },
+      { resource: 'inventory.audit', action: 'update' },
+      { resource: 'inventory.audit', action: 'manage' },
+    ],
+    user: { email: 'inventorymanager@medicore.demo', firstName: 'Deepak', lastName: 'Joshi' },
   },
 ]
 

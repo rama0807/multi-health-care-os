@@ -274,6 +274,88 @@ interface DischargeEventPayload {
   daysStayed?: number
 }
 
+// ─── General Inventory & Procurement (Milestone 13 / ADR-0020) ─────────────
+
+interface PurchaseRequestEventPayload {
+  purchaseRequestId: string
+  organizationId: string
+  userId?: string
+  fromStatus?: string
+  toStatus?: string
+  reason?: string
+}
+
+interface PurchaseOrderEventPayload {
+  purchaseOrderId: string
+  organizationId: string
+  userId?: string
+  fromStatus?: string
+  toStatus?: string
+  reason?: string
+}
+
+interface GoodsReceiptNoteEventPayload {
+  goodsReceiptNoteId: string
+  organizationId: string
+  userId?: string
+}
+
+interface VendorReturnEventPayload {
+  vendorReturnId: string
+  organizationId: string
+  userId?: string
+}
+
+interface VendorInvoiceEventPayload {
+  vendorInvoiceId: string
+  organizationId: string
+  userId?: string
+  fromStatus?: string
+  toStatus?: string
+}
+
+interface StoreRequisitionEventPayload {
+  storeRequisitionId: string
+  organizationId: string
+  userId?: string
+  fromStatus?: string
+  toStatus?: string
+  reason?: string
+}
+
+interface InventoryStockTransferEventPayload {
+  transferId: string
+  organizationId: string
+  userId?: string
+  fromStatus?: string
+  toStatus?: string
+  reason?: string
+}
+
+interface AssetEventPayload {
+  assetId: string
+  organizationId: string
+  userId?: string
+  assignedToUserId?: string
+  assignedToDepartmentId?: string
+}
+
+interface AssetMaintenanceEventPayload {
+  assetId: string
+  maintenanceRecordId: string
+  organizationId: string
+  userId?: string
+  type?: string
+}
+
+interface StockAuditEventPayload {
+  stockAuditId: string
+  organizationId: string
+  userId?: string
+  fromStatus?: string
+  toStatus?: string
+}
+
 @Injectable()
 export class AuditListener {
   private readonly logger = new Logger(AuditListener.name)
@@ -808,6 +890,113 @@ export class AuditListener {
     return this.persistDischargeEvent(payload, 'ipd.discharge_completed')
   }
 
+  // ── General Inventory & Procurement (Milestone 13 / ADR-0020) ───────────
+
+  @OnEvent('purchase_request.created')
+  onPurchaseRequestCreated(payload: PurchaseRequestEventPayload) {
+    return this.persistPurchaseRequestEvent(payload, 'purchase_request.created')
+  }
+
+  @OnEvent('purchase_request.status_changed')
+  onPurchaseRequestStatusChanged(payload: PurchaseRequestEventPayload) {
+    return this.persistPurchaseRequestEvent(payload, 'purchase_request.status_changed')
+  }
+
+  @OnEvent('purchase_order.created')
+  onPurchaseOrderCreated(payload: PurchaseOrderEventPayload) {
+    return this.persistPurchaseOrderEvent(payload, 'purchase_order.created')
+  }
+
+  @OnEvent('purchase_order.status_changed')
+  onPurchaseOrderStatusChanged(payload: PurchaseOrderEventPayload) {
+    return this.persistPurchaseOrderEvent(payload, 'purchase_order.status_changed')
+  }
+
+  @OnEvent('goods_receipt_note.created')
+  onGoodsReceiptNoteCreated(payload: GoodsReceiptNoteEventPayload) {
+    return this.persistGoodsReceiptNoteEvent(payload, 'goods_receipt_note.created')
+  }
+
+  @OnEvent('goods_receipt_note.completed')
+  onGoodsReceiptNoteCompleted(payload: GoodsReceiptNoteEventPayload) {
+    return this.persistGoodsReceiptNoteEvent(payload, 'goods_receipt_note.completed')
+  }
+
+  @OnEvent('goods_receipt_note.cancelled')
+  onGoodsReceiptNoteCancelled(payload: GoodsReceiptNoteEventPayload) {
+    return this.persistGoodsReceiptNoteEvent(payload, 'goods_receipt_note.cancelled')
+  }
+
+  @OnEvent('vendor_return.created')
+  onVendorReturnCreated(payload: VendorReturnEventPayload) {
+    return this.persistVendorReturnEvent(payload, 'vendor_return.created')
+  }
+
+  @OnEvent('vendor_return.acknowledged')
+  onVendorReturnAcknowledged(payload: VendorReturnEventPayload) {
+    return this.persistVendorReturnEvent(payload, 'vendor_return.acknowledged')
+  }
+
+  @OnEvent('vendor_invoice.created')
+  onVendorInvoiceCreated(payload: VendorInvoiceEventPayload) {
+    return this.persistVendorInvoiceEvent(payload, 'vendor_invoice.created')
+  }
+
+  @OnEvent('vendor_invoice.status_changed')
+  onVendorInvoiceStatusChanged(payload: VendorInvoiceEventPayload) {
+    return this.persistVendorInvoiceEvent(payload, 'vendor_invoice.status_changed')
+  }
+
+  @OnEvent('store_requisition.created')
+  onStoreRequisitionCreated(payload: StoreRequisitionEventPayload) {
+    return this.persistStoreRequisitionEvent(payload, 'store_requisition.created')
+  }
+
+  @OnEvent('store_requisition.status_changed')
+  onStoreRequisitionStatusChanged(payload: StoreRequisitionEventPayload) {
+    return this.persistStoreRequisitionEvent(payload, 'store_requisition.status_changed')
+  }
+
+  @OnEvent('inventory_stock_transfer.created')
+  onInventoryStockTransferCreated(payload: InventoryStockTransferEventPayload) {
+    return this.persistInventoryStockTransferEvent(payload, 'inventory_stock_transfer.created')
+  }
+
+  @OnEvent('inventory_stock_transfer.status_changed')
+  onInventoryStockTransferStatusChanged(payload: InventoryStockTransferEventPayload) {
+    return this.persistInventoryStockTransferEvent(payload, 'inventory_stock_transfer.status_changed')
+  }
+
+  @OnEvent('asset.created')
+  onAssetCreated(payload: AssetEventPayload) {
+    return this.persistAssetEvent(payload, 'asset.created')
+  }
+
+  @OnEvent('asset.assigned')
+  onAssetAssigned(payload: AssetEventPayload) {
+    return this.persistAssetEvent(payload, 'asset.assigned')
+  }
+
+  @OnEvent('asset_maintenance.created')
+  onAssetMaintenanceCreated(payload: AssetMaintenanceEventPayload) {
+    return this.persistAssetMaintenanceEvent(payload, 'asset_maintenance.created')
+  }
+
+  @OnEvent('asset_maintenance.completed')
+  onAssetMaintenanceCompleted(payload: AssetMaintenanceEventPayload) {
+    return this.persistAssetMaintenanceEvent(payload, 'asset_maintenance.completed')
+  }
+
+  @OnEvent('stock_audit.created')
+  onStockAuditCreated(payload: StockAuditEventPayload) {
+    return this.persistStockAuditEvent(payload, 'stock_audit.created')
+  }
+
+  @OnEvent('stock_audit.status_changed')
+  onStockAuditStatusChanged(payload: StockAuditEventPayload) {
+    return this.persistStockAuditEvent(payload, 'stock_audit.status_changed')
+  }
+
   private async persistIpdOrderEvent(payload: IpdOrderEventPayload, action: string) {
     await this.auditService.record({
       organizationId: payload.organizationId,
@@ -1105,5 +1294,115 @@ export class AuditListener {
       select: { organizationId: true },
     })
     return user?.organizationId
+  }
+
+  // ── General Inventory & Procurement (Milestone 13 / ADR-0020) ───────────
+
+  private async persistPurchaseRequestEvent(payload: PurchaseRequestEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'PurchaseRequest',
+      resourceId: payload.purchaseRequestId,
+      after: { fromStatus: payload.fromStatus, toStatus: payload.toStatus, reason: payload.reason },
+    })
+  }
+
+  private async persistPurchaseOrderEvent(payload: PurchaseOrderEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'PurchaseOrder',
+      resourceId: payload.purchaseOrderId,
+      after: { fromStatus: payload.fromStatus, toStatus: payload.toStatus, reason: payload.reason },
+    })
+  }
+
+  private async persistGoodsReceiptNoteEvent(payload: GoodsReceiptNoteEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'GoodsReceiptNote',
+      resourceId: payload.goodsReceiptNoteId,
+    })
+  }
+
+  private async persistVendorReturnEvent(payload: VendorReturnEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'VendorReturn',
+      resourceId: payload.vendorReturnId,
+    })
+  }
+
+  private async persistVendorInvoiceEvent(payload: VendorInvoiceEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'VendorInvoice',
+      resourceId: payload.vendorInvoiceId,
+      after: { fromStatus: payload.fromStatus, toStatus: payload.toStatus },
+    })
+  }
+
+  private async persistStoreRequisitionEvent(payload: StoreRequisitionEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'StoreRequisition',
+      resourceId: payload.storeRequisitionId,
+      after: { fromStatus: payload.fromStatus, toStatus: payload.toStatus, reason: payload.reason },
+    })
+  }
+
+  private async persistInventoryStockTransferEvent(payload: InventoryStockTransferEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'InventoryStockTransfer',
+      resourceId: payload.transferId,
+      after: { fromStatus: payload.fromStatus, toStatus: payload.toStatus, reason: payload.reason },
+    })
+  }
+
+  private async persistAssetEvent(payload: AssetEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'Asset',
+      resourceId: payload.assetId,
+      after: { assignedToUserId: payload.assignedToUserId, assignedToDepartmentId: payload.assignedToDepartmentId },
+    })
+  }
+
+  private async persistAssetMaintenanceEvent(payload: AssetMaintenanceEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'AssetMaintenanceRecord',
+      resourceId: payload.maintenanceRecordId,
+      after: { assetId: payload.assetId, type: payload.type },
+    })
+  }
+
+  private async persistStockAuditEvent(payload: StockAuditEventPayload, action: string) {
+    await this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action,
+      resource: 'StockAudit',
+      resourceId: payload.stockAuditId,
+      after: { fromStatus: payload.fromStatus, toStatus: payload.toStatus },
+    })
   }
 }

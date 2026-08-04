@@ -455,6 +455,29 @@ model Organization {
   dispenseOrders            DispenseOrder[]
   drugReturns               DrugReturn[]
   inventoryItems            InventoryItem[]
+  inventoryCategories       InventoryCategory[]
+  inventoryItemGroups       InventoryItemGroup[]
+  inventoryUnits            InventoryUnit[]
+  inventoryManufacturers    InventoryManufacturer[]
+  inventoryBrands           InventoryBrand[]
+  inventoryStores           InventoryStore[]
+  inventoryStoreManagers    InventoryStoreManager[]
+  vendors                   Vendor[]
+  vendorRatings             VendorRating[]
+  inventoryStocks           InventoryStock[]
+  inventoryBatches          InventoryBatch[]
+  inventoryStockAdjustments InventoryStockAdjustment[]
+  inventoryStockTransfers   InventoryStockTransfer[]
+  purchaseRequests          PurchaseRequest[]
+  purchaseOrders            PurchaseOrder[]
+  goodsReceiptNotes         GoodsReceiptNote[]
+  vendorInvoices            VendorInvoice[]
+  vendorReturns             VendorReturn[]
+  storeRequisitions         StoreRequisition[]
+  assets                    Asset[]
+  assetMaintenanceRecords   AssetMaintenanceRecord[]
+  assetAssignments          AssetAssignment[]
+  stockAudits               StockAudit[]
   notifications             Notification[]
   auditLogs                 AuditLog[]
   prescriptions             Prescription[]
@@ -617,6 +640,7 @@ model Department {
   wards        Ward[]
   appointments Appointment[]
   admissions   Admission[]
+  assets       Asset[]
 
   @@unique([code, hospitalId])
   @@index([organizationId])
@@ -2442,26 +2466,956 @@ model DrugReturn {
   @@map("drug_returns")
 }
 
+// ─── General Inventory & Procurement (Milestone 13 / ADR-0020) ─────────────
+//
+// Replaces the unused `InventoryItem` scaffold (name/sku/category/
+// quantityInStock/reorderLevel/reorderQuantity/unitCost/storageLocation —
+// confirmed zero references anywhere before this milestone, same situation
+// as `Medication` before ADR-0014 and `Ward`/`Bed`/`Admission` before
+// ADR-0018) with a full multi-store item master, stock ledger, procurement
+// lifecycle, vendor management, internal requisitions, asset management,
+// and stock audit surface. This is explicitly the *general* hospital
+// inventory system (wards/ICU/OT/labs/radiology/housekeeping/biomedical/
+// central stores) — separate from `Drug`'s pharmacy-specific catalog
+// (ADR-0014), which is untouched by this milestone.
+
+enum InventoryItemType {
+  ASSET
+  CONSUMABLE
+}
+
+/// Two-level category hierarchy via self-relation (`parentId` null = a
+/// top-level Category, non-null = a Subcategory of that category) rather
+/// than a separate `InventorySubcategory` model — the two are structurally
+/// identical (name/code/description/isActive) and Prisma's self-relation
+/// models the hierarchy without a second near-duplicate table.
+model InventoryCategory {
+  id             String   @id @default(cuid())
+  organizationId String
+  parentId       String?
+  name           String
+  code           String
+  description    String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id])
+  parent       InventoryCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children     InventoryCategory[] @relation("CategoryHierarchy")
+  items        InventoryItem[]
+
+  @@unique([code, organizationId])
+  @@index([organizationId])
+  @@index([parentId])
+  @@map("inventory_categories")
+}
+
+/// A cross-cutting classification independent of the category tree (e.g.
+/// "Fast Moving", "Surgical", "High Value") — the roadmap lists this as a
+/// distinct concept from Category/Subcategory, so it stays its own table
+/// rather than folded into the category hierarchy.
+model InventoryItemGroup {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  code           String
+  description    String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  items        InventoryItem[]
+
+  @@unique([code, organizationId])
+  @@index([organizationId])
+  @@map("inventory_item_groups")
+}
+
+model InventoryUnit {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  symbol         String
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  items        InventoryItem[]
+
+  @@unique([symbol, organizationId])
+  @@index([organizationId])
+  @@map("inventory_units")
+}
+
+model InventoryManufacturer {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  contactPerson  String?
+  phone          String?
+  email          String?
+  address        String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id])
+  brands       InventoryBrand[]
+  items        InventoryItem[]
+
+  @@unique([name, organizationId])
+  @@index([organizationId])
+  @@map("inventory_manufacturers")
+}
+
+model InventoryBrand {
+  id             String   @id @default(cuid())
+  organizationId String
+  manufacturerId String?
+  name           String
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization           @relation(fields: [organizationId], references: [id])
+  manufacturer InventoryManufacturer? @relation(fields: [manufacturerId], references: [id])
+  items        InventoryItem[]
+
+  @@unique([name, organizationId])
+  @@index([organizationId])
+  @@map("inventory_brands")
+}
+
+/// The item master. `hsnCode`/`gstPercent` are the GST-compliance fields;
+/// `barcodeValue`/`qrCodeValue` hold the encoded string a scanner would
+/// read (no image generation here — the frontend renders the code from the
+/// value, same disclosed-scope idiom as every other placeholder in this
+/// project). `trackBatch`/`trackSerial`/`trackExpiry` are per-item flags
+/// the stock/batch layer honors rather than assuming every item behaves
+/// like a drug batch (ADR-0014) — a biomedical asset tracks a serial
+/// number and never expires; a bandage roll tracks neither.
 model InventoryItem {
-  id              String   @id @default(cuid())
-  name            String
-  sku             String
-  category        String
-  organizationId  String
-  quantityInStock Int      @default(0)
-  reorderLevel    Int      @default(10)
-  reorderQuantity Int      @default(50)
-  unitCost        Decimal  @default(0) @db.Decimal(10, 2)
-  storageLocation String?
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String            @id @default(cuid())
+  organizationId String
+  categoryId     String?
+  itemGroupId    String?
+  unitId         String?
+  manufacturerId String?
+  brandId        String?
+  name           String
+  code           String
+  description    String?
+  itemType       InventoryItemType @default(CONSUMABLE)
+  hsnCode        String?
+  gstPercent     Decimal           @default(0) @db.Decimal(5, 2)
+  barcodeValue   String?
+  qrCodeValue    String?
+  trackBatch     Boolean           @default(false)
+  trackSerial    Boolean           @default(false)
+  trackExpiry    Boolean           @default(false)
+  unitCost       Decimal           @default(0) @db.Decimal(10, 2)
+  isActive       Boolean           @default(true)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  organization         Organization                 @relation(fields: [organizationId], references: [id])
+  category             InventoryCategory?           @relation(fields: [categoryId], references: [id])
+  itemGroup            InventoryItemGroup?          @relation(fields: [itemGroupId], references: [id])
+  unit                 InventoryUnit?               @relation(fields: [unitId], references: [id])
+  manufacturer         InventoryManufacturer?       @relation(fields: [manufacturerId], references: [id])
+  brand                InventoryBrand?              @relation(fields: [brandId], references: [id])
+  stocks               InventoryStock[]
+  batches              InventoryBatch[]
+  purchaseRequestItems PurchaseRequestItem[]
+  purchaseOrderItems   PurchaseOrderItem[]
+  goodsReceiptItems    GoodsReceiptItem[]
+  requisitionItems     StoreRequisitionItem[]
+  transferItems        InventoryStockTransferItem[]
+  vendorReturnItems    VendorReturnItem[]
+  stockAdjustments     InventoryStockAdjustment[]
+  assets               Asset[]
+  stockAuditItems      StockAuditItem[]
+
+  @@unique([code, organizationId])
+  @@index([organizationId])
+  @@index([organizationId, itemType])
+  @@index([organizationId, isActive])
+  @@map("inventory_items")
+}
+
+enum InventoryStoreType {
+  CENTRAL
+  WARD
+  ICU
+  EMERGENCY
+  OT
+  LABORATORY
+  RADIOLOGY
+  PHARMACY
+  HOUSEKEEPING
+  BIOMEDICAL
+  GENERAL
+}
+
+model InventoryStore {
+  id             String             @id @default(cuid())
+  organizationId String
+  name           String
+  code           String
+  type           InventoryStoreType @default(GENERAL)
+  location       String?
+  isActive       Boolean            @default(true)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  organization      Organization             @relation(fields: [organizationId], references: [id])
+  managers          InventoryStoreManager[]
+  stocks            InventoryStock[]
+  purchaseRequests  PurchaseRequest[]
+  purchaseOrders    PurchaseOrder[]
+  goodsReceiptNotes GoodsReceiptNote[]
+  vendorReturns     VendorReturn[]
+  requisitionsFrom  StoreRequisition[]       @relation("RequisitionFromStore")
+  requisitionsTo    StoreRequisition[]       @relation("RequisitionToStore")
+  transfersFrom     InventoryStockTransfer[] @relation("TransferFromStore")
+  transfersTo       InventoryStockTransfer[] @relation("TransferToStore")
+  assets            Asset[]
+  assetAssignments  AssetAssignment[]
+  stockAudits       StockAudit[]
+
+  @@unique([code, organizationId])
+  @@index([organizationId])
+  @@map("inventory_stores")
+}
+
+enum StoreManagerRole {
+  MANAGER
+  STAFF
+}
+
+model InventoryStoreManager {
+  id               String           @id @default(cuid())
+  organizationId   String
+  storeId          String
+  userId           String
+  role             StoreManagerRole @default(STAFF)
+  assignedByUserId String
+  assignedAt       DateTime         @default(now())
+
+  organization Organization   @relation(fields: [organizationId], references: [id])
+  store        InventoryStore @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, userId])
+  @@index([organizationId])
+  @@map("inventory_store_managers")
+}
+
+model Vendor {
+  id                String   @id @default(cuid())
+  organizationId    String
+  name              String
+  code              String
+  contactPerson     String?
+  phone             String?
+  email             String?
+  address           String?
+  city              String?
+  state             String?
+  pincode           String?
+  gstin             String?
+  pan               String?
+  bankName          String?
+  bankAccountNumber String?
+  bankIfsc          String?
+  paymentTermsDays  Int      @default(30)
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  organization      Organization             @relation(fields: [organizationId], references: [id])
+  ratings           VendorRating[]
+  purchaseOrders    PurchaseOrder[]
+  goodsReceiptNotes GoodsReceiptNote[]
+  vendorInvoices    VendorInvoice[]
+  vendorReturns     VendorReturn[]
+  assetAmcRecords   AssetMaintenanceRecord[]
+  Asset             Asset[]
+
+  @@unique([code, organizationId])
+  @@index([organizationId])
+  @@map("vendors")
+}
+
+/// Standalone rating events rather than a single mutable field on `Vendor`
+/// — preserves rating history; a vendor's current/average rating is
+/// computed at read time from these rows (same "don't denormalize
+/// something that changes often" reasoning that kept billing/insurance
+/// totals computed rather than cached where they'd go stale).
+model VendorRating {
+  id             String   @id @default(cuid())
+  organizationId String
+  vendorId       String
+  rating         Int
+  comments       String?
+  ratedByUserId  String
+  ratedAt        DateTime @default(now())
 
   organization Organization @relation(fields: [organizationId], references: [id])
+  vendor       Vendor       @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 
-  @@unique([sku, organizationId])
+  @@index([vendorId])
   @@index([organizationId])
-  @@map("inventory_items")
+  @@map("vendor_ratings")
+}
+
+/// One row per (item, store) — the current stock summary. `availableStock`
+/// is deliberately not a stored column: it's `currentStock - reservedStock
+/// - damagedStock - expiredStock - lostStock`, computed at read time so it
+/// can never drift out of sync with the components it's derived from.
+model InventoryStock {
+  id               String    @id @default(cuid())
+  organizationId   String
+  itemId           String
+  storeId          String
+  currentStock     Int       @default(0)
+  reservedStock    Int       @default(0)
+  damagedStock     Int       @default(0)
+  expiredStock     Int       @default(0)
+  lostStock        Int       @default(0)
+  reorderLevel     Int       @default(0)
+  minStock         Int       @default(0)
+  maxStock         Int       @default(0)
+  openingStock     Int       @default(0)
+  openingStockDate DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id])
+  item         InventoryItem    @relation(fields: [itemId], references: [id])
+  store        InventoryStore   @relation(fields: [storeId], references: [id])
+  batches      InventoryBatch[]
+
+  @@unique([itemId, storeId])
+  @@index([organizationId])
+  @@index([organizationId, storeId])
+  @@map("inventory_stocks")
+}
+
+enum InventoryBatchStatus {
+  AVAILABLE
+  RESERVED
+  DAMAGED
+  EXPIRED
+  LOST
+  CONSUMED
+}
+
+/// Per-batch/serial breakdown of an `InventoryStock` row, populated only
+/// for items with `trackBatch`/`trackSerial`/`trackExpiry` set — an item
+/// without any of those flags is tracked purely at the `InventoryStock`
+/// aggregate level with no batch rows at all.
+model InventoryBatch {
+  id               String               @id @default(cuid())
+  organizationId   String
+  itemId           String
+  storeId          String
+  inventoryStockId String
+  batchNumber      String?
+  serialNumber     String?
+  manufactureDate  DateTime?
+  expiryDate       DateTime?
+  quantity         Int                  @default(0)
+  status           InventoryBatchStatus @default(AVAILABLE)
+  receivedAt       DateTime             @default(now())
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  organization      Organization                 @relation(fields: [organizationId], references: [id])
+  item              InventoryItem                @relation(fields: [itemId], references: [id])
+  inventoryStock    InventoryStock               @relation(fields: [inventoryStockId], references: [id], onDelete: Cascade)
+  goodsReceiptItems GoodsReceiptItem[]
+  requisitionItems  StoreRequisitionItem[]
+  transferItems     InventoryStockTransferItem[]
+  vendorReturnItems VendorReturnItem[]
+  stockAdjustments  InventoryStockAdjustment[]
+  stockAuditItems   StockAuditItem[]
+
+  @@index([organizationId])
+  @@index([itemId, storeId])
+  @@index([organizationId, expiryDate])
+  @@map("inventory_batches")
+}
+
+enum InventoryAdjustmentType {
+  OPENING
+  DAMAGE
+  LOSS
+  EXPIRY
+  CORRECTION
+  AUDIT
+  ISSUE
+  RECEIPT
+  TRANSFER
+}
+
+/// An append-only ledger of every stock movement/correction — the single
+/// source of truth for "why did this number change," mirroring the
+/// audit-trail idiom every other module in this project already uses for
+/// its own domain (e.g. `BedTransfer`/`BedAllocation` for beds).
+model InventoryStockAdjustment {
+  id               String                  @id @default(cuid())
+  organizationId   String
+  itemId           String
+  storeId          String
+  batchId          String?
+  type             InventoryAdjustmentType
+  quantityDelta    Int
+  reason           String?
+  referenceType    String?
+  referenceId      String?
+  adjustedByUserId String
+  adjustedAt       DateTime                @default(now())
+
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  item         InventoryItem   @relation(fields: [itemId], references: [id])
+  batch        InventoryBatch? @relation(fields: [batchId], references: [id])
+
+  @@index([organizationId, storeId])
+  @@index([itemId])
+  @@map("inventory_stock_adjustments")
+}
+
+enum StockTransferStatus {
+  DRAFT
+  IN_TRANSIT
+  COMPLETED
+  CANCELLED
+}
+
+/// A direct store-to-store stock movement, distinct from `StoreRequisition`
+/// — a transfer is supply-initiated (e.g. Central proactively rebalancing
+/// stock into ICU Store) with no approval step, while a requisition is
+/// demand-initiated by the requesting store and needs approval.
+model InventoryStockTransfer {
+  id                 String              @id @default(cuid())
+  organizationId     String
+  transferNumber     String
+  fromStoreId        String
+  toStoreId          String
+  status             StockTransferStatus @default(DRAFT)
+  requestedByUserId  String
+  dispatchedByUserId String?
+  dispatchedAt       DateTime?
+  receivedByUserId   String?
+  receivedAt         DateTime?
+  cancelReason       String?
+  notes              String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  organization Organization                 @relation(fields: [organizationId], references: [id])
+  fromStore    InventoryStore               @relation("TransferFromStore", fields: [fromStoreId], references: [id])
+  toStore      InventoryStore               @relation("TransferToStore", fields: [toStoreId], references: [id])
+  items        InventoryStockTransferItem[]
+
+  @@unique([transferNumber, organizationId])
+  @@index([organizationId, status])
+  @@map("inventory_stock_transfers")
+}
+
+model InventoryStockTransferItem {
+  id         String  @id @default(cuid())
+  transferId String
+  itemId     String
+  batchId    String?
+  quantity   Int
+
+  transfer InventoryStockTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  item     InventoryItem          @relation(fields: [itemId], references: [id])
+  batch    InventoryBatch?        @relation(fields: [batchId], references: [id])
+
+  @@index([transferId])
+  @@map("inventory_stock_transfer_items")
+}
+
+enum PurchaseRequestStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  CONVERTED
+  CANCELLED
+}
+
+model PurchaseRequest {
+  id                String                @id @default(cuid())
+  organizationId    String
+  requestNumber     String
+  storeId           String
+  requestedByUserId String
+  status            PurchaseRequestStatus @default(DRAFT)
+  notes             String?
+  approvedByUserId  String?
+  approvedAt        DateTime?
+  rejectionReason   String?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  organization   Organization          @relation(fields: [organizationId], references: [id])
+  store          InventoryStore        @relation(fields: [storeId], references: [id])
+  items          PurchaseRequestItem[]
+  purchaseOrders PurchaseOrder[]
+
+  @@unique([requestNumber, organizationId])
+  @@index([organizationId, status])
+  @@map("purchase_requests")
+}
+
+model PurchaseRequestItem {
+  id                String  @id @default(cuid())
+  purchaseRequestId String
+  itemId            String
+  quantity          Int
+  notes             String?
+
+  purchaseRequest PurchaseRequest @relation(fields: [purchaseRequestId], references: [id], onDelete: Cascade)
+  item            InventoryItem   @relation(fields: [itemId], references: [id])
+
+  @@index([purchaseRequestId])
+  @@map("purchase_request_items")
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  SENT
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+}
+
+model PurchaseOrder {
+  id                   String              @id @default(cuid())
+  organizationId       String
+  poNumber             String
+  vendorId             String
+  storeId              String
+  purchaseRequestId    String?
+  status               PurchaseOrderStatus @default(DRAFT)
+  expectedDeliveryDate DateTime?
+  approvedByUserId     String?
+  approvedAt           DateTime?
+  cancelReason         String?
+  notes                String?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  organization      Organization        @relation(fields: [organizationId], references: [id])
+  vendor            Vendor              @relation(fields: [vendorId], references: [id])
+  store             InventoryStore      @relation(fields: [storeId], references: [id])
+  purchaseRequest   PurchaseRequest?    @relation(fields: [purchaseRequestId], references: [id])
+  items             PurchaseOrderItem[]
+  goodsReceiptNotes GoodsReceiptNote[]
+  vendorInvoices    VendorInvoice[]
+
+  @@unique([poNumber, organizationId])
+  @@index([organizationId, status])
+  @@index([vendorId])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id               String  @id @default(cuid())
+  purchaseOrderId  String
+  itemId           String
+  quantityOrdered  Int
+  quantityReceived Int     @default(0)
+  unitPrice        Decimal @default(0) @db.Decimal(10, 2)
+  taxPercent       Decimal @default(0) @db.Decimal(5, 2)
+
+  purchaseOrder     PurchaseOrder      @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  item              InventoryItem      @relation(fields: [itemId], references: [id])
+  goodsReceiptItems GoodsReceiptItem[]
+
+  @@index([purchaseOrderId])
+  @@map("purchase_order_items")
+}
+
+enum GrnStatus {
+  DRAFT
+  COMPLETED
+  CANCELLED
+}
+
+model GoodsReceiptNote {
+  id               String    @id @default(cuid())
+  organizationId   String
+  grnNumber        String
+  purchaseOrderId  String
+  storeId          String
+  receivedByUserId String
+  status           GrnStatus @default(DRAFT)
+  receivedAt       DateTime  @default(now())
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  organization   Organization       @relation(fields: [organizationId], references: [id])
+  purchaseOrder  PurchaseOrder      @relation(fields: [purchaseOrderId], references: [id])
+  store          InventoryStore     @relation(fields: [storeId], references: [id])
+  items          GoodsReceiptItem[]
+  vendorInvoices VendorInvoice[]
+  vendorReturns  VendorReturn[]
+  Vendor         Vendor?            @relation(fields: [vendorId], references: [id])
+  vendorId       String?
+
+  @@unique([grnNumber, organizationId])
+  @@index([organizationId])
+  @@index([purchaseOrderId])
+  @@map("goods_receipt_notes")
+}
+
+model GoodsReceiptItem {
+  id                  String    @id @default(cuid())
+  goodsReceiptNoteId  String
+  purchaseOrderItemId String
+  itemId              String
+  quantityReceived    Int
+  batchNumber         String?
+  serialNumber        String?
+  manufactureDate     DateTime?
+  expiryDate          DateTime?
+  unitPrice           Decimal   @default(0) @db.Decimal(10, 2)
+
+  goodsReceiptNote  GoodsReceiptNote  @relation(fields: [goodsReceiptNoteId], references: [id], onDelete: Cascade)
+  purchaseOrderItem PurchaseOrderItem @relation(fields: [purchaseOrderItemId], references: [id])
+  item              InventoryItem     @relation(fields: [itemId], references: [id])
+  InventoryBatch    InventoryBatch?   @relation(fields: [inventoryBatchId], references: [id])
+  inventoryBatchId  String?
+
+  @@index([goodsReceiptNoteId])
+  @@map("goods_receipt_items")
+}
+
+enum VendorInvoiceStatus {
+  PENDING
+  VERIFIED
+  PAID
+  DISPUTED
+  CANCELLED
+}
+
+model VendorInvoice {
+  id                 String              @id @default(cuid())
+  organizationId     String
+  invoiceNumber      String
+  vendorId           String
+  purchaseOrderId    String?
+  goodsReceiptNoteId String?
+  invoiceDate        DateTime
+  dueDate            DateTime?
+  amount             Decimal             @default(0) @db.Decimal(12, 2)
+  taxAmount          Decimal             @default(0) @db.Decimal(12, 2)
+  totalAmount        Decimal             @default(0) @db.Decimal(12, 2)
+  paidAmount         Decimal             @default(0) @db.Decimal(12, 2)
+  status             VendorInvoiceStatus @default(PENDING)
+  notes              String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  organization     Organization      @relation(fields: [organizationId], references: [id])
+  vendor           Vendor            @relation(fields: [vendorId], references: [id])
+  purchaseOrder    PurchaseOrder?    @relation(fields: [purchaseOrderId], references: [id])
+  goodsReceiptNote GoodsReceiptNote? @relation(fields: [goodsReceiptNoteId], references: [id])
+
+  @@unique([invoiceNumber, organizationId])
+  @@index([organizationId, status])
+  @@index([vendorId])
+  @@map("vendor_invoices")
+}
+
+enum VendorReturnStatus {
+  DRAFT
+  SENT
+  ACKNOWLEDGED
+  CANCELLED
+}
+
+model VendorReturn {
+  id                 String             @id @default(cuid())
+  organizationId     String
+  returnNumber       String
+  vendorId           String
+  goodsReceiptNoteId String?
+  storeId            String
+  reason             String
+  status             VendorReturnStatus @default(DRAFT)
+  returnedByUserId   String
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  organization     Organization       @relation(fields: [organizationId], references: [id])
+  vendor           Vendor             @relation(fields: [vendorId], references: [id])
+  goodsReceiptNote GoodsReceiptNote?  @relation(fields: [goodsReceiptNoteId], references: [id])
+  store            InventoryStore     @relation(fields: [storeId], references: [id])
+  items            VendorReturnItem[]
+
+  @@unique([returnNumber, organizationId])
+  @@index([organizationId, status])
+  @@map("vendor_returns")
+}
+
+model VendorReturnItem {
+  id             String  @id @default(cuid())
+  vendorReturnId String
+  itemId         String
+  batchId        String?
+  quantity       Int
+  unitPrice      Decimal @default(0) @db.Decimal(10, 2)
+
+  vendorReturn VendorReturn    @relation(fields: [vendorReturnId], references: [id], onDelete: Cascade)
+  item         InventoryItem   @relation(fields: [itemId], references: [id])
+  batch        InventoryBatch? @relation(fields: [batchId], references: [id])
+
+  @@index([vendorReturnId])
+  @@map("vendor_return_items")
+}
+
+enum RequisitionStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  ISSUED
+  PARTIALLY_ISSUED
+  RECEIVED
+  CANCELLED
+}
+
+/// Internal ward/OT/ICU/lab/radiology stock requests — demand-initiated by
+/// the requesting store (`toStoreId`) against a fulfilling store
+/// (`fromStoreId`, typically Central), requiring approval before issue.
+/// Distinct from `InventoryStockTransfer` (supply-initiated, no approval).
+model StoreRequisition {
+  id                String            @id @default(cuid())
+  organizationId    String
+  requisitionNumber String
+  fromStoreId       String
+  toStoreId         String
+  requestedByUserId String
+  status            RequisitionStatus @default(REQUESTED)
+  priority          Priority          @default(ROUTINE)
+  notes             String?
+  approvedByUserId  String?
+  approvedAt        DateTime?
+  rejectionReason   String?
+  issuedByUserId    String?
+  issuedAt          DateTime?
+  receivedByUserId  String?
+  receivedAt        DateTime?
+  cancelReason      String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  organization Organization           @relation(fields: [organizationId], references: [id])
+  fromStore    InventoryStore         @relation("RequisitionFromStore", fields: [fromStoreId], references: [id])
+  toStore      InventoryStore         @relation("RequisitionToStore", fields: [toStoreId], references: [id])
+  items        StoreRequisitionItem[]
+
+  @@unique([requisitionNumber, organizationId])
+  @@index([organizationId, status])
+  @@index([toStoreId])
+  @@map("store_requisitions")
+}
+
+model StoreRequisitionItem {
+  id                 String  @id @default(cuid())
+  storeRequisitionId String
+  itemId             String
+  batchId            String?
+  quantityRequested  Int
+  quantityIssued     Int     @default(0)
+  quantityReceived   Int     @default(0)
+
+  storeRequisition StoreRequisition @relation(fields: [storeRequisitionId], references: [id], onDelete: Cascade)
+  item             InventoryItem    @relation(fields: [itemId], references: [id])
+  batch            InventoryBatch?  @relation(fields: [batchId], references: [id])
+
+  @@index([storeRequisitionId])
+  @@map("store_requisition_items")
+}
+
+enum AssetStatus {
+  IN_USE
+  IN_STORE
+  UNDER_MAINTENANCE
+  BREAKDOWN
+  DECOMMISSIONED
+}
+
+/// One row per physical unit of an `InventoryItem` with `itemType: ASSET`
+/// (a biomedical device, a bed's monitor, etc.) — mirrors `Drug`'s
+/// "one row is one real-world unit" idiom, adapted for serialized
+/// equipment instead of a drug batch. Current assignment is denormalized
+/// here (`assignedToUserId`/`assignedToDepartmentId`) for quick lookup,
+/// same "quick lookup + history child table" idiom as `Bed.status` +
+/// `BedAllocation`.
+model Asset {
+  id                     String      @id @default(cuid())
+  organizationId         String
+  itemId                 String
+  storeId                String
+  assetTag               String
+  serialNumber           String?
+  status                 AssetStatus @default(IN_STORE)
+  purchaseDate           DateTime?
+  purchasePrice          Decimal?    @db.Decimal(12, 2)
+  warrantyExpiryDate     DateTime?
+  amcVendorId            String?
+  amcStartDate           DateTime?
+  amcEndDate             DateTime?
+  lastCalibrationDate    DateTime?
+  nextCalibrationDate    DateTime?
+  assignedToUserId       String?
+  assignedToDepartmentId String?
+  notes                  String?
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
+
+  organization         Organization             @relation(fields: [organizationId], references: [id])
+  item                 InventoryItem            @relation(fields: [itemId], references: [id])
+  store                InventoryStore           @relation(fields: [storeId], references: [id])
+  amcVendor            Vendor?                  @relation(fields: [amcVendorId], references: [id])
+  assignedToDepartment Department?              @relation(fields: [assignedToDepartmentId], references: [id])
+  maintenanceRecords   AssetMaintenanceRecord[]
+  assignments          AssetAssignment[]
+
+  @@unique([assetTag, organizationId])
+  @@index([organizationId, status])
+  @@index([storeId])
+  @@map("assets")
+}
+
+enum AssetMaintenanceType {
+  PREVENTIVE
+  CALIBRATION
+  AMC
+  BREAKDOWN
+  REPAIR
+}
+
+enum AssetMaintenanceStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+/// Covers both "Maintenance Schedule" (a row with `status: SCHEDULED` and
+/// a future `scheduledDate`) and "Breakdown History" (a row with
+/// `type: BREAKDOWN`, completed) in one model — the roadmap lists them as
+/// related facets of the same underlying concept (asset service events),
+/// not two independently-shaped entities.
+model AssetMaintenanceRecord {
+  id             String                 @id @default(cuid())
+  organizationId String
+  assetId        String
+  type           AssetMaintenanceType
+  status         AssetMaintenanceStatus @default(SCHEDULED)
+  scheduledDate  DateTime?
+  completedDate  DateTime?
+  description    String
+  cost           Decimal?               @db.Decimal(12, 2)
+  performedBy    String?
+  vendorId       String?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  asset        Asset        @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  vendor       Vendor?      @relation(fields: [vendorId], references: [id])
+
+  @@index([organizationId])
+  @@index([assetId])
+  @@map("asset_maintenance_records")
+}
+
+/// History of who/where an asset has been assigned — `Asset.assignedTo*`
+/// always reflects the latest (or null once returned) row here.
+model AssetAssignment {
+  id                     String    @id @default(cuid())
+  organizationId         String
+  assetId                String
+  assignedToUserId       String?
+  assignedToDepartmentId String?
+  storeId                String?
+  assignedByUserId       String
+  assignedAt             DateTime  @default(now())
+  returnedAt             DateTime?
+  notes                  String?
+
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  asset        Asset           @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  store        InventoryStore? @relation(fields: [storeId], references: [id])
+
+  @@index([organizationId])
+  @@index([assetId])
+  @@map("asset_assignments")
+}
+
+enum StockAuditStatus {
+  DRAFT
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model StockAudit {
+  id                String           @id @default(cuid())
+  organizationId    String
+  auditNumber       String
+  storeId           String
+  status            StockAuditStatus @default(DRAFT)
+  scheduledDate     DateTime?
+  startedAt         DateTime?
+  completedAt       DateTime?
+  conductedByUserId String
+  notes             String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id])
+  store        InventoryStore   @relation(fields: [storeId], references: [id])
+  items        StockAuditItem[]
+
+  @@unique([auditNumber, organizationId])
+  @@index([organizationId, status])
+  @@map("stock_audits")
+}
+
+/// `varianceQuantity` is computed and stored at count-entry time (not
+/// derived at read time) because it's a snapshot of a discrepancy found at
+/// a specific moment — the underlying `InventoryStock.currentStock` may
+/// have already moved on by the time the audit is reviewed later.
+model StockAuditItem {
+  id               String  @id @default(cuid())
+  stockAuditId     String
+  itemId           String
+  batchId          String?
+  systemQuantity   Int
+  countedQuantity  Int?
+  varianceQuantity Int?
+  remarks          String?
+
+  stockAudit StockAudit      @relation(fields: [stockAuditId], references: [id], onDelete: Cascade)
+  item       InventoryItem   @relation(fields: [itemId], references: [id])
+  batch      InventoryBatch? @relation(fields: [batchId], references: [id])
+
+  @@index([stockAuditId])
+  @@map("stock_audit_items")
 }
 
 // ─── Notifications ─────────────────────────────────────────────────────────

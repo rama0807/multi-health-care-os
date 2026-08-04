@@ -24,6 +24,7 @@
     "db:migrate:dev": "pnpm --filter @medicore/database db:migrate:dev",
     "db:push": "pnpm --filter @medicore/database db:push",
     "db:seed": "pnpm --filter @medicore/database db:seed",
+    "db:seed:demo": "pnpm --filter @medicore/database db:seed:demo",
     "db:studio": "pnpm --filter @medicore/database db:studio",
     "prepare": "husky"
   },

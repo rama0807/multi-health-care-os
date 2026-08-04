@@ -422,6 +422,109 @@ Invoices, and Assets + Maintenance. See `NEXT.md`.
 Overall: unaudited (see TD-0001) — no change to the overall estimate
 methodology this session. Inventory module: backend ~100% for Milestone
 13 (unaudited in depth), frontend ~15% (3 of an estimated 10+ pages).
+## Session: 2026-08-05 (Local environment brought up + demo-data seed added)
+
+### What was completed
+Environment/tooling session — **no milestone work, and Milestone 13 was
+not started.** `NEXT.md` is unchanged and still describes Milestone 13
+(General Inventory) as the next task.
+
+1. **Docker stack running.** `docker compose --profile dev up -d` —
+   postgres, redis, mailhog, minio, redis-commander all healthy.
+2. **Environment files created** (they were absent — only `.env.example`
+   files are checked in): `apps/api/.env` (from the example, with a
+   freshly generated RS256 JWT keypair via `pnpm --filter @medicore/api
+   keys:generate` and a random 32-byte `COOKIE_SECRET`), `apps/web/.env`,
+   and `packages/database/.env` with `DATABASE_URL`/`DATABASE_URL_TEST`.
+3. **Schema applied** — all 18 migrations deployed to **both**
+   `medicore_dev` and `medicore_test` (97 tables), per TD-0004.
+4. **Base seed run** (`pnpm db:seed`) — 161 permissions, 11 staff users.
+5. **New demo-data seed** (`pnpm db:seed:demo`) — see CHANGELOG. Adds a
+   realistic dataset across every completed module so the UI is not
+   empty on a fresh database.
+
+### Files modified
+- Added: `packages/database/prisma/seed-demo.ts`,
+  `packages/database/prisma/demo/{helpers,reference-data,reset,
+  foundation,clinical,ipd,inventory}.ts`
+- Modified: `packages/database/package.json` and the root
+  `package.json` (added the `db:seed:demo` script). No application code
+  was touched.
+
+### Decisions made
+- The demo seed is a **separate, additive script**, not a change to
+  `prisma/seed.ts`. The base seed's "no fake patients" stance is
+  deliberate and correct for a real deployment; demo data belongs behind
+  its own opt-in command. No ADR raised — this is tooling, not
+  architecture.
+- Demo randomness is **deterministic** (fixed-seed LCG) so screenshots,
+  manual walkthroughs and any future e2e expectations stay stable.
+- Document numbering, and every derived value (BMI, GCS total, fall-risk
+  and Braden bands, Charge Engine line maths, lab abnormal flags,
+  invoice totals) is computed the way the services compute it, rather
+  than filled with arbitrary values.
+
+### Bugs found and fixed during this session
+- **Per-module document counters collided.** The clinical and IPD
+  seeders each had their own counter, so both issued
+  `RX-MED-2026-000001` and tripped the
+  `(prescriptionNumber, organizationId)` unique index. Fixed by moving
+  the counter to a module-level singleton in `demo/helpers.ts`
+  (`docNumber`/`resetCounters`).
+- **Insured patients were double-paying.** A settled insurance claim
+  created an `INSURANCE` payment on an invoice the patient had already
+  paid in full in cash, so `sum(payments) > invoice.paidAmount`. Fixed
+  by deciding the claim outcome before the payment: on a settled claim
+  the patient now pays only their share and the insurer pays the rest.
+
+### Verification performed
+- `pnpm db:seed:demo` run three times — succeeds and is idempotent
+  (identical counts each run).
+- `tsc --noEmit --strict` clean over `prisma/seed-demo.ts` and its
+  imports.
+- SQL integrity checks against `medicore_dev`, all returning zero bad
+  rows: invoice `subtotal - discount + tax = total`; `total - paid =
+  balanceDue`; `sum(completed payments) = paidAmount`; no overpaid
+  invoices; invoice status agrees with `balanceDue`; charge count per
+  invoice equals invoice-item count; every SETTLED claim has an
+  INSURANCE payment; no finalised discharge has an incomplete checklist
+  item; occupied beds (14) equals currently-admitted patients (14).
+- **Not run:** `pnpm lint`, `pnpm typecheck`, `pnpm test`,
+  `pnpm test:e2e`, `pnpm build`. No application code changed, and the
+  `@medicore/database` package defines no lint/typecheck scripts, so
+  turbo would not cover these files. A future session touching app code
+  should run the full suite as usual.
+- **No browser walkthrough performed** and no screenshots captured —
+  not requested, and per the Verification Policy automated verification
+  is the default.
+
+### Known issues / notes for next session
+- **Port conflict, resolved by stopping another project's containers.**
+  `rentrik-postgres` and `rentrik-redis` (a different project, with a
+  restart policy that brings them up with Docker Desktop) were bound to
+  5432/6379. With the user's approval they were stopped
+  (`docker stop rentrik-postgres rentrik-redis`); restart them with
+  `docker start` when needed. Expect this conflict again after any
+  machine restart.
+- **Compose can leave a container without its port binding.** After the
+  first `up` failed part-way on the port conflict, `medicore_postgres`
+  came up healthy but with no published host port, so Prisma reported
+  `P1001` despite the container being fine. `docker compose up -d
+  --force-recreate postgres redis` fixed it. Worth checking
+  `docker ps --format '{{.Ports}}'` before debugging connection errors.
+- **A stale `node` process was still listening on port 3000** from an
+  earlier session (the TD-0004 addendum hazard). It was left running —
+  kill it before starting `pnpm dev`.
+
+### Recommended next task
+Unchanged: **Milestone 13 — General Inventory**, exactly as `NEXT.md`
+describes. Note that the demo seed now populates the Milestone 13
+tables, so when auditing what already exists there, read the schema and
+the `inventory` module code as `NEXT.md` instructs — do not infer
+completeness from the presence of seeded rows.
+
+### Estimated completion
+Unchanged by this session (no product code was written).
 
 ---
 

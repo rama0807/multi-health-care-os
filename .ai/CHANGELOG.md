@@ -69,6 +69,37 @@
   change.
 
 ### Added
+- **Demo-data seed (`pnpm db:seed:demo`) — developer tooling, not a
+  milestone.** `prisma/seed.ts` deliberately creates no clinical data
+  ("No fake patients were created"), which left every module's UI empty
+  on a fresh database. A second, additive seed now layers a realistic
+  working dataset on top of it, scoped to the `demo-hospital`
+  organization:
+  - `prisma/seed-demo.ts` (orchestrator) plus `prisma/demo/`:
+    `helpers.ts` (deterministic LCG PRNG, date offsets, shared document
+    numbering, and the clinical computations the services perform —
+    BMI, Morse fall-risk banding, Braden banding, Charge Engine line
+    maths, lab abnormal flagging), `reference-data.ts` (static
+    catalogs), `reset.ts` (FK-ordered wipe), and the `foundation.ts` /
+    `clinical.ts` / `ipd.ts` / `inventory.ts` seeders.
+  - Seeds 7 further doctors (8 total) with weekly schedules and leave,
+    48 patients, the lab/radiology/service/drug catalogs, 6 wards →
+    rooms → 67 beds, 4 insurers with plans and per-patient coverage,
+    ~235 appointments spanning the last 30 and next 14 days, ~156
+    completed OPD encounters with notes/vitals/diagnoses/procedures,
+    prescriptions, lab and radiology orders, dispensing, charges →
+    invoices → payments/refunds, insurance pre-auths and claims, 24
+    admissions (14 current) with nursing/MAR/discharge documentation,
+    and the full inventory chain (item master, multi-store stock with
+    batches, PR → PO → GRN → vendor invoice, requisitions, transfers,
+    33 serialised assets with maintenance history, stock audits).
+  - Document numbers match the API's own generators exactly
+    (`APT-MED-2026-000001`, `PO-2026-000001`, …); statuses are spread
+    across each state machine so queues, dashboards and filters have
+    real rows; and money, stock and clinical values are internally
+    consistent rather than arbitrary.
+  - Re-runnable and deterministic: it wipes what it created first, and
+    the PRNG is fixed-seed, so the same dataset comes back each run.
 - **Milestone 12, Checkpoint 12.2 — Nursing, Medication Administration
   & Discharge (complete):** see ADR-0019. **Milestone 12 is now fully
   complete.**

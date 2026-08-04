@@ -5,102 +5,69 @@
 
 ## Immediate Next Task
 
-**Milestone 13 — General Inventory.**
+**Milestone 14 — Staff & Attendance**, per `docs/roadmap.md`. Milestone 13
+(General Inventory) is now fully complete — backend (commit `e7f4abb`,
+retroactively documented as ADR-0020) and frontend (Checkpoint 1 +
+this session, 20 routes) both done, tests green. Do not re-implement or
+re-verify anything from Milestone 13.
 
-Milestone 12 (IPD & Bed Management) is now **fully complete** — both
-Checkpoint 12.1 (Admission, Wards & Bed Management) and Checkpoint 12.2
-(Nursing, Medication Administration & Discharge). See `PROGRESS.md` and
-`SESSION_LOG.md` (2026-08-04 entries) for exactly what was built in
-each checkpoint, and `DECISIONS.md` ADR-0018/ADR-0019 for the
-schema/RBAC/workflow decisions made. Do not re-implement or re-verify
-any of it.
+### Scope, per `docs/roadmap.md`
 
-### Scope
+- Staff profiles and employee records
+- Department and role assignment
+- Shift management
+- Attendance marking (manual + biometric hook)
+- Leave management
+- Doctor duty roster
+- Staff reports
+- Frontend: staff management
+- Frontend: attendance dashboard
 
-Per `docs/roadmap.md`'s Milestone 13 deliverables:
+### What's already in the repo — verify before assuming either way
 
-- General (non-drug) inventory module — equipment, consumables,
-  supplies
-- Purchase order management
-- Expiry tracking
-- Inventory reports
-- Frontend: inventory management
-
-### Judgment calls to check against `DECISIONS.md` first
-
-- **`InventoryItem` model already exists, unaudited.** Per the pattern
-  established repeatedly this project (`Ward`/`Bed`/`Admission` before
-  ADR-0018, `Medication` before ADR-0014, the flat `MedicalRecord`
-  before ADR-0008) — check whether `InventoryItem` (referenced in
-  `Organization.inventoryItems` and the `inventory` backend module
-  directory, both currently unaudited per `MODULE_STATUS.md`) already
-  has usable fields before assuming a clean slate. Read the schema and
-  any existing `inventory` module code first.
-- **Relationship to Pharmacy's `Drug` model.** Milestone 9 built a
-  parallel drug-specific catalog/stock/dispensing system (`Drug`,
-  `DispenseOrder`/`DispenseItem`, `DrugReturn`) explicitly scoped to
-  drugs only, deferring "general (non-drug) inventory" to this
-  milestone (see ADR-0014). Decide whether `InventoryItem` should
-  mirror `Drug`'s batch-tracking shape (one row per batch: quantity,
-  reorder level, expiry) or take a different shape suited to
-  equipment/consumables (e.g. serialized equipment vs. bulk
-  consumables may need different tracking). Check whether any
-  existing charge/billing integration point should reuse the Charge
-  Engine (`ChargeSourceModule` — would need a new member, mirroring
-  how `IPD` was added this session) if inventory items get billed to
-  patients (e.g. consumables used during a procedure).
-- **Purchase orders are a new workflow** — no existing precedent in
-  this repo to mirror as directly as MAR mirrored `DispenseOrder`.
-  Consider a simple status state machine (e.g. Draft → Ordered →
-  Received → Cancelled) consistent with every other module's
-  state-machine precedent (`LabTestStatus`, `RadiologyStatus`,
-  `DischargeChecklistItemKey`'s completion pattern, etc.) rather than
-  free-text status fields.
-- **Expiry tracking** likely mirrors `Drug`'s existing near-expiry
-  query pattern (`pharmacy-dashboard.service.ts` / stock page) —
-  reuse that querying approach rather than inventing a new one.
+A quick look (not a full audit — do that first) found:
+- `apps/api/src/modules/staff/` already exists (`staff.controller.ts`/
+  `staff.service.ts`/`staff.module.ts`) — check whether it's a 3-line
+  no-op scaffold (the `billing`/`insurance`/`pharmacy` precedent before
+  their milestones) or something real.
+- A `Staff` model already exists in `packages/database/prisma/
+  schema.prisma` (line ~799) — **read it before designing anything
+  new**. Every prior milestone in this repo (Medication → Drug,
+  MedicalRecord → Encounter, Ward/Bed/Admission → extended) found an
+  unaudited pre-existing scaffold model that shaped the actual design;
+  assume this one does too until proven otherwise.
+- No `Attendance`/`Shift`/`Leave`(staff-side)/`DutyRoster` models exist
+  yet in the schema — these are likely new.
+- `StaffOnboardingService` (`apps/api/src/common/onboarding/`) is the
+  existing generic staff-onboarding path used by Doctor/Nurse/etc. —
+  reuse it, don't reimplement user-linking.
+- Doctor scheduling (`apps/api/src/modules/scheduling/`) already has
+  weekly schedules + leave management for doctors specifically
+  (Checkpoint 4.2) — decide explicitly whether Milestone 14's "Shift
+  management"/"Leave management"/"Doctor duty roster" reuse/extend that
+  module or are a separate general-staff system; record the decision as
+  an ADR either way, don't silently duplicate or silently merge.
 
 ### Process reminders (from `CLAUDE.md`)
 
-- Per the repository reading policy: this task touches Inventory (new
-  or unaudited-existing module), possibly Billing (if items get
-  charged to patients), Pharmacy (as a precedent to mirror, not to
-  modify), Prisma schema, and shared types — do not scan unrelated
-  modules (IPD, Nursing, Insurance, etc. are all complete and stable).
-- Run full verification before calling it done: `pnpm lint && pnpm
-  typecheck && pnpm test && pnpm build`, plus `pnpm test:e2e`.
-- `pnpm --filter @medicore/database db:generate` after any schema
-  change (TD-0008), and apply the new migration to **both**
-  `medicore_dev` and `medicore_test` (TD-0004) — generate the raw SQL
-  via `prisma migrate diff --from-url <db-url> --to-schema-datamodel
-  prisma/schema.prisma --script` into a manually created
-  `prisma/migrations/<timestamp>_<name>/migration.sql` folder, then
-  `prisma migrate deploy` against each database — `prisma migrate dev`
-  does not work non-interactively in this environment.
-- If running a full `turbo run build --force` (or `pnpm build`) while
-  a dev server is already running (for the browser walkthrough), kill
-  the port 3000/4000 listeners and restart `pnpm dev` fresh afterward
-  — a stale running process can serve clobbered/mismatched compiled
-  output or 404 on brand-new routes despite the build succeeding
-  (TD-0004 addendum, hit again in the Checkpoint 12.2 session — two
-  stale dev-server processes from an even earlier session were still
-  squatting ports 3000/4000).
-- No project skill or committed dependency exists for browser
-  verification yet (TD-0010, still open) — Playwright was installed ad
-  hoc into the session scratch directory again this session (reusing
-  the Chromium binary cached at `~/Library/Caches/ms-playwright` where
-  possible). One real automation gotcha hit this session worth
-  knowing: a loose `waitForURL` regex (e.g.
-  `/\/dashboard\/ipd\/[a-z0-9]+$/`) can false-match a *static* list
-  route whose slug happens to be all-lowercase-letters (e.g.
-  `/dashboard/ipd/admissions` matched `[a-z0-9]+$`) — wait for a real
-  page-specific element instead of a URL pattern when the detail-page
-  ID could collide with a sibling static route's name.
-- Update `PROGRESS.md`, `CHANGELOG.md`, `MODULE_STATUS.md`,
-  `SESSION_LOG.md`, `TECH_DEBT.md`/`DECISIONS.md`, `PROJECT_CONTEXT.md`,
-  and this file when done. Screenshot new UI under `docs/screens/`
-  using an `inventory-*.png` naming convention.
-- Once Milestone 13 is genuinely complete and verified per the
-  Milestone Completion Checklist, replace `NEXT.md` with
-  **Milestone 14 — Staff & Attendance** (per `docs/roadmap.md`,
-  correctly numbered per ADR-0017).
+- Per the repository reading policy: this task touches Staff/HR only.
+  Do not re-scan Inventory/IPD/Nursing/Insurance/Billing beyond reading
+  one page as a UI pattern reference if needed.
+- Run full verification before calling any task done: `pnpm lint &&
+  pnpm typecheck && pnpm test && pnpm test:e2e && pnpm build`. The test
+  DB containers are named `medicore-postgres`/`medicore-redis` (mapped
+  to host ports 5434/6381 per `apps/api/.env`) — start them with
+  `docker start medicore-postgres medicore-redis`, not `docker compose
+  up`, which creates a *different*, unmapped container pair
+  (`medicore_postgres`/`medicore_redis`, no matching `.env` port) that
+  will silently fail to connect. If Docker Desktop itself isn't
+  running, `open -a Docker` and wait for `docker info` to succeed.
+- Take screenshots under `docs/screens/` and browser-verify the golden
+  path once a working UI flow exists, unless explicitly instructed
+  otherwise for that session (Milestone 13's frontend session was told
+  not to — see TD-0035 — that was an explicit override, not a new
+  default).
+- Given the scope above is large (8 deliverables, 2 frontend areas),
+  treat this as at least one checkpoint; split further if the Staff
+  profile/shift/attendance/leave/roster pieces turn out to be as
+  substantial as Milestone 13's procurement chain was.

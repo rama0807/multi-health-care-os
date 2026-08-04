@@ -47,7 +47,7 @@ describe('StockService', () => {
       },
       inventoryBatch: { update: jest.fn(), count: jest.fn().mockResolvedValue(0) },
       inventoryStockAdjustment: { create: jest.fn() },
-      $transaction: jest.fn(async (cb: (tx: unknown) => unknown) => cb(prisma)),
+      $transaction: jest.fn((cb: (tx: unknown) => unknown) => cb(prisma)),
     }
     service = new StockService(prisma as never)
   })

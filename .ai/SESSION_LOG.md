@@ -6,6 +6,201 @@
 
 ---
 
+## Session: 2026-08-05 (Milestone 13 — General Inventory, complete)
+
+### What was completed
+Continued directly from Frontend Checkpoint 1 (below) per an explicit
+resume instruction stating the backend, dashboard, Item Master,
+Lookups, API client, and sidebar fix were already done — did not
+re-implement or re-verify any of it. Read every controller/service
+under `apps/api/src/modules/inventory/` and the shared
+`packages/types/src/inventory.ts`/`procurement.ts` types before
+writing any frontend code, then built the ten remaining pages per
+`NEXT.md`'s scope list: Stores, Stock + Transfers, Vendors, Purchase
+Requests, Purchase Orders, Goods Receipt, Vendor Invoices, Store
+Requisitions, Stock Audits, Assets + Maintenance. Recorded
+**ADR-0020** (the Milestone 13 backend's own design, retroactively —
+the backend's code comments already said "see ADR-0020" but it had
+never been written) and **ADR-0021** (this session's frontend
+decisions). Per the reading policy, work touched only Inventory
+(reading `hospitals.ts`'s `listDepartments` once for the asset
+department-assignment picker, and mirroring the Wards/pharmacy-stock/
+pharmacy-dispense-detail pages once each as UI-pattern references, per
+`NEXT.md`'s own suggestion).
+
+- **Frontend** (`apps/web/src/app/dashboard/inventory/`, all new):
+  `stores/page.tsx` (CRUD + manager-assignment dialog), `stock/
+  page.tsx` (Stock levels + Transfers tabs), `vendors/page.tsx` (CRUD +
+  rating dialog), `purchase-requests/page.tsx`+`[id]/page.tsx`,
+  `purchase-orders/page.tsx`+`[id]/page.tsx` (`?fromPr=` deep-link
+  prefill), `grn/page.tsx`+`[id]/page.tsx` (`?fromPo=` deep-link
+  prefill), `vendor-invoices/page.tsx`, `requisitions/page.tsx`+
+  `[id]/page.tsx`, `audits/page.tsx`+`[id]/page.tsx`, `assets/
+  page.tsx`+`[id]/page.tsx`. `lib/api/inventory.ts` extended (Stores/
+  Stock/Transfers/Vendors); new `lib/api/procurement.ts` (everything
+  else) — split per `NEXT.md`'s own suggestion once `inventory.ts`
+  would have gotten unwieldy. Inventory Dashboard's button row
+  extended with a permission-gated link to each of the 10 new pages.
+- **Judgment calls made, recorded in ADR-0021**: `?fromPr=`/`?fromPo=`
+  query-param deep-linking (mirrors the existing `?wardId=`/`?roomId=`
+  pattern on `/dashboard/ipd/beds`, ADR-0018) instead of a wizard or a
+  separate "convert" route; free-text internal user ID inputs for
+  store-manager and asset-user assignment since no staff/user picker
+  exists anywhere in this repo yet (same shape as the pre-existing
+  TD-0028); Vendor Returns (a working, tested backend) left without a
+  frontend since it wasn't in the explicit remaining-scope list
+  (TD-0034); no browser walkthrough or screenshots, per this session's
+  own explicit instruction overriding the standing Screenshot policy
+  (TD-0035).
+- **One real bug fixed in passing** (not a feature change): four
+  backend spec files (`assets`/`purchase-orders`/`requisitions`/
+  `stock.service.spec.ts`) failed `pnpm lint`'s `@typescript-eslint/
+  require-await` rule — `jest.fn(async (cb) => cb(prisma))` wrapped a
+  callback in an unneeded `async` with no `await` inside. Removed the
+  `async`; `cb(prisma)` already returns whatever `cb` returns (a
+  promise, for every real `$transaction` caller), so no test behavior
+  changed. Confirmed by re-running the full unit suite after the fix.
+- **Full verification, all green**: `pnpm lint` / `pnpm typecheck` /
+  `pnpm build` clean across all 6 packages; `pnpm test` — 471 API unit
+  + 6 web unit, all passing (no new test files needed — pure frontend
+  wiring against an already-tested API, no backend logic changed);
+  `pnpm test:e2e` — 264/264 passing. Getting e2e running required
+  starting Docker Desktop (`open -a Docker`, not running at session
+  start) and then discovering `docker compose up postgres redis`
+  creates containers (`medicore_postgres`/`medicore_redis`, no host
+  port mapping matching `.env`'s expected 5434/6381, and conflicting
+  with an unrelated project's container already on host port 5432) —
+  stopped those and started the pre-existing, correctly-mapped
+  `medicore-postgres`/`medicore-redis` containers (dash-named, ports
+  5434/6381) instead, confirmed the `medicore_test` DB's migrations
+  were current (they were), then all 264 e2e tests passed cleanly.
+- **No browser walkthrough, no screenshots** — this session's own
+  verification instructions explicitly said not to (Playwright, a
+  browser, screenshots, and manual walkthroughs were all named as
+  "Do NOT"), which overrides the standing Screenshot policy for this
+  session only. Disclosed as TD-0035 per the Verification Policy
+  rather than claimed as browser-verified — the only milestone in this
+  repo without one.
+- Replaced `.ai/NEXT.md` with **Milestone 14 — Staff & Attendance**.
+
+### Files modified/created
+- Frontend: `apps/web/src/lib/api/inventory.ts` (extended),
+  `apps/web/src/lib/api/procurement.ts` (new), `apps/web/src/app/
+  dashboard/inventory/page.tsx` (button row extended),
+  `apps/web/src/app/dashboard/inventory/{stores,stock,vendors,
+  purchase-requests,purchase-orders,grn,vendor-invoices,requisitions,
+  audits,assets}/page.tsx` (new, 10 files) and `.../{purchase-requests,
+  purchase-orders,grn,requisitions,audits,assets}/[id]/page.tsx` (new,
+  6 files) — 16 new route files total (20 routes counting the 4
+  already-existing dashboard/items/lookups pages from Checkpoint 1).
+- Backend (mechanical lint fix only, no logic change):
+  `apps/api/src/modules/inventory/{assets,purchase-orders,
+  requisitions,stock}.service.spec.ts`.
+- Docs: `.ai/DECISIONS.md` (ADR-0020, ADR-0021), `.ai/TECH_DEBT.md`
+  (TD-0034, TD-0035), `.ai/PROGRESS.md`, `.ai/CHANGELOG.md`,
+  `.ai/MODULE_STATUS.md`, `.ai/PROJECT_CONTEXT.md`, `.ai/NEXT.md`
+  (replaced).
+
+### Architectural decisions made
+See **ADR-0020** (backend design, recorded retroactively — Item
+Master's lookup grouping, the per-store/per-batch stock ledger with
+shared `receiveStock`/`issueStock` mutation primitives, the four-entity
+procurement chain, namespaced RBAC, sequential numbering) and
+**ADR-0021** (this session's frontend decisions — deep-link query-
+param prefill between procurement stages, free-text ID inputs where no
+picker exists, Vendor Returns UI deferred, no browser walkthrough this
+session by explicit instruction).
+
+### Known issues
+- TD-0034: Vendor Returns has a working, tested backend but no
+  frontend yet.
+- TD-0035: No browser-verified screenshots for Milestone 13 — every
+  other milestone in this repo has one; this session was explicitly
+  told not to attempt it.
+- Store-manager and asset-user assignment both take a free-text
+  internal user ID — no staff/user picker exists anywhere in this
+  repo's frontend yet (same shape as the pre-existing TD-0028).
+
+### Recommended next task
+**Milestone 14 — Staff & Attendance**, per `docs/roadmap.md` and the
+now-replaced `.ai/NEXT.md`. A `Staff` model and a `staff` module
+scaffold already exist unaudited (same category as `Medication`/
+`MedicalRecord`/`Ward`-`Bed`-`Admission` before their milestones) —
+read them first, don't assume a clean slate. Decide explicitly whether
+shift/leave/duty-roster reuse or extend the existing doctor-specific
+`scheduling` module (Checkpoint 4.2) rather than silently duplicating
+or silently merging.
+
+### Estimated project completion
+**Overall: ~14 of 18 roadmap milestones/checkpoints fully complete
+end-to-end** (Doctors/Scheduling, Appointments, Clinical/EMR,
+Laboratory, Radiology, Pharmacy, Billing, Insurance, IPD — both
+checkpoints — General Inventory — plus foundational auth/RBAC/multi-
+tenancy scaffolding). **Inventory module: 100% for Milestone 13**
+(backend + frontend both complete; TD-0034/TD-0035 tracked, not
+blocking). Everything else's percentage remains provisional per
+`MODULE_STATUS.md`.
+
+---
+
+## Session: 2026-08-05 (Milestone 13, Frontend Checkpoint 1 — Inventory Dashboard, Item Master & Lookups)
+
+### What was completed
+Resumed via an explicit resume-point instruction stating Milestone 13's
+backend/database/APIs/RBAC/tests were already done and only frontend
+remained — confirmed against the repo: commit `e7f4abb` had landed the
+full General Inventory backend (Item Master, Stores, Stock, Vendors,
+Purchase Requests/Orders, Goods Receipt, Store Requisitions, Stock
+Audits, Vendor Invoices, Assets + Maintenance) with unit/e2e tests, even
+though `.ai/` docs still described Milestone 13 as not-yet-started. Per
+the resume instruction, did **not** re-audit that backend. Built the
+first frontend checkpoint: Inventory Dashboard, Item Master (catalog
+list + create/edit), and a Categories & Lookups page (tabs for the 5
+item-master lookup tables). See `PROGRESS.md` (2026-08-05 entry) for
+full detail on what each page does.
+
+### Files modified
+- `apps/web/src/lib/api/inventory.ts` (new)
+- `apps/web/src/app/dashboard/inventory/page.tsx` (new)
+- `apps/web/src/app/dashboard/inventory/items/page.tsx` (new)
+- `apps/web/src/app/dashboard/inventory/lookups/page.tsx` (new)
+- `apps/web/src/components/layout/sidebar.tsx` (fixed a dead permission
+  string: `inventory.read` → `inventory.items.read`)
+
+### Architectural decisions made
+None new — followed the existing pharmacy/IPD frontend patterns
+(TanStack Query + the shared `Table`/`Dialog`/`Select`/`Pagination` UI
+components) rather than inventing a new one. The five item-master
+lookups were kept on one tabbed page rather than five separate routes,
+mirroring the backend's own `ItemMasterService` grouping decision.
+
+### Known issues
+- Not browser-verified — no browser tool available this session.
+  `pnpm --filter @medicore/web lint|typecheck|build|test` all pass, but
+  the golden path (create an item, create a lookup, filter/paginate)
+  has not been clicked through in a real browser. Flagging per the
+  Verification Policy rather than claiming it works.
+- The Milestone 13 backend (commit `e7f4abb`) itself remains unaudited
+  by any session that has actually read through it end to end — treated
+  as ground truth per the resume instruction, consistent with how prior
+  milestones' pre-existing scaffolding was handled, but worth a real
+  audit pass before calling Milestone 13 complete.
+- No screenshots captured yet (blocked on the same missing browser
+  tool) — `docs/screens/inventory-*.png` still owed once verified.
+
+### Recommended next task
+Continue Milestone 13 frontend: Stores page, Stock page (levels/adjust/
+transfer), Vendors page, the Purchase Request → Purchase Order → Goods
+Receipt procurement flow, Store Requisitions, Stock Audits, Vendor
+Invoices, and Assets + Maintenance. See `NEXT.md`.
+
+### Estimated project completion
+Overall: unaudited (see TD-0001) — no change to the overall estimate
+methodology this session. Inventory module: backend ~100% for Milestone
+13 (unaudited in depth), frontend ~15% (3 of an estimated 10+ pages).
+
+---
+
 ## Session: 2026-08-04 (Milestone 12, Checkpoint 12.2 — Nursing, Medication Administration & Discharge, complete)
 
 ### What was completed

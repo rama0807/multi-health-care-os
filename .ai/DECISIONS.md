@@ -1282,3 +1282,155 @@ Overview tab; new top-level pages `/dashboard/nursing`,
 `/dashboard/ipd/discharges`. TD-0030 (IPD billing/discharge deferred)
 is now resolved; TD-0032 (all-scope discharge RBAC) and TD-0033
 (barcode hardware) are opened, disclosed rather than silently accepted.
+
+---
+
+## ADR-0020: Milestone 13 backend design (retroactive) — Item Master lookup grouping, per-store/per-batch stock ledger, the PR→PO→GRN→Invoice procurement chain, and namespaced RBAC
+
+Date: 2026-08-05
+Status: Accepted (recorded retroactively)
+
+**Context:** The full General Inventory backend (Item Master, Stores,
+Stock, Vendors, Purchase Requests, Purchase Orders, Goods Receipt
+Notes, Vendor Returns, Vendor Invoices, Store Requisitions, Stock
+Audits, Assets + Maintenance) landed in commit `e7f4abb` with its own
+code comments already citing "ADR-0020" (e.g.
+`stores.controller.ts`'s `/** ... — see ADR-0020. */`), but no such
+entry was ever written to this file — the commit predated any `.ai/`
+sync, and the following frontend-checkpoint-1 session (2026-08-05)
+explicitly did not re-audit the backend. This session read every
+controller/service in `apps/api/src/modules/inventory/` end-to-end
+while building the remaining frontend, so the design is recorded here
+now rather than left as a dangling reference — closing the gap without
+re-opening a full backend audit (out of scope by this session's own
+resume instruction).
+
+**Decision (design as implemented):**
+1. **Item Master is one catalog row per item, not per batch** —
+   `InventoryItem` (name/code/type: Asset|Consumable/HSN/GST/barcode/
+   QR/track-batch-serial-expiry flags/unit cost) references five
+   shared lookup tables (`InventoryCategory`, `InventoryItemGroup`,
+   `InventoryUnit`, `InventoryManufacturer`, `InventoryBrand`), each a
+   near-identical soft-deactivate CRUD surface — grouped into one
+   `ItemMasterService`/controller rather than five parallel modules,
+   mirrored on the frontend by Checkpoint 1's single tabbed Lookups
+   page.
+2. **Stock is tracked per store per item** (`InventoryStock`, unique
+   on `[itemId, storeId]`) with `current/reserved/damaged/expired/lost`
+   buckets and a computed `availableStock`; batch/serial/expiry detail
+   lives in a child `InventoryBatch` table only for items with a
+   tracking flag set. `StockService` centralizes the only two mutation
+   primitives every other workflow needs — `receiveStock`/`issueStock`
+   (plus `recordLedger` for the `InventoryStockAdjustment` audit trail)
+   — so GRN completion, requisition issue/receive, and transfer
+   dispatch/receive all share one bookkeeping path instead of each
+   reimplementing it.
+3. **The procurement chain is four independent, sequentially-linked
+   entities, not one workflow object:** `PurchaseRequest` (Draft →
+   Submitted → Approved/Rejected → Converted/Cancelled) →
+   `PurchaseOrder` (optionally `purchaseRequestId`-linked; Draft →
+   Submitted → Approved → Sent → Partially Received/Received,
+   Cancelled from any non-terminal state) → `GoodsReceiptNote` (Draft →
+   Completed, one row per receipt event against remaining
+   `PurchaseOrderItem.quantityOrdered - quantityReceived`; completing
+   one calls `StockService.receiveStock` and recomputes the PO's
+   fulfillment status) → `VendorInvoice` (Pending → Verified/Disputed →
+   Paid, `paidAmount` accumulated via repeatable `recordPayment` calls
+   mirroring Billing's split-payment precedent from ADR-0015). A PO
+   can also be raised with no source PR (ad hoc), and a `VendorReturn`
+   exists as a fifth, independent goods-leaving-the-store path (sent →
+   acknowledged) not gated behind any of the other four.
+4. **`StoreRequisition` (inter-store transfer via approval) and
+   `InventoryStockTransfer` (direct store-to-store move, no approval
+   step) are two separate models**, not one parametrized by an
+   `approvalRequired` flag — a requisition's `issue`/`receive` split
+   into partial-fulfillment-capable steps (mirrors `DispenseOrder`'s
+   partial-dispense precedent, ADR-0014) while a transfer's
+   `dispatch`/`receive` moves the whole line at once.
+5. **`StockAudit` snapshots `InventoryStock.currentStock` as
+   `systemQuantity` at creation time**, not at count time — so a
+   count taken hours or days later still reconciles against what stock
+   *was* when the audit was scheduled; `complete` applies each item's
+   `varianceQuantity` as an `AUDIT`-type `InventoryStockAdjustment`,
+   the same ledger every other mutation path writes to.
+6. **RBAC is namespaced per sub-domain** — `inventory.items`/`stores`/
+   `stock`/`vendors`/`procurement`/`requests`/`audit`/`assets` — with
+   `procurement` further split by action (`.create`/`.update`/
+   `.approve`/`.manage`, the last gating vendor-invoice creation/
+   payment and vendor-return acknowledgement) and `audit`/`requests`
+   each getting their own `.approve`/`.manage` tier — mirroring
+   `billing.manage`'s requester/approver-separation precedent (ADR-
+   0015) rather than a single flat `inventory.*` permission.
+7. **Sequential human-readable numbering** (`PR-`/`PO-`/`GRN-`/
+   `TRF-`/`REQ-`/`AUD-`/`VRTN-` + org + year + sequence) via a shared
+   `generateInventoryNumber` helper, advisory-locked per organization —
+   the same pattern as `LAB-`/`RAD-`/`ADM-` in every prior clinical
+   module.
+
+**Consequences:** This entry documents behavior already live in
+production code (commit `e7f4abb`) — no schema or backend logic
+changed to write it. Every dangling `// see ADR-0020` code comment in
+`apps/api/src/modules/inventory/` now resolves to a real entry. Any
+future session touching this backend should treat points 1-7 above as
+the established shape rather than re-deriving it from scratch.
+
+---
+
+## ADR-0021: Milestone 13 frontend — deep-link query-param prefill for the procurement chain, free-text ID inputs for staff/user pickers, Vendor Returns UI deferred, no browser walkthrough this session
+
+Date: 2026-08-05
+Status: Accepted
+
+**Context:** This session built the remaining ten Milestone 13
+frontend surfaces (Stores, Stock + Transfers, Vendors, Purchase
+Requests, Purchase Orders, Goods Receipt, Vendor Invoices, Store
+Requisitions, Stock Audits, Assets + Maintenance) on top of the
+backend recorded in ADR-0020. Three judgment calls came up that
+weren't dictated by the backend contract, plus one explicit
+instruction override for this session only.
+
+**Decision:**
+1. **Purchase Order creation from an approved Purchase Request, and
+   Goods Receipt creation from a Sent Purchase Order, use a
+   `?fromPr=<id>`/`?fromPo=<id>` query param to auto-open the create
+   dialog pre-filled** — mirroring the existing `?wardId=`/`?roomId=`
+   deep-link pattern on `/dashboard/ipd/beds` (ADR-0018) rather than
+   inventing a wizard or a separate "convert" route. Both list pages
+   wrap their `useSearchParams()` read in a `<Suspense>` boundary, the
+   same requirement `/dashboard/ipd/beds` already established.
+2. **No staff/user picker exists anywhere in this repo's frontend** —
+   confirmed by checking `apps/web/src/lib/api/` before building
+   (nothing lists `/users`, and that endpoint is `users.read`-gated,
+   a permission inventory-facing roles aren't guaranteed to hold).
+   Store-manager assignment (`AssignStoreManagerDto.userId`) and
+   asset-to-user assignment (`AssignAssetDto.assignedToUserId`) both
+   take a free-text internal user ID instead, disclosed on-page — the
+   same shape as the Encounter Insurance tab's free-text invoice ID
+   (TD-0028). Asset-to-*department* assignment does have a real picker
+   (`listDepartments`, already used elsewhere and `departments.read`-
+   gated, a broadly-held permission).
+3. **`VendorReturn` (the backend's fifth procurement-adjacent
+   workflow, `goods-receipt.controller.ts`'s `/vendor-returns` routes)
+   has no frontend this session** — the user's explicit remaining-work
+   list named Stores/Stock/Vendors/Purchase Request/Purchase Order/
+   Goods Receipt/Store Requisition/Stock Audit/Vendor Invoice/Assets
+   only; Vendor Returns wasn't in it. Recorded as TD-0034 rather than
+   silently built anyway or silently dropped.
+4. **No browser walkthrough or screenshots this session** — the
+   session's own verification instructions explicitly said "Do NOT use
+   Playwright. Do NOT open a browser. Do NOT generate screenshots. Do
+   NOT perform manual UI walkthroughs," overriding the standing
+   Milestone Completion Checklist screenshot requirement for this
+   session only. Automated verification (lint/typecheck/unit+e2e
+   tests/build) is real and green; no page has been clicked through in
+   a real browser. Disclosed per the Verification Policy rather than
+   claimed as browser-verified.
+
+**Consequences:** `docs/screens/inventory-*.png` remain owed (TD-0035)
+— every prior milestone in this repo has browser-verified screenshots
+and this one doesn't, purely because this session was instructed not
+to attempt it. `TD-0034` (Vendor Returns UI) and `TD-0035` (no
+screenshots) are both opened in `TECH_DEBT.md`. If a future session
+adds a real staff/user directory endpoint or picker component, both
+`StoresPage`'s manager-assignment dialog and `AssetDetailPage`'s
+assign dialog should be revisited to replace the free-text ID input.

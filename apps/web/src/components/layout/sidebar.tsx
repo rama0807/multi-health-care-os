@@ -77,7 +77,7 @@ export const navigation: NavSection[] = [
       { label: 'Billing', href: '/dashboard/billing', icon: CreditCard, permission: 'billing.read' },
       { label: 'Insurance', href: '/dashboard/insurance', icon: FileText, permission: 'insurance.claims.read' },
       { label: 'Pharmacy', href: '/dashboard/pharmacy', icon: Pill, permission: 'pharmacy.read' },
-      { label: 'Inventory', href: '/dashboard/inventory', icon: Package, permission: 'inventory.read' },
+      { label: 'Inventory', href: '/dashboard/inventory', icon: Package, permission: 'inventory.items.read' },
       {
         label: 'IPD & Beds',
         href: '/dashboard/ipd',

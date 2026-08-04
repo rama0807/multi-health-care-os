@@ -84,11 +84,11 @@ Milestone 6 (Clinical: Medical Records — both Checkpoint 6.1 EMR
 Foundation and Checkpoint 6.2 Orders & Prescriptions), Milestone 7
 (Laboratory Management), Milestone 8 (Radiology Management),
 Milestone 9 (Pharmacy Management), Milestone 10 (Billing),
-Milestone 11 (Insurance Management), and Milestone 12 (IPD & Bed
+Milestone 11 (Insurance Management), Milestone 12 (IPD & Bed
 Management — both Checkpoint 12.1 Admission/Wards/Beds and
-Checkpoint 12.2 Nursing/MAR/Discharge) are complete end-to-end
-(backend, frontend, tests, docs); everything else's percentage is
-still provisional.**
+Checkpoint 12.2 Nursing/MAR/Discharge), and Milestone 13 (General
+Inventory) are complete end-to-end (backend, frontend, tests, docs);
+everything else's percentage is still provisional.**
 
 See `MODULE_STATUS.md` for the authoritative, maintained breakdown. Until a
 session performs a full audit of each module's actual implementation depth,
@@ -577,7 +577,52 @@ table) and the discharge/billing workflow design.
 
 **Milestone 12 is now fully complete.**
 
-See `.ai/NEXT.md` for **Milestone 13 — General Inventory**, next.
+## Milestone 13 — General Inventory: Complete
+
+Backend landed in commit `e7f4abb` ahead of any `.ai/` sync; frontend
+built across two sessions (2026-08-05 Checkpoint 1: Dashboard/Item
+Master/Lookups; 2026-08-05 follow-on: everything else). See **ADR-0020**
+(backend design, recorded retroactively) and **ADR-0021** (frontend
+decisions).
+
+- Item Master (`InventoryItem`, one row per catalog item — Asset or
+  Consumable — referencing 5 shared lookup tables: Category/Item
+  Group/Unit/Manufacturer/Brand).
+- Stores (multi-store CRUD, manager assignment).
+- Stock (`InventoryStock` per store per item, `InventoryBatch` for
+  batch/serial/expiry-tracked items, opening stock, damage/loss/
+  expiry/correction adjustments, low-stock/expiring/expired queries)
+  and direct store-to-store Transfers (dispatch/receive/cancel).
+- Vendors (CRUD, star ratings, purchase history, outstanding balance).
+- The procurement chain: Purchase Requests (Draft → Submitted →
+  Approved/Rejected → Converted/Cancelled) → Purchase Orders
+  (optionally from an approved request; Draft → Submitted → Approved →
+  Sent → Partially Received/Received) → Goods Receipt Notes (against
+  a Sent PO, completing one updates stock) → Vendor Invoices (Pending →
+  Verified/Disputed → Paid, repeatable payment recording). Vendor
+  Returns is a fifth, independent path with a working backend but no
+  frontend yet (TD-0034).
+- Store Requisitions (inter-store request with approval, partial
+  issue/receive).
+- Stock Audits (snapshot system stock, record physical counts,
+  complete applies variances as adjustments).
+- Assets + Maintenance (asset registration from Asset-type catalog
+  items, assignment to a user/department/store, maintenance records
+  with breakdown/due-for-maintenance tracking).
+- Inventory Dashboard (12 stat tiles) linking to all 10 sub-areas.
+- RBAC namespaced `inventory.items`/`stores`/`stock`/`vendors`/
+  `procurement`/`requests`/`audit`/`assets`.
+- Unit (471 API total) + e2e (264 total) tests passing, lint/
+  typecheck/build clean across all 6 packages. **Not browser-verified**
+  — the session that built the remaining frontend was explicitly
+  instructed not to use a browser or capture screenshots this time
+  (TD-0035), the only milestone in this repo without one.
+- **Deferred, disclosed, not fabricated:** Vendor Returns frontend
+  (TD-0034); no staff/user picker exists anywhere yet, so store-manager
+  and asset-user assignment take a free-text internal user ID
+  (same shape as the pre-existing TD-0028).
+
+See `.ai/NEXT.md` for **Milestone 14 — Staff & Attendance**, next.
 
 ## Milestone Screenshots
 

@@ -4,6 +4,153 @@
 > after every completed task. Pair with `CHANGELOG.md` (human-facing summary)
 > and `MODULE_STATUS.md` (per-module state).
 
+## 2026-08-05 — Milestone 13 (General Inventory) — complete
+
+Continued directly from Frontend Checkpoint 1 (below) per an explicit
+resume instruction: backend/dashboard/item-master/lookups/API-client/
+sidebar-fix were already done and verified; built the ten remaining
+frontend surfaces on top of the unaudited Milestone 13 backend
+(commit `e7f4abb`), per `NEXT.md`'s scope list. Read every inventory
+controller/service and the shared `packages/types/src/inventory.ts`/
+`procurement.ts` types first (see ADR-0020, recorded retroactively to
+close the backend's own dangling `// see ADR-0020` code-comment
+references). See ADR-0021 for this session's frontend decisions.
+
+Built, under `apps/web/src/app/dashboard/inventory/`:
+- **Stores** (`stores/page.tsx`) — CRUD (name/code/type/location) +
+  a per-store "Managers" dialog (assign/remove, free-text user ID —
+  no staff picker exists yet, see TD in ADR-0021).
+- **Stock** (`stock/page.tsx`) — two tabs: **Stock levels** (store/
+  low-stock/expiring filters, "Set opening stock" dialog, per-row
+  "Adjust" — damage/loss/expiry/correction — and "Levels" — reorder/
+  min/max — dialogs) and **Transfers** (create with a multi-item line
+  builder, dispatch/receive/cancel actions).
+- **Vendors** (`vendors/page.tsx`) — searchable CRUD table (rating/
+  outstanding-balance columns) + a star-rating dialog.
+- **Purchase Requests** (`purchase-requests/page.tsx` +
+  `[id]/page.tsx`) — create (store + multi-item line builder), detail
+  page with submit/approve/reject(reason)/cancel actions and a
+  "Create purchase order" link once Approved.
+- **Purchase Orders** (`purchase-orders/page.tsx` + `[id]/page.tsx`) —
+  create ad hoc (vendor/store/item lines with unit price + tax) or
+  from an approved request via `?fromPr=<id>` (auto-opens the dialog,
+  pre-fills store + items, locks quantities to the request); detail
+  page with submit/approve/send/cancel(reason) and a "Record goods
+  receipt" link once Sent.
+- **Goods Receipt** (`grn/page.tsx` + `[id]/page.tsx`) — create against
+  a Sent PO (picked directly or via `?fromPo=<id>`), per-remaining-item
+  quantity/batch/expiry entry; detail page with complete (applies
+  stock via `StockService.receiveStock`) /cancel actions.
+- **Vendor Invoices** (`vendor-invoices/page.tsx`) — create (vendor/
+  invoice number/dates/amount/tax), record-payment dialog, inline
+  verify/dispute status actions.
+- **Store Requisitions** (`requisitions/page.tsx` + `[id]/page.tsx`) —
+  create (from-store/to-store/priority/item lines), detail page with
+  approve/reject(reason)/cancel plus per-item issue/receive quantity
+  inputs (partial-fulfillment-capable, mirrors the pharmacy dispense
+  detail page's pattern).
+- **Stock Audits** (`audits/page.tsx` + `[id]/page.tsx`) — create
+  (snapshots current store stock), detail page with start/record-
+  per-item-counts/complete(applies variance)/cancel.
+- **Assets & Maintenance** (`assets/page.tsx` + `[id]/page.tsx`) —
+  register/edit (Asset-type items only), detail page with assign
+  (user/department/store), assignment history, and maintenance
+  records (log + complete, with a status-derived asset-status side
+  effect on the backend already).
+- `lib/api/inventory.ts` extended (Stores/Stock/Transfers/Vendors) and
+  a new `lib/api/procurement.ts` (Purchase Requests/Orders, GRN,
+  Vendor Invoices, Requisitions, Stock Audits, Assets) added, per
+  `NEXT.md`'s own suggestion to split once `inventory.ts` got
+  unwieldy.
+- Inventory Dashboard's button row extended with links to all ten new
+  pages, each gated on its own `inventory.*.read` permission.
+
+**Bug fixed in passing (not a feature change):** four backend spec
+files (`assets`/`purchase-orders`/`requisitions`/
+`stock.service.spec.ts`) failed `pnpm lint`'s `@typescript-eslint/
+require-await` rule — `jest.fn(async (cb) => cb(prisma))` had no
+`await` inside the arrow function. Removed the unneeded `async`; no
+test behavior changed (`cb(prisma)` already returns whatever `cb`
+itself returns, a promise for every real `$transaction` caller).
+
+**Verification — all green:**
+- `pnpm lint` / `pnpm typecheck` / `pnpm build`: clean across all 6
+  packages.
+- `pnpm test`: 471 API unit + 6 web unit, all passing (zero new test
+  files needed — no backend logic changed, this session is pure
+  frontend wiring against an already-tested API).
+- `pnpm test:e2e`: 264/264 passing — required starting the local
+  Postgres/Redis dev containers (`medicore-postgres`/`medicore-redis`,
+  mapped to ports 5434/6381 per `apps/api/.env`; a `docker compose up`
+  had instead started a *different*, unmapped `medicore_postgres`
+  container that conflicted with an unrelated project already on host
+  port 5432 — stopped it and started the pre-existing correctly-mapped
+  containers instead) and confirming the `medicore_test` DB's migrations
+  were current (they were — no drift).
+- **No browser walkthrough, by explicit instruction this session**
+  ("Do NOT use Playwright. Do NOT open a browser. Do NOT generate
+  screenshots. Do NOT perform manual UI walkthroughs") — overriding
+  the standing Screenshot policy. Disclosed as TD-0035 rather than
+  claimed as browser-verified.
+
+**Deferred, disclosed, not fabricated:** Vendor Returns has a working,
+tested backend (`/inventory/vendor-returns`) but no frontend — it
+wasn't in the user's explicit remaining-scope list (TD-0034). No
+staff/user picker exists anywhere in this repo yet, so store-manager
+and asset-user assignment both take a free-text internal user ID
+(disclosed on-page, same shape as the pre-existing TD-0028 pattern).
+
+**Milestone 13 is now fully complete.** See `.ai/NEXT.md` for
+**Milestone 14 — Staff & Attendance**, next.
+
+## 2026-08-05 — Milestone 13, Frontend Checkpoint 1 (Inventory Dashboard, Item Master & Lookups) — complete
+
+Resumed from a prior session's uncommitted-to-`.ai/` backend work: commit
+`e7f4abb` ("inventory_module: partial implementation") had already landed
+a comprehensive General Inventory backend — Item Master (5 lookup tables
++ `InventoryItem`), Stores, Stock, Vendors, the Purchase Request → Purchase
+Order → Goods Receipt Note procurement chain, Store Requisitions, Stock
+Audits, Vendor Invoices, and Assets + Maintenance — with unit/e2e tests,
+but `.ai/` docs still described Milestone 13 as "next" with no backend.
+Per the resume instruction, did not re-audit that backend; treated it as
+ground truth and built the first frontend checkpoint on top of it.
+
+Built, under `apps/web/src/app/dashboard/inventory/`:
+- **Dashboard** (`page.tsx`) — 12 stat tiles from `GET /inventory/
+  dashboard` (items/stores/value/low-stock/expiring/expired/pending
+  PR/PO/GRN/requisition/maintenance-due/breakdown), links to Items and
+  Lookups.
+- **Item Master** (`items/page.tsx`) — searchable/paginated table
+  (name/code/type/category/unit/cost/status), add/edit dialog with
+  category/item-group/unit/manufacturer/brand `Select`s populated from
+  the lookup endpoints.
+- **Categories & Lookups** (`lookups/page.tsx`) — one page, five tabs
+  (Categories/Item Groups/Units/Manufacturers/Brands), each an inline
+  add-form + activate/deactivate list, mirroring how the backend's
+  `ItemMasterService` already groups these five near-identical CRUD
+  surfaces into one file.
+- `lib/api/inventory.ts` — API client for the dashboard, items, and all
+  five lookup endpoints.
+
+**Bug fixed in passing**: `components/layout/sidebar.tsx` gated the
+Inventory nav item on a permission string `inventory.read` that doesn't
+exist in the seeded RBAC resource map (`inventory.items`/`stores`/
+`stock`/`procurement`/`vendors`/`requests`/`assets`/`audit` are the real
+sub-resources) — no seeded role would ever have satisfied it, so the nav
+item was unreachable for everyone. Changed to `inventory.items.read`,
+the permission the new dashboard/items controllers actually require.
+
+**Verification**: `pnpm --filter @medicore/web lint|typecheck|build|test`
+all pass. No browser walkthrough — no browser tool available this
+session (per Verification Policy, disclosing rather than claiming
+UI-verified).
+
+**Not done yet** (Milestone 13 frontend, per the Milestone Completion
+Checklist, is NOT complete): Stores, Stock (levels/adjust/transfer),
+Vendors, Purchase Requests, Purchase Orders, Goods Receipt, Store
+Requisitions, Stock Audits, Vendor Invoices, Assets + Maintenance pages.
+See `NEXT.md`.
+
 ## 2026-08-04 — Milestone 12, Checkpoint 12.2 (Nursing, Medication Administration & Discharge) — complete
 
 Ran in Auto Mode, continuing directly from Checkpoint 12.1 without

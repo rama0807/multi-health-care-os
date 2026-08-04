@@ -56,7 +56,7 @@ describe('RequisitionsService', () => {
     prisma = {
       storeRequisition: { findFirst: jest.fn(), update: jest.fn() },
       storeRequisitionItem: { update: jest.fn(), findMany: jest.fn() },
-      $transaction: jest.fn(async (cb: (tx: unknown) => unknown) => cb(prisma)),
+      $transaction: jest.fn((cb: (tx: unknown) => unknown) => cb(prisma)),
     }
     stockService = { issueStock: jest.fn(), receiveStock: jest.fn(), recordLedger: jest.fn() }
     storesService = { requireStore: jest.fn() }

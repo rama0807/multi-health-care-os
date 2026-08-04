@@ -6,6 +6,43 @@
 ## [Unreleased]
 
 ### Added
+- **Milestone 13 — General Inventory (complete):** see ADR-0020 (backend
+  design, recorded retroactively) and ADR-0021 (frontend decisions).
+  Backend landed in commit `e7f4abb`; frontend built across two
+  sessions (2026-08-05 Checkpoint 1, then this session).
+  - Inventory Dashboard (12 stat tiles) linking to every sub-page.
+  - Item Master — searchable/filterable/paginated catalog table plus a
+    create/edit dialog; Categories & Lookups — tabbed CRUD for the five
+    item-master lookup tables.
+  - Stores — CRUD + a per-store manager-assignment dialog.
+  - Stock — levels (filters, opening stock, adjust, reorder/min/max
+    levels) and Transfers (create/dispatch/receive/cancel) as tabs on
+    one page.
+  - Vendors — CRUD + a star-rating dialog.
+  - The procurement chain: Purchase Requests (submit/approve/reject/
+    cancel) → Purchase Orders (create ad hoc or from an approved
+    request via a `?fromPr=` deep link; submit/approve/send/cancel) →
+    Goods Receipt (create against a Sent PO via a `?fromPo=` deep link,
+    per-item batch/expiry entry; complete updates stock) → Vendor
+    Invoices (create, record payment, verify/dispute).
+  - Store Requisitions — create, approve/reject, issue/receive
+    (partial-fulfillment-capable), cancel.
+  - Stock Audits — create (snapshots current stock), start, record
+    per-item counts, complete (applies variances to stock), cancel.
+  - Assets & Maintenance — register/edit an asset, assign to a
+    user/department/store, log and complete maintenance records.
+
+### Fixed
+- Sidebar's Inventory nav item was gated on a nonexistent permission
+  (`inventory.read`), making it unreachable for every role. Corrected
+  to `inventory.items.read` (Checkpoint 1).
+- Four backend test spec files (`assets`/`purchase-orders`/
+  `requisitions`/`stock.service.spec.ts`) failed `pnpm lint`'s
+  `require-await` rule (`jest.fn(async (cb) => cb(prisma))` with no
+  `await` inside) — removed the unnecessary `async`, no behavior
+  change.
+
+### Added
 - **Milestone 12, Checkpoint 12.2 — Nursing, Medication Administration
   & Discharge (complete):** see ADR-0019. **Milestone 12 is now fully
   complete.**

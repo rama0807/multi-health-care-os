@@ -47,7 +47,7 @@ describe('PurchaseOrdersService', () => {
   beforeEach(() => {
     prisma = {
       purchaseOrder: { findFirst: jest.fn(), update: jest.fn() },
-      $transaction: jest.fn(async (cb: (tx: unknown) => unknown) => cb(prisma)),
+      $transaction: jest.fn((cb: (tx: unknown) => unknown) => cb(prisma)),
     }
     vendorsService = { requireVendor: jest.fn() }
     storesService = { requireStore: jest.fn() }

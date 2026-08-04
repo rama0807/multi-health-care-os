@@ -47,7 +47,7 @@ describe('AssetsService', () => {
       asset: { findFirst: jest.fn(), create: jest.fn(), update: jest.fn(), count: jest.fn() },
       assetAssignment: { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn(), findMany: jest.fn() },
       assetMaintenanceRecord: { create: jest.fn(), findFirst: jest.fn(), update: jest.fn(), findMany: jest.fn(), count: jest.fn() },
-      $transaction: jest.fn(async (cb: (tx: unknown) => unknown) => cb(prisma)),
+      $transaction: jest.fn((cb: (tx: unknown) => unknown) => cb(prisma)),
     }
     inventoryItemsService = { requireItem: jest.fn() }
     storesService = { requireStore: jest.fn() }

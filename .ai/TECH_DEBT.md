@@ -993,3 +993,63 @@ happening.
 web scanning library, or hardware scanner emitting keyboard input into
 the `scannedCode` field) if/when barcode hardware becomes available to
 test against — no code changes needed on the backend.
+
+---
+
+## TD-0034: Vendor Returns has a working backend but no frontend
+
+Opened: 2026-08-05
+Status: Open
+Severity: Low
+
+**Description:** `goods-receipt.controller.ts`'s `/inventory/
+vendor-returns` routes (`VendorReturn` create/list/get/acknowledge,
+`inventory.procurement.manage`-gated) are fully implemented and tested
+in the Milestone 13 backend (commit `e7f4abb`), but this session's
+frontend pass — Milestone 13's remaining-frontend scope as given —
+did not include a Vendor Returns page. See ADR-0021.
+
+**Impact:** A vendor return (goods sent back after a GRN, e.g. a
+damaged batch) can only be recorded via a direct API call, not through
+the UI. No data-integrity risk — the workflow itself is real and
+tested; only the frontend surface is missing.
+
+**Resolution plan:** Add `apps/web/src/lib/api/procurement.ts`
+functions for `listVendorReturns`/`getVendorReturn`/
+`createVendorReturn`/`acknowledgeVendorReturn` (types already exist in
+`packages/types/src/procurement.ts`) and a page, most naturally as a
+tab on the GRN detail page (`/dashboard/inventory/grn/[id]`) since a
+return is typically raised against a specific GRN.
+
+---
+
+## TD-0035: No browser-verified screenshots for Milestone 13
+
+Opened: 2026-08-05
+Status: Open — explicitly instructed, not an oversight
+Severity: Low
+
+**Description:** Every milestone from 4 through 12 in this repo has a
+browser-verified walkthrough and screenshots under `docs/screens/`.
+Milestone 13's frontend (both the 2026-08-05 Checkpoint 1 session and
+this session) has neither — Checkpoint 1 disclosed no browser tool
+being available; this session was explicitly instructed "Do NOT use
+Playwright. Do NOT open a browser. Do NOT generate screenshots. Do NOT
+perform manual UI walkthroughs," overriding the standing Screenshot
+policy in `CLAUDE.md`. See ADR-0021.
+
+**Impact:** Every new page (Stores, Stock/Transfers, Vendors, Purchase
+Requests, Purchase Orders, Goods Receipt, Vendor Invoices, Store
+Requisitions, Stock Audits, Assets + Maintenance — 20 routes total)
+has passed `lint`/`typecheck`/`build`/unit+e2e `test`, but no golden
+path (create a store, receive goods against a real PO, walk a
+requisition through issue→receive, complete a stock audit with a real
+variance, etc.) has been clicked through in a real browser. A UI-only
+bug (a broken dialog binding, a permission check that always renders
+false, a state-management bug that only shows up on user interaction)
+would not be caught by any of the checks that did run.
+
+**Resolution plan:** Next session with browser-tool access available
+and no explicit instruction against it should walk every new page
+end-to-end per the Milestone Completion Checklist, capture
+`docs/screens/inventory-*.png`, and close this item.

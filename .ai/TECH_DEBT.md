@@ -1884,3 +1884,183 @@ build — and none on a rendered page. Mirrors TD-0035/TD-0036/TD-0044.
 **Resolution:** a browser pass over the notification centre, preferences
 page, admin console and platform analytics whenever screenshots are next
 requested; `docs/screens/` has no Milestone 18 entries.
+
+---
+
+## TD-0067: Rate limiting is per-process, so N replicas mean N × the limit
+
+**Recorded:** 2026-08-06 (Milestone 19.1)
+**Severity:** Medium — matters only when running more than one API instance
+**Area:** `apps/api/src/app.module.ts` (`ThrottlerModule`)
+
+`@nestjs/throttler` uses its in-memory storage. Two API replicas behind one load
+balancer therefore allow twice the configured budget in aggregate, and a client
+pinned to one instance sees the configured limit while a round-robined one sees
+more.
+
+**Why it was left:** the fix is `@nest-lab/throttler-storage-redis` (or an
+equivalent), a new dependency whose value is zero on the single-instance
+deployment `docker-compose.prod.yml` describes. Adding it speculatively would
+have been the kind of unused infrastructure this milestone's audit was meant to
+avoid.
+
+**Fix:** register a Redis throttler storage in `ThrottlerModule.forRootAsync`,
+reusing the existing `REDIS_CLIENT` provider. Nothing else changes — the guard,
+the tiers and the per-route overrides are storage-agnostic. Do this **before**
+the first multi-instance deployment.
+
+---
+
+## TD-0068: Every API instance runs the notification worker
+
+**Recorded:** 2026-08-06 (Milestone 19.3)
+**Severity:** Low — wasteful, not incorrect
+**Area:** `apps/api/src/modules/notifications/notification-scheduler.service.ts`
+
+The worker is a `setInterval` in the application process, so every replica ticks.
+Delivery is still exactly-once — claiming is a compare-and-set on
+`notification_deliveries` (ADR-0027) — but N instances issue N claim queries per
+tick against the same rows.
+
+**Why it was left:** correct as-is, and the two real fixes both have costs worth
+choosing deliberately. A leader election adds coordination state; a separate
+worker process adds a deployment unit.
+
+**Fix (when it matters):** either set `NOTIFICATIONS_WORKER_ENABLED=false` on all
+but one instance — supported today, no code change — or run a dedicated worker
+container from the same image with the API's HTTP server disabled.
+
+---
+
+## TD-0069: Trace context is propagated, but no OpenTelemetry SDK exports spans
+
+**Recorded:** 2026-08-06 (Milestone 19.4)
+**Severity:** Low — this is a capability gap, not a defect
+**Area:** `apps/api/src/common/observability/trace-context.util.ts`
+
+MediCore parses an inbound `traceparent`, continues the trace with its own span,
+echoes the header, and stamps `traceId`/`spanId` on every log line. Logs are
+therefore joinable with an upstream gateway's traces. What does **not** exist:
+spans exported to a collector, automatic instrumentation of Prisma/HTTP/Redis,
+or a service graph.
+
+**Why it was left:** the SDK is ~8 packages plus a collector to run, and the
+value is entirely in the deployment that receives the spans. Half-installing it
+— dependencies added, nothing exported — would be worse than the honest gap.
+
+**Fix:** add `@opentelemetry/sdk-node` with the HTTP, Fastify and Prisma
+instrumentations, initialise it *before* `NestFactory.create` in `main.ts`, and
+point `OTEL_EXPORTER_OTLP_ENDPOINT` at a collector. The existing
+`RequestContext.trace` should then be sourced from the active OTel span rather
+than generated, so the two cannot disagree.
+
+---
+
+## TD-0070: There is no backup automation — the DR procedure is specified, not implemented
+
+**Recorded:** 2026-08-06 (Milestone 19.5/19.7)
+**Severity:** **High** for any real deployment
+**Area:** `docs/operations/disaster-recovery.md`
+
+`docs/operations/disaster-recovery.md` specifies RPO/RTO targets, the `pg_dump`
+and PITR procedures, restore verification and a quarterly drill. **MediCore
+ships none of it:** no cron, no snapshot scheduler, no WAL archiving
+configuration, no off-site replication, and no automated restore test. A
+deployment following the deployment guide exactly has *no backups*.
+
+**Why it was left:** backup automation belongs to the infrastructure the
+deployment runs on — a managed Postgres with PITR, a Kubernetes CronJob, a
+cloud snapshot policy — and inventing one in this repository would produce a
+scheduler that fits nobody's environment. The milestone's remit was explicitly
+"do not invent deployment infrastructure".
+
+**Fix:** implement against the target platform, then tick the corresponding
+items in `docs/operations/production-checklist.md`. Until that is done, treat
+the checklist's data section as unmet regardless of what the guide describes.
+
+---
+
+## TD-0071: A second API instance can serve a stale notification template for up to 300 seconds
+
+**Recorded:** 2026-08-06 (Milestone 19.2)
+**Severity:** Low
+**Area:** `apps/api/src/modules/notifications/notification-template.service.ts`
+
+Template resolution is cached in Redis and invalidated exactly — publishing or
+rolling back a version deletes the entry. Because the entry is *shared* in
+Redis, invalidation is in fact global; the 300-second TTL only bounds the window
+if a Redis delete fails silently (`CacheService` swallows write failures by
+design, so the request never fails).
+
+**Why it was left:** the failure mode requires a Redis error during the delete,
+and its worst outcome is one organization's customised notification wording
+lagging by up to five minutes. Templates are not clinical data.
+
+**Fix:** if this ever matters, publish a `notification.template.changed` event
+and have each instance invalidate on receipt, or shorten `CACHE_TTL_SECONDS`.
+
+---
+
+## TD-0072: `pnpm format` / `pnpm format:check` have never worked
+
+**Recorded:** 2026-08-06 (Milestone 19.6)
+**Severity:** Low — cosmetic, but it means formatting is unenforced
+**Area:** `.prettierrc`, root `package.json`
+
+`.prettierrc` declares two plugins — `@trivago/prettier-plugin-sort-imports` and
+`prettier-plugin-tailwindcss` — that are not installed at the workspace root.
+Both scripts fail with `Cannot find package '@trivago/prettier-plugin-sort-imports'`.
+
+**Why it was left:** installing them makes `format:check` flag a large share of
+the repository (import ordering and Tailwind class ordering across both apps),
+which is a reformatting diff far outside this milestone's remit and one that
+would obscure every real change in it. It was therefore **not** added to CI
+during Checkpoint 19.6 — adding a check that fails is worse than not having it.
+
+Note that the substantive half is already enforced: ESLint's `import/order` runs
+over `apps/api/src` in CI today.
+
+**Fix:** install both plugins, run `pnpm format` as a single isolated commit,
+then add `pnpm format:check` to the `lint-and-typecheck` job.
+
+---
+
+## TD-0073: Three Milestone 19 roadmap line items were deliberately not built — Sentry, k6 load testing, Kubernetes manifests
+
+**Recorded:** 2026-08-06 (Milestone 19)
+**Severity:** Low–Medium, depending on the deployment
+**Area:** `docs/roadmap.md` Milestone 19 deliverables
+
+`docs/roadmap.md` listed these under Milestone 19. Each is marked unchecked
+there with the same reasoning, repeated here so the canonical debt list is
+complete:
+
+**Sentry (error monitoring).** No DSN and no Sentry account exists in this
+environment, and the milestone was instructed not to invent deployment
+infrastructure. Adding the SDK with a placeholder DSN would produce a
+dependency that silently reports nowhere — the same anti-pattern TD-0041 and
+TD-0059 already avoid elsewhere in this repo. **Substitute in place:** every
+unhandled exception is logged with `requestId` and `traceId`, and 5xx rate is a
+Prometheus metric with an alert rule in `docs/operations/monitoring.md`.
+**Fix:** add `@sentry/node`, initialise before `NestFactory.create`, and pass
+the request context's `traceId` as the Sentry trace id so the two systems agree.
+
+**k6 load testing.** k6 is not a dependency, and a load test against a laptop's
+Docker Postgres produces numbers that mislead rather than inform — the bottleneck
+measured would be the developer's machine. **What changed:** the instrumentation
+needed to run one meaningfully now exists (`http_request_duration_seconds` by
+route, in-flight gauge, event-loop lag, slow-query logs). **Fix:** write k6
+scenarios for the genuinely hot paths (login, patient search, encounter open,
+appointment booking) and run them against a staging environment sized like
+production, reading the results from the metrics endpoint rather than k6's own
+timings alone.
+
+**Kubernetes manifests.** Explicitly optional in the roadmap, and
+`docker-compose.prod.yml` is the deployment this repository actually describes.
+**What is already in place for it:** the liveness/readiness split
+(`/api/health/live`, `/api/health/ready`) is exactly what a Deployment's probes
+need, graceful shutdown drains before closing, and the API is stateless apart
+from Redis. **Fix, when a cluster exists:** Deployment + Service + Ingress +
+HPA, probes pointed at those two paths, `terminationGracePeriodSeconds` greater
+than `SHUTDOWN_DRAIN_MS`, and **TD-0067 resolved first** — per-process rate
+limiting is wrong the moment `replicas > 1`.

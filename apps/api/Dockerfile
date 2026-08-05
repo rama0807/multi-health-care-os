@@ -35,9 +35,23 @@ COPY --from=builder /app/packages/database/prisma ./prisma
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
 
+# Runs unprivileged (Milestone 19.5), matching what apps/web/Dockerfile already
+# did. A container escape from the API process should not land on root.
+RUN addgroup --system --gid 1001 nodejs \
+  && adduser --system --uid 1001 medicore \
+  && chown -R medicore:nodejs /app
+USER medicore
+
 EXPOSE 4000
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD wget -qO- http://localhost:4000/api/health || exit 1
+# Liveness, not the dependency check: a Postgres blip must not make Docker
+# restart a healthy API container. The previous path (`/api/health`) did not
+# exist — health was mounted at `/api/v1/health` only — so this healthcheck
+# reported unhealthy on every deployment until Milestone 19.4 made the probes
+# version-neutral.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:4000/api/health/live || exit 1
 
+# Exec form, so node is PID 1 and receives SIGTERM directly — that is what
+# starts the graceful drain in `main.ts`.
 CMD ["node", "dist/main"]

@@ -1,63 +1,57 @@
-import { resolve } from 'path'
-
-import fastifyCookie from '@fastify/cookie'
-import fastifyMultipart from '@fastify/multipart'
-import fastifyStatic from '@fastify/static'
-import { VersioningType } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { NestFactory } from '@nestjs/core'
-import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify'
+import { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import { Logger } from 'nestjs-pino'
-import { patchNestJsSwagger, ZodValidationPipe } from 'nestjs-zod'
+import { patchNestJsSwagger } from 'nestjs-zod'
 
 import { AppModule } from './app.module'
-import { HttpExceptionFilter } from './common/filters/http-exception.filter'
-import { ResponseTransformInterceptor } from './common/interceptors/response-transform.interceptor'
+import { configureApp, createHttpAdapter, registerPlugins } from './bootstrap'
+import { BackgroundTaskService } from './common/background/background-task.service'
+import { drainStartupWarnings } from './config/env.validation'
+import { HealthService } from './modules/health/health.service'
+
+const SWAGGER_PATH = 'api/docs'
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), {
+  const app = await NestFactory.create<NestFastifyApplication>(AppModule, createHttpAdapter(), {
     bufferLogs: true,
   })
 
   const configService = app.get(ConfigService)
   const port = configService.get<number>('app.port', 4000)
-  const frontendUrl = configService.get<string>('app.frontendUrl', 'http://localhost:3000')
-  const cookieSecret = configService.get<string>('app.cookieSecret')
+  const isProduction = configService.get<boolean>('app.isProduction') ?? false
+  const swaggerEnabled = configService.get<boolean>('security.swaggerEnabled') ?? !isProduction
 
-  await app.register(fastifyCookie, { secret: cookieSecret })
-  await app.register(fastifyMultipart, { limits: { fileSize: 10 * 1024 * 1024 } })
+  await registerPlugins(app, configService)
 
-  // Only relevant when STORAGE_PROVIDER=local — serves uploaded patient
-  // documents back out. Under the s3/MinIO driver, uploads are served
-  // directly from the object store via S3_PUBLIC_URL instead.
-  if (configService.get<string>('storage.provider') !== 's3') {
-    await app.register(fastifyStatic, {
-      root: resolve(configService.get<string>('storage.local.basePath', './uploads')),
-      prefix: '/uploads/',
-    })
+  const logger = app.get(Logger)
+  app.useLogger(logger)
+
+  // Collected by `validateEnv` during ConfigModule initialisation, replayed
+  // here now that a real logger exists (ADR-0028).
+  for (const warning of drainStartupWarnings()) {
+    logger.warn(`[startup] ${warning}`)
   }
 
-  app.useLogger(app.get(Logger))
+  configureApp(app, configService)
 
-  app.enableCors({
-    origin: [frontendUrl],
-    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Organization-ID', 'X-CSRF-Token'],
-    credentials: true,
-  })
+  if (swaggerEnabled) {
+    setupSwagger(app)
+  }
 
-  app.enableVersioning({ type: VersioningType.URI })
-  app.setGlobalPrefix('api')
+  registerGracefulShutdown(app, logger)
 
-  // All request validation runs through Zod schemas shared with the frontend
-  // (@medicore/types) — see nestjs-zod's createZodDto(). Falls through
-  // untouched for handlers whose params aren't zod-dto typed.
-  app.useGlobalPipes(new ZodValidationPipe())
+  await app.listen(port, '0.0.0.0')
+  logger.log(`MediCore API running on: http://localhost:${port}/api`)
+  logger.log(
+    swaggerEnabled
+      ? `API Documentation: http://localhost:${port}/${SWAGGER_PATH}`
+      : 'API Documentation is disabled (SWAGGER_ENABLED=false)',
+  )
+}
 
-  app.useGlobalFilters(new HttpExceptionFilter())
-  app.useGlobalInterceptors(new ResponseTransformInterceptor())
-
+function setupSwagger(app: NestFastifyApplication): void {
   patchNestJsSwagger()
 
   const swaggerConfig = new DocumentBuilder()
@@ -66,6 +60,7 @@ async function bootstrap() {
     .setVersion('1.0')
     .addBearerAuth()
     .addTag('auth', 'Authentication and authorization')
+    .addTag('health', 'Health, readiness and metrics')
     .addTag('organizations', 'Organization management')
     .addTag('hospitals', 'Hospital management')
     .addTag('departments', 'Department management')
@@ -80,13 +75,65 @@ async function bootstrap() {
     .build()
 
   const document = SwaggerModule.createDocument(app, swaggerConfig)
-  SwaggerModule.setup('api/docs', app, document, {
+  SwaggerModule.setup(SWAGGER_PATH, app, document, {
     swaggerOptions: { persistAuthorization: true },
   })
+}
 
-  await app.listen(port, '0.0.0.0')
-  app.get(Logger).log(`MediCore API running on: http://localhost:${port}/api`)
-  app.get(Logger).log(`API Documentation: http://localhost:${port}/api/docs`)
+/**
+ * Graceful shutdown (Milestone 19.5 / ADR-0028).
+ *
+ * The sequence exists because stopping the server the instant `SIGTERM`
+ * arrives drops requests that are already in flight, and — worse — keeps
+ * receiving new ones for the seconds it takes a load balancer to notice the
+ * instance is gone. So:
+ *
+ * 1. Readiness flips to 503 immediately, which is the signal every
+ *    orchestrator and reverse proxy actually watches.
+ * 2. The process keeps serving for `SHUTDOWN_DRAIN_MS`, long enough for that
+ *    signal to be observed and for in-flight work to finish.
+ * 3. `app.close()` then runs every module's `onModuleDestroy` — the Prisma
+ *    disconnect, the Redis `quit`, the notification worker's `clearInterval`.
+ *
+ * A second signal skips the wait: an operator pressing Ctrl-C twice means it.
+ */
+function registerGracefulShutdown(app: NestFastifyApplication, logger: Logger): void {
+  const drainMs = Number.parseInt(process.env.SHUTDOWN_DRAIN_MS ?? '5000', 10)
+  let shuttingDown = false
+
+  const shutdown = (signal: NodeJS.Signals) => {
+    if (shuttingDown) {
+      logger.warn(`Received ${signal} again — exiting immediately`)
+      process.exit(1)
+    }
+    shuttingDown = true
+
+    void (async () => {
+      logger.log(`Received ${signal} — draining for ${drainMs}ms before shutdown`)
+      app.get(HealthService).beginShutdown()
+
+      if (drainMs > 0) {
+        await new Promise((resolveDrain) => setTimeout(resolveDrain, drainMs))
+      }
+
+      // Emails and other off-request work already handed to the background
+      // service finish before the Prisma and Redis connections are torn out
+      // from under them.
+      await app.get(BackgroundTaskService).drain()
+
+      try {
+        await app.close()
+        logger.log('Shutdown complete')
+        process.exit(0)
+      } catch (error) {
+        logger.error(`Shutdown failed: ${(error as Error).message}`)
+        process.exit(1)
+      }
+    })()
+  }
+
+  process.on('SIGTERM', shutdown)
+  process.on('SIGINT', shutdown)
 }
 
 void bootstrap()

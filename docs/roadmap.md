@@ -444,25 +444,58 @@ analytics were all added by the session's instruction). See **ADR-0027**.
 
 ---
 
-## Milestone 19 — Production Hardening (Week 22)
+## Milestone 19 — Production Hardening & Enterprise Readiness (Week 22) ✅ COMPLETE (2026-08-06)
 
 **Goal:** Secure, observable, deployable to production.
 
+Delivered across seven checkpoints — see `.ai/PROGRESS.md` and ADR-0028 /
+ADR-0029 / ADR-0030. The audit that opened the milestone found much of the
+security and query work already correct, so it was left alone; no HMS feature
+and no schema change was added.
+
 ### Deliverables
-- [ ] Security audit (OWASP top 10 review)
-- [ ] Rate limiting on all public endpoints
-- [ ] Request sanitization and validation hardening
-- [ ] Structured logging with correlation IDs (Pino)
-- [ ] Error monitoring integration (Sentry)
-- [ ] APM (application performance monitoring)
-- [ ] Database query optimization (N+1 analysis, slow query log)
-- [ ] Load testing (k6)
-- [ ] Production Docker images (multi-stage, minimal)
-- [ ] Kubernetes manifests (optional)
-- [ ] Production deployment runbook
-- [ ] Disaster recovery procedure
-- [ ] Backup strategy (daily DB snapshots, PITR)
-- [ ] HIPAA compliance checklist
+- [x] Security audit (OWASP top 10 review) — headers, CORS, CSRF, cookies,
+      secrets, rate limiting, permissions all reviewed; only genuine gaps fixed
+- [x] Rate limiting on all public endpoints — global tier already existed;
+      added a per-route override on the seven credential endpoints
+- [x] Request sanitization and validation hardening — Zod-behind-a-global-pipe
+      was already in place; added **startup environment validation** that
+      aborts the boot on an unsafe production setting
+- [x] Structured logging with correlation IDs (Pino) — `AsyncLocalStorage`
+      context, one shared request-id derivation rule, W3C `traceparent`,
+      credential redaction
+- [ ] Error monitoring integration (Sentry) — **not done**: no Sentry DSN or
+      account exists in this environment, and the milestone was instructed not
+      to invent deployment infrastructure. Structured JSON logs carrying
+      `requestId`/`traceId` are the substitute; every unhandled 500 is logged
+      with both
+- [x] APM — Prometheus `/api/metrics` (HTTP latency/throughput/in-flight,
+      dependency gauge, background-run counter, process/GC/event-loop series),
+      plus Prisma slow-query logging. See TD-0069 for the OpenTelemetry gap
+- [x] Database query optimization (N+1 analysis, slow query log) — the two
+      likely N+1 shapes were already batched; 205 existing indexes cover the
+      hot filters; slow-query logging added
+- [ ] Load testing (k6) — **not done**: k6 is not a dependency and a load test
+      against a laptop's Docker Postgres would produce numbers that mislead
+      rather than inform. The metrics needed to run one meaningfully now exist
+- [x] Production Docker images (multi-stage, minimal) — already multi-stage;
+      now runs unprivileged, with a healthcheck that points at a path that
+      exists
+- [ ] Kubernetes manifests (optional) — **not done**, explicitly optional; the
+      liveness/readiness split and graceful shutdown that a Deployment needs
+      are in place
+- [x] Production deployment runbook — `docs/operations/deployment.md` +
+      `runbook.md` + `operations.md`
+- [x] Disaster recovery procedure — `docs/operations/disaster-recovery.md`
+- [ ] Backup strategy (daily DB snapshots, PITR) — **specified, not
+      implemented (TD-0070)**. MediCore ships no scheduler; backup automation
+      belongs to the target infrastructure. **A deployment following the guide
+      exactly has no backups.**
+- [x] HIPAA compliance checklist — the compliance section of
+      `docs/operations/production-checklist.md`, which names the real open
+      items (TD-0042 PHI to a third-party AI provider without a BAA, TD-0059
+      log-only SMS/WhatsApp drivers, TD-0050 platform access granularity)
+      rather than claiming compliance
 
 ---
 

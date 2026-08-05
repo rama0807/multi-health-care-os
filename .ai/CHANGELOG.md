@@ -6,6 +6,85 @@
 ## [Unreleased]
 
 ### Added
+- **Milestone 19 — Production Hardening & Enterprise Readiness (complete):**
+  see ADR-0028, ADR-0029, ADR-0030. Stability, security, observability and
+  operability — **no new HMS features**, and the audit that opened the
+  milestone left most of the existing security and query code alone because it
+  was already correct.
+  - **19.1 Security.** `@fastify/helmet` with an API-shaped CSP
+    (`default-src 'none'`, relaxed for inline script/style **only when Swagger
+    is mounted**), HSTS in production, `frameguard: deny`,
+    `crossOriginResourcePolicy: same-site`, and
+    `Content-Disposition: attachment` on served uploads. `CORS_ORIGINS` accepts
+    a list and refuses `*`. New **startup environment validation** that
+    **aborts the boot** on an unsafe production setting — the shipped default
+    cookie secret, a missing RS256 keypair, no Redis — and *warns without
+    aborting* on a log-only SMS driver, an `http://` origin, container-local
+    document storage, or AI enabled against a third-party provider (TD-0042).
+    Per-endpoint throttling on the seven credential routes via a per-route
+    override rather than a second named tier. `TRUST_PROXY`, off by default.
+    Constant-time CSRF comparison.
+  - **19.2 Performance.** `CacheService` over the existing Redis connection —
+    read-through, structurally tenant-scoped, `SCAN`-based invalidation (never
+    `KEYS`, which blocks the server for every tenant), and a cache miss rather
+    than an error when Redis is down. Applied to notification template
+    resolution. Prisma **slow-query logging** above `DB_SLOW_QUERY_MS`,
+    carrying the causing request id and the parameterised SQL only — never the
+    bound values. **No schema change**: the N+1 shapes were already batched and
+    the 205 existing indexes cover the hot filters.
+  - **19.3 Background processing.** `BackgroundTaskService` — deliberately not
+    a second queue — moved six blocking outbound emails off the request path.
+    Registration could previously return 500 because of a mail provider, for an
+    account that had in fact been created; appointment confirmations swallowed
+    every failure with `.catch(() => undefined)`. Failures are now logged with
+    the scheduling request's correlation ids and counted.
+  - **19.4 Observability.** `AsyncLocalStorage` request context; one derivation
+    rule for the request id shared by Fastify, pino and the middleware; W3C
+    `traceparent` propagation; log redaction of `authorization`/`cookie`/
+    `x-csrf-token`/`set-cookie`; separate **liveness** (checks nothing
+    external, by design) and **readiness** probes at both version-neutral and
+    `/v1` paths; and a Prometheus `/api/metrics` endpoint, bearer-authenticated
+    and **404 in production when `METRICS_TOKEN` is unset**. No metric carries
+    a patient, user or tenant label, and routes are labelled by matched pattern
+    rather than URL.
+  - **19.5 Deployment.** Graceful shutdown that flips readiness to 503 before
+    it stops serving. `docker-compose.prod.yml` gained the `postgres` and
+    `redis` services it had always referenced but never defined. nginx gained a
+    **real HTTPS server block** — certificates were mounted and 443 published,
+    but nothing had ever listened on it. The API image now runs unprivileged.
+  - **19.6 CI.** `build` is gated on the test jobs, and a single `CI` job exists
+    to require in branch protection.
+  - **19.7 Docs.** `docs/operations/`: Deployment, Operations, Monitoring,
+    Disaster Recovery, Runbook, Production Checklist, and an annotated
+    `production.env.example`.
+
+### Fixed
+- The container `HEALTHCHECK` polled `/api/health`, which did not exist — health
+  was mounted at `/api/v1/health` only, so every deployment reported unhealthy.
+  Probes are now version-neutral **and** versioned.
+- `docker-compose.prod.yml` declared `depends_on: [postgres, redis]` against
+  services the file never defined, so the production stack could not start.
+- `HttpExceptionFilter` echoed the raw inbound `x-request-id` or minted a fresh
+  `nanoid`, so the id a user quoted from a failed request matched nothing in the
+  logs.
+- nginx set security headers without `always`, omitting them from exactly the
+  error responses an attacker provokes.
+- Appointment confirmation emails swallowed every failure silently.
+
+### Deferred (recorded, not hidden)
+- **TD-0070 — there is no backup automation.** The disaster-recovery procedure
+  is specified in full; none of it is implemented, because backup scheduling
+  belongs to the target infrastructure. A deployment following the guide
+  exactly has no backups. Highest-severity gap in the milestone.
+- TD-0067 rate limiting is per-process; TD-0068 every instance runs the
+  notification worker; TD-0069 trace context is propagated but no OpenTelemetry
+  SDK exports spans; TD-0071 a second instance may serve a stale notification
+  template for up to 300s; TD-0072 `pnpm format` has never worked (its Prettier
+  plugins are not installed), which is why it was not added to CI.
+
+## [Milestone 18 and earlier]
+
+### Added
 - **Milestone 18 — Communication & Notification Platform (complete):** see
   ADR-0027. One surface every module notifies through. The
   `notifications` module was an **empty stub** before this milestone; the

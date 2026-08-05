@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config'
 import { Prisma, SystemRole, User } from '@prisma/client'
 import * as argon2 from 'argon2'
 
+import { BackgroundTaskService } from '../background/background-task.service'
 import { EmailService } from '../email/email.service'
 import { accountCreatedTemplate, roleGrantedTemplate } from '../email/email.templates'
 
@@ -37,6 +38,7 @@ export interface OnboardUserResult {
 @Injectable()
 export class StaffOnboardingService {
   constructor(
+    private readonly background: BackgroundTaskService,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
   ) {}
@@ -90,13 +92,17 @@ export class StaffOnboardingService {
    * Fire after the caller's transaction has committed — never inside it, so
    * a rollback can never leave a user holding an email that promised access
    * that doesn't exist.
+   *
+   * Returns synchronously since Milestone 19.3: the send itself is handed to
+   * `BackgroundTaskService`, so onboarding a doctor no longer waits on a mail
+   * provider to answer the administrator who created them.
    */
-  async sendOnboardingEmail(params: {
+  sendOnboardingEmail(params: {
     user: User
     created: boolean
     temporaryPassword?: string
     roleName: string
-  }): Promise<void> {
+  }): void {
     const loginUrl = `${this.configService.get<string>('app.frontendUrl')}/login`
 
     if (params.created && params.temporaryPassword) {
@@ -106,12 +112,16 @@ export class StaffOnboardingService {
         params.temporaryPassword,
         loginUrl,
       )
-      await this.emailService.send({ to: params.user.email, subject, html })
+      this.background.run('onboarding.account_created_email', () =>
+        this.emailService.send({ to: params.user.email, subject, html }),
+      )
       return
     }
 
     const { subject, html } = roleGrantedTemplate(params.user.firstName, params.roleName, loginUrl)
-    await this.emailService.send({ to: params.user.email, subject, html })
+    this.background.run('onboarding.role_granted_email', () =>
+      this.emailService.send({ to: params.user.email, subject, html }),
+    )
   }
 
   private async requireRole(tx: Prisma.TransactionClient, organizationId: string, systemRole: SystemRole) {

@@ -2,12 +2,14 @@ import { JwtPayload } from '@medicore/types'
 import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req, Res, UseGuards } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
+import { Throttle } from '@nestjs/throttler'
 import { FastifyReply, FastifyRequest } from 'fastify'
 
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
 import { Public } from '../../common/decorators/public.decorator'
 import { CsrfGuard } from '../../common/guards/csrf.guard'
+import { authThrottle } from '../../config/security.config'
 
 import { clearAuthCookies, REFRESH_COOKIE_NAME, setAuthCookies } from './auth-cookies.util'
 import { AuthSessionResult, AuthService, RequestMeta } from './auth.service'
@@ -18,6 +20,17 @@ import { RegisterOrganizationDto } from './dto/register-organization.dto'
 import { ResetPasswordDto } from './dto/reset-password.dto'
 import { VerifyEmailDto } from './dto/verify-email.dto'
 
+/**
+ * `@Throttle(authThrottle())` marks the routes that accept or issue a
+ * credential (Milestone 19.1). They override the global 100/minute budget with
+ * a much smaller one; the routes that merely *use* an established session
+ * (`refresh`, `logout`, `me`, `sessions`) stay on the default tier, because a
+ * dashboard with several tabs open legitimately hits those far more often.
+ *
+ * This is the coarse, per-IP line of defence. The precise one — a lock after
+ * five failed attempts on a *specific account* — lives in `AuthService` and is
+ * unaffected by the shared NAT address a hospital LAN presents.
+ */
 @ApiTags('auth')
 @Controller({ path: 'auth', version: '1' })
 export class AuthController {
@@ -44,6 +57,7 @@ export class AuthController {
     return { accessToken: result.accessToken, expiresIn: result.expiresIn, user: result.user }
   }
 
+  @Throttle(authThrottle())
   @Public()
   @Post('register')
   @ApiOperation({ summary: 'Register a new organization with its admin user' })
@@ -56,6 +70,7 @@ export class AuthController {
     return this.respondWithSession(reply, result)
   }
 
+  @Throttle(authThrottle())
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -105,6 +120,7 @@ export class AuthController {
     return { message: 'Logged out of all devices' }
   }
 
+  @Throttle(authThrottle())
   @Public()
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
@@ -114,6 +130,7 @@ export class AuthController {
     return { message: 'If that email exists, a reset link has been sent' }
   }
 
+  @Throttle(authThrottle())
   @Public()
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
@@ -123,6 +140,7 @@ export class AuthController {
     return { message: 'Password has been reset' }
   }
 
+  @Throttle(authThrottle())
   @Public()
   @Post('verify-email')
   @HttpCode(HttpStatus.OK)
@@ -132,6 +150,7 @@ export class AuthController {
     return { message: 'Email verified' }
   }
 
+  @Throttle(authThrottle())
   @ApiBearerAuth()
   @Post('resend-verification')
   @HttpCode(HttpStatus.OK)
@@ -141,6 +160,7 @@ export class AuthController {
     return { message: 'Verification email sent' }
   }
 
+  @Throttle(authThrottle())
   @ApiBearerAuth()
   @Post('change-password')
   @HttpCode(HttpStatus.OK)

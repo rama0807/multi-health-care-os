@@ -92,7 +92,11 @@ describe('AppointmentsService', () => {
     emailService = { send: jest.fn().mockResolvedValue(undefined) }
     eventEmitter = { emit: jest.fn() }
 
+    // Runs the scheduled work inline, so these tests still observe the send.
+    const background = { run: (_job: string, work: () => Promise<unknown>) => void work() }
+
     service = new AppointmentsService(
+      background as never,
       prisma as never,
       doctorRef as never,
       availabilityService as never,

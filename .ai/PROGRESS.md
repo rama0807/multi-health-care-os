@@ -1998,3 +1998,208 @@ happened to have been seeded beforehand. Made self-sufficient.
   (**TD-0049**).
 - Platform access is revocable at organization, not per-user, granularity
   (**TD-0050**).
+
+---
+
+## Milestone 19 — Production Hardening & Enterprise Readiness: Complete
+
+**Date:** 2026-08-06 — all seven checkpoints in one session.
+**ADRs:** ADR-0028 (security + deployment), ADR-0029 (observability),
+ADR-0030 (performance + background processing).
+**Instruction:** audit first, code is the source of truth, reuse existing
+services, do not rebuild existing functionality, add **no new HMS features**.
+AI development (Milestone 15.2–15.5) remained paused and untouched.
+
+### The audit changed the work, twice
+
+**Security was better than `NEXT.md` implied.** Every DTO already validates
+through a shared Zod schema behind a global pipe; RBAC is namespaced and
+own/all-scoped; the CSRF guard is a double-submit cookie applied to exactly the
+cookie-authenticated routes and nowhere else; per-account login lockout already
+existed; tenant isolation is re-verified against the database on every request.
+None of it was rebuilt.
+
+**Performance was better still, and that is the finding.**
+`AvailabilityService.getDashboardStats` and
+`NotificationsService.resolveRecipients` — the two shapes most likely to be
+N+1s — already batch with `{ in: [...] }` and resolve in memory. 205 indexes
+across 113 models cover the hot filters, including the notification queue's
+`(status, nextAttemptAt)` claim. **No schema change was made.** Adding
+cosmetic indexes carries migration cost and buys nothing measurable.
+
+### 19.1 — Security hardening
+
+- **`@fastify/helmet`** with a CSP written for an API: `default-src 'none'`,
+  relaxed for inline script/style **only when Swagger is mounted** — so
+  `SWAGGER_ENABLED=false` (the production default) tightens the policy rather
+  than hiding a page. HSTS in production only; `frameguard: deny`;
+  `crossOriginResourcePolicy: same-site` so an uploaded clinical document
+  cannot be embedded from another origin. Static uploads now also carry
+  `Content-Disposition: attachment`.
+- **`CORS_ORIGINS`** accepts a comma-separated list (falling back to
+  `FRONTEND_URL`, so existing deployments are unaffected), exposes
+  `X-Request-ID`/`traceparent`, and refuses `*`.
+- **Startup environment validation** (`config/env.validation.ts`) wired into
+  `ConfigModule.forRoot({ validate })`. **Errors abort the boot** and are
+  reserved for the unsafe rather than the unset — the shipped default cookie
+  secret, a missing RS256 keypair, a wildcard CORS origin, no Redis.
+  **Warnings never abort** and cover choices that should have been conscious: a
+  log-only SMS driver, an `http://` origin, container-local document storage,
+  AI enabled against a third-party provider without a BAA (TD-0042). Every
+  production-only rule is skipped outside `NODE_ENV=production`.
+- **Per-endpoint throttling.** One `default` throttler overridden per route with
+  `@Throttle(authThrottle())` on the seven credential endpoints — *not* a second
+  named tier, because every configured throttler runs on every route. The auth
+  limit is **20/minute, not 5**: the throttler keys on `request.ip` and a
+  hospital LAN presents one NAT address, so the precise defence stays the
+  existing per-account lockout.
+- **`TRUST_PROXY`**, off by default. Trusting `X-Forwarded-For` while directly
+  exposed would let any caller spoof `request.ip` — and with it per-IP rate
+  limiting and the address on every audit row.
+- **CSRF guard**: constant-time comparison, and a duplicated header (which
+  arrives as an array) now produces a clear 403 rather than a confusing one.
+
+### 19.2 — Performance & caching
+
+- **`CacheService`** over the existing Redis connection. Read-through `wrap`,
+  exact `del`, and `invalidatePrefix` using **`SCAN`, never `KEYS`** — `KEYS`
+  blocks the single-threaded server, so on a shared instance it is an outage for
+  every tenant triggered by one admin saving a form. Keys are structurally
+  tenant-scoped (`key()` throws without an organization id) and Redis being down
+  is a cache miss, never an error.
+- **Applied to notification template resolution**, which runs once per channel
+  per notification and changes only when an administrator publishes or rolls
+  back a version — invalidation is exact, not a guessed TTL.
+- **`JwtStrategy`'s per-request lookup was deliberately not cached.** It is the
+  most frequent query in the system, and it is also what makes suspending a
+  tenant take effect on the very next request (ADR-0025).
+- **Slow-query logging** in `PrismaService` above `DB_SLOW_QUERY_MS`
+  (default 300, **0 under test**), carrying the request id that caused it.
+  Parameterised SQL only — never the bound values, which are patient
+  identifiers and clinical codes.
+
+### 19.3 — Background processing
+
+- **`BackgroundTaskService`** — deliberately *not* a second queue. Durable,
+  retried delivery already exists in `notification_deliveries` (ADR-0027); this
+  is for genuinely fire-and-forget work. Over the bare `void promise` it
+  replaces it adds: rejection logged **with the scheduling request's
+  correlation ids**, a `medicore_background_runs_total{job,outcome}` counter,
+  and a drain awaited during graceful shutdown.
+- **Six blocking email sends moved off the request path** — auth verification
+  and password reset, user invitation, staff/doctor onboarding, appointment
+  confirmation. Registration could previously 500 because of a mail provider,
+  for an account that had in fact been created. The appointment send swallowed
+  every failure with `.catch(() => undefined)`; it is now logged and counted.
+- The notification worker's tick is now counted too, so a worker failing every
+  tick shows up as a ratio rather than a quiet log line.
+
+### 19.4 — Observability
+
+- **`AsyncLocalStorage` request context** — `requestId`, `traceId`, `spanId`,
+  and (once authenticated) `userId`/`organizationId`, reachable from any service
+  without threading a context argument through thirty modules. A request-scoped
+  provider would have forced its whole injection chain to be request-scoped too.
+- **One derivation rule for the request id**, shared by the Fastify adapter,
+  pino and the middleware, so the access log, every service log line and the
+  `X-Request-ID` response header always quote the same string. A caller-supplied
+  id wins — after validation, because it reaches log lines.
+- **W3C `traceparent`** parsed, continued, minted when absent, echoed back.
+- **`HttpExceptionFilter` fixed**: it previously echoed the raw inbound header
+  or minted a *fresh* `nanoid`, so the id in a user's error matched nothing in
+  the logs.
+- **Log redaction** for `authorization`, `cookie`, `x-csrf-token` and
+  `set-cookie`.
+- **`/api/health`, `/api/health/live`, `/api/health/ready`** — version-neutral
+  *and* at `/api/v1/health`. Liveness checks **nothing external** by design: a
+  Postgres blip must not make an orchestrator restart every API pod. This also
+  fixed a real defect — the container `HEALTHCHECK` polled `/api/health`, which
+  did not exist.
+- **`/api/metrics`** (`prom-client`, private registry): HTTP counter/histogram/
+  in-flight gauge, dependency gauge, background-run counter, plus process, heap,
+  GC and event-loop-lag series. Bearer-authenticated via `METRICS_TOKEN`,
+  **404 in production when unset** (an unauthenticated scrape target should not
+  confirm it exists), and throttle-exempt.
+- **No metric carries an identifier label.** Routes are labelled by matched
+  *pattern*, never URL — one time series per patient id would be both a
+  cardinality explosion and a leak of record identifiers into monitoring.
+- **No OpenTelemetry SDK** — propagation and correlation only, recorded honestly
+  as TD-0069 rather than half-installed.
+
+### 19.5 — Deployment & operations
+
+- **`docker-compose.prod.yml` could not start.** `api` declared
+  `depends_on: [postgres, redis]` against services the file never defined. Both
+  are now defined (no published ports, healthchecked, Redis with AOF because it
+  holds live sessions), `api`/`web` are `expose`-only behind nginx, every
+  service has log rotation, required variables use `${VAR:?message}` so a
+  missing secret fails at `compose config` rather than at runtime, and
+  `stop_grace_period` exceeds the drain window.
+- **Graceful shutdown** in `main.ts`: readiness → 503 immediately, serve for
+  `SHUTDOWN_DRAIN_MS`, await in-flight background work, then `app.close()`.
+  A second signal exits at once.
+- **nginx**: the HTTPS server block is now real — certificates were already
+  mounted and 443 was already published, but **nothing listened on it**.
+  Added HSTS/CSP-adjacent headers with `always` (so they appear on error
+  responses too), `X-Request-ID` generation and pass-through, `server_tokens
+  off`, body-size and timeout limits, a `/api/metrics` private-network ACL,
+  probe paths exempt from rate limiting, and `/healthz` instead of `/health` so
+  it cannot shadow an application route. Validated with `nginx -t`.
+- **API Dockerfile**: runs unprivileged as uid 1001 (matching the web image),
+  healthcheck repointed at `/api/health/live`.
+
+### 19.6 — CI/CD
+
+`build` now `needs` the test jobs — previously it needed only lint/typecheck, so
+a green "Build" could sit beside a failing suite and read as a passing pipeline.
+Added a single `CI` gate job to require in branch protection, and
+`METRICS_TOKEN` to the e2e environment. `pnpm format:check` was **not** added:
+it has never worked in this repository (TD-0072), and adding a check that fails
+is worse than not having it.
+
+### 19.7 — Documentation
+
+`docs/operations/`: **Deployment Guide**, **Operations Guide**, **Monitoring
+Guide**, **Disaster Recovery**, **Runbook**, **Production Checklist**, and an
+annotated `production.env.example`.
+
+### Verification
+
+All five gates pass, run from the repository root:
+
+| Gate | Result |
+|---|---|
+| `pnpm lint` | clean, 5 packages |
+| `pnpm typecheck` | clean, 5 packages |
+| `pnpm test` | **785 API unit tests** (was 727) + 6 web, 96 suites |
+| `pnpm test:e2e` | **431 e2e tests across 22 suites** (was 408 / 21) |
+| `pnpm build` | clean, 4 packages |
+
+New tests: 58 unit (env validation, trace context, cache, background tasks,
+health) and 23 e2e in `test/production-hardening.e2e-spec.ts` — which boots
+through `src/bootstrap.ts`, the same functions `main.ts` calls, because a
+security header asserted against a hand-rolled test app proves nothing about
+what ships.
+
+No browser verification and no screenshots — per instruction, and there is no
+new user-facing UI in this milestone.
+
+### Deferred, disclosed, not faked
+
+**Three roadmap line items were deliberately not built (TD-0073)**, and
+`docs/roadmap.md` now says so with reasons rather than quietly ticking them:
+**Sentry** (no DSN exists here; adding the SDK with a placeholder would report
+nowhere — structured logs with `requestId`/`traceId` plus a 5xx alert rule are
+the substitute), **k6 load testing** (a load test against a laptop's Docker
+Postgres measures the laptop; the instrumentation to run one meaningfully now
+exists), and **Kubernetes manifests** (explicitly optional; the
+liveness/readiness split and graceful shutdown a Deployment needs are in place,
+but TD-0067 must be fixed before `replicas > 1`).
+
+**TD-0067** rate limiting is per-process (matters only with replicas);
+**TD-0068** every instance runs the notification worker (wasteful, not
+incorrect); **TD-0069** trace propagation without an OTel SDK; **TD-0070**
+**there is no backup automation — the DR procedure is specified, not
+implemented**, and this is the highest-severity gap in the milestone;
+**TD-0071** a second instance may serve a stale notification template for up to
+300s; **TD-0072** `pnpm format` has never worked.

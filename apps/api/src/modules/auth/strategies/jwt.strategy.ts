@@ -5,6 +5,7 @@ import { PassportStrategy } from '@nestjs/passport'
 import { ExtractJwt, Strategy } from 'passport-jwt'
 
 
+import { RequestContextService } from '../../../common/observability/request-context.service'
 import { RedisService } from '../../../common/redis/redis.service'
 import { PrismaService } from '../../../prisma/prisma.service'
 
@@ -14,6 +15,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     configService: ConfigService,
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
+    private readonly requestContext: RequestContextService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -51,6 +53,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!sessionAlive) {
       throw new UnauthorizedException('Session has been revoked')
     }
+
+    // The one place every authenticated request passes through, so it is where
+    // the correlation context learns who the caller is (Milestone 19.4). Log
+    // lines written before this point honestly carry no principal.
+    this.requestContext.setPrincipal({ userId: payload.sub, organizationId: payload.orgId })
 
     return payload
   }

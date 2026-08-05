@@ -1,6 +1,67 @@
-version: '3.9'
+# MediCore — production stack (Milestone 19.5).
+#
+# Run with an env file beside this one holding every variable referenced below;
+# the API refuses to boot if the security-critical ones are missing or left on
+# their shipped defaults (`apps/api/src/config/env.validation.ts`).
+#
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+#
+# See docs/operations/deployment.md for the full procedure, and
+# docs/operations/production-checklist.md before the first real deployment.
+#
+# The `version:` key is deliberately absent — Compose v2 ignores it and warns.
+
+x-logging: &default-logging
+  # Without this, container logs grow until the disk is full — the most common
+  # cause of a self-inflicted outage on a single-host deployment.
+  driver: json-file
+  options:
+    max-size: '50m'
+    max-file: '5'
 
 services:
+  # Previously missing from this file entirely: `api` declared
+  # `depends_on: [postgres, redis]` against services that did not exist here,
+  # so the stack could not start (fixed in Milestone 19.5). To use managed
+  # instances instead, delete these two services and point DATABASE_URL /
+  # REDIS_HOST at them.
+  postgres:
+    image: postgres:16-alpine
+    container_name: medicore_postgres_prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-medicore}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # No published port: the database is reachable only from this network.
+    # Expose it deliberately and temporarily for a restore, never by default.
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging: *default-logging
+
+  redis:
+    image: redis:7-alpine
+    container_name: medicore_redis_prod
+    restart: unless-stopped
+    # `--appendonly yes` matters here: Redis holds live sessions, and losing
+    # them on a restart logs every user out mid-shift.
+    command: >-
+      redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli -a $${REDIS_PASSWORD} ping | grep PONG']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging: *default-logging
+
   api:
     build:
       context: .
@@ -10,18 +71,61 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      DATABASE_URL: ${DATABASE_URL}
-      REDIS_HOST: ${REDIS_HOST}
-      REDIS_PORT: ${REDIS_PORT}
+      PORT: 4000
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_ACCESS_TOKEN_EXPIRY: 15m
-      JWT_REFRESH_TOKEN_EXPIRY: 30d
-    ports:
-      - '4000:4000'
+      # RS256 keypair — `pnpm --filter @medicore/api keys:generate`.
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY:?JWT_PRIVATE_KEY is required}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:?JWT_PUBLIC_KEY is required}
+      JWT_ACCESS_TOKEN_EXPIRY: ${JWT_ACCESS_TOKEN_EXPIRY:-15m}
+      JWT_REFRESH_TOKEN_EXPIRY: ${JWT_REFRESH_TOKEN_EXPIRY:-30d}
+      COOKIE_SECRET: ${COOKIE_SECRET:?COOKIE_SECRET is required}
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL is required}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      # nginx terminates TLS and sets X-Forwarded-For; without this the API
+      # would rate-limit and audit every request as coming from the proxy.
+      TRUST_PROXY: 'true'
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      METRICS_TOKEN: ${METRICS_TOKEN:-}
+      DB_SLOW_QUERY_MS: ${DB_SLOW_QUERY_MS:-300}
+      SHUTDOWN_DRAIN_MS: ${SHUTDOWN_DRAIN_MS:-5000}
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-s3}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-}
+      S3_PUBLIC_URL: ${S3_PUBLIC_URL:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+    # No published port — nginx is the only way in.
+    expose:
+      - '4000'
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # `SIGTERM` starts the drain in `main.ts`; this must exceed
+    # SHUTDOWN_DRAIN_MS or Docker kills the process mid-drain.
+    stop_grace_period: 30s
+    healthcheck:
+      # Liveness, not the dependency check: a Postgres blip must not make
+      # Docker restart a perfectly healthy API container.
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "require('http').get('http://127.0.0.1:4000/api/health/live',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+    logging: *default-logging
 
   web:
     build:
@@ -31,11 +135,15 @@ services:
     container_name: medicore_web
     restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-    ports:
-      - '3000:3000'
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL is required}
+    expose:
+      - '3000'
     depends_on:
-      - api
+      api:
+        condition: service_healthy
+    stop_grace_period: 30s
+    logging: *default-logging
 
   nginx:
     image: nginx:alpine
@@ -50,3 +158,13 @@ services:
     depends_on:
       - api
       - web
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1/healthz']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging: *default-logging
+
+volumes:
+  postgres_data:
+  redis_data:

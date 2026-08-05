@@ -19,6 +19,7 @@ import * as argon2 from 'argon2'
 
 
 
+import { BackgroundTaskService } from '../../common/background/background-task.service'
 import { EmailService } from '../../common/email/email.service'
 import { passwordResetTemplate, verifyEmailTemplate } from '../../common/email/email.templates'
 import { PrismaService } from '../../prisma/prisma.service'
@@ -57,6 +58,7 @@ type UserWithOrg = Prisma.UserGetPayload<typeof userWithOrg>
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly background: BackgroundTaskService,
     private readonly jwtService: JwtService,
     private readonly eventEmitter: EventEmitter2,
     private readonly rolesService: RolesService,
@@ -253,7 +255,13 @@ export class AuthService {
     const token = await this.tokensService.issuePasswordResetToken(user.id)
     const resetUrl = `${process.env.FRONTEND_URL ?? 'http://localhost:3000'}/reset-password?token=${token}`
     const { subject, html } = passwordResetTemplate(user.firstName, resetUrl)
-    await this.emailService.send({ to: user.email, subject, html })
+    // Off the request path (Milestone 19.3): this endpoint deliberately
+    // answers the same way whether or not the address exists, so awaiting the
+    // provider only leaks how long the lookup took — and lets its latency
+    // shape the timing side channel this method exists to avoid.
+    this.background.run('auth.password_reset_email', () =>
+      this.emailService.send({ to: user.email, subject, html }),
+    )
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {
@@ -316,7 +324,12 @@ export class AuthService {
     const token = await this.tokensService.issueEmailVerificationToken(userId)
     const verifyUrl = `${process.env.FRONTEND_URL ?? 'http://localhost:3000'}/verify-email?token=${token}`
     const { subject, html } = verifyEmailTemplate(firstName, verifyUrl)
-    await this.emailService.send({ to: email, subject, html })
+    // Off the request path (Milestone 19.3). Registration must not fail
+    // because a mail provider is slow or down — the account was created, and
+    // `resendVerificationEmail` is the product's own retry.
+    this.background.run('auth.verification_email', () =>
+      this.emailService.send({ to: email, subject, html }),
+    )
   }
 
   accessTokenExpirySeconds(): number {

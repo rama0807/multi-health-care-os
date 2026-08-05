@@ -2176,3 +2176,286 @@ imported by it, so notifications cannot introduce a module cycle. TD-0053
 recorded as TD-0058…TD-0066. 64 new unit tests and 30 new e2e tests;
 **727 API unit tests, 6 web unit tests and 408 e2e tests across 21 suites
 pass**, with lint, typecheck and build clean.
+
+---
+
+## ADR-0028: Milestone 19.1/19.5 — fail the boot on an unsafe environment; helmet at the application, not only at the proxy; one throttler tier overridden per route
+
+**Date:** 2026-08-06
+**Status:** Accepted
+**Context:** Milestone 19, Checkpoints 19.1 and 19.5
+
+### Context
+
+The audit that opened Milestone 19 found the security posture better than
+`NEXT.md` implied and worse in three specific, unglamorous places.
+
+Already correct, and left alone: every DTO validates through a shared Zod
+schema; RBAC is namespaced and own/all-scoped; CSRF is a double-submit cookie
+applied exactly to the cookie-authenticated routes and nowhere else; per-account
+login lockout exists; tenant isolation is enforced in `JwtStrategy` on every
+request. Rebuilding any of it would have been churn.
+
+Genuinely missing:
+
+1. **No HTTP security headers from the application.** `infra/nginx/nginx.conf`
+   set four of them, but the API is directly reachable in the compose stack, in
+   a service mesh, and in development.
+2. **No environment validation.** `app.config.ts` falls back to a *published*
+   cookie secret (`change-me-in-production-min-32-chars`). A production process
+   missing `COOKIE_SECRET` started silently and signed cookies with a value
+   anyone can read from this repository.
+3. **One rate-limit tier for everything.** A password-guessing loop and a nurse
+   refreshing an appointment list shared a 100/minute budget.
+
+### Decisions
+
+**1. `@fastify/helmet`, configured for an API rather than a website.**
+
+Added as a dependency rather than hand-rolled — unlike the FCM JWT (ADR-0027)
+and the XLSX writer (ADR-0026), there is no awkward transitive dependency to
+avoid here, and helmet's defaults encode more accumulated browser knowledge
+than a hand-written header list would.
+
+The CSP is `default-src 'none'`, which is correct for a service that returns
+JSON and file downloads. Swagger needs inline script and style, so those two
+directives are relaxed **only when Swagger is mounted** — which makes
+`SWAGGER_ENABLED=false` (the production default) tighten the policy rather than
+merely hide a page. COEP is off because it would block Swagger's own assets and
+buys nothing for an API that isolates nothing cross-origin.
+
+**2. `validateEnv` runs in `ConfigModule.forRoot({ validate })` and throws.**
+
+Errors abort the boot; warnings never do. The split is the whole design:
+
+- **Errors** are for settings that are *unsafe*, not merely unset — the default
+  cookie secret, a missing JWT keypair, a wildcard CORS origin, no Redis. A
+  process in that state is not degraded, it is a future incident. Refusing to
+  start is loud, immediate and impossible to miss.
+- **Warnings** are for deployments that will work but should have been a
+  conscious choice: a log-only SMS driver, an `http://` origin, container-local
+  document storage, AI enabled against a third-party provider (TD-0042). They
+  are collected during validation and replayed through the real logger in
+  `main.ts` once one exists.
+
+Every production-only rule is skipped outside `NODE_ENV=production`, so `pnpm
+dev`, `pnpm test` and `pnpm test:e2e` need no new variables. `checkEnv` is a
+pure function so the rules are unit-testable against a synthetic environment.
+
+**3. One throttler, overridden per route — not two named tiers.**
+
+`@nestjs/throttler` evaluates *every* configured throttler on *every* route, so
+adding a named `auth` tier would have applied its small limit to the whole API.
+Credential endpoints instead override the single `default` throttler with
+`@Throttle(authThrottle())`. `authThrottle()` reads `process.env` directly
+because a decorator is evaluated when its class is loaded, before the DI
+container exists.
+
+The auth limit defaults to **20/minute, not 5**, and that is deliberate: the
+throttler keys on `request.ip`, and a hospital LAN presents one NAT address for
+every workstation. A limit tuned for a single attacker would lock out a ward at
+shift change. Precise brute-force protection is the existing per-account lockout,
+which NAT cannot dilute; this tier is the coarser second line.
+
+**4. Graceful shutdown drains before it closes.**
+
+`SIGTERM` flips readiness to 503 *first*, waits `SHUTDOWN_DRAIN_MS`, awaits
+in-flight background work, then closes. Stopping the server the instant the
+signal arrives drops in-flight requests and keeps accepting new ones for the
+seconds a load balancer takes to notice.
+
+**5. `bootstrap.ts` exists so the hardening is testable.**
+
+The adapter options, helmet, CORS and the global pipe/filter/interceptor chain
+moved out of `main.ts` into callable functions. A security header that only
+exists in `main.ts` is one no test can assert;
+`test/production-hardening.e2e-spec.ts` boots through exactly what ships.
+
+### Consequences
+
+- A production deployment missing a critical secret fails visibly at boot
+  instead of running compromised. This *will* stop a deploy — that is the point.
+- `TRUST_PROXY` must be set deliberately. Left off behind nginx, every request
+  appears to come from the proxy and one busy user throttles everyone; turned on
+  while directly exposed, any caller can spoof `request.ip`. Both directions are
+  documented in `docs/operations/`.
+- Rate limiting remains per-process (TD-0067).
+
+---
+
+## ADR-0029: Milestone 19.4 — correlation via AsyncLocalStorage, W3C trace propagation without an OpenTelemetry SDK, and metrics labelled by route pattern only
+
+**Date:** 2026-08-06
+**Status:** Accepted
+**Context:** Milestone 19, Checkpoint 19.4
+
+### Context
+
+`nestjs-pino` was already configured and already emitted `req.id`. What did not
+exist: any way to get that id into a *service* log line, any propagation to or
+from another system, and any numeric telemetry at all. The `HttpExceptionFilter`
+made it worse — it echoed the raw inbound `x-request-id` header or, failing
+that, minted a **fresh** `nanoid`, so the id a user quoted from a failed request
+matched nothing in the logs.
+
+### Decisions
+
+**1. `AsyncLocalStorage`, not a request-scoped provider.**
+
+A request-scoped provider in NestJS forces every consumer up the injection chain
+to become request-scoped too, rebuilding that subtree on every request. ALS
+makes the correlation context reachable from any service without threading a
+context argument through thirty modules. Code running outside a request (the
+notification worker, a scheduled dispatcher, `onModuleInit`) simply has no
+store, and every accessor returns `undefined` rather than throwing.
+
+**2. One derivation rule for the request id, shared by three places.**
+
+`deriveRequestId` is used by the Fastify adapter's `genReqId`, by pino's
+`genReqId`, and by the middleware. Fastify assigns `request.id` before any
+middleware runs and would otherwise mint its own `req-N` counter, so
+`requestIdHeader: false` hands that decision to our rule — which is what makes a
+caller-supplied `x-request-id` actually win. It is validated first (bounded
+length, restricted character set): the id reaches log lines and a response
+header, so an unvalidated one is a log-injection vector, not a convenience.
+
+**3. W3C trace context propagation, and explicitly no OpenTelemetry SDK.**
+
+`traceparent` is parsed (continuing an upstream trace with a fresh local span),
+minted when absent, echoed on the response, and stamped on every log line. That
+is what makes MediCore's logs joinable with an upstream gateway's traces today,
+in ~70 dependency-free lines.
+
+Installing the OTel SDK — spans, a collector, exporters, instrumentation — is a
+*deployment* decision with real operational weight, and half-installing it
+(dependencies added, nothing exported) would be worse than not having it.
+Recorded as TD-0069.
+
+**4. Metrics carry no identifier labels, ever.**
+
+`http_requests_total` and `http_request_duration_seconds` are labelled by the
+matched **route pattern** (`/api/v1/patients/:id`), never `request.url`.
+Labelling by URL would mint one Prometheus time series per patient id — an
+unbounded cardinality explosion *and* a slow leak of record identifiers into the
+monitoring system. For the same reason no metric carries a tenant, user or
+patient label; per-tenant usage already has a home in `ApiUsageService`.
+
+`MetricsService` owns a **private** `Registry` rather than prom-client's global
+default, because the global one is process-wide mutable state that makes a
+second `TestingModule` in the same Jest worker throw "metric already
+registered".
+
+**5. Liveness and readiness are separate endpoints with different jobs.**
+
+Liveness checks nothing external: the only correct response to its failure is to
+restart the container, and a Postgres outage is not that — restarting every API
+pod removes the capacity that would have served traffic the moment the database
+returned. Readiness checks dependencies and flips first during a shutdown.
+Both are mounted version-neutral (`/api/health/...`) **and** at `/api/v1/health`,
+because infrastructure probes outlive an API version while the existing
+dashboard call keeps working. This also fixed a real defect: the container
+`HEALTHCHECK` polled `/api/health`, which did not exist.
+
+### Consequences
+
+- Every log line, error response and response header for one request quotes one
+  id, and it survives a caller supplying their own.
+- `prom-client` is a new runtime dependency, justified by the process/GC/event-
+  loop metrics it brings for free.
+- `/api/metrics` fails closed in production without `METRICS_TOKEN` (404, not
+  403 — an unauthenticated scrape target should not confirm it exists).
+
+---
+
+## ADR-0030: Milestone 19.2/19.3 — fire-and-forget work is a service, not a bare `void`; caching is read-through, tenant-scoped, and confined to configuration data
+
+**Date:** 2026-08-06
+**Status:** Accepted
+**Context:** Milestone 19, Checkpoints 19.2 and 19.3
+
+### Context
+
+The performance audit found much less than expected, which is itself the
+finding: `AvailabilityService.getDashboardStats` and
+`NotificationsService.resolveRecipients` — the two shapes most likely to be
+N+1s — already batch with `{ in: [...] }` and resolve in memory. 205 indexes
+across 113 models cover the hot filters, including the notification queue's
+`(status, nextAttemptAt)` claim. **No schema change was made**, because adding
+cosmetic indexes carries migration cost and buys nothing measurable.
+
+The genuine gaps were elsewhere. Six call sites `await`ed an outbound email
+inside a request handler. Registration's 500 could therefore be caused by a mail
+provider, for an account that had in fact been created. One of them —
+`appointments.service.ts` — wrapped the send in `.catch(() => undefined)`, so a
+confirmation that never arrived left no trace anywhere.
+
+### Decisions
+
+**1. `BackgroundTaskService`, deliberately not a second queue.**
+
+Durable, retried, observable delivery already exists: the
+`notification_deliveries` table (ADR-0027). Anything that must survive a restart
+belongs there. This service is for work that is genuinely fire-and-forget — a
+welcome email, an invite — where losing one to a hard kill is acceptable and
+re-triggering it is a button the product already has.
+
+What it adds over the bare `void promise` it replaces: the rejection is logged
+**with the originating request's correlation ids** (captured at schedule time,
+while the async context is still current), every run is counted in
+`medicore_background_runs_total{job,outcome}`, and in-flight work is awaited
+during a graceful shutdown. "Emails silently stopped sending" becomes a graph
+rather than a support ticket a week later.
+
+`StaffOnboardingService.sendOnboardingEmail` became synchronous as a result; its
+four call sites dropped their `await`.
+
+**2. Slow-query logging emits events, and logs SQL without parameters.**
+
+`PrismaService` subscribes to Prisma's `query` event and warns above
+`DB_SLOW_QUERY_MS` (default 300; **0 under test**, where every statement would
+otherwise emit an event no assertion reads). The log line carries the request
+that caused it, which is what turns "a 900ms statement exists" into a lead.
+
+Only the parameterised SQL is logged, never `event.params` — the values bound
+into a MediCore query are patient identifiers, names and clinical codes, and a
+log sink is not a place to put them.
+
+**3. `CacheService` over the Redis connection that already exists.**
+
+Three rules keep it from becoming a source of stale clinical data:
+
+- **Every key is tenant-scoped.** `key()` throws without an organization id, so
+  a cached read structurally cannot leak across tenants.
+- **Redis being down is a cache miss, never an error.** A caching layer that can
+  fail a request is a new outage source, not an optimisation.
+- **Only configuration-shaped data is cached** — data that changes on an
+  explicit admin action, which is what makes invalidation *exact* rather than a
+  guessed TTL.
+
+`invalidatePrefix` uses `SCAN`, never `KEYS`: `KEYS` blocks the single-threaded
+server, so on a shared instance it is an outage for every tenant triggered by
+one admin saving a form.
+
+**4. Applied to notification template resolution, and nowhere else yet.**
+
+`findActiveOverride` runs **once per channel per notification** — one lab-result
+alert to a doctor with three channels enabled is three identical queries — while
+the answer changes only when an administrator publishes or rolls back a version,
+which is exactly when the entry is dropped. Most organizations never override a
+template, so the common result is `null`; caching that is the point.
+
+`JwtStrategy`'s per-request user/organization lookup is the single most frequent
+query in the system and was **deliberately not cached**. It is what makes
+suspending a tenant or revoking platform access take effect on the very next
+request (ADR-0025); trading that for one indexed primary-key lookup is a bad
+bargain.
+
+### Consequences
+
+- A mail-provider outage no longer fails registration, user invitation, doctor
+  onboarding or appointment booking; it produces logged, counted background
+  failures.
+- A welcome email can be lost to a hard `SIGKILL`. Accepted: every affected flow
+  has a resend path.
+- Template changes are visible immediately on the instance that made them; a
+  second instance may serve a stale template for up to 300 seconds (TD-0071).

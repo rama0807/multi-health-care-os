@@ -3,6 +3,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import * as argon2 from 'argon2'
 
 
+import { BackgroundTaskService } from '../../common/background/background-task.service'
 import { EmailService } from '../../common/email/email.service'
 import { verifyEmailTemplate } from '../../common/email/email.templates'
 import { PrismaService } from '../../prisma/prisma.service'
@@ -17,6 +18,7 @@ export interface ListUsersQuery {
 @Injectable()
 export class UsersService {
   constructor(
+    private readonly background: BackgroundTaskService,
     private readonly prisma: PrismaService,
     private readonly tokensService: TokensService,
     private readonly emailService: EmailService,
@@ -90,7 +92,12 @@ export class UsersService {
     const token = await this.tokensService.issueEmailVerificationToken(user.id)
     const verifyUrl = `${process.env.FRONTEND_URL ?? 'http://localhost:3000'}/verify-email?token=${token}`
     const { subject, html } = verifyEmailTemplate(user.firstName, verifyUrl)
-    await this.emailService.send({ to: user.email, subject, html })
+    // Off the request path (Milestone 19.3) — the user row is committed, and
+    // failing the whole creation because a mail provider blipped would leave
+    // an administrator staring at a 500 for a user that exists.
+    this.background.run('users.invite_email', () =>
+      this.emailService.send({ to: user.email, subject, html }),
+    )
 
     return user
   }

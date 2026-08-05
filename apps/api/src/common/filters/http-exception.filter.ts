@@ -9,6 +9,8 @@ import {
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { nanoid } from 'nanoid'
 
+import { currentRequestContext } from '../observability/request-context.service'
+
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(HttpExceptionFilter.name)
@@ -17,6 +19,16 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const ctx = host.switchToHttp()
     const response = ctx.getResponse<FastifyReply>()
     const request = ctx.getRequest<FastifyRequest>()
+
+    // The id the middleware already put in the logs and the `x-request-id`
+    // response header (Milestone 19.4). Previously this filter echoed the raw
+    // inbound header, or minted a *fresh* id when there was none — so the id a
+    // user quoted from a failed request matched nothing in the logs. The
+    // fallbacks below only matter for a request that failed before the
+    // middleware ran.
+    const correlation = currentRequestContext()
+    const requestId =
+      correlation?.requestId ?? (request.headers['x-request-id'] as string) ?? nanoid(10)
 
     let status: number
     let code: string
@@ -41,13 +53,17 @@ export class HttpExceptionFilter implements ExceptionFilter {
       code = 'INTERNAL_SERVER_ERROR'
       message = 'An unexpected error occurred'
 
+      // The correlation ids are repeated in the message because this logger
+      // writes through Nest's default context, not the request-scoped pino
+      // child — without them a 500 in the log cannot be tied to the id the
+      // caller was handed.
       this.logger.error(
-        `Unhandled exception: ${exception instanceof Error ? exception.message : String(exception)}`,
+        `Unhandled exception [requestId=${requestId} traceId=${correlation?.trace.traceId ?? '-'}] ` +
+          `${request.method} ${request.url}: ` +
+          `${exception instanceof Error ? exception.message : String(exception)}`,
         exception instanceof Error ? exception.stack : undefined,
       )
     }
-
-    const requestId = (request.headers['x-request-id'] as string) ?? nanoid(10)
 
     void response.status(status).send({
       success: false,
@@ -58,6 +74,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       },
       meta: {
         requestId,
+        ...(correlation ? { traceId: correlation.trace.traceId } : {}),
         timestamp: new Date().toISOString(),
       },
     })

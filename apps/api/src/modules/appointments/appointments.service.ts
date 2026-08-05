@@ -24,6 +24,7 @@ import {
 } from '@prisma/client'
 import { nanoid } from 'nanoid'
 
+import { BackgroundTaskService } from '../../common/background/background-task.service'
 import { EmailService } from '../../common/email/email.service'
 import { appointmentConfirmedTemplate } from '../../common/email/email.templates'
 import { PrismaService } from '../../prisma/prisma.service'
@@ -65,6 +66,7 @@ const APPOINTMENT_WITH_RELATIONS_INCLUDE = {
 @Injectable()
 export class AppointmentsService {
   constructor(
+    private readonly background: BackgroundTaskService,
     private readonly prisma: PrismaService,
     private readonly doctorRef: DoctorRefService,
     private readonly availabilityService: AvailabilityService,
@@ -334,7 +336,8 @@ export class AppointmentsService {
       userId: params.actorUserId,
     })
 
-    if (params.patient.email) {
+    const patientEmail = params.patient.email
+    if (patientEmail) {
       const doctorName = await this.doctorFullName(params.doctor.id)
       const { subject, html } = appointmentConfirmedTemplate(
         params.patient.firstName,
@@ -342,7 +345,12 @@ export class AppointmentsService {
         params.scheduledAt,
         appointment.appointmentNumber,
       )
-      await this.emailService.send({ to: params.patient.email, subject, html }).catch(() => undefined)
+      // Off the request path (Milestone 19.3). This previously swallowed every
+      // failure with `.catch(() => undefined)` — a confirmation that never
+      // arrived left no trace anywhere. It is now logged and counted.
+      this.background.run('appointments.confirmation_email', () =>
+        this.emailService.send({ to: patientEmail, subject, html }),
+      )
     }
 
     return this.toPlainResponse(appointment)

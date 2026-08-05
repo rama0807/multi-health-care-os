@@ -22,6 +22,7 @@ describe('StaffOnboardingService', () => {
     userRole: Record<string, jest.Mock>
   }
   let emailService: { send: jest.Mock }
+  let background: { run: jest.Mock }
   let configService: { get: jest.Mock }
   let service: StaffOnboardingService
 
@@ -43,7 +44,14 @@ describe('StaffOnboardingService', () => {
     }
     emailService = { send: jest.fn().mockResolvedValue(undefined) }
     configService = { get: jest.fn().mockReturnValue('http://localhost:3000') }
-    service = new StaffOnboardingService(emailService as never, configService as never)
+    // Runs the scheduled work inline so the assertions below still observe the
+    // send; the real service's own spec covers the off-request behaviour.
+    background = { run: jest.fn((_job: string, work: () => Promise<unknown>) => void work()) }
+    service = new StaffOnboardingService(
+      background as never,
+      emailService as never,
+      configService as never,
+    )
   })
 
   afterEach(() => jest.clearAllMocks())
@@ -108,8 +116,8 @@ describe('StaffOnboardingService', () => {
   })
 
   describe('sendOnboardingEmail', () => {
-    it('sends the account-created template when the user was newly created', async () => {
-      await service.sendOnboardingEmail({
+    it('sends the account-created template when the user was newly created', () => {
+      service.sendOnboardingEmail({
         user: buildUser() as never,
         created: true,
         temporaryPassword: 'Temp1234',
@@ -121,8 +129,8 @@ describe('StaffOnboardingService', () => {
       )
     })
 
-    it('sends the role-granted template when linking an existing user', async () => {
-      await service.sendOnboardingEmail({
+    it('sends the role-granted template when linking an existing user', () => {
+      service.sendOnboardingEmail({
         user: buildUser() as never,
         created: false,
         roleName: 'Doctor',

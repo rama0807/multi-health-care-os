@@ -10,6 +10,7 @@ import {
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { Prisma, NotificationTemplate as PrismaNotificationTemplate } from '@prisma/client'
 
+import { CacheService } from '../../common/redis/cache.service'
 import { PrismaService } from '../../prisma/prisma.service'
 
 import { DEFAULT_NOTIFICATION_TEMPLATES, DefaultNotificationTemplate } from './default-templates'
@@ -18,6 +19,17 @@ import { DEFAULT_NOTIFICATION_TEMPLATES, DefaultNotificationTemplate } from './d
 const VARIABLE_PATTERN = /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g
 
 export type TemplateVariables = Record<string, string | number | boolean | null | undefined>
+
+const CACHE_NAMESPACE = 'notification-template'
+
+/**
+ * A ceiling, not the invalidation mechanism (Milestone 19.2) — publishing or
+ * rolling back a version drops the entry immediately. The TTL only bounds how
+ * long a stale entry could survive a Redis write that failed silently, and how
+ * long a second API instance keeps its own copy of a template another instance
+ * just changed.
+ */
+const CACHE_TTL_SECONDS = 300
 
 /**
  * Notification templates (Checkpoint 18.1 / 18.6).
@@ -36,7 +48,15 @@ export type TemplateVariables = Record<string, string | number | boolean | null 
  */
 @Injectable()
 export class NotificationTemplateService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cache: CacheService,
+  ) {}
+
+  /** One entry per (org, key, channel); dropped whenever a version changes. */
+  private overrideCacheKey(organizationId: string, key: string, channel: NotificationChannel): string {
+    return this.cache.key(organizationId, CACHE_NAMESPACE, `${key}:${channel}`)
+  }
 
   /** Bundled default for a type. Always defined — the record is exhaustive. */
   getDefault(key: NotificationType): DefaultNotificationTemplate {
@@ -189,6 +209,10 @@ export class NotificationTemplateService {
       },
     })
 
+    // A new active version must take effect on the next notification, not
+    // whenever a TTL happens to lapse (Milestone 19.2).
+    await this.cache.del(this.overrideCacheKey(organizationId, dto.key, dto.channel))
+
     return this.toResponse(row)
   }
 
@@ -211,18 +235,38 @@ export class NotificationTemplateService {
     }
 
     const row = await this.prisma.notificationTemplate.update({ where: { id }, data: { isActive } })
+
+    await this.cache.del(
+      this.overrideCacheKey(organizationId, existing.key, existing.channel as NotificationChannel),
+    )
+
     return this.toResponse(row)
   }
 
+  /**
+   * Cached (Milestone 19.2). This runs once **per channel per notification** —
+   * a single lab-result alert to a doctor with three channels enabled is three
+   * identical queries — while the answer only changes when an administrator
+   * publishes or rolls back a version, which is exactly when it is dropped.
+   *
+   * Most organizations never override a template at all, so the common result
+   * is `null`; caching that is the point, since a miss is otherwise the most
+   * frequently repeated query in the notification path.
+   */
   private async findActiveOverride(
     organizationId: string,
     key: string,
     channel: NotificationChannel,
   ): Promise<PrismaNotificationTemplate | null> {
-    return this.prisma.notificationTemplate.findFirst({
-      where: { organizationId, key, channel, isActive: true },
-      orderBy: { version: 'desc' },
-    })
+    return this.cache.wrap(
+      this.overrideCacheKey(organizationId, key, channel),
+      CACHE_TTL_SECONDS,
+      () =>
+        this.prisma.notificationTemplate.findFirst({
+          where: { organizationId, key, channel, isActive: true },
+          orderBy: { version: 'desc' },
+        }),
+    )
   }
 
   private toResponse(row: PrismaNotificationTemplate): NotificationTemplate {

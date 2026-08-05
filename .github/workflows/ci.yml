@@ -120,6 +120,9 @@ jobs:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
           COOKIE_SECRET: test-cookie-secret-not-for-production
+          # The production-hardening suite asserts the metrics endpoint is
+          # bearer-authenticated, so it needs a token to authenticate with.
+          METRICS_TOKEN: ci-metrics-token
 
   test-web:
     name: Test Web
@@ -145,7 +148,10 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [lint-and-typecheck]
+    # Gated on the test jobs too (Milestone 19.6). Previously `build` needed
+    # only lint/typecheck, so a green "Build" could — and did — sit next to a
+    # failing test suite and read as a passing pipeline.
+    needs: [lint-and-typecheck, test-api, test-web]
     steps:
       - uses: actions/checkout@v4
 
@@ -178,3 +184,20 @@ jobs:
           name: api-build
           path: apps/api/dist
           retention-days: 7
+
+  # One job to require in branch protection. Without it, adding a job to this
+  # workflow silently leaves it un-required, which is how an unenforced check
+  # ends up merged around.
+  ci:
+    name: CI
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [lint-and-typecheck, test-api, test-web, build]
+    steps:
+      - name: Fail if any job did not succeed
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: |
+          echo "One or more CI jobs did not succeed."
+          exit 1
+      - name: Report success
+        run: echo "lint, typecheck, unit tests, e2e tests and build all passed."

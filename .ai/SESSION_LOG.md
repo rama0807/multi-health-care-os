@@ -6,6 +6,162 @@
 
 ---
 
+## Session — 2026-08-06 — Milestone 19: Production Hardening & Enterprise Readiness (all 7 checkpoints)
+
+### What was completed
+
+Milestone 19 in full, under an explicit instruction to **audit the repository
+first**, treat the code as the source of truth, reuse existing services, not
+rebuild existing functionality, and add **no new HMS features**. AI development
+(Milestone 15.2–15.5) remained paused and untouched.
+
+**The audit is the headline.** Most of what `NEXT.md` listed as Milestone 19
+scope already existed and was correct: Zod validation on every DTO behind a
+global pipe, namespaced own/all-scoped RBAC, a CSRF double-submit cookie applied
+to exactly the cookie-authenticated routes, per-account login lockout, and
+tenant isolation re-verified against the database on every request. On the
+performance side, the two shapes most likely to be N+1s
+(`AvailabilityService.getDashboardStats`, `NotificationsService.resolveRecipients`)
+already batch with `{ in: [...] }`, and the 205 existing indexes cover the hot
+filters. **No schema change was made and no migration was added.**
+
+What was genuinely missing is what got built — plus three real defects found
+while reading:
+
+1. The container `HEALTHCHECK` polled `/api/health`, which **did not exist**
+   (health was mounted at `/api/v1/health` only), so every deployment reported
+   unhealthy.
+2. `docker-compose.prod.yml` declared `depends_on: [postgres, redis]` against
+   services **it never defined** — the production stack could not start.
+3. nginx published 443 and mounted certificates, but **nothing listened on it**.
+
+### Checkpoints
+
+- **19.1 Security** — `@fastify/helmet` (CSP `default-src 'none'`, relaxed for
+  inline script/style *only when Swagger is mounted*, so `SWAGGER_ENABLED=false`
+  tightens rather than hides); `CORS_ORIGINS` list that refuses `*`; **startup
+  environment validation that aborts the boot** on the shipped default cookie
+  secret, a missing RS256 keypair, a wildcard origin or no Redis, and *warns
+  without aborting* on a log-only SMS driver, an `http://` origin,
+  container-local document storage, or AI against a third-party provider
+  (TD-0042); per-endpoint throttling on the seven credential routes;
+  `TRUST_PROXY` off by default; constant-time CSRF comparison.
+- **19.2 Performance** — `CacheService` (tenant-scoped keys, `SCAN` not `KEYS`,
+  Redis-down is a miss not an error) applied to notification template
+  resolution; Prisma slow-query logging above `DB_SLOW_QUERY_MS` carrying the
+  causing request id, parameterised SQL only.
+- **19.3 Background processing** — `BackgroundTaskService`, deliberately not a
+  second queue; six blocking outbound emails moved off the request path.
+- **19.4 Observability** — `AsyncLocalStorage` request context; one request-id
+  derivation rule shared by Fastify/pino/middleware; W3C `traceparent`;
+  credential redaction; liveness + readiness + detailed health at version-neutral
+  *and* `/v1` paths; bearer-authenticated Prometheus `/api/metrics`.
+- **19.5 Deployment** — graceful shutdown (readiness 503 → drain → close);
+  a working `docker-compose.prod.yml`; a hardened nginx with a real HTTPS block;
+  an unprivileged API image.
+- **19.6 CI** — `build` gated on the test jobs; one `CI` job to require in branch
+  protection.
+- **19.7 Docs** — `docs/operations/{deployment,operations,monitoring,disaster-recovery,runbook,production-checklist}.md`
+  plus `production.env.example`.
+
+### Files modified
+
+**New (API):** `src/bootstrap.ts`, `src/config/security.config.ts`,
+`src/config/env.validation.ts` (+spec), `src/common/observability/`
+(`request-context.service.ts`, `request-context.middleware.ts`,
+`trace-context.util.ts` (+spec), `metrics.service.ts`, `metrics.interceptor.ts`,
+`observability.module.ts`), `src/common/background/`
+(`background-task.service.ts` (+spec), `background.module.ts`),
+`src/common/redis/cache.service.ts` (+spec),
+`src/modules/health/health.service.ts` (+spec),
+`src/modules/health/metrics.controller.ts`,
+`test/production-hardening.e2e-spec.ts`.
+
+**Changed (API):** `main.ts` (now thin — adapter/plugins/CORS moved to
+`bootstrap.ts` so they are testable), `app.module.ts`, `prisma/prisma.service.ts`,
+`common/filters/http-exception.filter.ts`, `common/guards/csrf.guard.ts`,
+`common/redis/redis.module.ts`, `common/onboarding/staff-onboarding.service.ts`,
+`modules/health/{health.controller,health.module}.ts`,
+`modules/auth/{auth.controller,auth.service,strategies/jwt.strategy}.ts`,
+`modules/appointments/appointments.service.ts`, `modules/users/users.service.ts`,
+`modules/notifications/{notification-template,notification-scheduler}.service.ts`,
+and five specs updated for new constructor arguments.
+
+**Changed (infra/root):** `docker-compose.prod.yml`, `infra/nginx/nginx.conf`,
+`apps/api/Dockerfile`, `.github/workflows/ci.yml`, `apps/api/package.json`
+(+`@fastify/helmet`, `prom-client`).
+
+**New (docs):** `docs/operations/` — six guides + `production.env.example`.
+
+**Updated (`.ai/`):** all eight files.
+
+### Architectural decisions made
+
+- **ADR-0028** — fail the boot on an unsafe environment; helmet at the
+  application, not only at the proxy; one throttler tier overridden per route
+  (because every configured throttler runs on every route); auth limit of 20/min
+  rather than 5, since the throttler keys on IP and a hospital LAN is NAT'd.
+- **ADR-0029** — `AsyncLocalStorage` over a request-scoped provider; W3C trace
+  propagation *without* an OpenTelemetry SDK; metrics labelled by route pattern
+  only, never by URL or tenant; liveness deliberately checks nothing external.
+- **ADR-0030** — fire-and-forget work is a service, not a bare `void`;
+  `notification_deliveries` stays the only durable queue; caching is
+  read-through, tenant-scoped and confined to configuration data;
+  `JwtStrategy`'s lookup is deliberately *not* cached.
+
+### Known issues / deferred
+
+- **TD-0070 (High) — there is no backup automation.** The DR procedure is fully
+  specified and entirely unimplemented, because backup scheduling belongs to the
+  target infrastructure and the instruction was not to invent deployment
+  infrastructure. **A deployment following the deployment guide exactly has no
+  backups.** This is the most important thing for the next session or the next
+  operator to know.
+- TD-0067 rate limiting is per-process (only matters with replicas);
+  TD-0068 every instance runs the notification worker (wasteful, not incorrect);
+  TD-0069 trace context propagates but no OTel SDK exports spans;
+  TD-0071 a second instance may serve a stale notification template for ≤300s;
+  TD-0072 `pnpm format` has never worked — its Prettier plugins are not
+  installed — which is why `format:check` was **not** added to CI.
+- No browser verification and no screenshots (per instruction; no new UI).
+
+### Verification
+
+Run from the repository root, all clean:
+
+| Gate | Result |
+|---|---|
+| `pnpm lint` | 5 packages, clean |
+| `pnpm typecheck` | 5 packages, clean |
+| `pnpm test` | **785 API unit** (was 727) across 96 suites, + 6 web |
+| `pnpm test:e2e` | **431 across 22 suites** (was 408 / 21) |
+| `pnpm build` | 4 packages, clean |
+
+e2e run with the verified local infra:
+`cd apps/api && DATABASE_URL="postgresql://medicore:medicore@localhost:5432/medicore_test?schema=public" REDIS_PORT=6379 npx jest --config jest-e2e.config.ts --runInBand`.
+`infra/nginx/nginx.conf` was validated with a real `nginx -t`, and
+`docker-compose.prod.yml` with `docker compose config`.
+
+### Recommended next task
+
+**Nothing automatically.** `NEXT.md` has been replaced with *"Paused AI Roadmap
+(Milestone 15.2–15.5)"* per instruction. Do not resume AI work, and do not build
+new HMS modules, without a fresh instruction.
+
+If production deployment is imminent, the highest-value non-AI work is
+**TD-0070** (backup automation) followed by **TD-0067** (Redis-backed throttler
+storage, required before running more than one API instance).
+
+### Estimated completion
+
+- **Overall:** every roadmap milestone except the paused AI checkpoints
+  15.2–15.5 is complete. Milestone 19 closes the roadmap's last non-AI item.
+- **Affected modules:** `health` 100% for 19.4 (was "In Progress / Unaudited");
+  four new cross-cutting components under `common/` at 100% for their
+  checkpoints; every other module unchanged.
+
+---
+
 ## Session — 2026-08-06 — Milestone 18: Communication & Notification Platform (all 7 checkpoints)
 
 ### What was completed

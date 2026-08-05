@@ -78,8 +78,12 @@ describe('AuthService', () => {
     }
     emailService = { send: jest.fn().mockResolvedValue(undefined) }
 
+    // Runs the scheduled work inline, so these tests still observe the send.
+    const background = { run: (_job: string, work: () => Promise<unknown>) => void work() }
+
     authService = new AuthService(
       prisma as never,
+      background as never,
       jwtService as never,
       eventEmitter as never,
       rolesService as never,

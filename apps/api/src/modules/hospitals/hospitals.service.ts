@@ -135,7 +135,7 @@ export class HospitalsService {
     if (result.onboarded && admin) {
       // Outside the transaction on purpose — a rollback must never leave a
       // user holding an email promising access that doesn't exist.
-      await this.onboardingService.sendOnboardingEmail({
+      this.onboardingService.sendOnboardingEmail({
         user: result.onboarded.user,
         created: result.onboarded.created,
         temporaryPassword: result.onboarded.temporaryPassword,

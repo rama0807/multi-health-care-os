@@ -167,7 +167,7 @@ export class DoctorsService {
       return { doctor: created, onboarding: onboardingResult }
     })
 
-    await this.staffOnboardingService.sendOnboardingEmail({
+    this.staffOnboardingService.sendOnboardingEmail({
       user: onboarding.user,
       created: onboarding.created,
       temporaryPassword: onboarding.temporaryPassword,

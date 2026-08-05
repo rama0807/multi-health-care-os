@@ -19,6 +19,18 @@ function makePrisma(override: unknown = null) {
   }
 }
 
+/**
+ * A pass-through cache: `wrap` always calls its loader, so these tests keep
+ * asserting on resolution rather than on caching. `cache.service.spec.ts`
+ * covers the caching behaviour itself.
+ */
+const passthroughCache = () => ({
+  key: (organizationId: string, namespace: string, suffix?: string) =>
+    `${organizationId}:${namespace}:${suffix ?? ''}`,
+  wrap: <T>(_key: string, _ttl: number, loader: () => Promise<T>) => loader(),
+  del: jest.fn().mockResolvedValue(undefined),
+})
+
 describe('renderString', () => {
   it('substitutes supplied variables', () => {
     expect(renderString('Hello {{name}}, you have {{count}} messages', { name: 'Asha', count: 3 })).toBe(
@@ -69,7 +81,7 @@ describe('extractVariables', () => {
 describe('NotificationTemplateService.render', () => {
   it('falls back to the bundled default when the organization has no override', async () => {
     const prisma = makePrisma(null)
-    const service = new NotificationTemplateService(prisma as never)
+    const service = new NotificationTemplateService(prisma as never, passthroughCache() as never)
 
     const rendered = await service.render('org-1', NotificationType.LAB_RESULT_READY, NotificationChannel.IN_APP, {
       testName: 'CBC',
@@ -93,7 +105,7 @@ describe('NotificationTemplateService.render', () => {
       category: 'LABORATORY',
       priority: 'CRITICAL',
     })
-    const service = new NotificationTemplateService(prisma as never)
+    const service = new NotificationTemplateService(prisma as never, passthroughCache() as never)
 
     const rendered = await service.render('org-1', NotificationType.LAB_RESULT_READY, NotificationChannel.IN_APP, {
       testName: 'CBC',
@@ -117,7 +129,7 @@ describe('NotificationTemplateService.render', () => {
       category: 'SYSTEM',
       priority: 'NORMAL',
     })
-    const service = new NotificationTemplateService(prisma as never)
+    const service = new NotificationTemplateService(prisma as never, passthroughCache() as never)
 
     const rendered = await service.render('org-1', NotificationType.CUSTOM, NotificationChannel.IN_APP, {})
 

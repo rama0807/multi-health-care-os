@@ -1329,3 +1329,102 @@ None — this milestone was completed under an explicit "Do NOT use browser
 verification" instruction, so no `docs/screens/` entries were added for the
 reports module. Verification was automated only (lint, typecheck, 663 API
 unit tests, 378 e2e tests across 20 suites, build).
+
+---
+
+## Milestone 19 — Production Hardening & Enterprise Readiness: Complete
+
+Delivered 2026-08-06, all seven checkpoints in one session. See **ADR-0028**
+(security + deployment), **ADR-0029** (observability), **ADR-0030**
+(performance + background processing).
+
+**No HMS feature was added.** The instruction was to audit first and treat the
+code as the source of truth, and the audit is what shaped the work.
+
+### What the audit found already correct — and left alone
+
+Zod validation on every DTO behind a global pipe; namespaced own/all-scoped
+RBAC; a CSRF double-submit cookie applied to exactly the cookie-authenticated
+routes; per-account login lockout; tenant isolation re-verified against the
+database on every request. On the query side,
+`AvailabilityService.getDashboardStats` and
+`NotificationsService.resolveRecipients` already batch with `{ in: [...] }`,
+and the 205 existing indexes cover the hot filters including the notification
+queue's `(status, nextAttemptAt)` claim. **No schema change was made.**
+
+### What was genuinely missing, and is now there
+
+- **Security (19.1):** `@fastify/helmet` with an API-shaped CSP
+  (`default-src 'none'`, relaxed for inline script/style *only* when Swagger is
+  mounted); a comma-separated `CORS_ORIGINS` that refuses `*`; **startup
+  environment validation that aborts the boot** on an unsafe production setting
+  — most importantly the *published* default cookie secret in `app.config.ts` —
+  and warns without aborting on choices that should have been deliberate;
+  per-endpoint throttling on the seven credential routes; `TRUST_PROXY` off by
+  default; constant-time CSRF comparison.
+- **Performance (19.2):** a tenant-scoped read-through `CacheService` with
+  `SCAN`-based invalidation, applied to notification template resolution; Prisma
+  slow-query logging that names the causing request and logs parameterised SQL
+  only, never the bound values.
+- **Background processing (19.3):** `BackgroundTaskService` — *not* a second
+  queue — moved six blocking outbound email sends off the request path.
+  Registration could previously 500 because of a mail provider, for an account
+  that had in fact been created.
+- **Observability (19.4):** an `AsyncLocalStorage` request context; one
+  derivation rule for the request id shared by Fastify, pino and the middleware;
+  W3C `traceparent` propagation; credential redaction in the logs; separate
+  liveness and readiness probes at both version-neutral and `/v1` paths; and a
+  bearer-authenticated Prometheus `/api/metrics`.
+- **Deployment (19.5):** graceful shutdown that flips readiness before it stops
+  serving; a `docker-compose.prod.yml` that can actually start; a nginx config
+  that actually listens on 443; an API image that runs unprivileged.
+- **CI (19.6):** `build` gated on the test jobs, plus one `CI` job to require in
+  branch protection.
+- **Docs (19.7):** `docs/operations/` — Deployment, Operations, Monitoring,
+  Disaster Recovery, Runbook, Production Checklist, `production.env.example`.
+
+### Three real defects fixed along the way
+
+1. The container `HEALTHCHECK` polled `/api/health`, which did not exist —
+   health was mounted at `/api/v1/health` only, so **every deployment reported
+   unhealthy**.
+2. `docker-compose.prod.yml` declared `depends_on: [postgres, redis]` against
+   services it never defined — **the production stack could not start**.
+3. nginx published port 443 and mounted certificates, but **nothing listened on
+   it**; the whole deployment served plain HTTP.
+
+### Operational contract, for anyone extending this
+
+- **Liveness never checks a dependency.** Restarting every API pod during a
+  Postgres blip removes the capacity that would have served traffic the moment
+  the database returned.
+- **No metric carries a patient, user or tenant label**, and routes are labelled
+  by matched pattern, never URL — one time series per patient id would be both a
+  cardinality explosion and a leak of identifiers into monitoring. Per-tenant
+  usage stays in `ApiUsageService`.
+- **`CacheService` keys are structurally tenant-scoped** and only
+  configuration-shaped data is cached, so invalidation is exact.
+- **`notification_deliveries` remains the only durable queue** (ADR-0027).
+  `BackgroundTaskService` is for work that may be lost on a hard kill.
+- **The auth rate limit is 20/minute, not 5**, because a hospital LAN arrives
+  NAT'd behind one address. Per-account lockout is the precise defence.
+
+### Verification
+
+`pnpm lint`, `pnpm typecheck`, `pnpm test` (**785 API unit tests**, 96 suites,
+plus 6 web), `pnpm test:e2e` (**431 tests across 22 suites**) and `pnpm build`
+all clean. `test/production-hardening.e2e-spec.ts` boots through
+`src/bootstrap.ts` — the same functions `main.ts` calls — so its 23 assertions
+are against what actually ships.
+
+No screenshots: this milestone adds no user-facing UI, and browser verification
+was explicitly out of scope.
+
+### The one gap worth repeating
+
+**TD-0070 — there is no backup automation.** `docs/operations/disaster-recovery.md`
+specifies RPO/RTO targets, the `pg_dump` and PITR procedures and a quarterly
+drill; MediCore implements none of it, because backup scheduling belongs to the
+infrastructure the deployment runs on. A deployment following the deployment
+guide exactly has **no backups**. See also TD-0067 (per-process rate limiting),
+TD-0068, TD-0069, TD-0071, TD-0072.

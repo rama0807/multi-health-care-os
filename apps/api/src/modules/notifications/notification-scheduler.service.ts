@@ -3,6 +3,7 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/commo
 import { ConfigService } from '@nestjs/config'
 import { EventEmitter2 } from '@nestjs/event-emitter'
 
+import { MetricsService } from '../../common/observability/metrics.service'
 import { PrismaService } from '../../prisma/prisma.service'
 
 import { NotificationDispatcherService } from './notification-dispatcher.service'
@@ -41,6 +42,7 @@ export class NotificationSchedulerService implements OnModuleInit, OnModuleDestr
     private readonly queue: NotificationQueueService,
     private readonly dispatcher: NotificationDispatcherService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly metrics: MetricsService,
   ) {}
 
   onModuleInit(): void {
@@ -93,9 +95,13 @@ export class NotificationSchedulerService implements OnModuleInit, OnModuleDestr
       if (released > 0 || due.length > 0) {
         this.logger.debug(`Tick released ${released} scheduled and dispatched ${due.length} deliveries`)
       }
+      this.metrics.recordBackgroundRun('notifications.tick', 'success')
       return { released, dispatched: due.length }
     } catch (error) {
       // A tick must never take the process down; the next one retries.
+      // Counted rather than only logged (Milestone 19.4): a worker that fails
+      // every tick still logs quietly, but shows up immediately as a ratio.
+      this.metrics.recordBackgroundRun('notifications.tick', 'failure')
       this.logger.error(`Notification tick failed: ${(error as Error).message}`, (error as Error).stack)
       return { released: 0, dispatched: 0 }
     } finally {

@@ -8,6 +8,9 @@ import { useState } from 'react'
 import { Toaster } from '@/components/ui/toaster'
 import { AuthProvider } from '@/lib/auth/auth-context'
 
+import { BrandingProvider } from './branding-provider'
+import { WorkspaceProvider } from './workspace-provider'
+
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
     () =>
@@ -35,8 +38,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          {children}
-          <Toaster />
+          {/* Inside AuthProvider: branding is per-organization, so it cannot
+              resolve until we know who is signed in. */}
+          <BrandingProvider>
+            <WorkspaceProvider>
+              {children}
+              <Toaster />
+            </WorkspaceProvider>
+          </BrandingProvider>
         </AuthProvider>
         {process.env.NODE_ENV === 'development' && (
           <ReactQueryDevtools initialIsOpen={false} />

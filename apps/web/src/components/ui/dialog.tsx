@@ -21,7 +21,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-overlay bg-overlay/60 backdrop-blur-[1px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className
     )}
     {...props}
@@ -55,7 +55,7 @@ const DialogContent = React.forwardRef<
       <DialogPrimitive.Content
         ref={ref}
         className={cn(
-          "fixed left-[50%] top-[50%] z-50 flex max-h-[calc(100dvh-2rem)] w-full max-w-lg translate-x-[-50%] translate-y-[-50%] flex-col overflow-hidden border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
+          "fixed left-[50%] top-[50%] z-modal flex max-h-[calc(100dvh-2rem)] w-full max-w-lg translate-x-[-50%] translate-y-[-50%] flex-col overflow-hidden border bg-surface shadow-xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
           className
         )}
         {...props}
@@ -63,9 +63,9 @@ const DialogContent = React.forwardRef<
         {header}
         <div
           className={cn(
-            "flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6",
-            header.length === 0 && "pt-6",
-            footer.length === 0 && "pb-6",
+            "flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-5",
+            header.length > 0 && "pt-4",
+            footer.length > 0 && "pb-4",
             bodyClassName
           )}
         >
@@ -88,7 +88,7 @@ const DialogBody = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6",
+      "flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-5",
       className
     )}
     {...props}
@@ -103,7 +103,7 @@ const DialogHeader = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex shrink-0 flex-col space-y-1.5 px-6 pb-4 pr-10 pt-6 text-center sm:text-left",
+      "flex shrink-0 flex-col space-y-1 border-b px-5 pb-3 pr-10 pt-4 text-center sm:text-left",
       className
     )}
     {...props}
@@ -118,7 +118,7 @@ const DialogFooter = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex shrink-0 flex-col-reverse px-6 pb-6 pt-4 sm:flex-row sm:justify-end sm:space-x-2",
+      "flex shrink-0 flex-col-reverse gap-2 border-t bg-surface-secondary/50 px-5 py-3 sm:flex-row sm:justify-end",
       className
     )}
     {...props}
@@ -133,7 +133,7 @@ const DialogTitle = React.forwardRef<
   <DialogPrimitive.Title
     ref={ref}
     className={cn(
-      "text-lg font-semibold leading-none tracking-tight",
+      "text-base font-semibold leading-tight tracking-tight",
       className
     )}
     {...props}

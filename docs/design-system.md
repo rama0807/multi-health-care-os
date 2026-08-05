@@ -1,290 +1,252 @@
-# MediCore Design System
+# MediCore Design System V2
 
-> The design language of MediCore is **clinical clarity** — information-dense, functional, and trustworthy. Inspired by Linear and Stripe Dashboard: no decorative flourishes, no gradients, no shadows for their own sake. Every pixel serves a purpose.
+> The design language every screen inherits from. Decision record: **ADR-0031**.
+> Phase 1 (this foundation) is complete; Phase 2 is migrating feature pages onto
+> it (TD-0077).
 
----
-
-## Design Principles
-
-1. **Density over emptiness** — Healthcare professionals need information, not whitespace. Tables show 20 rows by default.
-2. **Predictability** — Identical interactions produce identical results. No surprises.
-3. **Status at a glance** — Color carries semantic meaning. Red means urgent, green means complete.
-4. **Keyboard-first** — Every action reachable without a mouse for power users.
-5. **Accessible** — WCAG 2.1 AA minimum. Color is never the only indicator.
-
----
-
-## Typography
-
-**Font Stack:**
-```css
---font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
---font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
-```
-
-| Token | Size | Weight | Line Height | Usage |
-|-------|------|--------|-------------|-------|
-| `text-xs` | 11px | 400 | 1.5 | Table metadata, timestamps |
-| `text-sm` | 13px | 400 | 1.5 | Body text, form labels, table cells |
-| `text-base` | 14px | 400 | 1.5 | Default body |
-| `text-md` | 15px | 500 | 1.4 | Subheadings, card titles |
-| `text-lg` | 18px | 600 | 1.3 | Section headings |
-| `text-xl` | 22px | 700 | 1.2 | Page headings |
-| `text-2xl` | 28px | 700 | 1.1 | Dashboard metric numbers |
-
-**Numeric display:** Always use tabular figures (`font-variant-numeric: tabular-nums`) in tables, metrics, and anywhere numbers need to align.
+The product should read as **enterprise, calm, premium, trustworthy, fast,
+medical, dense and relentlessly consistent** — Linear and Stripe Dashboard, not
+a gradient-heavy AI dashboard. In practice that means: depth comes from borders
+rather than shadows, colour belongs to *data* rather than chrome, motion is a
+hint rather than a performance, and no screen invents a pattern another screen
+already has.
 
 ---
 
-## Color System
+## 1. Where things live
 
-All colors defined as CSS custom properties. Dark mode inverts surface and text, keeps semantic colors.
-
-### Neutral Palette (Zinc-based)
-
-```css
---color-bg:           #FAFAFA;  /* Page background */
---color-surface:      #FFFFFF;  /* Cards, panels */
---color-surface-2:    #F4F4F5;  /* Striped rows, hover states */
---color-border:       #E4E4E7;  /* Borders */
---color-border-2:     #D4D4D8;  /* Active borders */
---color-text:         #18181B;  /* Primary text */
---color-text-muted:   #71717A;  /* Secondary text, placeholders */
---color-text-subtle:  #A1A1AA;  /* Tertiary, disabled */
-
-/* Dark mode */
---color-bg:           #09090B;
---color-surface:      #18181B;
---color-surface-2:    #27272A;
---color-border:       #27272A;
---color-text:         #FAFAFA;
---color-text-muted:   #A1A1AA;
+```
+apps/web/src/
+  app/globals.css              THE token layer — the only place a colour is defined
+  components/ui/               Primitives (button, table, badge, page-header, …)
+  components/layout/           App shell (sidebar, header, command palette, page layout)
+  lib/branding/color.ts        Colour maths + WCAG derivation (43 unit tests)
+  lib/branding/theme.ts        Branding → CSS custom properties
+  lib/charts/palette.ts        Chart colours resolved from the tokens
+  providers/branding-provider  Applies a tenant's branding at runtime
+  providers/workspace-provider Active hospital selection
+tailwind.config.ts             Token *references* only — contains no colour values
 ```
 
-### Brand Palette
-
-```css
---color-primary:      #2563EB;  /* Blue-600: CTAs, links, active states */
---color-primary-hover: #1D4ED8; /* Blue-700 */
---color-primary-subtle: #EFF6FF; /* Blue-50: backgrounds, badges */
-```
-
-### Semantic Colors
-
-| Token | Light | Dark | Usage |
-|-------|-------|------|-------|
-| `--color-success` | #16A34A | #22C55E | Completed, discharged, paid |
-| `--color-warning` | #D97706 | #F59E0B | Pending, awaiting, review |
-| `--color-danger` | #DC2626 | #EF4444 | Critical, overdue, error |
-| `--color-info` | #0891B2 | #22D3EE | Info badges, scheduled |
-
-### Clinical Status Colors
-
-| Status | Color | Usage |
-|--------|-------|-------|
-| Confirmed | `#16A34A` (green) | Appointment confirmed, payment received |
-| Pending | `#D97706` (amber) | Awaiting action |
-| Critical | `#DC2626` (red) | Lab abnormal, urgent, overdue |
-| Cancelled | `#71717A` (gray) | Cancelled appointments, void invoices |
-| In Progress | `#2563EB` (blue) | Active consultations, in-lab |
-| Scheduled | `#0891B2` (cyan) | Future appointments |
+There is no `packages/ui`. Earlier `.ai/` documents claimed one; it has never
+existed.
 
 ---
 
-## Spacing
+## 2. The one rule
 
-4px base unit. All spacing is multiples of 4.
+**Never write a colour value in a component.** Not a hex, not an `rgb()`, not a
+Tailwind palette class like `bg-blue-600` or `text-red-500`.
 
-```css
---space-1:  4px
---space-2:  8px
---space-3:  12px
---space-4:  16px
---space-5:  20px
---space-6:  24px
---space-8:  32px
---space-10: 40px
---space-12: 48px
---space-16: 64px
-```
+Every colour resolves through a semantic token, because an organization's
+branding rewrites that layer at runtime. A hardcoded colour is a colour that
+silently ignores the tenant's brand — and, in the status case, a colour that
+ignores a clinical convention.
 
----
+If the colour you need does not exist, **add a token** to `globals.css` (light
+*and* dark) and reference it from `tailwind.config.ts`.
 
-## Components
+### Token families
 
-### Tables
+| Family | Tokens | Use for |
+|---|---|---|
+| Surface | `background`, `surface`, `surface-secondary`, `surface-hover`, `card`, `popover`, `overlay` | Page → panel → recessed → transient |
+| Text | `foreground`, `muted-foreground`, `subtle-foreground` | Body → metadata → decoration only |
+| Line | `border`, `border-strong`, `input`, `ring` | |
+| Brand | `primary`, `-hover`, `-active`, `-foreground`, `-subtle`, `-subtle-foreground`, `-border` | Branded. Actions, links, selection, focus |
+| Brand accent / secondary | `brand-accent-*`, `brand-secondary-*` | Branded. Chart series 2–3, accent badges |
+| Neutral interaction | `secondary`, `accent`, `muted` | **Not** branded — hover surfaces, muted buttons |
+| Sidebar | `sidebar`, `-foreground`, `-muted`, `-border`, `-item-hover`, `-item-active`, `-item-active-foreground` | The rail's own surface |
+| Status | `success`, `warning`, `danger`, `info`, `neutral` × `DEFAULT / foreground / subtle / subtle-foreground / border` | **Never** branded |
+| Chart | `chart-1` … `chart-8` | 1–3 follow branding; 4–8 fixed |
 
-The most important component. Used everywhere.
+`subtle-foreground` is the text colour that sits **on** the matching `subtle`
+tint — a different contrast requirement from clearing AA against the page. Use
+`bg-danger-subtle text-danger-subtle-foreground`, never
+`bg-danger-subtle text-danger`.
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│  Patients                                        [+ Add Patient]    │
-│  ─────────────────────────────────────────────────────────────────  │
-│  [Search patients...]  [Filter ▾]  [Status: All ▾]  [Export]       │
-│  ─────────────────────────────────────────────────────────────────  │
-│  □  UHID          Name               Age  Status      Last Visit    │
-│  ─────────────────────────────────────────────────────────────────  │
-│  □  MED-2024-0001  Rahul Sharma       34   ● Active    Jan 14, 2024  │
-│  □  MED-2024-0002  Priya Patel        28   ● Active    Jan 13, 2024  │
-│  □  MED-2024-0003  Arjun Nair         52   ○ Inactive  Dec 20, 2023  │
-│  ─────────────────────────────────────────────────────────────────  │
-│  Showing 1–20 of 1,247                    [‹ Prev]  [1] 2 3  [Next ›]│
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-Table rules:
-- Default 20 rows per page
-- Sticky header on scroll
-- Checkbox column for bulk actions
-- Clicking a row navigates to detail view
-- Status indicators use colored dots, not full badges (saves space)
-- Date columns always show human-readable format with relative time on hover
-
-### Forms
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│  Register New Patient                                               │
-│  ─────────────────────────────────────────────────────────────────  │
-│  Personal Information                                               │
-│                                                                     │
-│  First Name *              Last Name *                              │
-│  ┌────────────────────┐   ┌────────────────────┐                   │
-│  │ Rahul              │   │ Sharma             │                   │
-│  └────────────────────┘   └────────────────────┘                   │
-│                                                                     │
-│  Date of Birth *           Gender *                                 │
-│  ┌────────────────────┐   ┌────────────────────┐                   │
-│  │ 15 Mar 1990        │   │ Male           ▾  │                   │
-│  └────────────────────┘   └────────────────────┘                   │
-│                                                                     │
-│  Mobile Number *                                                    │
-│  ┌─────────────────────────────────────────────┐                   │
-│  │ +91  9876543210                             │                   │
-│  └─────────────────────────────────────────────┘                   │
-│  ─────────────────────────────────────────────────────────────────  │
-│                                    [Cancel]  [Register Patient]     │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-Form rules:
-- Labels always above inputs (not inline — accessibility)
-- Required fields marked with `*` and explained at top
-- Inline validation on blur, not on keystroke
-- Error messages below the field in red, never as toast
-- Keyboard-navigable (Tab order follows visual order)
-- Submit button always at bottom-right
-
-### Cards / Stat Cards
-
-```
-┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
-│  Today's OPD     │  │  Admitted        │  │  Pending Bills   │
-│                  │  │                  │  │                  │
-│  247             │  │  32 patients     │  │  ₹ 1,24,500      │
-│                  │  │                  │  │                  │
-│  ↑ 12% vs yest.  │  │  ──── beds       │  │  18 invoices     │
-└──────────────────┘  └──────────────────┘  └──────────────────┘
-```
-
-### Navigation
-
-Left sidebar navigation (fixed, 240px):
-
-```
-┌──────────────────────────┐
-│  🏥 MediCore             │
-│  Apollo Hospital         │
-│  ─────────────────────   │
-│  ○ Dashboard             │
-│  ● Patients              │  ← Active state: filled dot + bold
-│  ○ Appointments          │
-│  ─────────────────────   │
-│  Clinical                │  ← Section header (uppercase, muted)
-│  ○ Medical Records       │
-│  ○ Prescriptions         │
-│  ○ Laboratory            │
-│  ○ Radiology             │
-│  ─────────────────────   │
-│  Operations              │
-│  ○ Billing               │
-│  ○ Insurance             │
-│  ○ Pharmacy              │
-│  ○ Inventory             │
-│  ─────────────────────   │
-│  Admin                   │
-│  ○ Staff                 │
-│  ○ Reports               │
-│  ○ Settings              │
-│  ─────────────────────   │
-│  Dr. Ankit Sharma        │  ← User footer
-│  [logout icon]           │
-└──────────────────────────┘
-```
-
-### Badges / Status Pills
-
-Small, inline indicators. Used in tables and detail views.
-
-```
-Active        → green background, green text
-Inactive      → gray background, gray text
-Scheduled     → blue background, blue text
-In Progress   → amber background, amber text
-Completed     → green background, green text
-Cancelled     → red background, red text
-Critical      → red background, white text, bold
-```
+Elevation is `shadow-xs|sm|md|lg|xl`; radius is `rounded-xs|sm|md|lg|xl`;
+layering is a named scale (`z-sticky`, `z-dropdown`, `z-overlay`, `z-modal`,
+`z-toast`, `z-tooltip`) — never an ad-hoc `z-50`.
 
 ---
 
-## Dashboard Layout
+## 3. White-label branding
 
+An organization configures `primaryColor`, `accentColor`, `secondaryColor`,
+`displayName`, `loginTagline`, a logo and an email footer
+(`/dashboard/organization` → Branding).
+
+`BrandingProvider` turns those into a stylesheet injected into `<head>`, emitting
+both a `:root` block and a `.dark` block — dark mode needs a *different*
+derivation of the same colour, which inline styles cannot express. From there,
+branding flows automatically to buttons, links, focus rings, the sidebar's active
+item, badges, progress fills and chart series.
+
+### A configured colour is never trusted
+
+`lib/branding/color.ts` derives seven roles per theme and **moves each one until
+it clears WCAG**:
+
+- button text → **4.5:1** against its fill
+- pill text → **4.5:1** against its own tint
+- dark-mode fill → **3:1** against the dark surface, so it does not vanish
+- near-white / near-black / desaturated colours → nudged into a usable band
+- a mid-grey fill (where *neither* white nor black text clears 4.5:1) → pushed
+  off the lightness midpoint
+
+43 unit tests assert these across seven adversarial colours in both themes.
+A tenant cannot make the application unreadable by picking a bad colour.
+
+### Two things branding deliberately does **not** touch
+
+1. **`--accent` / `--secondary`.** They are neutral interaction surfaces used on
+   nearly every screen; branding them turns every dropdown hover into a
+   saturated block with unreadable text. `accentColor`/`secondaryColor` write
+   `--brand-accent-*` / `--brand-secondary-*` instead.
+2. **Status colours.** Green-means-normal and red-means-critical are clinical
+   conventions. Letting a tenant brand "danger" to their corporate teal would be
+   a patient-safety defect, not a customisation.
+
+### In components
+
+```tsx
+// Colours: use tokens. Never read a colour from the hook.
+<Button>Save</Button>                        // already brand-coloured
+
+// Name and logo only:
+const { displayName, logo } = useBranding()
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│ [≡] MediCore    Search...                    [🔔] [Dr. Sharma ▾]   │
-├──────────────┬──────────────────────────────────────────────────────┤
-│              │  Dashboard                         Jan 15, 2024      │
-│  ○ Dashboard │  ────────────────────────────────────────────────── │
-│  ● Patients  │                                                      │
-│  ○ Appts     │  ┌──────────┐  ┌──────────┐  ┌──────────┐          │
-│  ─────────── │  │ Today's  │  │ Admitted │  │ Pending  │          │
-│  Clinical    │  │ OPD: 247 │  │  32      │  │ Bills    │          │
-│  ○ Records   │  └──────────┘  └──────────┘  └──────────┘          │
-│  ○ Lab       │                                                      │
-│  ○ Radiology │  Today's Appointments                               │
-│  ─────────── │  ─────────────────────────────────────────────────  │
-│  Operations  │  10:00  Rahul Sharma  Dr. Verma   OPD  ● Waiting   │
-│  ○ Billing   │  10:15  Priya Patel   Dr. Verma   OPD  ● In Room   │
-│  ○ Pharmacy  │  10:30  Arjun Nair    Dr. Kumar   Card ● Scheduled │
-│  ─────────── │                                                      │
-│  Admin       │  Recent Registrations                               │
-│  ○ Staff     │  ─────────────────────────────────────────────────  │
-│  ○ Settings  │  ...                                                 │
-│              │                                                      │
-└──────────────┴──────────────────────────────────────────────────────┘
-```
+
+**Known gap (TD-0074):** `GET /organizations/me/branding` is gated behind
+`organizations.read`, which only Hospital Admin holds — so most clinical users
+currently see the default palette. The last successful payload is cached in
+`localStorage` per organization, which helps on a returning device but does not
+close the gap. The fix is backend-side and was out of scope for Phase 1.
 
 ---
 
-## Dark Mode
+## 4. Page anatomy
 
-Dark mode is a first-class concern, toggled via `class="dark"` on `<html>`.
+Every page uses the same skeleton, so moving between Billing, Radiology and IPD
+feels like one product:
 
-All color tokens have dark equivalents. The dark palette uses zinc-900 as base background, zinc-800 for surfaces. No blue-black — zinc keeps it warm and readable.
+```tsx
+<PageLayout
+  breadcrumbs={[{ label: 'Patients', href: '/dashboard/patients' }, { label: patient.fullName }]}
+  title={patient.fullName}
+  badge={<StatusBadge status={patient.status} />}
+  meta={<>
+    <PageHeaderMeta label="UHID">{patient.uhid}</PageHeaderMeta>
+    <PageHeaderMeta label="Age">{patient.age}</PageHeaderMeta>
+  </>}
+  actions={<>
+    <Button variant="outline" size="sm">Export</Button>
+    <Button size="sm">New encounter</Button>
+  </>}
+  toolbar={<Tabs …/>}
+  aside={<Card>…</Card>}   // optional right-hand utility column
+>
+  …content…
+</PageLayout>
+```
 
-Dark mode preference is stored in `localStorage` and synced to the server profile.
+One `<h1>` per page (`PageHeader`); everything below is `SectionHeader`.
+Primary action last in the `actions` row, the way a dialog reads.
 
 ---
 
-## Accessibility
+## 5. Tables
 
-- All interactive elements have visible focus rings
-- Focus ring uses `outline: 2px solid var(--color-primary)` with 2px offset
-- Color contrast minimum 4.5:1 for normal text, 3:1 for large text
-- All form inputs have associated `<label>` elements
-- Tables use `<th scope="col">` for headers
-- Status indicators include text alongside color
-- Keyboard navigation: Tab, Shift+Tab, Arrow keys in dropdowns/menus
-- ARIA live regions for toast notifications and dynamic content updates
-- Screen reader testing with NVDA (Windows) and VoiceOver (Mac)
+```tsx
+<TableContainer className="max-h-[70vh]">
+  <Table density="compact" container={false}>
+    <TableHeader>{/* sticky by default */}
+      <TableRow>
+        <TableHead><Checkbox …/></TableHead>
+        <TableHead>Patient</TableHead>
+        <TableHead align="right">Balance</TableHead>
+        <TableHead className="w-24" />
+      </TableRow>
+    </TableHeader>
+    <TableBody>
+      <TableRow selected={isSelected} interactive onClick={open}>
+        <TableCell><Checkbox …/></TableCell>
+        <TableCell><EntityCell name={p.fullName} secondary={p.uhid} mono /></TableCell>
+        <TableCell align="right">{fmt(p.balance)}</TableCell>
+        <TableCell><TableRowActions>…</TableRowActions></TableCell>
+      </TableRow>
+    </TableBody>
+  </Table>
+</TableContainer>
+
+<BulkActionBar count={selected.length} onClear={clear} noun="patient">…</BulkActionBar>
+```
+
+- Sticky headers need a **height-bounded** container; scrolling is the
+  container's job, never the page's.
+- `align="right"` on numeric columns — combined with global tabular numerals,
+  that is what makes a currency column comparable at a glance.
+- `TableRowActions` fades in on hover but stays keyboard-reachable and is always
+  visible on touch.
+- `BulkActionBar` is docked, so ticking a checkbox never shifts the rows under
+  the pointer.
+
+---
+
+## 6. Status, empty, loading
+
+```tsx
+<StatusBadge status="SAMPLE_COLLECTED" />   // → "Sample collected", info tone
+```
+
+Tone is decided once, centrally, by *meaning* — terminal-good, in-flight,
+waiting-on-a-human, failed/urgent, inert. If a status maps wrongly, **fix the
+map**, do not override `tone` at the call site.
+
+```tsx
+{isLoading ? <TableSkeleton rows={8} columns={5} />
+ : rows.length === 0 && hasFilters
+   ? <EmptyState variant="search" title="No patients match these filters"
+       secondaryAction={{ label: 'Clear filters', onClick: clear }} />
+ : rows.length === 0
+   ? <EmptyState title="No patients yet" description="Register the first one."
+       action={{ label: 'Register patient', href: '/dashboard/patients/new' }} />
+ : <Table …/>}
+```
+
+Empty and *filtered*-empty are different states with different fixes; collapsing
+them into one grey "No data" is the most common way a dashboard wastes a user's
+time.
+
+A missing measurement is `<EmptyValue />` (an em dash) — **never `0`**. "Not
+recorded" and "zero" are different clinical and financial facts. `StatCard`
+enforces this for you.
+
+Skeletons must match the geometry of what they replace; a centred spinner that
+becomes a dense table shifts every row exactly when the user starts reading.
+
+---
+
+## 7. Motion and accessibility
+
+- Durations: `duration-fast` (120ms) for hover/colour, default 160ms, `slow`
+  (240ms) for layout. Decelerating ease — never a bounce.
+- `prefers-reduced-motion` is honoured globally, including Radix keyframe
+  animations.
+- One focus treatment for the whole app: a 2px brand ring with an offset, on
+  `:focus-visible` only.
+- Colour is never the only signal — the sidebar's active item has a marker as
+  well as a tint, and `Badge dot` pairs a dot with the label.
+- Interactive rows are real controls: focusable, Enter-activatable.
+- `subtle-foreground` does not pass AA — decoration only, never information.
+
+---
+
+## 8. Adding to the system
+
+1. Does a primitive already do it? Extend it rather than adding a sibling.
+2. Needs a colour? Add a **token** (light *and* dark), then reference it.
+3. Never remove a pre-V2 export, variant or prop — ~90 pages still depend on
+   them (TD-0077).
+4. Verify with `pnpm lint && pnpm typecheck && pnpm test && pnpm build`.

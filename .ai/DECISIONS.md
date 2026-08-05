@@ -2459,3 +2459,110 @@ bargain.
   has a resend path.
 - Template changes are visible immediately on the instance that made them; a
   second instance may serve a stale template for up to 300 seconds (TD-0071).
+
+---
+
+## ADR-0031: Design System V2 — semantic tokens as the only colour surface, runtime branding derived for accessibility, and status colour owned centrally rather than per module
+
+Date: 2026-08-06
+Status: Accepted
+
+**Context:** An explicit instruction opened a **Phase 1** whose scope was the
+design language itself — "redesign MediCore into a premium enterprise Hospital
+Operating System" — with feature pages, dashboards and APIs all explicitly out
+of bounds. The brief named the references (Linear, Stripe, Notion, Vercel) and
+the anti-references (generic AI dashboard, Dribbble gradients, animation
+everywhere), and required that white-label branding *actually* reach the UI,
+with accessibility preserved even when a tenant picks a poor colour.
+
+The audit that opened the session found the frontend on stock shadcn/ui with
+minor local edits: a partial token set on `:root`, four **hardcoded hex**
+clinical status colours in `tailwind.config.ts`, `Organization.branding` written
+and read by an admin form (Milestone 16) but **never applied to a single pixel
+of the running UI**, and no shared page/table/empty/loading vocabulary — so
+roughly ninety pages each made their own decisions. It also found that
+`packages/ui`, which `PROJECT_CONTEXT.md` and `MODULE_STATUS.md` both list as a
+shared component library, **does not exist**; the real component surface is
+`apps/web/src/components/ui/`. Per `CLAUDE.md`, code is ground truth — the docs
+were corrected, not the code.
+
+**Decision:**
+
+1. **Every colour resolves through a semantic token, declared once in
+   `globals.css` as bare HSL channels.** `tailwind.config.ts` now contains no
+   colour values at all — only references — so `bg-primary/10` and
+   `ring-ring/40` compose alpha correctly and nothing can be branded in one
+   place and hardcoded in another. Tokens cover surfaces (four elevation steps),
+   three text emphasis levels, borders, the brand family
+   (`primary`/`hover`/`active`/`foreground`/`subtle`/`subtle-foreground`/`border`),
+   the sidebar's own surface family, status, an eight-colour chart ramp,
+   elevation, radius, and the shell's geometry.
+
+2. **Dark mode is re-derived, not inverted.** Surfaces climb toward light as
+   they rise, and every status tint is re-tuned — a 95%-lightness tint that
+   works on white is a glare panel on near-black.
+
+3. **A tenant's branding is applied as an injected stylesheet, not inline
+   styles**, precisely because dark mode needs a *different* derivation of the
+   same configured colour. Inline styles on `<html>` can express one set of
+   values; a stylesheet emits `:root{…}` and `.dark{…}` and lets the cascade
+   choose.
+
+4. **A configured colour is never trusted directly.** `lib/branding/color.ts`
+   derives seven roles per mode and *moves* each one until it clears WCAG:
+   button text is forced to 4.5:1 against the fill, pill text to 4.5:1 against
+   its own tint (a different requirement from clearing it against the page), and
+   in dark mode the fill itself to 3:1 against the surface so it does not
+   disappear. A near-white, near-black or fully desaturated brand colour is
+   nudged into a usable band rather than rendered as an invisible button. One
+   real defect was found and fixed by the tests written for this: a mid-grey
+   (`#808080`) fill admits **no** readable foreground — neither white nor black
+   clears 4.5:1 — so the derivation now pushes the fill off the midpoint. 43
+   unit tests assert the guarantees across seven adversarial colours in both
+   modes.
+
+5. **`accentColor` and `secondaryColor` do not write `--accent`/`--secondary`.**
+   Those two are neutral *interaction* surfaces (dropdown hover, muted buttons)
+   used on nearly every screen; branding them turns every hover into a saturated
+   block with unreadable text. They write a dedicated `--brand-accent-*` /
+   `--brand-secondary-*` family plus chart series 2 and 3 — the places a
+   secondary brand colour genuinely belongs.
+
+6. **Status colour is fixed and is not brandable.** Green-means-normal and
+   red-means-critical are clinical conventions; letting a tenant brand "danger"
+   to their corporate teal would be a patient-safety defect, not a
+   customisation. `<StatusBadge>` maps ~120 status strings from twenty domain
+   vocabularies to five *meanings* in one place, so "Cancelled" can no longer be
+   grey in Pharmacy and red in Billing. Cancelled is deliberately neutral, not
+   red: reserving red for genuine failure is what keeps red meaningful.
+
+7. **Existing exports, variants and prop names were preserved.** `Badge
+   variant="destructive"`, `Button size="default"`, the `Table*` family and the
+   `success`/`warning` colour keys all still work, because ~90 pages depend on
+   them and Phase 1 was forbidden from touching pages. New capability was added
+   alongside (`soft`/`danger`/`success` buttons, `neutral`/`info`/`accent`
+   badges, density on tables, `loading` on buttons), and pre-V2 names are
+   documented as aliases rather than removed.
+
+8. **Scrolling belongs to the shell's `<main>`.** The old `<Table>` wrapped
+   itself in `overflow-auto` with no height, so it could never scroll and sticky
+   headers were impossible. Scroll is now the container's job and
+   `<TableHeader sticky>` is the default.
+
+9. **One hospital selector, in the top bar.** The sidebar shows the resulting
+   context but offers no second control, so the two can never disagree.
+   `WorkspaceProvider` owns the selection; it is a remembered preference and
+   **not yet a data filter**, which the control says on screen rather than
+   implying (TD-0075).
+
+**Consequences:** Every page inherits the new palette, density, typography,
+focus treatment and tenant branding without being edited — verified by lint,
+typecheck, build, 785 API unit tests, 49 web unit tests (up from 6) and 431 e2e
+tests all passing unchanged. Pages do **not** yet use the new page/table/empty
+primitives; that is Phase 2 and is recorded as TD-0077 so the state is not
+mistaken for an oversight. Branding reaches only users holding
+`organizations.read` because the endpoint is gated that way and Phase 1 could
+not change APIs — the single most significant open gap, recorded as TD-0074 with
+the two candidate fixes. A pre-existing dead link (`/dashboard/settings`, 404)
+was found and left behaving exactly as before rather than silently re-pointed
+mid-redesign; it is TD-0076.

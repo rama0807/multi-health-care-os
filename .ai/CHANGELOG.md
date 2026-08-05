@@ -5,6 +5,77 @@
 
 ## [Unreleased]
 
+### Design System V2 — Phase 1: the reusable UI foundation (2026-08-06)
+
+**Design language only. No feature page, dashboard, API, business rule or test
+was changed** — by instruction. See **ADR-0031**.
+
+- **Token layer rewritten** (`apps/web/src/app/globals.css`). Every colour in
+  the application now resolves through a semantic token: four surface elevation
+  steps, three text emphasis levels, borders, a seven-role brand family, the
+  sidebar's own surface family, five status families, an eight-colour chart
+  ramp, elevation, radius and shell geometry — in a light and a fully
+  re-derived dark theme. `tailwind.config.ts` contains **no colour values at
+  all**, only token references.
+- **White-label branding now actually reaches the UI.** `Organization.branding`
+  has been editable since Milestone 16 but had never affected a pixel. A new
+  `BrandingProvider` injects a tenant stylesheet, so a configured colour flows
+  to buttons, links, focus rings, the sidebar's active item, badges, progress
+  fills and chart series — in both themes.
+- **Accessibility is derived, not assumed.** `lib/branding/color.ts` moves every
+  derived role until it clears WCAG AA: button text 4.5:1 on its fill, pill text
+  4.5:1 on its own tint, and in dark mode the fill itself 3:1 against the
+  surface. A near-white, near-black or desaturated brand colour is nudged into a
+  usable band instead of rendering an invisible button. **43 new unit tests**
+  assert this across seven adversarial colours in both modes — one of which
+  caught a real defect: a mid-grey fill admits no readable foreground at all.
+- **`accentColor`/`secondaryColor` write their own token family**, not
+  `--accent`/`--secondary`, which are neutral hover surfaces — branding those
+  turns every dropdown hover into an unreadable saturated block.
+- **Status colour is centralised and deliberately not brandable.**
+  `<StatusBadge>` maps ~120 status strings across twenty domain vocabularies to
+  five meanings, ending the era of "Cancelled" being grey in Pharmacy and red in
+  Billing.
+- **Tables rebuilt**: sticky headers that actually work (scroll now belongs to
+  the shell's `<main>`; the old wrapper could never scroll), two densities,
+  selection as a first-class row state, keyboard-reachable hover actions,
+  pinned columns, and a docked bulk-action bar that does not shift rows when it
+  appears.
+- **New primitives**: `PageLayout`, `PageHeader`, `Breadcrumb`, `SectionHeader`,
+  `StatCard`, `EmptyState` (empty vs. filtered-empty vs. error, plus `EmptyValue`
+  — a missing measurement renders as an em dash, never `0`), `Skeleton`/
+  `TableSkeleton`/`StatCardSkeleton`, `FilterBar`, `SearchInput`,
+  `BulkActionBar`, `Timeline`, `ActivityFeed`, `EntityCell`, `StackedCell`,
+  `Sheet` (drawer), `Progress`, `Kbd`, and `useChartTheme`.
+- **Sidebar rebuilt**: collapsible with a persisted preference and tooltips when
+  collapsed, nested disclosure groups that auto-open on the route they own,
+  tenant logo and display name, permission-filtered quick-create, and an active
+  indicator that does not rely on colour alone.
+- **Top bar rebuilt**: hospital selector, global ⌘K palette (now searching
+  patients, pages **and** create actions from one shared nav config), tasks, AI,
+  notifications, a light/dark toggle, and the account menu.
+- **Primitives refined onto the tokens**: button (new `soft`/`danger`/`success`
+  variants, `loading` state, denser sizes), badge (tinted rather than solid, with
+  a non-colour dot), card (16px padding, `text-base` titles, `CardToolbar`),
+  input/select (36px, surface-backed), tabs (an underline rail rather than a
+  pill tray), dialog/dropdown/tooltip/toast onto a named z-index scale.
+- Global focus treatment, `prefers-reduced-motion` handling that also stops
+  Radix keyframe animations, and tabular numerals everywhere numbers are
+  compared.
+
+**Every pre-V2 export, variant and prop name was preserved**, which is why all
+existing pages still build and pass: lint, typecheck, build, **785 API unit
+tests, 49 web unit tests (up from 6) and 431 e2e tests across 22 suites** all
+green.
+
+**Disclosed gaps, not hidden:** branding reaches only users holding
+`organizations.read` (TD-0074 — the endpoint is gated that way and Phase 1 could
+not change APIs); the hospital selector remembers a choice but does not yet
+filter data, and says so on screen (TD-0075); `/dashboard/settings` is a
+pre-existing 404 in the navigation, left behaving exactly as before rather than
+silently re-pointed (TD-0076); feature pages have not been migrated to the new
+primitives, which is Phase 2 (TD-0077).
+
 ### Added
 - **Milestone 19 — Production Hardening & Enterprise Readiness (complete):**
   see ADR-0028, ADR-0029, ADR-0030. Stability, security, observability and

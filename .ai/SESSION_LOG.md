@@ -6,6 +6,135 @@
 
 ---
 
+## Session — 2026-08-06 — Design System V2, Phase 1: the reusable UI foundation
+
+### What was completed
+
+A complete design system for the web app, under an explicit instruction that
+this is **Phase 1 — the design language only**: no page redesign, no dashboard
+redesign, no API change, no business-logic change, no test removal. See
+**ADR-0031** for the full decision record.
+
+**The audit came first and changed the work.** The frontend was stock
+shadcn/ui with minor edits. Three findings shaped everything after:
+
+1. `Organization.branding` has been editable through the Milestone 16 admin UI
+   for two milestones and **had never affected a single pixel**. The
+   white-label promise was a form that wrote JSON to a column.
+2. The four clinical status colours were **hardcoded hex** in
+   `tailwind.config.ts`, so they could not participate in theming at all, and
+   each of ~90 pages chose its own status colours independently.
+3. `packages/ui` — which `PROJECT_CONTEXT.md` and `MODULE_STATUS.md` both
+   describe as the shared component library — **does not exist**. The real
+   component surface is `apps/web/src/components/ui/`. Per `CLAUDE.md`, code is
+   ground truth: the documentation was corrected, and Tailwind's now-dead
+   content glob for it was removed.
+
+**Delivered:** a full semantic token layer (light + a re-derived dark theme);
+runtime tenant branding with WCAG-enforced colour derivation; a centralised
+status-colour vocabulary; rebuilt tables, sidebar and top bar; and ~20 new
+reusable primitives. Full detail in `CHANGELOG.md`.
+
+**The branding colour engine is the part worth knowing about.** It never trusts
+a configured colour: it derives seven roles per theme and moves each until it
+clears WCAG AA against the surface it actually sits on. Writing its 43 unit
+tests surfaced a genuine defect — a mid-grey brand colour (`#808080`) admits
+**no** readable foreground, since neither white nor black clears 4.5:1 on a
+50%-lightness fill — which the derivation now handles by pushing the fill off
+the midpoint.
+
+### Files modified
+
+**Tokens and config**
+- `apps/web/src/app/globals.css` — rewritten as the token layer
+- `apps/web/tailwind.config.ts` — rewritten; contains no colour values
+
+**Branding (new)**
+- `apps/web/src/lib/branding/color.ts` + `color.test.ts` (43 tests)
+- `apps/web/src/lib/branding/theme.ts`
+- `apps/web/src/providers/branding-provider.tsx`
+- `apps/web/src/providers/workspace-provider.tsx`
+- `apps/web/src/providers/index.tsx` — both providers mounted inside `AuthProvider`
+- `apps/web/src/lib/charts/palette.ts`
+
+**Primitives — new**
+- `components/ui/`: `skeleton`, `status-badge`, `empty-state`, `stat-card`,
+  `breadcrumb`, `page-header`, `toolbar`, `entity-cell`, `timeline`,
+  `progress` (also exports `Kbd`), `sheet`
+
+**Primitives — refined onto tokens (all pre-V2 exports preserved)**
+- `components/ui/`: `button`, `badge`, `card`, `table`, `input`, `select`,
+  `tabs`, `dialog`, `dropdown-menu`, `tooltip`, `toast`
+
+**Layout**
+- `components/layout/nav-config.ts` (new — navigation extracted from the sidebar)
+- `components/layout/page-layout.tsx` (new)
+- `components/layout/hospital-selector.tsx` (new)
+- `components/layout/sidebar.tsx`, `header.tsx`, `command-palette.tsx` — rebuilt
+- `app/dashboard/layout.tsx` — shell scroll/padding
+
+**Docs**
+- `docs/design-system.md` (new), `.ai/DECISIONS.md` (ADR-0031),
+  `.ai/TECH_DEBT.md` (TD-0074…TD-0077), `.ai/CHANGELOG.md`, `.ai/PROGRESS.md`,
+  `.ai/MODULE_STATUS.md`, `.ai/NEXT.md`, `.ai/SESSION_LOG.md`
+
+### Architectural decisions made
+
+ADR-0031, in short: semantic tokens are the only colour surface; branding is
+applied as an injected stylesheet (not inline styles) because dark mode needs a
+*different* derivation of the same colour; a configured colour is corrected
+until it passes WCAG rather than rendered as given; `accentColor`/
+`secondaryColor` get their own token family instead of overwriting the neutral
+`--accent`/`--secondary` interaction surfaces; **status colour is fixed and not
+brandable**, because green-means-normal is a clinical convention rather than a
+customisation; and every pre-V2 export was preserved so no page needed editing.
+
+### Known issues
+
+- **TD-0074 — branding reaches only `organizations.read` holders.** The endpoint
+  is gated that way and Phase 1 could not change APIs. Most clinical users
+  therefore see the default palette. The fix is to include `branding` in the
+  login/refresh payload (preferred) or add an ungated public read endpoint.
+- **TD-0075 — the hospital selector remembers a choice but filters nothing yet.**
+  Said on screen rather than implied.
+- **TD-0076 — `/dashboard/settings` is a 404** and always has been; the sidebar
+  and profile menu both link to it. Left behaving exactly as before rather than
+  silently re-pointed mid-redesign.
+- **TD-0077 — feature pages still use pre-V2 call shapes.** They work and
+  inherit the new tokens, density, typography, focus treatment and branding
+  automatically; they do not yet use `PageLayout`, `StatusBadge`, the new table
+  affordances, `EmptyState` or `StatCard`. This is Phase 2 by instruction.
+- **Not browser-verified.** Verification was automated only (see below), which
+  is this repository's default policy. No screenshots were captured.
+
+### Verification
+
+`pnpm lint`, `pnpm typecheck`, `pnpm build` — clean across all 5 packages.
+`pnpm test` — **785 API unit tests across 96 suites** and **49 web unit tests
+across 3 suites** (up from 6 — the 43 new branding tests), zero failures.
+e2e — **431 tests across 22 suites**, zero failures, run against
+`medicore_postgres` (5432) / `medicore_redis` (6379).
+
+### Recommended next task
+
+**Phase 2 — migrate feature pages onto the primitives, module by module.** Start
+with `StatusBadge`: it removes the largest source of cross-module inconsistency
+for the least code and touches no layout. Then the list pages (Patients,
+Appointments, Laboratory) onto `PageLayout` + the table affordances, since they
+are where density and sticky headers pay off most.
+
+**Before or alongside that, close TD-0074** — a design system whose branding
+reaches one role in six is not finished. It is a small backend change now that
+the frontend consumes it.
+
+### Estimated project completion
+
+Unchanged in feature terms — this milestone added no HMS functionality. Frontend
+foundation moves from "stock shadcn, unaudited" to **Design System V2 complete
+(Phase 1 of 2)**; feature-page adoption is 0% and is Phase 2.
+
+---
+
 ## Session — 2026-08-06 — Milestone 19: Production Hardening & Enterprise Readiness (all 7 checkpoints)
 
 ### What was completed

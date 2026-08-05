@@ -3,6 +3,66 @@
 > The next logical task(s) to pick up. Replaced (not appended) whenever a
 > milestone completes — this file always describes "start here," not history.
 
+## Design System V2 — Phase 2 is the recommended next task
+
+**Phase 1 (the reusable UI foundation) completed 2026-08-06** — see **ADR-0031**,
+`PROGRESS.md` and `docs/design-system.md`. It changed the design *language*
+only: no feature page, dashboard, API, business rule or test was touched, by
+instruction.
+
+Phase 2 is **migrating feature pages onto the primitives**. It has not been
+started and should not be started without a fresh instruction.
+
+### Read this before touching any of it
+
+- **`apps/web/src/app/globals.css` is the only place a colour may be defined.**
+  `tailwind.config.ts` contains no colour values at all — only token references.
+  If a component needs a colour that does not exist, add a *token*; do not add a
+  hex value to either file, and never inline one in a component.
+- **Status colour is not per-page any more.** Use `<StatusBadge status={…} />`.
+  If a status maps to the wrong tone, fix the map in
+  `components/ui/status-badge.tsx` — that is the point of it. Do not pass `tone`
+  to work around a bad mapping.
+- **Branding is applied as CSS tokens, not as values you read.** A component
+  styles itself with `bg-primary`; it never reads a colour from `useBranding()`.
+  That hook is for the organization's *name* and *logo* only.
+- **Never render a missing measurement as `0`.** `<EmptyValue />` prints an em
+  dash. "Not recorded" and "zero" are different clinical and financial facts.
+- **`EmptyState` distinguishes empty from filtered-empty.** A list with active
+  filters and no rows must offer "Clear filters", not "Create your first…".
+- **Scrolling belongs to the shell's `<main>`.** Do not add a second scroll
+  container around a page; `<TableContainer>` with a `max-h-*` is how a table
+  scrolls under its own sticky header.
+- **Do not remove a pre-V2 variant or prop.** They are load-bearing for the ~90
+  pages not yet migrated (TD-0077).
+
+### Suggested order
+
+1. **`StatusBadge` everywhere.** Largest consistency win, smallest diff, no
+   layout risk.
+2. **List pages** (Patients, Appointments, Laboratory) onto `PageLayout` +
+   `FilterBar` + the table affordances — this is where density and sticky
+   headers actually pay off.
+3. **Dashboards** onto `StatCard`/`StatCardGrid` and `useChartTheme`, so chart
+   series follow tenant branding.
+4. **Detail pages** onto `PageLayout` with breadcrumbs and the `aside` column.
+
+### Close TD-0074 first if branding matters
+
+A design system whose branding reaches one role in six is not finished.
+`GET /organizations/me/branding` is gated behind `organizations.read`, which only
+Hospital Admin holds — so doctors, nurses, receptionists, pharmacists and lab
+technicians all see the default palette. The frontend already consumes branding
+correctly; the fix is a small backend change (include `branding` in the
+login/refresh payload — preferred — or add an ungated public read endpoint).
+Phase 1 was forbidden from making it.
+
+Also open from Phase 1: **TD-0075** (hospital selector remembers a choice but
+filters nothing), **TD-0076** (`/dashboard/settings` is a pre-existing 404 linked
+from the sidebar and the profile menu), **TD-0077** (page migration itself).
+
+---
+
 ## Paused AI Roadmap (Milestone 15.2–15.5)
 
 **There is no active task.** Milestone 19 — Production Hardening & Enterprise

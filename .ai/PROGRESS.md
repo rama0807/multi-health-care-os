@@ -2203,3 +2203,62 @@ incorrect); **TD-0069** trace propagation without an OTel SDK; **TD-0070**
 implemented**, and this is the highest-severity gap in the milestone;
 **TD-0071** a second instance may serve a stale notification template for up to
 300s; **TD-0072** `pnpm format` has never worked.
+
+
+## Design System V2 — Phase 1: Reusable UI Foundation: Complete
+
+Completed in a single session (2026-08-06) under an explicit instruction
+scoping the work to **the design language only** — no page redesign, no
+dashboard redesign, no API change, no business-logic change, no test removal.
+See **ADR-0031**.
+
+**The audit reshaped the work.** The frontend was stock shadcn/ui with minor
+local edits, and three findings drove everything:
+`Organization.branding` had been editable since Milestone 16 but **had never
+affected a single pixel** — the white-label promise was a form writing JSON to a
+column; the four clinical status colours were **hardcoded hex** in
+`tailwind.config.ts`, so ~90 pages each picked their own status palette; and
+`packages/ui`, described in two `.ai/` files as the shared component library,
+**does not exist** (the docs were corrected — code is ground truth).
+
+- **Token layer** (`globals.css`) — four surface elevation steps, three text
+  emphasis levels, borders, a seven-role brand family, the sidebar's own surface
+  family, five status families, an eight-colour chart ramp, elevation, radius,
+  shell geometry; light plus a **re-derived** (not inverted) dark theme.
+  `tailwind.config.ts` now contains no colour values, only token references.
+- **Runtime white-label branding** — `BrandingProvider` injects a per-tenant
+  stylesheet (emitting both `:root` and `.dark` blocks, which inline styles
+  cannot do), so a configured colour reaches buttons, links, focus rings, the
+  sidebar's active item, badges, progress fills and chart series.
+- **Accessibility is derived, not assumed** — `lib/branding/color.ts` forces
+  button text to 4.5:1 on its fill, pill text to 4.5:1 on its own tint, and in
+  dark mode the fill itself to 3:1 against the surface; a near-white, near-black
+  or desaturated brand colour is nudged into a usable band. **43 unit tests**
+  across seven adversarial colours in both themes — which caught a real defect:
+  a mid-grey fill admits no readable foreground at all.
+- **`accentColor`/`secondaryColor` write their own token family**, not
+  `--accent`/`--secondary` (neutral interaction surfaces — branding those makes
+  every dropdown hover an unreadable saturated block).
+- **Status colour centralised and deliberately not brandable** — `<StatusBadge>`
+  maps ~120 status strings from twenty domain vocabularies to five meanings.
+- **Tables rebuilt** — working sticky headers (scroll now belongs to the shell's
+  `<main>`; the old wrapper could never scroll), two densities, selection as a
+  first-class row state, keyboard-reachable row actions, pinned columns, a
+  docked bulk-action bar.
+- **Sidebar and top bar rebuilt**; ~20 new primitives (`PageLayout`,
+  `PageHeader`, `Breadcrumb`, `StatCard`, `EmptyState`/`EmptyValue`, skeletons,
+  `FilterBar`, `SearchInput`, `BulkActionBar`, `Timeline`, `ActivityFeed`,
+  `EntityCell`, `Sheet`, `Progress`, `Kbd`, `useChartTheme`, …).
+- **Every pre-V2 export, variant and prop name preserved** — no feature page
+  needed editing, which is why everything still passes.
+- Verification: lint / typecheck / build clean across all 5 packages;
+  **785 API unit tests (96 suites)**, **49 web unit tests (3 suites, up from
+  6 tests)**, **431 e2e tests (22 suites)** — zero failures.
+- **Deferred, disclosed, not faked:** branding reaches only users holding
+  `organizations.read` (**TD-0074** — the endpoint is gated that way and Phase 1
+  could not change APIs); the hospital selector remembers a choice but does not
+  yet filter data and says so on screen (**TD-0075**); `/dashboard/settings` is a
+  **pre-existing** 404 linked from the sidebar, left unchanged rather than
+  silently re-pointed (**TD-0076**); feature pages have not been migrated to the
+  new primitives, which is Phase 2 (**TD-0077**). Not browser-verified —
+  automated verification is this repository's default policy.

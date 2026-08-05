@@ -2064,3 +2064,104 @@ from Redis. **Fix, when a cluster exists:** Deployment + Service + Ingress +
 HPA, probes pointed at those two paths, `terminationGracePeriodSeconds` greater
 than `SHUTDOWN_DRAIN_MS`, and **TD-0067 resolved first** — per-process rate
 limiting is wrong the moment `replicas > 1`.
+
+---
+
+## TD-0074: Organization branding reaches only users who hold `organizations.read`
+
+**Discovered:** 2026-08-06 (Design System V2, Phase 1 — ADR-0031)
+**Severity:** Medium — the white-label promise is only half kept.
+
+`BrandingProvider` applies a tenant's colours by reading
+`GET /organizations/me/branding`. That endpoint is gated behind
+`organizations.read`, which in `seed.ts`'s role catalogue only Hospital Admin
+holds (via its wildcard grant). **A doctor, nurse, receptionist, pharmacist or
+lab technician therefore sees the default MediCore palette**, not their
+hospital's — which is the majority of the user base.
+
+The provider does not paper over this: it skips the request entirely for users
+who lack the permission rather than firing a guaranteed 403 on every page load,
+and falls back to the default token layer.
+
+**Partial mitigation already in place:** the last successful branding payload is
+cached in `localStorage` per organization id, so branding survives reloads and is
+available to the login screen for the last organization used on that device. It
+does nothing for a user who has never been able to fetch it.
+
+**Fix (one of):**
+1. Include `branding` in the `/auth/login` and `/auth/refresh` response payload
+   next to `AuthenticatedUser` — the natural home, since it is per-organization
+   data every authenticated user needs, and it costs no extra round trip.
+2. Add an ungated `GET /organizations/me/branding/public` returning only the
+   colour/display fields (no email footer, no internal settings).
+
+Both are backend changes, which Phase 1 was explicitly forbidden from making.
+Option 1 is preferred and would also let the login page brand itself on a fresh
+device.
+
+---
+
+## TD-0075: The hospital selector remembers a choice but does not filter any data
+
+**Discovered:** 2026-08-06 (Design System V2, Phase 1 — ADR-0031)
+**Severity:** Low — disclosed in the UI, not misleading.
+
+`WorkspaceProvider` owns `activeHospitalId` and the top bar's
+`<HospitalSelector>` writes it. **No module query reads it yet**: pages continue
+to receive whatever the API scopes them to by organization. Wiring the selection
+into each module's query parameters is page work, and Phase 1 was scoped to the
+UI foundation with feature pages explicitly out of bounds.
+
+This is stated on screen rather than implied — the selector's own menu says
+"Module pages are not yet filtered by this selection" — so no user is led to
+believe a filter is applied that is not.
+
+**Fix:** as each module is migrated in Phase 2, pass `activeHospitalId` into its
+list query and invalidate on change. The API side already supports hospital
+scoping in the modules whose tables carry a `hospitalId`; the ones that do not
+should keep ignoring it rather than pretending.
+
+---
+
+## TD-0076: `/dashboard/settings` does not exist — the sidebar and profile menu link to a 404
+
+**Discovered:** 2026-08-06 (Design System V2, Phase 1) — **pre-existing**, not
+introduced by that work.
+**Severity:** Medium — a dead link in the primary navigation, visible to every
+user regardless of role (the nav item carries no permission).
+
+`apps/web/src/app/dashboard/` has no `settings/page.tsx`. The sidebar's
+"Settings" item and the header profile menu's "Profile" entry both point at it.
+Phase 1 preserved the existing targets rather than silently re-pointing or
+removing navigation while redesigning the chrome, so the behaviour is unchanged
+from before — but it is a real defect and should not survive Phase 2.
+
+**Fix:** build `/dashboard/settings` as the per-*user* settings page (profile
+details, password, sessions, appearance). Organization-level settings already
+live at `/dashboard/organization` and notification preferences at
+`/dashboard/notifications/preferences`; this page should link to both rather
+than duplicate them.
+
+---
+
+## TD-0077: Feature pages have not been migrated to the V2 primitives
+
+**Recorded:** 2026-08-06 (Design System V2, Phase 1 — ADR-0031)
+**Severity:** None — this is the planned Phase 2, recorded so the state is not
+mistaken for an oversight.
+
+Phase 1 was explicitly instructed not to redesign pages. Every existing page
+therefore still renders through the pre-V2 call shapes. They all work — the
+primitives kept their old exports, variants and prop names, which is why lint,
+typecheck, build, 785 API unit tests, 49 web unit tests and 431 e2e tests are
+all green — and they inherit the new token layer, density, typography, focus
+treatment and branding automatically.
+
+What they do **not** yet use: `PageLayout`/`PageHeader`/breadcrumbs,
+`StatusBadge` (each page still maps its own status colours), `DataTable`
+affordances (sticky headers, `TableRowActions`, `BulkActionBar`), `EmptyState`'s
+empty-vs-filtered-empty distinction, `EntityCell`, `StatCard`, and
+`useChartTheme`.
+
+**Fix:** Phase 2, module by module. `StatusBadge` first — it removes the largest
+source of cross-module inconsistency for the least code.

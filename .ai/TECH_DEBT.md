@@ -1322,3 +1322,565 @@ assert it's covered by `PATIENT_LINKED_MODELS`) would catch this at
 `pnpm test` time instead of relying on manual discipline. Not built
 this session — scoped as a follow-up test-infrastructure improvement
 rather than blocking Milestone 3's completion.
+
+---
+
+## TD-0044: No browser-verified screenshots for Milestone 16
+
+**Recorded:** 2026-08-05 (Milestone 16)
+**Status:** Open — deliberate, by instruction
+**Severity:** Low
+
+This session was explicitly instructed: *"Do NOT use Playwright or browser
+verification. Run only: pnpm lint / pnpm typecheck / pnpm test / pnpm
+test:e2e / pnpm build."* Every one of those passed, and 36 new e2e tests
+exercise the full Organization Dashboard and Platform console API surface —
+but no page under `/dashboard/organization` or `/platform` has been rendered
+in a real browser, and `docs/screens/` has no Milestone 16 entries.
+
+Mirrors TD-0035 (Milestone 13) and TD-0036 (Milestone 14). The API contracts
+these pages consume are covered end to end; what is unverified is rendering,
+layout, and client-side interaction.
+
+**Resolution:** Walk both surfaces in a browser and capture screenshots when
+a session is permitted to.
+
+---
+
+## TD-0045: The Platform console has no organization *detail* page
+
+**Recorded:** 2026-08-05 (Milestone 16, Checkpoint 16.2)
+**Status:** Open
+**Severity:** Low
+
+`GET /platform/organizations/:id` and `GET /platform/organizations/:id/usage`
+are fully implemented, tested, and return a rich detail payload (hospitals,
+administrators, storage bytes, active users). The frontend currently surfaces
+only the *list* view plus its inline suspend/enable/plan dialogs — there is no
+`/platform/organizations/[id]` page consuming that detail endpoint.
+
+Nothing is faked: the list shows only data it genuinely has. The gap is a
+missing page, not a stubbed one.
+
+**Resolution:** Add `/platform/organizations/[organizationId]/page.tsx`
+consuming the two endpoints that already exist.
+
+---
+
+## TD-0046: API usage metering is a rolling Redis window, not a durable ledger
+
+**Recorded:** 2026-08-05 (Milestone 16, Checkpoint 16.2)
+**Status:** Open — deliberate trade-off, disclosed in the UI
+**Severity:** Medium (if usage is ever used for billing)
+
+`ApiUsageService` counts requests in Redis keys
+(`apiusage:{orgId}:{YYYY-MM-DD}`, 35-day TTL), incremented fire-and-forget by
+a global interceptor. This was chosen over a Postgres row-per-day `upsert`
+because that would add a write to every read — a cost this repo pays nowhere
+else (ADR-0025 point 7).
+
+Consequences, all disclosed in both the Organization Usage tab and the
+Platform overview:
+- Only the last 30 days are queryable; there is no long-term history.
+- A Redis flush or eviction loses the counters silently.
+- The metering increment is not awaited, so a request that completes as the
+  Redis write fails is not counted.
+
+**This is real measured traffic, not an estimate — but it must not be used as
+a billing ledger without first moving it to durable storage.**
+
+**Resolution:** If usage-based billing is ever introduced, add a scheduled job
+that rolls each day's Redis counters into a persistent `ApiUsageDaily` table
+before they expire.
+
+---
+
+## TD-0047: Storage usage measures recorded file sizes, not actual bucket contents
+
+**Recorded:** 2026-08-05 (Milestone 16, Checkpoint 16.2)
+**Status:** Open
+**Severity:** Low
+
+`StorageUsageService` sums the `fileSizeBytes` column across the five models
+that carry one (`PatientDocument`, `DoctorDocument`, `StaffDocument`,
+`EncounterAttachment`, `RadiologyAttachment`). It never queries the disk or
+S3/MinIO bucket.
+
+Therefore:
+- An object orphaned by a failed `StorageService.delete` still occupies real
+  bucket space but is invisible in the reported figure.
+- A future module that adds an upload path must be added to this service by
+  hand, or its files silently stop counting — the same hand-maintained-list
+  hazard already recorded as TD-0043 for `PATIENT_LINKED_MODELS`.
+
+**Resolution:** Reconcile against the storage driver periodically, and/or add a
+contract test that fails when a new model with a `fileSizeBytes` column is not
+represented in `StorageUsageService`.
+
+---
+
+## TD-0048: Subscriptions record a commercial agreement — no payment is taken
+
+**Recorded:** 2026-08-05 (Milestone 16, Checkpoint 16.2)
+**Status:** Open — genuinely credential-blocked
+**Severity:** Medium
+
+A platform owner can set an organization's plan, status, limits, monthly
+price and currency. **Nothing charges anyone.** No payment gateway is
+configured anywhere in this repo — the same gap already recorded for
+invoice/receipt QR codes (TD-0027).
+
+Related, and equally honest about what is *not* enforced: the limits stored
+on a `Subscription` (`maxHospitals`/`maxUsers`/`maxPatients`/
+`storageQuotaMb`) are **reported but not enforced**. The Usage tab shows
+consumption against them and warns visually past 90%, but no create path
+currently refuses when a limit is exceeded, and `SubscriptionStatus.PAST_DUE`
+does not restrict anything. Only an explicit platform-owner suspension stops
+a tenant.
+
+The UI states both limitations in-page rather than implying enforcement.
+
+**Resolution:** Wire a payment provider when credentials exist; add limit
+checks to the hospital/user/patient create paths and a storage check to the
+upload paths if quotas are meant to bind.
+
+---
+
+## TD-0049: Platform global search deliberately excludes patients and clinical records
+
+**Recorded:** 2026-08-05 (Milestone 16, Checkpoint 16.2)
+**Status:** Open — deliberate, disclosed in-page
+**Severity:** None (this is the safe default; recorded so it isn't "fixed" carelessly)
+
+`PlatformStatsService.search` covers organizations, hospitals and users only.
+A platform operator has no clinical need for patient records, and a single
+search box returning PHI across every tenant would be a significant privacy
+regression — closely related to TD-0042's concern about clinical data leaving
+a tenant boundary.
+
+**Resolution:** If cross-tenant patient lookup is ever genuinely required
+(e.g. for a support workflow), it should be a separate, individually
+permissioned, individually audited endpoint — not an extension of this search.
+
+---
+
+## TD-0050: Platform-owner access is revocable only at organization granularity
+
+**Recorded:** 2026-08-05 (Milestone 16, Checkpoint 16.3)
+**Status:** Open
+**Severity:** Low
+
+`isPlatform` is a property of the *organization*, so every user in the
+platform tenant is a candidate platform owner; what actually distinguishes
+them is which `platform.*` permissions their role holds. There is no
+per-user "this account may not use the console" switch short of removing
+their permissions or deactivating the user.
+
+`JwtStrategy.validate` re-checks `isPlatform` against the database on every
+request, so revoking the organization flag is immediate — but permission
+changes still take up to one access-token lifetime (15 minutes) to take
+effect, the same staleness window every other permission in this system has.
+
+**Resolution:** Acceptable as-is. If finer control is needed, add a per-user
+flag checked in `PlatformGuard` alongside the organization flag.
+
+---
+
+## TD-0051: Appointment "waiting time" is a scheduling delay — no arrival timestamp exists
+
+**Raised:** 2026-08-05 (Milestone 17, Checkpoint 17.1)
+**Severity:** Medium
+
+The roadmap asks for "Average waiting time". `Appointment` has
+`scheduledAt`, `durationMinutes` and `status`, but **no check-in/arrival
+column** — nothing records when the patient physically arrived or was called
+in. A true waiting time (arrival → consultation start) is therefore not
+derivable from this schema.
+
+What `AppointmentReport.averageConsultationDelayMinutes` reports instead is
+the mean minutes from `Appointment.scheduledAt` to `Encounter.createdAt` —
+how late, on average, consultations start relative to their booked slot.
+That is a real and useful operational number, but it is **not** waiting-room
+time, and it is labelled as a "consultation delay" in the API doc comment,
+the operational-report UI note, and the KPI hint. Negative values (seen
+early) are kept rather than clamped so the mean stays honest. Appointments
+with no linked encounter are excluded, and the sample size is returned
+alongside the mean (`consultationDelaySampleSize`).
+
+**Resolution:** Add `Appointment.arrivedAt`, set when a receptionist marks
+the appointment `ARRIVED` (the status already exists — only the timestamp is
+missing), then report `arrivedAt → Encounter.createdAt` as true waiting time
+and keep the scheduling delay as a second, separate metric.
+
+---
+
+## TD-0052: Radiology "machine utilization" is relative load, not a duty cycle
+
+**Raised:** 2026-08-05 (Milestone 17, Checkpoint 17.1)
+**Severity:** Low
+
+`RadiologyOrder.machine` is a free-text string and there is no machine
+inventory, capacity, or operating-hours model anywhere in the schema. A
+utilisation percentage in the usual sense (busy minutes ÷ available minutes)
+therefore has no denominator to compute against.
+
+`RadiologyReportStats.machineUtilisation` reports each machine's **share of
+the scheduled study minutes actually recorded** (`durationMinutes`), which
+answers "which machine is carrying the load" but not "how close is it to
+capacity". Studies with no machine recorded are grouped under "Unassigned"
+rather than dropped. The UI states this limitation under the table.
+
+**Resolution:** Introduce a `RadiologyMachine` model (name, modality,
+operating hours, maintenance windows) and compute a real duty cycle against
+it. Would pair naturally with the PACS integration deferred in TD-0019.
+
+---
+
+## TD-0053: Scheduled reports are persisted but never dispatched
+
+**Raised:** 2026-08-05 (Milestone 17, Checkpoint 17.3)
+**Severity:** Low
+
+The milestone asked for scheduled reports as a **placeholder only**, and
+that is exactly what shipped. `SavedReport.scheduleEnabled`,
+`scheduleCron` and `scheduleRecipients` are persisted and validated (the
+cron string must be a well-formed 5-field expression, so an unparseable
+value cannot be stored for a future dispatcher to choke on), but **no job,
+worker or cron in this repo reads them**. Nothing is emailed.
+
+The placeholder is disclosed rather than hidden: the saved-reports list
+renders "schedule saved (not yet dispatched)" on any row with a schedule,
+and an e2e test asserts the fields round-trip without claiming delivery.
+
+**Resolution:** Milestone 18 (Notifications & Communication) owns the
+dispatcher. `bullmq` is already a dependency and the email layer
+(`common/email`) already exists, so the work is a scheduled worker that runs
+the saved report, exports it, and mails it to `scheduleRecipients`.
+
+**Status: Resolved (2026-08-06)** — Milestone 18 shipped
+`modules/reports/scheduled-reports.dispatcher.ts`. It listens on
+`notifications.tick` (the notification worker's clock, so no second scheduler
+exists), matches `scheduleCron` with a new dependency-free
+`cron-match.util.ts`, claims the run by compare-and-set on `lastRunAt` so two
+overlapping ticks cannot double-send, runs the report through
+`ReportRegistryService`, exports it through the same `ReportExportService` the
+on-screen button uses, emails every recipient, and raises a
+`SCHEDULED_REPORT_READY` in-app notification to the report's owner. One honest
+carry-over remains — see **TD-0060** (the file is linked, not attached).
+
+---
+
+## TD-0054: Report bucketing happens in JS, bounded by a 400-day range cap
+
+**Raised:** 2026-08-05 (Milestone 17, Checkpoint 17.1)
+**Severity:** Medium
+
+Every time series is built by fetching the rows in range (projected to the
+few columns needed) and bucketing them in memory, following the existing
+`BillingDashboardService.collectionTrend` precedent rather than introducing
+raw SQL `date_trunc` into a codebase that otherwise uses Prisma exclusively.
+
+That is fine at the volumes this system currently holds, but it is linear in
+row count rather than in bucket count. The mitigation is an explicit cap:
+`MAX_RANGE_DAYS = 400`, and a range beyond it returns **400 Bad Request with
+the requested length named** rather than silently truncating or timing out.
+`ReportRegistryService` separately caps exported rows at 5 000 and sets
+`truncated`, which the UI, the CSV footer and the PDF footer all disclose.
+
+**Resolution:** Move the heavy series (billing, appointments, IPD occupancy)
+to `$queryRaw` with `date_trunc` and a `GROUP BY`, returning one row per
+bucket. Worth doing when a real tenant crosses roughly 100 k rows in a
+reporting window, or if the 400-day ceiling starts blocking legitimate
+year-on-year comparisons.
+
+---
+
+## TD-0055: Lab "revenue by test" is an allocated figure, not a per-test price
+
+**Raised:** 2026-08-05 (Milestone 17, Checkpoint 17.1)
+**Severity:** Medium
+
+Two schema facts constrain this: the **laboratory module raises no `Charge`
+rows of its own** (only IPD discharge and the appointment-consultation
+listener do), and `LabTestCatalogItem` has **no price column** — unlike
+`RadiologyCatalogItem.price` and `ServiceCatalogItem.price`.
+
+So lab revenue is read from `Charge` rows the billing module owns
+(`sourceModule = LABORATORY`, keyed to the order by `sourceId`). The
+order-level and period-level totals are exact. The per-test figure in
+`LaboratoryReport.topTests[].revenue` is that order's charge **allocated
+evenly across the order's test items** — exact for a single-test order, a
+disclosed even split otherwise. The rule is stated in the service doc
+comment, the registry report description and the UI table note.
+
+By contrast, pharmacy revenue *is* exact (`quantityDispensed x Drug.price`,
+since a dispense item resolves to a specific priced batch), and items the
+pharmacist never resolved to a batch carry a `null` revenue rather than a
+guessed one.
+
+**Resolution:** Add a `price` column to `LabTestCatalogItem` and have the
+laboratory module raise a per-item `Charge` through the existing Charge
+Engine at order time — the same pattern IPD already uses for room charges.
+Then per-test revenue becomes a direct sum with no allocation.
+
+---
+
+## TD-0056: Ward occupancy is measured against today's bed count
+
+**Raised:** 2026-08-05 (Milestone 17, Checkpoint 17.1)
+**Severity:** Low
+
+`IpdReport.occupancyRateTrend` computes a genuine bed-days rate (occupied
+bed-days ÷ available bed-days per bucket, reconstructed from each
+admission's own stay window, including stays that started before the
+window). The numerator is historically accurate.
+
+The **denominator is not**: bed capacity is taken as the current
+`Bed` row count, because the schema keeps no history of when a bed was
+commissioned or decommissioned. A ward that doubled in size mid-period is
+measured across the whole period against its present size, which understates
+occupancy for the earlier part of the range.
+
+**Resolution:** Add `Bed.commissionedAt`/`decommissionedAt` (or derive them
+from the audit trail, which already records bed creation) and compute
+available bed-days per day from the beds that actually existed that day.
+
+---
+
+## TD-0057: Stock valuation uses catalog unit cost, not weighted-average or FIFO
+
+**Raised:** 2026-08-05 (Milestone 17, Checkpoint 17.1)
+**Severity:** Low
+
+`InventoryReport.stockValuation` values stock at `InventoryItem.unitCost` —
+the catalog cost. `InventoryBatch` stores no per-batch purchase price (the
+actual paid price lives on `PurchaseOrderItem.unitPrice`, which is not
+linked back to the batch that receipt produced), so a weighted-average or
+FIFO valuation is not derivable without a schema change.
+
+The valuation is at least conservative in one respect: damaged, expired and
+lost quantities are excluded, so only saleable stock is valued — matching
+how `InventoryStock` itself defines available stock.
+
+**Resolution:** Carry the receipt price onto `InventoryBatch` at GRN time
+(a `unitCost` column populated from the matching `GoodsReceiptItem`), then
+value each batch at what was actually paid for it and offer FIFO/weighted-
+average as a reporting option.
+
+---
+
+## TD-0058: Browser push cannot obtain an FCM token in this deployment
+
+**Raised:** 2026-08-06 (Milestone 18, Checkpoint 18.2)
+**Severity:** Medium
+
+Every part of browser push is implemented and exercised **except the one
+step that needs a credential and a package**:
+
+- Implemented and tested: the FCM HTTP v1 send path (`FcmPushProvider`,
+  service-account JWT signed with `node:crypto`, per-token fan-out, invalid-
+  token detection), the `UserDevice` registry (multi-device per user,
+  idempotent registration on token, deactivate, token never returned to the
+  client), the standards-based service worker (`apps/web/public/push-sw.js`,
+  `push` + `notificationclick`, deep-link routing that focuses an existing
+  tab), the permission request, and the device UI on the preferences page.
+- **Not implemented:** minting the FCM registration token in the browser.
+  That requires `getToken()` from the `firebase` JS SDK, which is not a
+  dependency of `apps/web`, and a Firebase project, which this deployment
+  does not have (`FCM_PROJECT_ID`/`FCM_CLIENT_EMAIL`/`FCM_PRIVATE_KEY`/
+  `FCM_VAPID_PUBLIC_KEY` are all unset).
+
+**Nothing is faked.** `GET /notifications/devices/push-config` returns
+`configured: false` with the exact missing variables named; the preferences
+page shows that reason verbatim; a PUSH delivery attempted without
+credentials is recorded `FAILED` with the same reason and is **not
+retried** (a missing credential is not a transient fault). An e2e test
+asserts both behaviours. This is the same line held for SMS (TD-0015), the
+payment gateway (TD-0027) and AI providers (TD-0041).
+
+A Web Push `PushSubscription` was deliberately **not** stored as a
+substitute: it is not an FCM token, and `UserDevice` rows the sender can
+never deliver to would produce a device list that looks healthy while
+silently dropping every message.
+
+**Resolution:** add `firebase` to `apps/web`, create a Firebase project, set
+the four environment variables, and replace the single `return null` in
+`acquireToken` (`apps/web/src/lib/push/use-push-notifications.ts`) with
+`getToken(messaging, { vapidKey })`. No other client or server change is
+needed.
+
+---
+
+## TD-0059: SMS and WhatsApp are abstractions with a log driver only
+
+**Raised:** 2026-08-06 (Milestone 18, Checkpoint 18.1)
+**Severity:** Medium
+
+By explicit instruction for this milestone, **no paid provider was
+integrated**. `SmsProvider` and `WhatsappProvider` implement the
+`NotificationChannelProvider` interface and offer one local driver:
+`SMS_DRIVER=LOG` / `WHATSAPP_DRIVER=LOG` writes the message to the
+application log and records the delivery as sent by `providerName:
+'log-sms'` / `'log-whatsapp'`, so nobody can mistake it for a real message.
+With no driver set (the default) a delivery **fails** with "No SMS provider
+is configured", never succeeds silently. This supersedes the narrower
+TD-0015 for the notification path.
+
+A real WhatsApp Business integration carries a constraint this abstraction
+does not yet express: outside a 24-hour customer-service window, only
+**pre-approved message templates** may be sent, not the free text
+`NotificationTemplate` currently produces. That mapping is not designed.
+
+**Resolution:** one new class per vendor implementing
+`NotificationChannelProvider`, plus one entry in `NotificationsModule`'s
+provider array. For WhatsApp, additionally map `NotificationType` →
+approved template name and pass variables positionally.
+
+---
+
+## TD-0060: A scheduled report is linked in its email, not attached
+
+**Raised:** 2026-08-06 (Milestone 18, closing TD-0053)
+**Severity:** Low
+
+`ScheduledReportsDispatcher` genuinely runs the report and generates the
+XLSX through `ReportExportService`, but the email it sends **links back to
+the report rather than attaching the file**. `EmailService.send` accepts
+`{ to, subject, html }` and has no attachment parameter; widening a
+signature four other modules already depend on, for one caller, was judged
+the worse trade. The email states the generated filename and row count and
+links to the report, which re-runs against live data.
+
+**Resolution:** add an optional `attachments` field to `EmailService.send`
+(Resend's API already supports it) and pass `exported.buffer` through.
+
+---
+
+## TD-0061: Email digest frequencies other than Immediate/Never behave as Immediate
+
+**Raised:** 2026-08-06 (Milestone 18, Checkpoint 18.5)
+**Severity:** Low
+
+`NotificationPreference.emailFrequency` accepts `IMMEDIATE`, `HOURLY`,
+`DAILY`, `WEEKLY` and `NEVER`. Only the two ends are enforced: `NEVER`
+suppresses the email channel, everything else sends per event. Batching
+`HOURLY`/`DAILY`/`WEEKLY` needs a digest accumulator and a second worker
+pass that groups a user's pending email deliveries into one message.
+
+The preferences page **says so on screen** rather than implying the setting
+works, and the enum value is stored faithfully so no user choice is lost
+when batching is built.
+
+**Resolution:** hold email deliveries in `QUEUED` with `nextAttemptAt` set to
+the end of the user's digest window, then have the worker collapse all
+due email deliveries for one recipient into a single send.
+
+---
+
+## TD-0062: Low-stock alerts fire only on stock-service movements, and once per threshold
+
+**Raised:** 2026-08-06 (Milestone 18, Checkpoint 18.4)
+**Severity:** Medium
+
+Two bounded gaps in inventory alerting:
+
+1. **Coverage.** `inventory_stock.changed` is emitted from the three
+   `StockService` methods that own their own transaction (`setOpeningStock`,
+   `adjust`, `updateLevels`). Stock also moves through `receiveStock` /
+   `issueStock`, which other inventory workflows (GRN, transfers,
+   requisitions) call *inside their own transaction* — emitting there would
+   fire the event before commit, and the listener could read pre-commit
+   state. So a GRN or a requisition issue does not currently raise a
+   low-stock alert.
+2. **Repeat suppression.** The alert's `eventKey` is keyed on the stock row
+   plus the threshold value, so one crossing produces one notification. If
+   stock is restocked above the threshold and later falls below it again,
+   **no new alert is raised** unless the threshold value itself changed.
+   That is the deliberate trade against alerting on every movement while
+   stock sits low; it is the wrong trade for a fast-moving item.
+
+**Resolution:** for (1), emit `inventory_stock.changed` from each workflow
+*after* its transaction commits, or add a small post-commit event buffer.
+For (2), include a monotonically increasing "crossing counter" (or the
+previous quantity) in the key so a genuine re-crossing is a new event.
+
+---
+
+## TD-0063: The notification centre polls; there is no realtime channel
+
+**Raised:** 2026-08-06 (Milestone 18, Checkpoint 18.3)
+**Severity:** Low
+
+The header bell polls `GET /notifications/summary` every 60 seconds. There
+is no websocket or SSE feed, so an in-app notification can take up to a
+minute to appear for a user who has the tab open and push disabled.
+
+This is a deliberate omission, not an oversight: push (Checkpoint 18.2) is
+the real-time channel, and a socket layer would be a second delivery
+mechanism to operate and secure for the same outcome. The API already
+streams over SSE for AI generation, so the machinery exists if the trade
+changes.
+
+**Resolution:** an SSE endpoint on `NotificationsController` that pushes
+summary deltas for the authenticated user, reusing the AI module's
+streaming transport.
+
+---
+
+## TD-0064: Notification provider configuration is deployment-wide, not per tenant
+
+**Raised:** 2026-08-06 (Milestone 18, Checkpoint 18.6)
+**Severity:** Low
+
+Channel adapters are selected and credentialed from environment
+configuration, so every organization on a deployment shares one FCM project,
+one Resend sender and one SMS driver. A tenant cannot send from its own
+sender identity or its own Firebase project.
+
+The Platform Owner console states this on the page rather than presenting a
+per-tenant provider screen that would not do anything. Related: TD-0048
+(subscription limits reported but not enforced) has the same shape — a
+platform-level control surface that a tenant cannot yet influence.
+
+**Resolution:** move provider credentials into `Organization.settings` (or a
+dedicated `NotificationProviderConfig` model), resolve the adapter per
+notification rather than per process, and fall back to the deployment
+default when a tenant has configured none.
+
+---
+
+## TD-0065: No user picker for composing a broadcast
+
+**Raised:** 2026-08-06 (Milestone 18, Checkpoint 18.6)
+**Severity:** Low
+
+`POST /notifications/admin/send` accepts both `recipientIds` and
+`roleSlugs`, and both are honoured. The admin console's Send tab only
+exposes the role field, as a comma-separated list — there is no user search
+or multi-select, so addressing named individuals means calling the API
+directly.
+
+Same shape as the long-standing TD-0028 (free-text internal user IDs
+elsewhere in the app); a shared user-picker component would close several of
+these at once.
+
+**Resolution:** build one reusable user-picker component backed by
+`GET /users`, and use it here, in the inventory store-manager field, and in
+the asset-assignment field.
+
+---
+
+## TD-0066: Milestone 18 was not browser-verified
+
+**Raised:** 2026-08-06 (Milestone 18, Checkpoint 18.7)
+**Severity:** Low
+
+Explicit instruction this session: "Do NOT use Playwright. Do NOT generate
+screenshots. Do NOT perform browser verification." Every claim about
+Milestone 18 therefore rests on automated verification — 727 API unit tests,
+6 web unit tests, 408 e2e tests across 21 suites, plus lint, typecheck and
+build — and none on a rendered page. Mirrors TD-0035/TD-0036/TD-0044.
+
+**Resolution:** a browser pass over the notification centre, preferences
+page, admin console and platform analytics whenever screenshots are next
+requested; `docs/screens/` has no Milestone 18 entries.

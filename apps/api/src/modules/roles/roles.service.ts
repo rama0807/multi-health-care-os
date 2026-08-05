@@ -3,6 +3,14 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 
 import { PrismaService } from '../../prisma/prisma.service'
 
+/**
+ * Permission resources prefixed with this are platform-tenant only — see
+ * `createDefaultOrgAdminRole` and `PlatformGuard`. Mirrors the same constant
+ * in `packages/database/prisma/seed.ts`; kept as a literal here rather than
+ * imported so the API doesn't take a build-time dependency on the seed script.
+ */
+const PLATFORM_RESOURCE_PREFIX = 'platform'
+
 export interface ResolvedAuthContext {
   roles: SystemRole[]
   permissions: string[]
@@ -39,9 +47,22 @@ export class RolesService {
     return { roles, permissions, hospitalIds }
   }
 
-  /** Creates the org-wide administrator role used at organization registration time. */
+  /**
+   * Creates the org-wide administrator role used at organization registration
+   * time.
+   *
+   * Grants every permission **except** the `platform.*` family (Milestone 16 /
+   * ADR-0025). Those govern cross-tenant administration and belong to the
+   * platform tenant alone — an organization admin's authority stops at their
+   * own organization's boundary. Excluding them here is defence in depth
+   * rather than the only control: `PlatformGuard` independently requires the
+   * caller's organization to be flagged `isPlatform`.
+   */
   async createDefaultOrgAdminRole(organizationId: string) {
-    const allPermissions = await this.prisma.permission.findMany()
+    const permissions = await this.prisma.permission.findMany({
+      where: { NOT: { resource: { startsWith: PLATFORM_RESOURCE_PREFIX } } },
+    })
+
     return this.prisma.role.create({
       data: {
         name: 'Admin',
@@ -49,7 +70,7 @@ export class RolesService {
         organizationId,
         description: 'Full access across the organization',
         rolePermissions: {
-          create: allPermissions.map((p) => ({ permissionId: p.id })),
+          create: permissions.map((p) => ({ permissionId: p.id })),
         },
       },
     })

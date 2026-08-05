@@ -12,6 +12,21 @@ export enum SubscriptionTier {
   ENTERPRISE = 'ENTERPRISE',
 }
 
+export enum OrganizationStatus {
+  TRIAL = 'TRIAL',
+  ACTIVE = 'ACTIVE',
+  SUSPENDED = 'SUSPENDED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum SubscriptionStatus {
+  TRIALING = 'TRIALING',
+  ACTIVE = 'ACTIVE',
+  PAST_DUE = 'PAST_DUE',
+  CANCELLED = 'CANCELLED',
+  EXPIRED = 'EXPIRED',
+}
+
 export enum Gender {
   MALE = 'MALE',
   FEMALE = 'FEMALE',
@@ -334,13 +349,10 @@ export enum DoctorDocumentType {
   OTHER = 'OTHER',
 }
 
-export enum NotificationChannel {
-  EMAIL = 'EMAIL',
-  SMS = 'SMS',
-  PUSH = 'PUSH',
-  IN_APP = 'IN_APP',
-  WHATSAPP = 'WHATSAPP',
-}
+// `NotificationChannel` used to live here. It moved to `./notification`
+// alongside the rest of the Communication & Notification Platform's enums
+// (Milestone 18 / ADR-0027) so one file owns the whole vocabulary; it is still
+// re-exported from the package root, so no import path changed.
 
 export enum SystemRole {
   SUPER_ADMIN = 'SUPER_ADMIN',

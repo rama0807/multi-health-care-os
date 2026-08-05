@@ -1,5 +1,6 @@
 import { AssignShiftRosterDto, BulkAssignShiftRosterDto, ShiftRoster, ShiftRosterQuery } from '@medicore/types'
 import { Injectable, NotFoundException } from '@nestjs/common'
+import { EventEmitter2 } from '@nestjs/event-emitter'
 import { Prisma, ShiftRoster as PrismaShiftRoster, Staff, User } from '@prisma/client'
 
 import { PrismaService } from '../../prisma/prisma.service'
@@ -23,6 +24,7 @@ export class ShiftRosterService {
     private readonly prisma: PrismaService,
     private readonly staffRef: StaffRefService,
     private readonly shiftsService: ShiftsService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   /** The "weekly roster" view — every assignment for a date range, optionally scoped to one staff/shift/department. */
@@ -67,6 +69,20 @@ export class ShiftRosterService {
       },
       include: ROSTER_INCLUDE,
     })
+
+    // A day off is not an assignment worth telling anyone about; a real shift
+    // is. `bulkAssign` routes through here, so one emit covers both paths.
+    if (!dto.isOff) {
+      this.eventEmitter.emit('staff.roster.assigned', {
+        organizationId,
+        shiftRosterId: roster.id,
+        staffId: roster.staffId,
+        shiftId: roster.shiftId,
+        date: roster.date,
+        userId: actorUserId,
+      })
+    }
+
     return this.toResponse(roster)
   }
 

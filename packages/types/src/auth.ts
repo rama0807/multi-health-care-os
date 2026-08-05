@@ -2,11 +2,36 @@ import { z } from 'zod'
 
 import { SystemRole } from './enums'
 
+/**
+ * The three tenant levels every authenticated request resolves to
+ * (Checkpoint 16.3). `platform` is the outermost: true only for users whose
+ * organization is flagged `Organization.isPlatform`. `organization` is always
+ * present. `hospital` is a *scope*, not a single value — a user with no
+ * hospital-scoped role assignment operates org-wide.
+ */
+export interface TenantContext {
+  userId: string
+  organizationId: string
+  organizationSlug: string
+  isPlatformOwner: boolean
+  /** Empty means org-wide access, not "no access". */
+  hospitalIds: string[]
+}
+
 export interface JwtPayload {
   sub: string
   email: string
   orgId: string
   orgSlug: string
+  /**
+   * True when this user's organization is the platform tenant. Carried in the
+   * token so `PlatformGuard` needs no per-request DB round trip — the same
+   * reasoning that already embeds `permissions` rather than re-resolving them.
+   * Revoking it takes effect on the next refresh (≤15 min), and
+   * `JwtStrategy.validate` still re-checks the organization is active on every
+   * request.
+   */
+  isPlatform: boolean
   roles: SystemRole[]
   /** "resource.action.scope" strings, e.g. "patients.read.own" — resolved at login/refresh time */
   permissions: string[]
@@ -31,6 +56,8 @@ export interface AuthenticatedUser {
   organizationId: string
   organizationSlug: string
   organizationName: string
+  /** Mirrors `JwtPayload.isPlatform` — lets the web app route to the isolated Platform console. */
+  isPlatform: boolean
   roles: SystemRole[]
   permissions: string[]
   hospitalIds: string[]

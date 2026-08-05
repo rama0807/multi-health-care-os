@@ -49,7 +49,8 @@ describe('StockService', () => {
       inventoryStockAdjustment: { create: jest.fn() },
       $transaction: jest.fn((cb: (tx: unknown) => unknown) => cb(prisma)),
     }
-    service = new StockService(prisma as never)
+    // Milestone 18: stock movements announce `inventory_stock.changed`.
+    service = new StockService(prisma as never, { emit: jest.fn() } as never)
   })
 
   afterEach(() => jest.clearAllMocks())

@@ -79,6 +79,11 @@ describe('Doctor documents + audit timeline (e2e)', () => {
     const prisma = app.get(PrismaService)
     const requiredPermissions = [
       { resource: 'doctors', action: 'read', scope: 'all' },
+      // The Doctor role below is granted `doctors.read` at `own` scope so it
+      // can read its own audit timeline. This row must be upserted here rather
+      // than assumed — otherwise the suite passes only against a test database
+      // that happens to have been seeded by `seed.ts` beforehand.
+      { resource: 'doctors', action: 'read', scope: 'own' },
       { resource: 'doctors', action: 'create', scope: 'all' },
       { resource: 'doctors', action: 'update', scope: 'all' },
       { resource: 'hospitals', action: 'read', scope: 'all' },

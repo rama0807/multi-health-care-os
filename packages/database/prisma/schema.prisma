@@ -23,6 +23,32 @@ enum SubscriptionTier {
   ENTERPRISE
 }
 
+/// Lifecycle of a tenant, controlled from the Platform Owner console
+/// (Milestone 16 / ADR-0025). Deliberately distinct from
+/// `Organization.isActive`, which stays the single hard switch every existing
+/// auth path already checks (`JwtStrategy.validate`, `AuthService.login`,
+/// `AuthService.refresh`) — suspending or cancelling an organization sets
+/// `isActive = false` alongside this status rather than introducing a second,
+/// parallel enforcement point that could drift out of sync.
+enum OrganizationStatus {
+  TRIAL
+  ACTIVE
+  SUSPENDED
+  CANCELLED
+}
+
+/// Billing state of an organization's subscription. Kept separate from
+/// `OrganizationStatus` because a tenant can be commercially PAST_DUE while
+/// still operationally ACTIVE — only an explicit platform-owner suspension
+/// stops logins.
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
 enum Gender {
   MALE
   FEMALE
@@ -345,16 +371,58 @@ enum DocumentType {
   OTHER
 }
 
+/// The *event* a notification reports. One value per real trigger wired in
+/// `notification-events.listener.ts` (Milestone 18 Checkpoint 18.4) — a value
+/// is only added here once something actually emits it, so this enum doubles
+/// as the list of events the platform genuinely reacts to.
 enum NotificationType {
+  APPOINTMENT_BOOKED
   APPOINTMENT_REMINDER
   APPOINTMENT_CONFIRMED
   APPOINTMENT_CANCELLED
+  ENCOUNTER_CREATED
+  ENCOUNTER_UPDATED
+  LAB_SAMPLE_COLLECTED
   LAB_RESULT_READY
+  RADIOLOGY_REPORT_RELEASED
   INVOICE_GENERATED
   PAYMENT_RECEIVED
+  PREAUTH_APPROVED
+  CLAIM_APPROVED
+  CLAIM_REJECTED
   PRESCRIPTION_READY
+  MEDICINE_DISPENSED
+  INVENTORY_LOW_STOCK
+  INVENTORY_REORDER_LEVEL
+  IPD_ADMITTED
+  IPD_TRANSFERRED
+  IPD_DISCHARGED
   DISCHARGE_SUMMARY
+  STAFF_LEAVE_APPROVED
+  STAFF_SHIFT_ASSIGNED
+  SCHEDULED_REPORT_READY
+  ORGANIZATION_ONBOARDED
+  HOSPITAL_CREATED
   CUSTOM
+}
+
+/// The grouping a *user* reasons about when configuring preferences. Types
+/// are per-event and would make an unusable preferences screen; categories
+/// are the switches `NotificationPreference.categoryPreferences` holds.
+enum NotificationCategory {
+  APPOINTMENT
+  CLINICAL
+  LABORATORY
+  RADIOLOGY
+  BILLING
+  INSURANCE
+  PHARMACY
+  INVENTORY
+  IPD
+  STAFF
+  REPORTS
+  PLATFORM
+  SYSTEM
 }
 
 enum NotificationChannel {
@@ -365,12 +433,64 @@ enum NotificationChannel {
   WHATSAPP
 }
 
+/// `CRITICAL` deliberately bypasses quiet hours and per-category mutes (a
+/// critical result must reach the clinician); `SILENT` is written to the
+/// in-app centre only and never raises push, email, SMS or WhatsApp.
+enum NotificationPriority {
+  CRITICAL
+  HIGH
+  NORMAL
+  LOW
+  SILENT
+}
+
+/// The *notification's* overall state, derived from its per-channel
+/// `NotificationDelivery` rows by `NotificationDispatcherService`. `SENT`
+/// means every attempted channel succeeded; `PARTIALLY_SENT` means at least
+/// one did and at least one exhausted its retries.
 enum NotificationStatus {
   PENDING
+  SCHEDULED
+  QUEUED
+  SENT
+  PARTIALLY_SENT
+  DELIVERED
+  FAILED
+  CANCELLED
+  READ
+}
+
+/// One channel attempt's state. Separate from `NotificationStatus` because a
+/// single notification fans out to several channels that succeed and fail
+/// independently — collapsing them onto the notification row would make
+/// "which channel actually failed?" unanswerable.
+enum NotificationDeliveryStatus {
+  PENDING
+  QUEUED
+  SENDING
   SENT
   DELIVERED
   FAILED
-  READ
+  /// The channel was suppressed before dispatch — muted category, quiet
+  /// hours, disabled channel, or no destination address on file. Not a
+  /// failure: nothing was attempted, and it is never retried.
+  SKIPPED
+  CANCELLED
+}
+
+/// How often a user wants non-critical email.
+enum EmailDigestFrequency {
+  IMMEDIATE
+  HOURLY
+  DAILY
+  WEEKLY
+  NEVER
+}
+
+enum DevicePlatform {
+  WEB
+  ANDROID
+  IOS
 }
 
 /// See ADR-0016. `UNDER_REVIEW` already covers what a payer calls a claim
@@ -447,27 +567,38 @@ enum AbnormalType {
 // ─── Core Tenant Model ─────────────────────────────────────────────────────
 
 model Organization {
-  id                    String           @id @default(cuid())
+  id                    String             @id @default(cuid())
   name                  String
-  slug                  String           @unique
-  type                  OrganizationType @default(HOSPITAL)
+  slug                  String             @unique
+  type                  OrganizationType   @default(HOSPITAL)
   email                 String
   phone                 String
   address               String?
   city                  String?
   state                 String?
-  country               String           @default("IN")
+  country               String             @default("IN")
   pincode               String?
   logo                  String?
   website               String?
   licenseNumber         String?
   taxId                 String?
-  settings              Json             @default("{}")
-  subscriptionTier      SubscriptionTier @default(FREE)
+  settings              Json               @default("{}")
+  /// Visual identity (theme colours, login background, email header). Kept
+  /// separate from `settings` so a branding change never risks clobbering
+  /// the operational settings blob every clinical module already reads.
+  branding              Json               @default("{}")
+  /// True for the single internal tenant that owns the platform. Platform
+  /// Owner console access requires this AND a `platform.*` permission —
+  /// see `PlatformGuard` (ADR-0025).
+  isPlatform            Boolean            @default(false)
+  status                OrganizationStatus @default(ACTIVE)
+  suspendedAt           DateTime?
+  suspensionReason      String?
+  subscriptionTier      SubscriptionTier   @default(FREE)
   subscriptionExpiresAt DateTime?
-  isActive              Boolean          @default(true)
-  createdAt             DateTime         @default(now())
-  updatedAt             DateTime         @updatedAt
+  isActive              Boolean            @default(true)
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
 
   users                     User[]
   roles                     Role[]
@@ -547,9 +678,46 @@ model Organization {
   aiConversations           AiConversation[]
   aiUsageLogs               AiUsageLog[]
   aiPromptTemplates         AiPromptTemplate[]
+  savedReports              SavedReport[]
+  notificationDeliveries    NotificationDelivery[]
+  notificationTemplates     NotificationTemplate[]
+  notificationPreferences   NotificationPreference[]
+  userDevices               UserDevice[]
+  subscription              Subscription?
 
   @@index([slug])
+  @@index([status])
   @@map("organizations")
+}
+
+/// One current subscription per organization (`organizationId` is unique).
+/// Plan *changes* are not kept as rows here — every mutation is recorded by
+/// the existing `AuditService`, which already stores `before`/`after`
+/// snapshots, so a separate history table would duplicate that trail.
+model Subscription {
+  id             String             @id @default(cuid())
+  organizationId String             @unique
+  plan           SubscriptionTier   @default(FREE)
+  status         SubscriptionStatus @default(TRIALING)
+  startsAt       DateTime           @default(now())
+  endsAt         DateTime?
+  /// Null on any limit means "unlimited" — enforced at the application layer
+  /// by `SubscriptionLimitsService`, not by a DB constraint, because the
+  /// limit must be checked before a create rather than after it fails.
+  maxHospitals   Int?
+  maxUsers       Int?
+  maxPatients    Int?
+  storageQuotaMb Int?
+  monthlyPrice   Decimal?           @db.Decimal(12, 2)
+  currency       String             @default("INR")
+  notes          String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("subscriptions")
 }
 
 // ─── Identity & Access ─────────────────────────────────────────────────────
@@ -574,13 +742,15 @@ model User {
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
 
-  organization  Organization   @relation(fields: [organizationId], references: [id])
-  userRoles     UserRole[]
-  doctorProfile Doctor?
-  staffProfile  Staff?
-  auditLogs     AuditLog[]
-  notifications Notification[]
-  aiUsageLogs   AiUsageLog[]
+  organization           Organization            @relation(fields: [organizationId], references: [id])
+  userRoles              UserRole[]
+  doctorProfile          Doctor?
+  staffProfile           Staff?
+  auditLogs              AuditLog[]
+  notifications          Notification[]
+  notificationPreference NotificationPreference?
+  devices                UserDevice[]
+  aiUsageLogs            AiUsageLog[]
 
   @@index([organizationId])
   @@index([email])
@@ -662,11 +832,12 @@ model Hospital {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id])
-  departments  Department[]
-  userRoles    UserRole[]
-  doctors      Doctor[]
-  staff        Staff[]
+  organization  Organization   @relation(fields: [organizationId], references: [id])
+  departments   Department[]
+  userRoles     UserRole[]
+  doctors       Doctor[]
+  staff         Staff[]
+  notifications Notification[]
 
   @@unique([code, organizationId])
   @@index([organizationId])
@@ -3674,30 +3845,220 @@ model StockAuditItem {
 
 // ─── Notifications ─────────────────────────────────────────────────────────
 
+// ─── Communication & Notifications (Milestone 18 / ADR-0027) ───────────────
+
+/// One message to one recipient. Channel fan-out lives in
+/// `NotificationDelivery`, one row per channel, so this table stays the
+/// single record of "what was said to whom" regardless of how many
+/// transports carried it.
+///
+/// `eventKey` is the idempotency handle: an event listener that fires twice
+/// for the same source row (a retried transaction, a duplicated emit)
+/// produces one notification, not two. It is scoped per recipient because
+/// the same event legitimately notifies several people.
 model Notification {
-  id             String              @id @default(cuid())
+  id             String               @id @default(cuid())
   organizationId String
-  userId         String?
+  /// Nullable because platform-level and org-wide notifications belong to no
+  /// single hospital, and every tenant here may run more than one.
+  hospitalId     String?
+  /// The user this notification is addressed to. Nullable only for
+  /// patient-addressed messages, which reach a patient by email/SMS/WhatsApp
+  /// and never appear in a staff member's in-app centre.
+  recipientId    String?
   patientId      String?
   type           NotificationType
+  category       NotificationCategory
+  priority       NotificationPriority @default(NORMAL)
   title          String
   body           String
-  data           Json                @default("{}")
-  isRead         Boolean             @default(false)
-  channel        NotificationChannel @default(IN_APP)
-  status         NotificationStatus  @default(PENDING)
+  /// Lucide icon name rendered by the notification centre. Free text rather
+  /// than an enum: the icon set is a frontend concern and changes without a
+  /// migration.
+  icon           String?
+  imageUrl       String?
+  /// In-app route the notification opens — `/dashboard/appointments/{id}`
+  /// and friends. Also carried into the push payload so a background
+  /// notification click lands on the same page.
+  deepLink       String?
+  /// Template variables plus any source identifiers. Never holds clinical
+  /// free text beyond what `title`/`body` already say.
+  payload        Json                 @default("{}")
+  /// Set for a future-dated notification; null means dispatch immediately.
+  scheduleAt     DateTime?
+  /// Dispatch attempts made across all channels — the per-channel counter
+  /// that actually drives backoff lives on `NotificationDelivery.attempts`.
+  retryCount     Int                  @default(0)
+  deliveryStatus NotificationStatus   @default(PENDING)
   failureReason  String?
+  isRead         Boolean              @default(false)
   readAt         DateTime?
+  isArchived     Boolean              @default(false)
+  archivedAt     DateTime?
+  isPinned       Boolean              @default(false)
+  pinnedAt       DateTime?
   sentAt         DateTime?
-  createdAt      DateTime            @default(now())
+  /// Idempotency key, unique per recipient. See the model comment.
+  eventKey       String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  organization Organization           @relation(fields: [organizationId], references: [id])
+  hospital     Hospital?              @relation(fields: [hospitalId], references: [id])
+  recipient    User?                  @relation(fields: [recipientId], references: [id])
+  patient      Patient?               @relation(fields: [patientId], references: [id])
+  deliveries   NotificationDelivery[]
+
+  @@unique([recipientId, eventKey])
+  @@index([organizationId, createdAt])
+  @@index([recipientId, isRead, isArchived])
+  @@index([organizationId, deliveryStatus])
+  @@index([deliveryStatus, scheduleAt])
+  @@map("notifications")
+}
+
+/// One channel attempt against one notification. This is also the retry
+/// queue: `NotificationQueueService` claims rows whose `nextAttemptAt` has
+/// elapsed, so queue state and delivery history are the same durable record
+/// rather than two that can disagree (ADR-0027).
+model NotificationDelivery {
+  id                String                     @id @default(cuid())
+  notificationId    String
+  organizationId    String
+  channel           NotificationChannel
+  status            NotificationDeliveryStatus @default(PENDING)
+  /// Where it was actually sent — email address, phone number, or the
+  /// `UserDevice` id for push. Recorded so a delivery can be explained after
+  /// the user's contact details change.
+  destination       String?
+  attempts          Int                        @default(0)
+  /// Null once the row reaches a terminal state; otherwise the earliest time
+  /// the worker may try again (exponential backoff).
+  nextAttemptAt     DateTime?
+  lastAttemptAt     DateTime?
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+  failedAt          DateTime?
+  failureReason     String?
+  /// Which adapter handled it (`resend`, `fcm`, `log-sms`, …) and the id it
+  /// returned, so a delivery can be traced in the provider's own console.
+  providerName      String?
+  providerMessageId String?
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([notificationId, channel])
+  @@index([organizationId, status])
+  @@index([status, nextAttemptAt])
+  @@map("notification_deliveries")
+}
+
+/// An organization's override of a bundled default template, versioned
+/// append-only exactly like `AiPromptTemplate` — editing a template changes
+/// what every future recipient reads, so the previous wording stays
+/// recoverable. A `(key, channel)` pair with no row here falls back to the
+/// bundled default in `default-templates.ts`.
+model NotificationTemplate {
+  id               String               @id @default(cuid())
+  organizationId   String
+  /// Matches `NotificationType` for event-driven templates; free text so an
+  /// organization can also add templates for its own broadcast messages.
+  key              String
+  channel          NotificationChannel
+  version          Int
+  name             String
+  description      String?
+  category         NotificationCategory
+  priority         NotificationPriority @default(NORMAL)
+  /// Email subject / push title. Null for channels that carry a body only.
+  subjectTemplate  String?
+  bodyTemplate     String
+  deepLinkTemplate String?
+  /// Variable names the template declares, for the admin editor's help text.
+  /// Rendering does not depend on it — an undeclared variable still renders.
+  variables        Json                 @default("[]")
+  isActive         Boolean              @default(true)
+  createdByUserId  String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id])
-  user         User?        @relation(fields: [userId], references: [id])
-  patient      Patient?     @relation(fields: [patientId], references: [id])
+
+  @@unique([organizationId, key, channel, version])
+  @@index([organizationId, key, channel])
+  @@map("notification_templates")
+}
+
+/// One row per user. Absent means "every default applies" — the services
+/// never require a row to exist, so a user who has never opened the
+/// preferences page still receives notifications.
+model NotificationPreference {
+  id                  String               @id @default(cuid())
+  organizationId      String
+  userId              String               @unique
+  inAppEnabled        Boolean              @default(true)
+  emailEnabled        Boolean              @default(true)
+  pushEnabled         Boolean              @default(true)
+  smsEnabled          Boolean              @default(false)
+  whatsappEnabled     Boolean              @default(false)
+  emailFrequency      EmailDigestFrequency @default(IMMEDIATE)
+  /// `HH:mm` local wall-clock, evaluated in `timezone`. Both null means no
+  /// quiet hours. A window may wrap midnight (22:00 → 07:00).
+  quietHoursStart     String?
+  quietHoursEnd       String?
+  /// IANA zone the quiet-hours window is read in; defaults to the user's own
+  /// `User.timezone` when a row is first created.
+  timezone            String               @default("Asia/Kolkata")
+  /// `{ "<NotificationCategory>": { "enabled": bool, "channels": [...] } }`.
+  /// A category absent from the map is enabled with the channel defaults
+  /// above — new categories therefore never arrive silently muted.
+  categoryPreferences Json                 @default("{}")
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
-  @@index([userId, isRead])
-  @@map("notifications")
+  @@map("notification_preferences")
+}
+
+/// A push destination. One user has many — a browser is one device, and the
+/// same person legitimately runs several. Deliberately not web-only:
+/// `platform` and an opaque `token` are all the FCM adapter needs, so a
+/// future mobile app registers here unchanged (Checkpoint 18.2).
+model UserDevice {
+  id             String         @id @default(cuid())
+  organizationId String
+  userId         String
+  /// FCM registration token. Unique because FCM reissues a token to at most
+  /// one installation — a token appearing again means the device moved, and
+  /// registration re-points the existing row rather than duplicating it.
+  token          String         @unique
+  platform       DevicePlatform @default(WEB)
+  /// User-facing label ("Chrome on MacBook Pro"), best-effort from the UA.
+  deviceName     String?
+  browser        String?
+  osName         String?
+  userAgent      String?
+  isActive       Boolean        @default(true)
+  /// Cleared on a successful send, set when FCM reports the token
+  /// unregistered — the row is deactivated rather than deleted so delivery
+  /// history keeps pointing at something real.
+  deactivatedAt  DateTime?
+  lastSeenAt     DateTime       @default(now())
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isActive])
+  @@index([organizationId])
+  @@map("user_devices")
 }
 
 // ─── Audit ─────────────────────────────────────────────────────────────────
@@ -3876,4 +4237,43 @@ model AiPromptTemplate {
   @@unique([organizationId, feature, version])
   @@index([organizationId, feature])
   @@map("ai_prompt_templates")
+}
+
+// ─── Reports & Analytics (Milestone 17 / ADR-0026) ─────────────────────────
+
+/// A named, re-runnable set of filters against one report in the registry —
+/// the only table Milestone 17 adds. Reports themselves are pure read-only
+/// aggregations over tables other modules already own, so nothing here
+/// caches or duplicates a result: `reportKey` names a `ReportDefinition` in
+/// `modules/reports/report-registry.ts` and `filters` holds that run's
+/// parameters, nothing more.
+///
+/// `scheduleCron`/`scheduleRecipients`/`scheduleEnabled` are a **disclosed
+/// placeholder** (see TECH_DEBT TD-0053): the fields persist a schedule so
+/// Milestone 18 (Notifications & Communication) has somewhere to read from,
+/// but no job in this repo dispatches them — the same "disclosed
+/// placeholder, not a fake feature" practice as the DICOM/ICD-10/payment-QR
+/// placeholders in earlier milestones.
+model SavedReport {
+  id                 String    @id @default(cuid())
+  organizationId     String
+  name               String
+  description        String?
+  reportKey          String
+  filters            Json      @default("{}")
+  isShared           Boolean   @default(false)
+  createdByUserId    String
+  scheduleEnabled    Boolean   @default(false)
+  scheduleCron       String?
+  scheduleRecipients String[]  @default([])
+  lastRunAt          DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@index([organizationId, reportKey])
+  @@map("saved_reports")
 }

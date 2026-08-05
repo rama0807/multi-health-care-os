@@ -9,6 +9,8 @@ import {
   FileText,
   FlaskConical,
   Home,
+  Landmark,
+  Bell,
   Package,
   Pill,
   Scan,
@@ -91,8 +93,22 @@ export const navigation: NavSection[] = [
   {
     title: 'Admin',
     items: [
+      {
+        label: 'Organization',
+        href: '/dashboard/organization',
+        icon: Landmark,
+        permission: 'organizations.read',
+      },
       { label: 'Staff', href: '/dashboard/staff', icon: UserCog, permission: 'staff.read' },
       { label: 'Reports', href: '/dashboard/reports', icon: Activity, permission: 'reports.read' },
+      {
+        label: 'Notifications',
+        href: '/dashboard/notifications/admin',
+        icon: Bell,
+        // The admin console only. Every user reaches their *own* centre from
+        // the bell in the header, which needs no permission at all.
+        permission: 'notifications.read',
+      },
       { label: 'Settings', href: '/dashboard/settings', icon: Settings },
     ],
   },

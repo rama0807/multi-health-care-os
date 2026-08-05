@@ -4,6 +4,210 @@
 > after every completed task. Pair with `CHANGELOG.md` (human-facing summary)
 > and `MODULE_STATUS.md` (per-module state).
 
+## 2026-08-06 — Milestone 18 (Communication & Notification Platform) — complete
+
+Instruction: build Milestone 18 in full (Checkpoints 18.1–18.7), audit
+first, treat the repository as the source of truth, reuse existing
+services, do not rebuild existing functionality, and **do not integrate
+paid providers** — abstractions and local implementations only. AI work
+stayed paused and untouched throughout.
+
+### What the audit found, and how it changed the work
+
+- `apps/api/src/modules/notifications/` **existed but was an empty stub**:
+  a service whose constructor took `PrismaService` and did nothing with
+  it, and a controller with zero routes. Nothing anywhere in the repo read
+  or wrote the `Notification` table. So there was no write path to reuse —
+  but also no data to migrate, which is why the model could be reshaped
+  freely.
+- `common/email/` was already the working sender (Resend, with a console
+  fallback) for appointment confirmations, password resets and onboarding
+  mail. A second sender was never on the table; the email channel adapter
+  wraps it.
+- `EventEmitter2` was already wired with **125 distinct events** emitted
+  across every module, and `AuditListener` already demonstrated the
+  many-listeners-on-one-event pattern. Event integration therefore added
+  listeners, not emitters — with four genuine exceptions (below).
+- `bullmq` was a dependency **used nowhere**. It stayed that way, on
+  purpose (ADR-0027).
+- `@nestjs/schedule` and `firebase-admin`/`firebase` were **not**
+  dependencies, and none were added.
+
+### Architecture (ADR-0027)
+
+- **The `notification_deliveries` table is the queue.** Delivery history
+  has to be durable and queryable for the admin console regardless; a
+  broker would duplicate exactly those rows and eventually disagree with
+  them. A row whose `nextAttemptAt` has elapsed *is* a queued job.
+  Claiming is a compare-and-set on `status`, so two workers racing for one
+  row produce one winner and one no-op.
+- **One notification, many deliveries.** The notification's aggregate
+  status is *derived* from its delivery rows on every attempt, never set
+  directly — except that `READ` is sticky, so a late retry cannot make a
+  read notification look unread again.
+- **A suppressed channel is `SKIPPED`, never `FAILED`.** Nothing was
+  attempted, so counting it as a failure would corrupt every success rate
+  the console reports.
+- **Preferences are evaluated at dispatch time**, so a delivery retried
+  three hours later is re-checked against quiet hours as they are *then*.
+- **`CRITICAL` overrides every preference; `SILENT` is in-app only.**
+- **In-app is never optional** — it is the durable record the centre reads.
+- **Channel providers mirror `StorageModule`/`AiCommonModule`**: one
+  interface, five implementations, selected by channel.
+
+### Files added
+
+`apps/api/src/config/notifications.config.ts`;
+`apps/api/src/modules/notifications/` — `channels/`
+(`channel-provider.interface.ts`, `in-app.provider.ts`, `email.provider.ts`,
+`fcm-push.provider.ts`, `sms.provider.ts`, `whatsapp.provider.ts`),
+`default-templates.ts`, `notification-template.service.ts`,
+`notification-preference.service.ts`, `notification-history.service.ts`,
+`notification-queue.service.ts`, `notification-dispatcher.service.ts`,
+`notification-scheduler.service.ts`, `notification-stats.service.ts`,
+`user-device.service.ts`, `notification-events.listener.ts`,
+`notification-admin.controller.ts`, `platform-notifications.controller.ts`,
+`dto/notification.dto.ts`, plus four spec files;
+`apps/api/src/modules/reports/cron-match.util.ts` (+ spec) and
+`scheduled-reports.dispatcher.ts`;
+`apps/api/test/notifications.e2e-spec.ts`;
+`packages/types/src/notification.ts`;
+`apps/web/src/lib/api/notifications.ts`,
+`apps/web/src/lib/push/use-push-notifications.ts`,
+`apps/web/public/push-sw.js`,
+`apps/web/src/components/notifications/notification-bell.tsx`,
+`apps/web/src/app/dashboard/notifications/{page,preferences/page,admin/page}.tsx`,
+`apps/web/src/app/platform/notifications/page.tsx`.
+
+### Files modified
+
+`packages/database/prisma/schema.prisma` (+ migration
+`20260805200000_notification_platform`), `packages/database/prisma/seed.ts`
+(`notifications` and `platform.notifications` permission resources),
+`packages/types/src/{index,enums}.ts` (`NotificationChannel` moved into
+`notification.ts`), `apps/api/src/app.module.ts`,
+`apps/api/src/modules/notifications/{notifications.service,
+notifications.controller,notifications.module}.ts` (the stub, replaced),
+`apps/api/src/modules/reports/reports.module.ts`.
+
+**Four one-line `emit` additions** — the only changes to other modules'
+business services, none of which moved any logic:
+`inventory/stock.service.ts` (`inventory_stock.changed`),
+`staff/shift-roster.service.ts` (`staff.roster.assigned`),
+`hospitals/hospitals.service.ts` (`hospital.created`),
+`auth/auth.service.ts` (`organization.onboarded`). Their three existing
+spec files were updated for the new constructor argument.
+
+### TD-0053 closed
+
+Scheduled reports now genuinely dispatch. `ScheduledReportsDispatcher`
+listens on `notifications.tick` (the notification worker's clock — no
+second scheduler exists), matches the stored cron with a new
+dependency-free `cron-match.util.ts`, claims each run by compare-and-set on
+`lastRunAt`, runs the report through the existing registry, exports it
+through the same `ReportExportService` the on-screen button uses, emails
+the recipients, and notifies the report's owner in-app.
+
+### Verification
+
+`pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`, `pnpm build`
+— all pass. **727 API unit tests** (+64), **6 web unit tests**, and
+**408 e2e tests across 21 suites** (+30). Web build emits
+`/dashboard/notifications`, `/dashboard/notifications/admin`,
+`/dashboard/notifications/preferences` and `/platform/notifications`.
+No browser verification and no screenshots, by explicit instruction
+(TD-0066).
+
+### Honest gaps recorded
+
+TD-0058 (the browser cannot mint an FCM token here — no Firebase SDK or
+project; reported explicitly, never faked), TD-0059 (SMS/WhatsApp are
+abstractions with a log driver only, by instruction), TD-0060 (scheduled
+report linked, not attached), TD-0061 (email digest batching unimplemented,
+disclosed on screen), TD-0062 (low-stock alerts cover only stock-service
+movements, one alert per threshold), TD-0063 (the centre polls; no
+websocket), TD-0064 (provider config is deployment-wide, not per tenant),
+TD-0065 (no user picker for broadcasts), TD-0066 (not browser-verified).
+
+---
+
+## 2026-08-05 — Milestone 17 (Reports & Analytics) — complete
+
+Instruction: build Milestone 17 in full, *"Everything should be generated
+from existing data. Do NOT duplicate business logic. Reuse existing
+services wherever possible."* AI work stayed paused and untouched.
+
+The session opened with an audit, as instructed, and the audit changed
+what got built:
+
+- `reports: ['read', 'export']` **already existed** in the seed permission
+  catalog, and the sidebar **already had** a dormant `reports.read`-gated
+  `/dashboard/reports` link. No new permission or nav entry was needed —
+  the route simply had nothing behind it.
+- `recharts` was **already** a frontend dependency (the encounter
+  weight-trend chart uses it), so no chart library was added. `NEXT.md`
+  had flagged this as "check first"; it checked out.
+- Five dashboard-shaped aggregation services already existed
+  (`Billing`/`Ipd`/`Insurance`/`Staff`/`Inventory`), and their idioms —
+  `Promise.all` fan-out, JS bucketing, `.toFixed(2)` money strings — were
+  followed rather than replaced.
+- Three roadmap metrics turned out **not to be derivable** from the
+  schema. They were implemented as the closest honest measure and
+  disclosed, not faked: no appointment arrival timestamp exists
+  (TD-0051), no radiology machine-capacity model exists (TD-0052), and
+  the laboratory module raises no `Charge` rows and `LabTestCatalogItem`
+  has no price column (TD-0055).
+
+### What was built
+
+**Checkpoint 17.1 — Operational reports.** `apps/api/src/modules/reports/`
+with a shared `report-range.util.ts` (exclusive-`to` windows, local-time
+bucket keys, zero-filled series, null-safe comparisons) and eleven
+services, each `GET /reports/<module>`:
+
+| Report | Notable derivations |
+|---|---|
+| Patients | Cohort = registered-in-period plus seen-in-period; ages computed as at window end so a historical report is reproducible |
+| Appointments | Doctor utilisation = booked minutes over real `DoctorSchedule` availability (breaks excluded), reusing `toMinutes`/`weekdayOf` from the scheduling module |
+| Doctors | OPD from non-IPD encounters, IPD from `Admission.attendingDoctorId` — counting the auto-created IPD encounter instead would double-count the stay |
+| Laboratory | Turnaround over orders *reported* in the window; revenue allocated evenly across an order's tests |
+| Radiology | Machine **share of scheduled minutes**; unassigned studies grouped, not dropped |
+| Pharmacy | Revenue is exact (`quantityDispensed x Drug.price`); unresolved items carry `null`, not a guess. Stock alerts are point-in-time by design |
+| Inventory | Consumption from the `InventoryStockAdjustment` ledger, excluding inter-store `TRANSFER`; valuation excludes damaged/expired/lost |
+| Billing | Invoiced revenue and collected cash kept **separate**; GST per slab backed out of tax-inclusive stored line totals; outstanding aged from due date, and measured live rather than scoped to the range |
+| Insurance | Settlement ratio against **decided** claims; settled value from `insuranceShare`, not `approvedAmount` |
+| IPD | Live occupancy snapshot **and** a true bed-days rate reconstructed from overlapping stays |
+| Staff | Overtime reuses `ShiftsService.standardMinutes` — the same rostered-shift rule `PayrollService` applies |
+
+**Checkpoint 17.2 — Executive dashboards.** `DashboardsService` builds
+CEO / Medical Director / Operations / Finance / Department views by
+composing the 17.1 services; it runs exactly one Prisma query of its own
+(resolving a department name). One parameterised route,
+`GET /reports/dashboards/:key`.
+
+**Checkpoint 17.3 — Report builder.** `ReportRegistryService` pairs 23
+`ReportDefinition`s with runners that reshape existing service output into
+flat rows — so the builder UI, CSV, XLSX and PDF all render the same
+`ReportRunResult` and cannot disagree. `SavedReport` (the milestone's only
+new table) stores filters, never results. `xlsx.util.ts` writes a genuine
+OOXML package in ~150 lines over `node:zlib` rather than adding a
+spreadsheet dependency. `reports.export` gates downloads separately from
+`reports.read` because an exported file leaves the system.
+
+**Checkpoint 17.4 — Frontend.** Three routes under `/dashboard/reports`
+plus `_components/charts.tsx` (line / bar / pie / area via recharts, and a
+CSS-grid heatmap since recharts has no heatmap primitive).
+
+**Checkpoint 17.5 — Verification.** `pnpm lint`, `typecheck`, `test`,
+`test:e2e`, `build` all pass. **663 API unit tests** (615 baseline + 48)
+and **378 e2e tests across 20 suites** (335 baseline + 43). The full e2e
+suite was run four times; one run showed a single platform-suite failure
+that did not reproduce in three subsequent full runs or when that suite
+was run alone (36/36) — recorded here rather than left unmentioned. Not
+browser-verified, by instruction.
+
+---
+
 ## 2026-08-05 — Milestone 3 (Patient Management) — complete
 
 Explicit instruction paused AI development after Checkpoint 15.1 and
@@ -1645,3 +1849,152 @@ complete.**
   yet been individually verified. First session using this file should audit
   each module and populate `MODULE_STATUS.md` accurately rather than trusting
   directory existence as a proxy for completeness.
+
+---
+
+## Milestone 16 — Platform & Multi-Tenant Administration: Complete
+
+Completed in a single session (2026-08-05), all five checkpoints. The
+session's explicit instruction redefined Milestone 16 from `docs/roadmap.md`'s
+"Reports & Analytics" to Platform & Multi-Tenant Administration — see
+**ADR-0025** for that decision and every design call below.
+
+### The audit that opened the session
+
+The instruction was to audit before building, treating code as the source of
+truth. That audit found the hierarchy already half-built, which materially
+changed what got written:
+
+- `Organization → Hospital → Department → User → Patient` all existed, and
+  every service already filtered by a JWT-supplied `orgId`. **Tenant
+  isolation was never the gap** — Checkpoint 16.3 therefore added no new
+  resolution mechanism, only a named shape for the three levels plus one new
+  `isPlatform` claim.
+- `seed.ts` already created a `medicore-platform` organization holding a
+  SUPER_ADMIN user — it simply had no way to see past its own empty tenant.
+- `Organization` already carried address/tax/logo/`settings`/
+  `subscriptionTier`; `hospitals` already had CRUD; `AuditService`,
+  `StorageService`, `PermissionsService`, `RedisService`,
+  `StaffOnboardingService` and the `Holiday` model were all reusable as-is.
+
+The genuine gaps were: no cross-tenant operation, no tenant lifecycle beyond
+a boolean, no subscription concept, no usage metering, and no audit
+filtering/pagination.
+
+### Checkpoint 16.1 — Organization Management
+
+- **Organization profile** — `GET/PATCH /organizations/me` extended with
+  `country`/`taxId`/`type`, now audited with before/after snapshots.
+- **Branding + logo** — new `Organization.branding` JSON column (deliberately
+  separate from `settings`, which clinical modules read without a fallback);
+  logo upload/removal reuses `StorageService` exactly as every document
+  feature does, with the previous object deleted only after the new URL
+  commits.
+- **Settings** — merge-not-replace semantics, so a partially-populated form
+  can never drop `uhidPrefix`/`gstRate`/`defaultAppointmentDuration`.
+- **Organization administrators** — not a new entity: users holding an
+  ORG_ADMIN/SUPER_ADMIN role through the existing `UserRole` table.
+- **Hospital onboarding wizard** — one transactional
+  `POST /hospitals/onboard` creating the hospital, its departments, and
+  optionally its administrator via the existing generic
+  `StaffOnboardingService`; the welcome email is sent only after commit.
+- **Hospital activation** — `POST /hospitals/:id/activate` added alongside
+  the pre-existing deactivate. Deactivation stays deliberately
+  non-cascading (matching TD-0031's ward/room precedent).
+- **Organization statistics + usage** — real counts across hospitals, users,
+  departments, patients, doctors, staff, 30-day appointments/admissions,
+  plus storage/API/AI usage.
+- **Organization-level audit logs** — `AuditService` gained filtered,
+  paginated `list()` plus a `listFilterOptions()` that derives the filter
+  dropdowns from the trail itself rather than a hardcoded list.
+- **Frontend** — `/dashboard/organization` with all eight required tabs
+  (Overview, Hospitals, Users, Subscription, Usage, Branding, Settings,
+  Audit Logs) and a 3-step onboarding wizard. New permission-gated sidebar
+  item.
+
+### Checkpoint 16.2 — Platform Owner Console
+
+- **`Organization.isPlatform`** marks the single platform tenant. `seed.ts`
+  sets it *and* back-fills it on an already-seeded database, since its
+  `upsert(..., update: {})` would otherwise leave the console locked.
+- **Isolation is gated twice, deliberately.** `PlatformGuard` requires the
+  caller's organization to be the platform tenant; every handler
+  additionally requires a `platform.*` permission. Org admins are excluded
+  from that family in both `seed.ts` and
+  `RolesService.createDefaultOrgAdminRole`, and `JwtStrategy.validate`
+  re-checks `isPlatform` against the database on every request rather than
+  trusting the token for its full lifetime. **An e2e test asserts that
+  granting a tenant admin every `platform.*` permission still yields 403.**
+- **Tenant lifecycle** — suspend (with a required reason), reinstate, and a
+  separate enable/disable switch. Suspension sets the pre-existing
+  `Organization.isActive`, which `JwtStrategy`/`AuthService` already
+  enforce — so it takes effect on the next request with **no auth-code
+  change at all**. `enable` refuses to lift a suspension so its reason is
+  never silently lost, and the platform tenant cannot suspend itself.
+- **Subscriptions** — new `Subscription` model (one per org), plan + status
+  + four nullable limits + price. Read by the tenant, written only by the
+  platform owner (`billing.manage`'s requester/approver precedent).
+  `Organization.subscriptionTier`/`subscriptionExpiresAt` are kept in sync
+  in the same transaction, and `getSummary` falls back to them for
+  organizations created before this milestone.
+- **Usage metering** — `ApiUsageService` (Redis counters, rolling 30-day
+  window, fire-and-forget interceptor) and `StorageUsageService` (sums the
+  `fileSizeBytes` column across the five models that carry one). **AI usage
+  is reported for real** from the `AiUsageLog` rows Checkpoint 15.1 already
+  writes, rather than the placeholder the brief permitted.
+- **Global audit log, global search, platform analytics** — cross-tenant
+  reads; search deliberately covers organizations/hospitals/users only and
+  never patients or clinical records.
+- **Frontend** — an isolated `/platform` route group with its own layout,
+  sidebar and header. It shares no chrome with the tenant dashboard, and a
+  non-platform user is redirected away (a courtesy; the API is the real
+  boundary). Five pages: Overview, Organizations, Hospitals, Audit log,
+  Search.
+
+### Checkpoint 16.3 — Tenant Resolution
+
+Audited first, extended rather than duplicated. `orgId`/`orgSlug`/
+`hospitalIds` already travelled on every JWT and were verified per request;
+`resolveTenantContext` + `@Tenant()` only give the three levels
+(Platform / Organization / Hospital) one named shape. `@CurrentUser('orgId')`
+remains correct and untouched in ~30 existing controllers. The single new
+claim is `isPlatform`, which **fails closed** — a token minted before this
+milestone resolves to `false`.
+
+### Checkpoint 16.4 — Organization Settings
+
+Branding, theme, logo, address, tax details, contact details, timezone,
+currency, language, working hours, feature flags — and **holidays reusing
+Milestone 14's `Holiday` model and API** rather than a second calendar.
+Working-hours validation rejects an end time at or before the start time;
+brand colours are hex-validated.
+
+### Verification (Checkpoint 16.5)
+
+- `pnpm lint` — clean across all 5 packages
+- `pnpm typecheck` — clean across all 5 packages
+- `pnpm test` — **615 API unit tests** (49 new) + 6 web, all passing
+- `pnpm test:e2e` — **335 e2e tests across 19 suites** (36 new), all passing
+- `pnpm build` — clean; web compiled 68 static pages
+
+One pre-existing test-data bug was found and fixed along the way:
+`doctor-documents.e2e-spec.ts` upserted `doctors.read.all` but granted its
+Doctor role `doctors.read.own`, so it passed only against a database that
+happened to have been seeded beforehand. Made self-sufficient.
+
+### Deferred, disclosed, not faked
+
+- **No browser verification** this session — explicit instruction, mirroring
+  TD-0035/TD-0036 (**TD-0044**).
+- The platform **organization detail page** is not built, though its two
+  endpoints are (**TD-0045**).
+- API metering is a **rolling Redis window, not a durable ledger** — stated
+  in the UI, and must not be used for billing as-is (**TD-0046**).
+- Storage usage measures **recorded file sizes, not bucket contents**
+  (**TD-0047**).
+- **No payment gateway exists**, and subscription limits are **reported but
+  not enforced** — both stated in-page rather than implied (**TD-0048**).
+- Global search **excludes patients and clinical records** by design
+  (**TD-0049**).
+- Platform access is revocable at organization, not per-user, granularity
+  (**TD-0050**).

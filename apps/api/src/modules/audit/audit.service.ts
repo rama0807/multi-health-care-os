@@ -1,6 +1,22 @@
 import { Injectable } from '@nestjs/common'
+import { Prisma } from '@prisma/client'
 
 import { PrismaService } from '../../prisma/prisma.service'
+
+export interface AuditLogQuery {
+  page?: number
+  limit?: number
+  /** Cross-tenant callers only (`listGlobal`); ignored by `list`. */
+  organizationId?: string
+  userId?: string
+  action?: string
+  resource?: string
+  resourceId?: string
+  from?: Date
+  to?: Date
+  /** Free-text match against action or resource. */
+  search?: string
+}
 
 export interface RecordAuditEntryInput {
   organizationId: string
@@ -40,6 +56,116 @@ export class AuditService {
       orderBy: { createdAt: 'desc' },
       take: Math.min(limit, 100),
     })
+  }
+
+  /**
+   * Filtered, paginated audit trail (Checkpoint 16.1).
+   *
+   * `organizationId` is a required positional argument on purpose — this is
+   * the tenant-scoped reader. The Platform Owner console's cross-tenant
+   * equivalent is `listGlobal`, and keeping them as two methods means an
+   * organization-scoped caller cannot accidentally omit the tenant filter.
+   */
+  async list(organizationId: string, query: AuditLogQuery = {}) {
+    const { page, limit, skip } = paginate(query)
+    const where = buildAuditWhere(query, organizationId)
+
+    const [rows, total] = await Promise.all([
+      this.prisma.auditLog.findMany({
+        where,
+        include: { user: { select: { email: true, firstName: true, lastName: true } } },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.auditLog.count({ where }),
+    ])
+
+    return {
+      data: rows.map((log) => ({
+        id: log.id,
+        action: log.action,
+        resource: log.resource,
+        resourceId: log.resourceId,
+        userId: log.userId,
+        userEmail: log.user?.email ?? null,
+        userName: log.user ? `${log.user.firstName} ${log.user.lastName}` : null,
+        ipAddress: log.ipAddress,
+        before: log.before,
+        after: log.after,
+        createdAt: log.createdAt,
+      })),
+      pagination: buildPagination(page, limit, total),
+    }
+  }
+
+  /**
+   * Cross-tenant audit trail for the Platform Owner console (Checkpoint 16.2).
+   * Only reachable behind `PlatformGuard` — there is no organization-scoped
+   * route that calls this.
+   */
+  async listGlobal(query: AuditLogQuery = {}) {
+    const { page, limit, skip } = paginate(query)
+    const where = buildAuditWhere(query)
+
+    const [rows, total] = await Promise.all([
+      this.prisma.auditLog.findMany({
+        where,
+        include: {
+          user: { select: { email: true } },
+          organization: { select: { name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.auditLog.count({ where }),
+    ])
+
+    return {
+      data: rows.map((log) => ({
+        id: log.id,
+        action: log.action,
+        resource: log.resource,
+        resourceId: log.resourceId,
+        userId: log.userId,
+        userEmail: log.user?.email ?? null,
+        organizationId: log.organizationId,
+        organizationName: log.organization.name,
+        ipAddress: log.ipAddress,
+        createdAt: log.createdAt,
+      })),
+      pagination: buildPagination(page, limit, total),
+    }
+  }
+
+  /**
+   * Distinct action and resource values present in one organization's trail —
+   * powers the audit-log filter dropdowns without hardcoding a list that would
+   * drift as modules add new actions.
+   */
+  async listFilterOptions(organizationId: string) {
+    const [actions, resources] = await Promise.all([
+      this.prisma.auditLog.findMany({
+        where: { organizationId },
+        distinct: ['action'],
+        select: { action: true },
+        orderBy: { action: 'asc' },
+        take: 200,
+      }),
+      this.prisma.auditLog.findMany({
+        where: { organizationId },
+        distinct: ['resource'],
+        select: { resource: true },
+        orderBy: { resource: 'asc' },
+        take: 200,
+      }),
+    ])
+
+    return {
+      actions: actions.map((a) => a.action),
+      resources: resources.map((r) => r.resource),
+    }
   }
 
   /**
@@ -84,4 +210,57 @@ export class AuditService {
       occurredAt: log.createdAt,
     }))
   }
+}
+
+function paginate(query: AuditLogQuery): { page: number; limit: number; skip: number } {
+  const page = query.page && query.page > 0 ? query.page : 1
+  const limit = query.limit && query.limit > 0 ? Math.min(query.limit, 100) : 25
+  return { page, limit, skip: (page - 1) * limit }
+}
+
+function buildPagination(page: number, limit: number, total: number) {
+  return {
+    page,
+    limit,
+    total,
+    totalPages: Math.ceil(total / limit),
+    hasNext: page * limit < total,
+    hasPrev: page > 1,
+  }
+}
+
+/**
+ * `scopedOrganizationId`, when supplied, always wins over
+ * `query.organizationId` — a tenant-scoped caller cannot widen its own scope
+ * by passing a different id in the query string.
+ */
+function buildAuditWhere(
+  query: AuditLogQuery,
+  scopedOrganizationId?: string,
+): Prisma.AuditLogWhereInput {
+  const organizationId = scopedOrganizationId ?? query.organizationId
+
+  const where: Prisma.AuditLogWhereInput = {
+    ...(organizationId ? { organizationId } : {}),
+    ...(query.userId ? { userId: query.userId } : {}),
+    ...(query.action ? { action: query.action } : {}),
+    ...(query.resource ? { resource: query.resource } : {}),
+    ...(query.resourceId ? { resourceId: query.resourceId } : {}),
+  }
+
+  if (query.from || query.to) {
+    where.createdAt = {
+      ...(query.from ? { gte: query.from } : {}),
+      ...(query.to ? { lte: query.to } : {}),
+    }
+  }
+
+  if (query.search) {
+    where.OR = [
+      { action: { contains: query.search, mode: 'insensitive' } },
+      { resource: { contains: query.search, mode: 'insensitive' } },
+    ]
+  }
+
+  return where
 }

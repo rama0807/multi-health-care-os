@@ -6,6 +6,7 @@ import {
   UpdateStockLevelsDto,
 } from '@medicore/types'
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
+import { EventEmitter2 } from '@nestjs/event-emitter'
 import { InventoryBatchStatus, InventoryStock as PrismaInventoryStock, Prisma } from '@prisma/client'
 
 import { PrismaService } from '../../prisma/prisma.service'
@@ -48,7 +49,23 @@ const STOCK_INCLUDE = {
  */
 @Injectable()
 export class StockService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventEmitter: EventEmitter2,
+  ) {}
+
+  /**
+   * Announces that a store-item's stock level moved (Milestone 18).
+   *
+   * The only reason this exists is that reorder/low-stock alerting needs to
+   * know *when a level changed*, and this module previously emitted movement
+   * documents (adjustments, GRNs, requisitions) rather than level changes. The
+   * threshold comparison deliberately stays out of here — reorder policy is
+   * inventory's, alerting is the notification platform's.
+   */
+  private emitStockChanged(organizationId: string, inventoryStockId: string, userId?: string): void {
+    this.eventEmitter.emit('inventory_stock.changed', { organizationId, inventoryStockId, userId })
+  }
 
   async list(organizationId: string, query: InventoryStockQuery) {
     const page = query.page && query.page > 0 ? query.page : 1
@@ -151,6 +168,7 @@ export class StockService {
       return created
     })
 
+    this.emitStockChanged(organizationId, stock.id, userId)
     return this.getById(organizationId, stock.id)
   }
 
@@ -158,6 +176,9 @@ export class StockService {
     const stock = await this.prisma.inventoryStock.findFirst({ where: { id, organizationId } })
     if (!stock) throw new NotFoundException('Stock record not found')
     await this.prisma.inventoryStock.update({ where: { id }, data: dto })
+    // Raising `minStock` above what is on hand is itself a low-stock event,
+    // so a threshold edit announces a change just as a quantity move does.
+    this.emitStockChanged(organizationId, id)
     return this.getById(organizationId, id)
   }
 
@@ -226,6 +247,7 @@ export class StockService {
       })
     })
 
+    this.emitStockChanged(organizationId, stock.id, userId)
     return this.getById(organizationId, stock.id)
   }
 

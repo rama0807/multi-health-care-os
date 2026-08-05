@@ -1,8 +1,9 @@
 'use client'
 
-import { Bell, LogOut, Settings, User } from 'lucide-react'
+import { LogOut, Settings, User } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
+import { NotificationBell } from '@/components/notifications/notification-bell'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -36,10 +37,7 @@ export function Header() {
 
       {/* Right side */}
       <div className="flex items-center gap-2">
-        <button className="relative rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
-          <Bell className="h-4 w-4" />
-          <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-destructive" />
-        </button>
+        <NotificationBell />
 
         {user && (
           <DropdownMenu>

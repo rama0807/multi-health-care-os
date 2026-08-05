@@ -328,41 +328,123 @@ tight-scope-per-session discipline.
 
 ---
 
-## Milestone 16 — Reports & Analytics (Week 19)
+## Milestone 16 — Platform & Multi-Tenant Administration (Week 19)
+
+**Goal:** Turn MediCore from a hospital application into a SaaS platform
+serving multiple organizations, each containing multiple hospitals.
+
+Hierarchy: Platform Owner → Organization → Hospital → Department → Users →
+Patients.
+
+### Checkpoint 16.1 — Organization Management
+- [x] Organization CRUD / profile
+- [x] Branding + logo upload (reuses `StorageService`)
+- [x] Organization settings
+- [x] Organization administrators
+- [x] Multiple hospitals per organization
+- [x] Hospital onboarding wizard (hospital + departments + admin, one transaction)
+- [x] Hospital activation/deactivation
+- [x] Organization-level audit logs (filtered + paginated)
+- [x] Organization dashboard APIs + statistics
+- [x] Frontend: Organization Dashboard (Overview / Hospitals / Users /
+      Subscription / Usage / Branding / Settings / Audit Logs)
+
+### Checkpoint 16.2 — Platform Owner Console
+- [x] View all organizations / hospitals / tenants
+- [x] Enable/disable tenants, suspend + reinstate organizations
+- [x] Manage subscriptions (plans + limits)
+- [x] Storage usage, active users, API usage, AI usage
+- [x] Global audit logs
+- [x] Global search
+- [x] Platform analytics
+- [x] Frontend: isolated `/platform` console (own layout, own route group)
+
+### Checkpoint 16.3 — Tenant Resolution
+- [x] Every authenticated request resolves Platform / Organization / Hospital
+- [x] Extended the existing JWT/session mechanism rather than duplicating it
+
+### Checkpoint 16.4 — Organization Settings
+- [x] Branding, theme, logo, address, tax details, contact details
+- [x] Timezone, currency, language, working hours, holidays, feature flags
+
+### Checkpoint 16.5 — Verification
+- [x] lint / typecheck / test / test:e2e / build all green
+
+---
+
+## Milestone 17 — Reports & Analytics (Week 20)
 
 **Goal:** Operational intelligence for hospital administrators.
 
+**Status: COMPLETE** (2026-08-05) - see ADR-0026.
+
 ### Deliverables
-- [ ] OPD/IPD statistics dashboard
-- [ ] Revenue reports (daily, monthly, by service type)
-- [ ] Doctor-wise consultation reports
-- [ ] Lab test volume reports
-- [ ] Bed occupancy reports
-- [ ] Patient demographics report
-- [ ] Custom date range reports
-- [ ] PDF/Excel export for all reports
-- [ ] Frontend: reports module with charts (Recharts)
+- [x] OPD/IPD statistics dashboard
+- [x] Revenue reports (daily, monthly, by service type)
+- [x] Doctor-wise consultation reports
+- [x] Lab test volume reports
+- [x] Bed occupancy reports
+- [x] Patient demographics report
+- [x] Custom date range reports
+- [x] PDF/Excel export for all reports
+- [x] Frontend: reports module with charts (Recharts)
+
+### Delivered beyond the original list
+- Eleven operational report surfaces, not four: Patients, Appointments,
+  Doctors, Laboratory, Radiology, Pharmacy, Inventory, Billing, Insurance,
+  IPD and Staff.
+- Five executive dashboards (CEO, Medical Director, Operations, Finance,
+  Department) composed from those services rather than re-querying.
+- A reusable report engine: a 23-entry registry driving one run endpoint,
+  saved reports, and CSV / Excel / PDF export through a single code path.
+- Scheduled reports as a **disclosed placeholder only** (TD-0053) - the
+  schedule is persisted and cron-validated, and nothing dispatches it.
+
+### Known limits (disclosed in-product, not faked)
+- Appointment "waiting time" is a **scheduling delay**: no arrival
+  timestamp exists in the schema (TD-0051).
+- Radiology "machine utilization" is **relative load**: no machine capacity
+  model exists (TD-0052).
+- Lab "revenue by test" is **allocated** from billing charges: the
+  laboratory module raises no charges and has no per-test price (TD-0055).
 
 ---
 
-## Milestone 17 — Notifications & Communication (Week 20)
+## Milestone 18 — Communication & Notification Platform (Week 21) ✅
 
 **Goal:** Multi-channel patient and staff communication.
 
+**Status: Complete (2026-08-06)** — delivered as seven checkpoints, a wider
+scope than the list below (templates, delivery tracking, a retry queue,
+scheduled notifications, an organization admin console and platform-owner
+analytics were all added by the session's instruction). See **ADR-0027**.
+
 ### Deliverables
-- [ ] Email notifications (via Resend/SendGrid)
-- [ ] SMS notifications (via Twilio/Fast2SMS)
-- [ ] In-app notification center
-- [ ] Push notifications (PWA)
-- [ ] Appointment reminders (automated, scheduled)
-- [ ] Lab result ready notifications
-- [ ] Discharge instructions via WhatsApp (optional)
-- [ ] Notification preferences per user
-- [ ] Frontend: notification center in header
+- [x] Email notifications — reuses the existing `common/email` Resend sender
+- [x] SMS notifications — **provider abstraction with a local log driver
+      only**; no paid provider integrated, by instruction (TD-0059)
+- [x] In-app notification center
+- [x] Push notifications — FCM HTTP v1 send path, device registry, service
+      worker and click routing; the browser cannot mint a token in this
+      deployment and says so (TD-0058)
+- [x] Appointment reminders (scheduled at booking time, cancelled with the
+      appointment)
+- [x] Lab result ready notifications (a critical value escalates to
+      `CRITICAL` priority)
+- [x] WhatsApp — **provider abstraction with a local log driver only**
+      (TD-0059)
+- [x] Notification preferences per user (channels, quiet hours, email
+      frequency, per-category)
+- [x] Frontend: notification center in header
+- [x] *Added:* notification templates (bundled defaults + append-only
+      versioned org overrides)
+- [x] *Added:* delivery tracking, retry queue and scheduled notifications
+- [x] *Added:* organization admin console and platform-owner analytics
+- [x] *Added:* scheduled-report dispatch, closing TD-0053
 
 ---
 
-## Milestone 18 — Production Hardening (Week 21)
+## Milestone 19 — Production Hardening (Week 22)
 
 **Goal:** Secure, observable, deployable to production.
 

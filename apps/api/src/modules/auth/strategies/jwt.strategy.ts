@@ -26,7 +26,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: JwtPayload): Promise<JwtPayload> {
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { status: true, organization: { select: { isActive: true } } },
+      select: { status: true, organization: { select: { isActive: true, isPlatform: true } } },
     })
 
     if (!user || user.status === UserStatus.SUSPENDED || user.status === UserStatus.INACTIVE) {
@@ -35,6 +35,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     if (!user.organization.isActive) {
       throw new UnauthorizedException('Organization is inactive')
+    }
+
+    // Platform-owner access is the highest privilege in the system, so it is
+    // re-checked against the database on every request rather than trusted
+    // from the token for up to a full access-token lifetime. Revoking
+    // `Organization.isPlatform` locks the console out immediately.
+    if (payload.isPlatform && !user.organization.isPlatform) {
+      throw new UnauthorizedException('Platform access has been revoked')
     }
 
     // Ensures a logged-out access token stops working immediately rather than

@@ -6,6 +6,341 @@
 
 ---
 
+## Session — 2026-08-06 — Milestone 18: Communication & Notification Platform (all 7 checkpoints)
+
+### What was completed
+
+Milestone 18 in full, under an explicit instruction to audit first, treat
+the repository as the source of truth, reuse existing services, not rebuild
+existing functionality, and **integrate no paid providers** — abstractions
+and local implementations only. AI development (Milestone 15) remained
+paused and untouched.
+
+The audit materially changed the plan:
+
+1. `apps/api/src/modules/notifications/` **existed but was an empty stub** —
+   a service with an unused constructor, a controller with no routes.
+   Nothing in the repo had ever written to the `Notification` table, so the
+   model could be reshaped without a data migration.
+2. `common/email/` was already the working sender; the email channel wraps
+   it rather than standing up a second one.
+3. `EventEmitter2` was already wired with 125 emitted events across every
+   module. Event integration added **listeners**, not emitters — with four
+   one-line exceptions where an event genuinely did not exist.
+4. `bullmq` was a dependency used nowhere, and stayed that way on purpose.
+
+### Architecture (ADR-0027)
+
+- **The delivery table is the queue.** Delivery history must be durable and
+  queryable for the admin console anyway; a broker would duplicate those
+  rows and eventually disagree with them. Claiming is a compare-and-set, so
+  concurrent workers cannot double-send.
+- **One notification, many deliveries**; the notification's status is
+  *derived* from them, with `READ` sticky.
+- **Suppressed ≠ failed.** A muted category or quiet hours produces
+  `SKIPPED`, which is excluded from every success rate.
+- **Preferences are evaluated at dispatch time**, not creation time.
+- **`CRITICAL` overrides every preference** — quiet hours, muted
+  categories, disabled channels — and the preferences page says so.
+- **One `setInterval`**, non-overlapping, off under `NODE_ENV=test`; each
+  tick emits `notifications.tick`, which is how the scheduled-report
+  dispatcher borrows the clock without a module dependency.
+- **FCM over HTTP v1 directly** (`node:crypto` JWT + `fetch`), no
+  `firebase-admin`.
+
+### Files
+
+New: `config/notifications.config.ts`; the whole
+`modules/notifications/` implementation (5 channel adapters, 8 services,
+3 controllers, listener, DTOs, 4 spec files);
+`modules/reports/cron-match.util.ts` (+ spec) and
+`scheduled-reports.dispatcher.ts`; `test/notifications.e2e-spec.ts`;
+`packages/types/src/notification.ts`; the web API client, push hook,
+service worker, bell component and four pages.
+
+Modified: `schema.prisma` (+ migration
+`20260805200000_notification_platform`), `seed.ts`, `types/{index,enums}.ts`,
+`app.module.ts`, the three stub notification files, `reports.module.ts`,
+and **four one-line `emit` additions** in `stock.service.ts`,
+`shift-roster.service.ts`, `hospitals.service.ts` and `auth.service.ts`
+(plus their three spec files, for the new constructor argument).
+
+### Verification
+
+`pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`, `pnpm build`
+— all pass. **727 API unit tests** (+64), **6 web unit tests**,
+**408 e2e tests across 21 suites** (+30). The full e2e suite was run to
+green **twice** after the two fixes below. `pnpm db:seed` re-run so the new
+`notifications.*` and `platform.notifications.*` permissions exist locally.
+
+### Two defects the full-suite run caught (both fixed)
+
+Neither showed up running the notification suite alone; both needed the
+full 21-suite run:
+
+1. **Wrong payload key in the staff-leave handler.**
+   `StaffLeaveService` publishes `{ leaveId, staffId, … }`, and the listener
+   read `payload.staffLeaveId`. That made
+   `findUnique({ where: { id: undefined } })` throw a Prisma validation
+   error on every leave approval. `safely()` caught it, so nothing broke
+   visibly — it just logged. Fixed, and **every handler now guards on the id
+   it needs before touching the database**: these payloads come from twelve
+   modules that predate the listener and are not typed at the emit site, so
+   an absent field must be a clean no-op rather than log noise.
+
+2. **The e2e suite assumed one worker tick drains its own rows.**
+   `claimDue` drains oldest-first *across every tenant*, bounded by
+   `NOTIFICATIONS_WORKER_BATCH` (50). That is correct in production, but a
+   shared e2e database had accumulated 67 `PENDING` deliveries from earlier
+   runs — more than one batch — so the suite's own rows were never reached
+   and four tests failed. Fixed on the **test** side (a bounded `drainQueue`
+   helper that ticks until the queue reports no work, with a generous
+   timeout on the first drain); the worker's behaviour was left alone
+   because it is the behaviour that is wanted.
+
+### Known issues
+
+- **Not browser-verified** — no Playwright, no screenshots, by explicit
+  instruction (TD-0066).
+- **Browser push cannot obtain an FCM token in this deployment** (TD-0058).
+  Everything else about push is real and tested; the missing piece is the
+  `firebase` JS SDK plus a Firebase project. It is reported explicitly at
+  every layer and never faked.
+- The Milestone 17 e2e flake noted last session **did not reappear** across
+  this session's full-suite runs (21/21 suites, 408/408 tests).
+- New honest gaps: **TD-0058 … TD-0066**. **TD-0053 is resolved.**
+
+### Recommended next task
+
+**Milestone 19 — Production Hardening.** See `NEXT.md`, replaced
+accordingly. AI Checkpoints 15.2–15.5 remain explicitly paused.
+
+### Completion
+
+- Overall: Milestone 18 is closed. Milestone 19 remains, plus AI
+  Checkpoints 15.2–15.5.
+- `notifications` module: **100% for Milestone 18**.
+- Notification frontend pages: **100% for Milestone 18**.
+- `reports` module: unchanged at 100% for Milestone 17, with TD-0053 now
+  closed by the new dispatcher.
+
+---
+
+## Session — 2026-08-05 — Milestone 17: Reports & Analytics (all 5 checkpoints)
+
+### What was completed
+
+Milestone 17 in full, under an explicit instruction to generate everything
+from existing data, **not** duplicate business logic, and reuse existing
+services. AI development (Milestone 15) remained paused and untouched.
+
+The session opened with an audit, which materially changed the plan:
+
+1. `reports: ['read', 'export']` was **already in the seed permission
+   catalog** and `/dashboard/reports` was **already a dormant
+   `reports.read`-gated sidebar link** — the route just had nothing behind
+   it. No new permission, no new nav entry.
+2. `recharts` was **already** a dependency, so no chart library was added.
+3. Five dashboard-shaped aggregation services already existed; their
+   idioms were followed rather than replaced.
+4. Three roadmap metrics are **not derivable** from this schema. Each
+   shipped as the closest honest measure with the limitation stated in the
+   API doc comment, the UI, and TECH_DEBT — none was faked.
+
+### Architecture (ADR-0026)
+
+- **Reports are a projection layer.** The module writes to exactly one
+  table (`SavedReport`) and re-implements no rule. Overtime calls
+  `ShiftsService.standardMinutes` rather than assuming an 8-hour day, so
+  Payroll Prep and the staff report cannot disagree.
+- **Dashboards compose the report services**, issuing one Prisma query of
+  their own. A dashboard that re-queried would eventually contradict the
+  report it links to.
+- **One registry drives the builder and all three export formats**, so an
+  exported file cannot show different numbers from the page it came from.
+- **`to` is exclusive everywhere**; bucket keys are local-time, never
+  `toISOString()` (which shifts the day in +05:30).
+- **Null means "not measured"** — never 0. Carried through CSV, XLSX and
+  PDF. `changePercent` is null when the previous period was zero.
+- **A dependency-free XLSX writer** emits a real OOXML package; tests walk
+  the ZIP central directory, not just the XML text.
+
+### Files added
+
+`apps/api/src/modules/reports/` — `report-range.util.ts`, eleven
+`*-reports.service.ts`, `dashboards.service.ts`, `report-registry.service.ts`,
+`report-export.service.ts`, `xlsx.util.ts`, `report-pdf.ts`,
+`saved-reports.service.ts`, three controllers, `dto/saved-report.dto.ts`,
+`reports.module.ts`, plus five spec files.
+`apps/api/test/reports.e2e-spec.ts`.
+`packages/types/src/reports.ts`.
+`apps/web/src/lib/api/reports.ts`, `apps/web/src/app/dashboard/reports/`
+(3 pages + `_components/charts.tsx` + `_components/report-filters.tsx`).
+
+### Files modified
+
+`packages/database/prisma/schema.prisma` (additive: `SavedReport` +
+back-relation) and its migration `20260805162846_reports_and_analytics`;
+`packages/types/src/index.ts`; `apps/api/src/app.module.ts`.
+
+### Verification
+
+`pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`, `pnpm build`
+— all pass. **663 API unit tests** (+48) and **378 e2e tests across 20
+suites** (+43). Web build emits `/dashboard/reports`,
+`/dashboard/reports/builder`, `/dashboard/reports/operational`.
+
+### Known issues
+
+- **Not browser-verified** — no screenshots taken, per the explicit
+  "Do NOT use browser verification" instruction.
+- **One non-reproducing e2e flake.** In the first full e2e run, one
+  platform-suite test failed; it passed in three subsequent full runs and
+  in an isolated run of that suite (36/36). The failing assertion was not
+  captured before it stopped reproducing, so it is unexplained rather than
+  fixed. Worth watching on the next full-suite run.
+- New honest gaps: **TD-0051 … TD-0057**.
+
+### Recommended next task
+
+**Milestone 18 — Notifications & Communication.** See `NEXT.md`, which has
+been replaced accordingly. Note TD-0053: the scheduled-report dispatcher is
+a natural first deliverable for that milestone, since `SavedReport` already
+persists a validated cron and recipient list with nothing reading it.
+
+### Completion
+
+- Overall: methodology unchanged (see `MODULE_STATUS.md`) — Milestone 17 is
+  closed; Milestones 18 and 19 remain, plus AI Checkpoints 15.2–15.5.
+- `reports` module: **100% for Milestone 17**.
+- Frontend reports pages: **100% for Milestone 17**.
+
+---
+
+## Session — 2026-08-05 — Milestone 16: Platform & Multi-Tenant Administration (all 5 checkpoints)
+
+### What was completed
+
+Milestone 16 in full, redefined by explicit instruction from
+`docs/roadmap.md`'s "Reports & Analytics" to **Platform & Multi-Tenant
+Administration** (**ADR-0025**; roadmap renumbered 16→17→18→19).
+
+The session opened with an audit, as instructed, and that audit shaped the
+work: the `Organization → Hospital → Department → User → Patient` hierarchy
+and per-request `orgId` filtering **already existed**, so tenant isolation
+was never the gap. The real gaps were cross-tenant operation, tenant
+lifecycle, subscriptions, usage metering, and audit filtering.
+
+- **16.1 Organization Management** — profile/settings/branding/logo,
+  administrators, hospital onboarding wizard, hospital activation,
+  statistics, org-scoped filtered audit logs, and an 8-tab dashboard.
+- **16.2 Platform Owner Console** — new `platform` module + isolated
+  `/platform` route group: cross-tenant orgs/hospitals, suspend/reinstate/
+  enable/disable, subscriptions, usage, global audit, global search,
+  analytics.
+- **16.3 Tenant Resolution** — extended the existing JWT rather than adding
+  a mechanism; the only new claim is `isPlatform`, which fails closed.
+- **16.4 Organization Settings** — full settings surface; holidays reuse
+  Milestone 14's `Holiday` model rather than a second calendar.
+- **16.5 Verification** — lint, typecheck, test, test:e2e, build all green.
+
+### Files modified (~66)
+
+**Schema/types:** `packages/database/prisma/schema.prisma` (+2 enums,
++5 `Organization` columns, +`Subscription`), migration
+`20260805142007_platform_multi_tenant_admin`, `packages/database/prisma/seed.ts`,
+`packages/types/src/{enums,organization,platform,hospital,auth,index}.ts`.
+
+**API:** new `apps/api/src/common/tenant/` (tenant util/decorator/module,
+`PlatformGuard`, `ApiUsageService` + interceptor, `StorageUsageService`,
+2 spec files); new `apps/api/src/modules/platform/` (controller, 2 services,
+DTO, module, spec); expanded `modules/organizations/` (service, controller,
+2 new services, DTOs, module, spec) and `modules/hospitals/` (service,
+controller, DTO, module, spec); `modules/audit/audit.service.ts`;
+`modules/auth/{auth.service.ts,strategies/jwt.strategy.ts}`;
+`modules/roles/roles.service.ts`; `app.module.ts`; 2 permission spec
+fixtures; `test/platform.e2e-spec.ts` (new, 36 tests);
+`test/doctor-documents.e2e-spec.ts` (pre-existing bug fixed).
+
+**Web:** `lib/api/{organization,platform}.ts`;
+`app/dashboard/organization/` (page + 8 tab components + `format.ts`);
+`app/platform/` (layout + 5 pages); `components/layout/sidebar.tsx`.
+
+**Docs:** `docs/roadmap.md`, `.ai/{DECISIONS,TECH_DEBT,PROGRESS,CHANGELOG,MODULE_STATUS,NEXT,SESSION_LOG,PROJECT_CONTEXT}.md`.
+
+### Architectural decisions made (ADR-0025)
+
+1. Platform tenant = `Organization.isPlatform`, not a new entity.
+2. **Isolation gated twice**: `PlatformGuard` (org must be platform) **and**
+   a `platform.*` permission excluded from org admins in both `seed.ts` and
+   `RolesService.createDefaultOrgAdminRole`. `JwtStrategy` re-checks
+   `isPlatform` against the DB every request. An e2e test proves a tenant
+   admin holding every `platform.*` permission still gets 403.
+3. Suspension reuses the pre-existing `Organization.isActive` that auth
+   already enforces — **no auth-code change was needed**.
+4. `Subscription`: one row per org, no history table (audit already stores
+   before/after), legacy tier columns kept in sync, limits nullable =
+   unlimited.
+5. API metering in **Redis** (rolling 30-day window) rather than a DB write
+   per request — disclosed, not hidden.
+6. AI usage reported **for real** from `AiUsageLog`, not as the placeholder
+   the brief allowed.
+7. Branding in its own column so it can never clobber `settings`, which
+   Patients/Billing/Appointments read without a fallback. Both merge.
+
+### Known issues
+
+- **TD-0044** no browser verification (by instruction; mirrors TD-0035/0036).
+- **TD-0045** no platform organization *detail* page — its endpoints exist
+  and are tested; only the page is missing.
+- **TD-0046** API metering is a rolling Redis window, not a durable billing
+  ledger. Stated in the UI.
+- **TD-0047** storage usage measures recorded `fileSizeBytes`, not bucket
+  contents; a new upload path must be added to `StorageUsageService` by hand.
+- **TD-0048** no payment gateway; subscription limits are **reported but not
+  enforced**, and `PAST_DUE` restricts nothing. Both stated in-page.
+- **TD-0049** global search excludes patients/clinical records by design.
+- **TD-0050** platform access is revocable per organization, not per user.
+
+Two bugs found and fixed en route:
+- `doctor-documents.e2e-spec.ts` upserted `doctors.read.all` but granted its
+  Doctor role `doctors.read.own` — it passed only against a pre-seeded DB.
+- `.ai/NEXT.md` documented the test containers as ports 5434/6381; they are
+  `medicore_postgres`:5432 and `medicore_redis`:6379.
+
+### Verification
+
+`pnpm lint` ✅ · `pnpm typecheck` ✅ · `pnpm test` ✅ **615 API + 6 web**
+(49 new) · e2e ✅ **335 across 19 suites** (36 new) · `pnpm build` ✅
+(68 static pages).
+
+Run e2e with explicit ports — the specs' `??=` defaults are wrong for this
+machine:
+```
+cd apps/api && DATABASE_URL="postgresql://medicore:medicore@localhost:5432/medicore_test?schema=public" \
+  REDIS_PORT=6379 npx jest --config jest-e2e.config.ts --runInBand
+```
+
+### Recommended next task
+
+**Stop here.** The instruction was explicit: *"Stop after Milestone 16. Do
+not start Milestone 17 automatically."* Milestone 17 (Reports & Analytics)
+is scoped in `NEXT.md` and should not begin without a fresh instruction.
+AI work (Milestone 15.2–15.5) remains separately paused.
+
+If a browser becomes available, closing TD-0044 (screenshots for both new
+surfaces) and TD-0045 (the platform org detail page) are the smallest
+high-value follow-ups.
+
+### Estimated completion
+
+- Overall: ~**88%** of the 19-milestone roadmap (16 of 19 complete;
+  Milestone 15 is 1 of 5 checkpoints and paused).
+- `organizations` 100% · `hospitals` 100% · `platform` 100% ·
+  `audit` 100% · `common/tenant` 100% (all for Milestone 16's scope).
+
+---
+
 ## Session: 2026-08-05 (Milestone 3 — Patient Management, complete; AI development paused)
 
 ### What was completed

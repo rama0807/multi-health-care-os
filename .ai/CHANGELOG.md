@@ -6,6 +6,140 @@
 ## [Unreleased]
 
 ### Added
+- **Milestone 18 — Communication & Notification Platform (complete):** see
+  ADR-0027. One surface every module notifies through. The
+  `notifications` module was an **empty stub** before this milestone; the
+  `Notification` table existed but had never been written to.
+  - **Checkpoint 18.1 — Notification platform.** `NotificationsService`
+    (the single `notify()` entry point — resolves recipients by id or
+    role, renders the template, enqueues one delivery per channel, and
+    dedupes on an `eventKey` so a duplicated event produces one
+    notification), `NotificationTemplateService`,
+    `NotificationPreferenceService`, `NotificationHistoryService`,
+    `NotificationQueueService`, `NotificationDispatcherService`,
+    `NotificationSchedulerService`, plus five channel adapters behind one
+    `NotificationChannelProvider` interface. Priorities Critical / High /
+    Normal / Low / Silent, with a default channel set per priority.
+  - **The delivery table is the queue.** `bullmq` was available and was
+    deliberately not used: delivery history must be durable and queryable
+    anyway, and two stores would eventually disagree about whether a
+    message was sent. A row whose `nextAttemptAt` has elapsed *is* a
+    queued job; claiming is a compare-and-set, so concurrent workers
+    cannot double-send.
+  - **Checkpoint 18.2 — Browser push (FCM).** FCM HTTP v1 spoken directly
+    with a `node:crypto`-signed service-account JWT (no `firebase-admin`),
+    per-token fan-out with automatic deactivation of tokens FCM reports
+    unregistered, a `UserDevice` registry supporting several devices per
+    user (idempotent on the token, never returns a token to the client),
+    a dependency-free service worker handling `push` and
+    `notificationclick` with deep-link routing, and a permission-request
+    flow. **The browser cannot mint an FCM token in this deployment** (no
+    Firebase SDK, no project) — this is reported explicitly everywhere it
+    matters and never faked (TD-0058).
+  - **Checkpoint 18.3 — Notification centre.** A real bell replacing the
+    scaffold's static dot, plus a full centre: unread / read / archived /
+    pinned / critical, search, category filter, pagination, mark read,
+    mark all read, pin, archive, delete, and a day-grouped timeline.
+  - **Checkpoint 18.4 — Event integration.** Twenty handlers over events
+    the modules **already emitted** — appointments (booked / confirmed /
+    cancelled, plus a reminder scheduled at booking time and cancelled
+    with the appointment), EMR, laboratory (a critical abnormal flag
+    escalates the notification to `CRITICAL` priority), radiology,
+    billing, insurance, pharmacy, inventory, IPD, staff, reports and
+    platform. No clinical, billing or inventory business logic was
+    touched; four events that genuinely did not exist were added as one
+    `emit` line each.
+  - **Checkpoint 18.5 — Preferences.** Preferred channels, quiet hours
+    (IANA-zone, midnight-wrapping), email frequency, and per-category
+    mute plus per-category channel selection. **`CRITICAL` bypasses all of
+    it** — a critical result reaching nobody because it was 23:00 is not
+    an acceptable failure mode — and the preferences page says so.
+  - **Checkpoint 18.6 — Admin consoles.** Organization: templates
+    (bundled defaults plus append-only versioned overrides, with preview
+    and roll-back), history, failed deliveries with per-channel reasons,
+    retry, scheduled sends with cancel, and delivery statistics. Platform
+    Owner: cross-tenant analytics, per-organization usage, queue
+    monitoring and provider configuration, behind `PlatformGuard` plus
+    new `platform.notifications.*` permissions.
+  - New `notifications` permissions (`read` / `send` / `manage`) gate the
+    **org-wide** console only; a user's own centre, preferences and
+    devices are deliberately ungated, exactly as `/auth/me` is.
+  - New schema (all additive): `NotificationCategory`,
+    `NotificationPriority`, `NotificationDeliveryStatus`,
+    `EmailDigestFrequency`, `DevicePlatform` enums; an extended
+    `Notification` model; and `NotificationDelivery`,
+    `NotificationTemplate`, `NotificationPreference` and `UserDevice`.
+
+### Fixed
+- **TD-0053 resolved — scheduled reports are now dispatched.** Milestone
+  17 persisted and cron-validated `SavedReport.scheduleEnabled` /
+  `scheduleCron` / `scheduleRecipients` with nothing reading them.
+  `ScheduledReportsDispatcher` now runs the report through the existing
+  registry, exports it through the same `ReportExportService` the
+  on-screen button uses, emails every recipient, and raises a
+  `SCHEDULED_REPORT_READY` notification to the report's owner. It hangs
+  off the notification worker's `notifications.tick` rather than
+  introducing a second scheduler, and claims each run by compare-and-set
+  on `lastRunAt` so overlapping ticks cannot double-send. A new
+  dependency-free `cron-match.util.ts` does the matching, bounded so a
+  long outage replays at most one day of missed runs.
+
+### Changed
+- `NotificationChannel` moved from `packages/types/src/enums.ts` to the
+  new `packages/types/src/notification.ts` alongside the rest of the
+  platform's vocabulary. Both are re-exported from the package root, so
+  no import path changed.
+- The header's notification bell is now functional rather than
+  decorative.
+
+### Added
+- **Milestone 17 — Reports & Analytics (complete):** see ADR-0026. A
+  read-only projection layer over the eleven modules that already own the
+  data — it writes to exactly one new table (`SavedReport`) and
+  re-implements no business rule.
+  - **Checkpoint 17.1 — Operational reports.** Eleven report services,
+    one endpoint each under `GET /reports/*`: Patients (daily
+    registrations, active/new/returning, age + gender distribution),
+    Appointments (daily volume, doctor utilisation against real
+    `DoctorSchedule` availability, no-show and walk-in analysis),
+    Doctors (OPD/IPD load, consultations, follow-up ratio, orders
+    raised), Laboratory (volume, pending, turnaround, revenue by test),
+    Radiology (investigations, pending reports, modality mix, machine
+    load), Pharmacy (dispensed volume, top medicines, low-stock,
+    expiring/expired), Inventory (consumption from the movement ledger,
+    purchase trends, vendor performance, stock valuation), Billing
+    (invoiced revenue *and* collections kept separate, outstanding
+    ageing, discounts, refunds, per-slab GST), Insurance (claims,
+    settlement ratio, approval time, payer performance), IPD
+    (admissions, average stay, live and bed-days occupancy, per-ward
+    breakdown), Staff (attendance, overtime via the rostered-shift rule,
+    leave trends, department strength).
+  - **Checkpoint 17.2 — Executive dashboards.** CEO, Medical Director,
+    Operations, Finance and Department dashboards, each with KPIs
+    (period-over-period change), trend charts, comparisons and filters —
+    composed from the 17.1 services, not re-queried.
+  - **Checkpoint 17.3 — Report builder.** A registry of 23 runnable
+    reports driving one generic run endpoint, saved reports (private or
+    shared, storing the filters and never the results), and CSV / Excel /
+    PDF export through a single code path. Excel is a genuine OOXML
+    workbook from a dependency-free ~150-line writer over `node:zlib`.
+    Scheduled reports are a **disclosed placeholder** — persisted and
+    cron-validated, dispatched by nothing (TD-0053).
+  - **Checkpoint 17.4 — Frontend.** `/dashboard/reports` (dashboards),
+    `/dashboard/reports/operational` (per-module) and
+    `/dashboard/reports/builder`, with line, bar, pie, area and heatmap
+    charts on the pre-existing `recharts` dependency. The dormant
+    `reports.read`-gated sidebar link now resolves to a real page.
+  - Honest gaps recorded as **TD-0051 … TD-0057** — notably: appointment
+    "waiting time" is a scheduling delay because no arrival timestamp
+    exists (TD-0051), radiology machine "utilisation" is relative load
+    with no capacity model (TD-0052), and lab revenue-by-test is an
+    evenly-allocated figure because the laboratory module raises no
+    charges and has no per-test price (TD-0055).
+  - Verification: `pnpm lint`, `typecheck`, `test`, `test:e2e` and
+    `build` all pass — **663 API unit tests** (+48) and **378 e2e tests
+    across 20 suites** (+43). Not browser-verified, by instruction.
+
 - **Milestone 3 — Patient Management (complete):** see ADR-0024. AI
   development (Milestone 15) was explicitly paused after Checkpoint
   15.1; this closes the last three unchecked deliverables on the
@@ -620,3 +754,59 @@ and self-hosted Ollama are the two built-in mitigations (**TD-0042**).
 `pnpm build` all green. E2E: 18 AI e2e tests pass; the full serial
 suite's one pre-existing `doctor-documents` failure was confirmed
 against a pristine HEAD worktree and is unrelated to this work.
+
+## Milestone 16 — Platform & Multi-Tenant Administration (2026-08-05)
+
+MediCore becomes a SaaS platform: multiple organizations, each with multiple
+hospitals, administered by an isolated platform-owner console. See ADR-0025.
+
+### Added
+- **Organization Dashboard** (`/dashboard/organization`) with eight tabs:
+  Overview, Hospitals, Users, Subscription, Usage, Branding, Settings,
+  Audit Logs.
+- **Platform Owner console** (`/platform`) — its own isolated route group and
+  layout: Overview, Organizations, Hospitals, Audit log, Search.
+- **Hospital onboarding wizard** — one transactional call creating a hospital,
+  its departments, and optionally its administrator (reuses
+  `StaffOnboardingService`). Plus hospital **activation** to match the
+  existing deactivation.
+- **Tenant lifecycle** — suspend (reason required), reinstate, enable/disable.
+  Suspension reuses `Organization.isActive`, which auth already enforces.
+- **`Subscription` model** — one per organization: plan, status, four
+  nullable limits, price. Read by the tenant, written only by the platform
+  owner.
+- **Usage metering** — `ApiUsageService` (Redis, rolling 30-day window) and
+  `StorageUsageService` (sums `fileSizeBytes` across five models). AI usage
+  reports real `AiUsageLog` data.
+- **Organization settings** — branding/theme/logo, address, tax, contact,
+  timezone, currency, language, working hours, feature flags; holidays reuse
+  Milestone 14's `Holiday` calendar.
+- **Tenant context** — `resolveTenantContext`/`@Tenant()` resolve
+  Platform / Organization / Hospital from the existing JWT; `PlatformGuard`
+  isolates the console.
+- **Audit log filtering + pagination**, org-scoped and cross-tenant.
+- 49 new API unit tests, 36 new e2e tests.
+
+### Changed
+- `JwtPayload` and `AuthenticatedUser` gained a required `isPlatform` field.
+- `JwtStrategy.validate` now re-checks platform membership against the
+  database on every request.
+- `RolesService.createDefaultOrgAdminRole` and `seed.ts`'s Hospital Admin
+  role no longer grant the `platform.*` permission family.
+- `docs/roadmap.md` renumbered: Reports & Analytics 16→17, Notifications
+  17→18, Production Hardening 18→19.
+
+### Fixed
+- `doctor-documents.e2e-spec.ts` upserted `doctors.read.all` but granted its
+  Doctor role `doctors.read.own`, so the suite passed only against a
+  pre-seeded database. Now self-sufficient.
+- `.ai/NEXT.md` documented the local test containers as ports 5434/6381; they
+  are `medicore_postgres` on 5432 and `medicore_redis` on 6379.
+
+### Known limitations (see TECH_DEBT TD-0044 … TD-0050)
+- Not browser-verified (by instruction).
+- No platform organization *detail* page, though its endpoints exist.
+- API metering does not survive a Redis flush and is not a billing ledger.
+- Storage usage reflects recorded sizes, not actual bucket contents.
+- No payment gateway; subscription limits are reported but **not enforced**.
+- Global search excludes patients and clinical records by design.

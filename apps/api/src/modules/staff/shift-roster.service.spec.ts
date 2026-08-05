@@ -41,7 +41,13 @@ describe('ShiftRosterService', () => {
     prisma = { shiftRoster: { upsert: jest.fn(), findMany: jest.fn(), findFirst: jest.fn(), delete: jest.fn() } }
     staffRef = { requireStaff: jest.fn().mockResolvedValue({ id: 'staff_1' }) }
     shiftsService = { requireShift: jest.fn().mockResolvedValue({ id: 'shift_1' }) }
-    service = new ShiftRosterService(prisma as never, staffRef as never, shiftsService as never)
+    // Milestone 18: a roster assignment announces `staff.roster.assigned`.
+    service = new ShiftRosterService(
+      prisma as never,
+      staffRef as never,
+      shiftsService as never,
+      { emit: jest.fn() } as never,
+    )
   })
 
   afterEach(() => jest.clearAllMocks())

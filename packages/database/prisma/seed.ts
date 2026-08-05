@@ -101,6 +101,16 @@ const RESOURCE_ACTIONS: Record<string, string[]> = {
   // organization — a strictly narrower audience than running a generator.
   ai: ['read', 'generate', 'manage'],
   'ai.templates': ['read', 'manage'],
+  // Communication & Notification Platform (Milestone 18 / ADR-0027).
+  //
+  // A user's *own* notification centre, preferences and devices are
+  // deliberately ungated — every authenticated user reads their own inbox, the
+  // same way `/auth/me` needs no permission. These three cover only the
+  // organization-wide console: `read` for history/statistics, `send` for
+  // composing a broadcast, and `manage` for the operational levers (template
+  // versions, retrying failed deliveries, cancelling a scheduled send) —
+  // mirroring `billing.manage`'s requester/approver separation.
+  notifications: ['read', 'send', 'manage'],
   users: ['read', 'create', 'update', 'manage'],
   roles: ['read', 'create', 'update'],
   organizations: ['read', 'update'],
@@ -108,7 +118,31 @@ const RESOURCE_ACTIONS: Record<string, string[]> = {
   departments: ['read', 'create', 'update', 'delete'],
   reports: ['read', 'export'],
   audit: ['read'],
+  // Platform & Multi-Tenant Administration (Milestone 16 / ADR-0025).
+  //
+  // These are the only permissions deliberately withheld from an organization
+  // admin — every other resource is granted org-wide by
+  // `RolesService.createDefaultOrgAdminRole`. They are also useless on their
+  // own: `PlatformGuard` additionally requires the caller's organization to be
+  // flagged `isPlatform`, so holding one inside a customer tenant grants
+  // nothing.
+  platform: ['read'],
+  'platform.tenants': ['read', 'manage'],
+  'platform.subscriptions': ['read', 'manage'],
+  'platform.analytics': ['read'],
+  'platform.audit': ['read'],
+  // Cross-tenant delivery analytics, queue monitoring and provider
+  // configuration (Milestone 18 Checkpoint 18.6). Same double gate as every
+  // other `platform.*` resource.
+  'platform.notifications': ['read', 'manage'],
 }
+
+/**
+ * Platform administration belongs to the platform tenant, not to any customer
+ * organization. An org admin managing hospitals *inside* their own
+ * organization is Checkpoint 16.1's job and is covered by `hospitals.*`.
+ */
+export const PLATFORM_RESOURCE_PREFIX = 'platform'
 
 const OWN_SCOPE_PERMISSIONS: Array<{ resource: string; action: string }> = [
   { resource: 'patients', action: 'read' },
@@ -602,8 +636,19 @@ async function main() {
       phone: '9999999999',
       country: 'IN',
       settings: ORG_SETTINGS,
+      isPlatform: true,
     },
   })
+
+  // `update: {}` above makes the upsert a no-op for an existing row, so an
+  // environment seeded before Milestone 16 would keep `isPlatform = false` and
+  // lock every platform owner out of the console. Set it explicitly.
+  if (!platformOrg.isPlatform) {
+    await prisma.organization.update({
+      where: { id: platformOrg.id },
+      data: { isPlatform: true },
+    })
+  }
 
   const superAdminRole = await prisma.role.upsert({
     where: { name_organizationId: { name: 'Super Admin', organizationId: platformOrg.id } },
@@ -699,7 +744,14 @@ async function main() {
   for (const spec of ROLE_SPECS) {
     const permissionIds =
       spec.slug === 'hospital-admin'
-        ? allPermissions.map((p) => p.id)
+        ? // Every permission except the platform-tenant-only family — an
+          // organization admin's authority stops at their own organization
+          // (Milestone 16 / ADR-0025). Mirrors
+          // `RolesService.createDefaultOrgAdminRole`, which applies the same
+          // exclusion for organizations created through registration.
+          allPermissions
+            .filter((p) => !p.resource.startsWith(PLATFORM_RESOURCE_PREFIX))
+            .map((p) => p.id)
         : spec.permissions
             .map((p) => permissionByKey.get(`${p.resource}.${p.action}.${p.scope ?? 'all'}`)?.id)
             .filter((id): id is string => Boolean(id))

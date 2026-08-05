@@ -20,6 +20,7 @@ const basePayload: JwtPayload = {
   email: 'user@example.com',
   orgId: 'org_1',
   orgSlug: 'org-1',
+  isPlatform: false,
   roles: [],
   permissions: ['patients.read.all'],
   hospitalIds: [],

@@ -45,7 +45,11 @@ export interface AuthSessionResult {
 }
 
 const userWithOrg = Prisma.validator<Prisma.UserDefaultArgs>()({
-  include: { organization: { select: { id: true, slug: true, name: true, isActive: true } } },
+  include: {
+    organization: {
+      select: { id: true, slug: true, name: true, isActive: true, isPlatform: true },
+    },
+  },
 })
 type UserWithOrg = Prisma.UserGetPayload<typeof userWithOrg>
 
@@ -109,6 +113,15 @@ export class AuthService {
     })
 
     this.eventEmitter.emit('auth.register', { userId: user.id, orgId: org.id })
+    // Distinct from `auth.register`, which is about the *user*. Tenant
+    // creation is news for the platform owner, and this is the only place an
+    // organization comes into existence (Milestone 18, Checkpoint 18.4).
+    this.eventEmitter.emit('organization.onboarded', {
+      organizationId: org.id,
+      organizationName: org.name,
+      organizationSlug: org.slug,
+      userId: user.id,
+    })
 
     await this.sendVerificationEmail(user.id, user.email, user.firstName)
 
@@ -122,7 +135,7 @@ export class AuthService {
   async login(dto: LoginDto, meta: RequestMeta): Promise<AuthSessionResult> {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
-      include: { organization: { select: { id: true, slug: true, name: true, isActive: true } } },
+      include: { organization: { select: { id: true, slug: true, name: true, isActive: true, isPlatform: true } } },
     })
 
     if (!user) throw new UnauthorizedException('Invalid credentials')
@@ -184,7 +197,7 @@ export class AuthService {
 
     const user = await this.prisma.user.findUnique({
       where: { id: result.session.userId },
-      include: { organization: { select: { id: true, slug: true, name: true, isActive: true } } },
+      include: { organization: { select: { id: true, slug: true, name: true, isActive: true, isPlatform: true } } },
     })
 
     if (!user || user.status === UserStatus.SUSPENDED || user.status === UserStatus.INACTIVE) {
@@ -224,7 +237,7 @@ export class AuthService {
   async me(userId: string): Promise<AuthenticatedUser> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: { organization: { select: { id: true, slug: true, name: true, isActive: true } } },
+      include: { organization: { select: { id: true, slug: true, name: true, isActive: true, isPlatform: true } } },
     })
     if (!user) throw new UnauthorizedException('User not found')
 
@@ -362,6 +375,7 @@ export class AuthService {
       email: user.email,
       orgId: user.organizationId,
       orgSlug: user.organization.slug,
+      isPlatform: user.organization.isPlatform,
       roles: authContext.roles,
       permissions: authContext.permissions,
       hospitalIds: authContext.hospitalIds,
@@ -384,6 +398,7 @@ export class AuthService {
       organizationId: user.organizationId,
       organizationSlug: user.organization.slug,
       organizationName: user.organization.name,
+      isPlatform: user.organization.isPlatform,
       roles: authContext.roles,
       permissions: authContext.permissions,
       hospitalIds: authContext.hospitalIds,

@@ -657,7 +657,7 @@ function BookAppointmentDialog({
         if (!next) reset()
       }}
     >
-      <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Book appointment</DialogTitle>
           <DialogDescription>Pick a patient, doctor, and an available slot.</DialogDescription>

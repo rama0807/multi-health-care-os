@@ -10,7 +10,14 @@ import { useForm } from 'react-hook-form'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/ui/pagination'
@@ -219,171 +226,63 @@ function AddStaffDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
+      <DialogContent bodyClassName="contents" className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Add staff member</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form
             onSubmit={(e) => void form.handleSubmit((values) => createMutation.mutate(values))(e)}
-            className="space-y-4"
+            className="flex min-h-0 flex-1 flex-col"
           >
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="firstName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>First name</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="lastName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Last name</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input type="email" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="systemRole"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Role</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {NON_DOCTOR_ROLES.map((r) => (
-                        <SelectItem key={r} value={r}>
-                          {formatEnumLabel(r)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="employeeId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Employee ID</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="designation"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Designation</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. Staff Nurse" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="hospitalId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Hospital</FormLabel>
-                    <Select
-                      value={field.value}
-                      onValueChange={(v) => {
-                        field.onChange(v)
-                        form.setValue('departmentId', undefined)
-                      }}
-                    >
+            <DialogBody>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="firstName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>First name</FormLabel>
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select hospital" />
-                        </SelectTrigger>
+                        <Input {...field} />
                       </FormControl>
-                      <SelectContent>
-                        {hospitalsQuery.data?.map((h) => (
-                          <SelectItem key={h.id} value={h.id}>
-                            {h.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="departmentId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Department (optional)</FormLabel>
-                    <Select value={field.value ?? ''} onValueChange={field.onChange} disabled={!hospitalId}>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="lastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Last name</FormLabel>
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select department" />
-                        </SelectTrigger>
+                        <Input {...field} />
                       </FormControl>
-                      <SelectContent>
-                        {departmentsQuery.data?.map((d) => (
-                          <SelectItem key={d.id} value={d.id}>
-                            {d.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input type="email" {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="employmentType"
+                name="systemRole"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Employment type</FormLabel>
+                    <FormLabel>Role</FormLabel>
                     <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger>
@@ -391,9 +290,9 @@ function AddStaffDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {Object.values(EmploymentType).map((t) => (
-                          <SelectItem key={t} value={t}>
-                            {formatEnumLabel(t)}
+                        {NON_DOCTOR_ROLES.map((r) => (
+                          <SelectItem key={r} value={r}>
+                            {formatEnumLabel(r)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -402,42 +301,152 @@ function AddStaffDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
                   </FormItem>
                 )}
               />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="employeeId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Employee ID</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="designation"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Designation</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. Staff Nurse" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="hospitalId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Hospital</FormLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={(v) => {
+                          field.onChange(v)
+                          form.setValue('departmentId', undefined)
+                        }}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select hospital" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {hospitalsQuery.data?.map((h) => (
+                            <SelectItem key={h.id} value={h.id}>
+                              {h.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="departmentId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Department (optional)</FormLabel>
+                      <Select value={field.value ?? ''} onValueChange={field.onChange} disabled={!hospitalId}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select department" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {departmentsQuery.data?.map((d) => (
+                            <SelectItem key={d.id} value={d.id}>
+                              {d.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="employmentType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Employment type</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {Object.values(EmploymentType).map((t) => (
+                            <SelectItem key={t} value={t}>
+                              {formatEnumLabel(t)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="joiningDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Joining date</FormLabel>
+                      <FormControl>
+                        <Input type="date" max={new Date().toISOString().slice(0, 10)} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               <FormField
                 control={form.control}
-                name="joiningDate"
+                name="monthlySalary"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Joining date</FormLabel>
+                    <FormLabel>Monthly salary (₹, optional — used for payroll prep)</FormLabel>
                     <FormControl>
-                      <Input type="date" max={new Date().toISOString().slice(0, 10)} {...field} />
+                      <Input
+                        type="number"
+                        min={0}
+                        value={field.value ?? ''}
+                        onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            </div>
-            <FormField
-              control={form.control}
-              name="monthlySalary"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Monthly salary (₹, optional — used for payroll prep)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={field.value ?? ''}
-                      onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <p className="text-xs text-muted-foreground">
-              A login account is created automatically. If this email already has a MediCore account, the selected
-              role is added to it instead of creating a duplicate.
-            </p>
+              <p className="text-xs text-muted-foreground">
+                A login account is created automatically. If this email already has a MediCore account, the selected
+                role is added to it instead of creating a duplicate.
+              </p>
+            </DialogBody>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel

@@ -396,7 +396,7 @@ function CatalogDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Lab test catalog</DialogTitle>
           <DialogDescription>Org-configurable orderable tests, with an optional reference range.</DialogDescription>

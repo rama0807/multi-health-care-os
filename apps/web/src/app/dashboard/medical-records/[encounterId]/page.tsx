@@ -386,7 +386,7 @@ function ClinicalNotesTab({ encounterId, canUpdate }: { encounterId: string; can
       </div>
 
       <Dialog open={showHistory} onOpenChange={setShowHistory}>
-        <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Clinical note version history</DialogTitle>
             <DialogDescription>

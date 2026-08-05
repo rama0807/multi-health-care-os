@@ -251,7 +251,7 @@ function AdmitPatientWizard({
         if (!next) reset()
       }}
     >
-      <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Admit patient</DialogTitle>
         </DialogHeader>

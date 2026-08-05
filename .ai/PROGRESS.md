@@ -4,6 +4,65 @@
 > after every completed task. Pair with `CHANGELOG.md` (human-facing summary)
 > and `MODULE_STATUS.md` (per-module state).
 
+## 2026-08-05 — Milestone 15, Checkpoint 15.1 (AI Clinical Assistant) — complete
+
+Milestone 15 was first split into five checkpoints (**ADR-0023**, plan
+recorded in `NEXT.md`); this session delivered **15.1** only, per
+instruction. 15.1 is deliberately the *platform* checkpoint: it builds
+every cross-cutting AI concern once and proves it against seven
+text-in/text-out generators that need no new input-ingestion path.
+Checkpoints 15.2–15.5 each add exactly one capability on top.
+
+Started from the pre-existing 29-line no-op `ai` module scaffold (the
+same category as the `Medication`/`MedicalRecord`/`Ward`/`Staff`
+scaffolds every prior milestone found); confirmed no AI-related schema
+or enum existed before designing anything.
+
+- **Platform layer** (`apps/api/src/common/ai/`) — an `AiProviderAdapter`
+  interface with four *real* HTTP adapters (OpenAI Chat Completions,
+  Anthropic Messages, Gemini `generateContent`, Ollama `/api/chat`),
+  chosen by a `useFactory` off `ConfigService` exactly as
+  `StorageModule` chooses its driver. `AiClientService` is the only
+  thing domain code injects: feature flags, exponential-backoff retry
+  (retryable failures only), timeouts, token accounting, cost
+  derivation, and provider-error → HTTP mapping that never echoes raw
+  provider text to a caller.
+- **Domain layer** (`apps/api/src/modules/ai/`) — seven generators
+  (SOAP Note, Clinical Note Summarization, Lab Result Summarization,
+  Radiology Report Summarization, Prescription Explanation, Discharge
+  Summary, Referral Letter) over one `POST /ai/generate` (+ `/stream`)
+  discriminated-union endpoint; `ClinicalContextService` assembles
+  read-only context by reusing the existing EMR/Laboratory/Radiology/
+  Prescriptions/IPD modules; prompt templates are bundled defaults with
+  org-scoped, append-only versioned overrides.
+- **Schema** (migration `20260804231008_ai_clinical_assistant`, applied
+  to both `medicore_dev`/`medicore_test`): `AiConversation`,
+  `AiMessage`, `AiUsageLog`, `AiPromptTemplate` + four enums.
+- **RBAC** — new `ai` (`read`/`generate`/`manage`) and `ai.templates`
+  (`read`/`manage`) namespaces; `ai.read`/`ai.generate` own-scope
+  capable, Doctor own-scoped, Nurse all-scope, usage reporting
+  `ai.manage`-gated.
+- **Frontend** — a streaming `AiAssistDialog` + permission-gated
+  `AiAssistButton`, a `/dashboard/ai` page (Assistant/Conversations/
+  Usage + provider status), a new sidebar item, "AI SOAP note"/"AI
+  summary" on the Encounter detail header, and "AI draft" on the IPD
+  Discharge tab.
+- **Verification** — `pnpm lint`, `pnpm typecheck`, `pnpm test`
+  (558 unit / 75 suites, +45 new), `pnpm build` all green; e2e 295/296
+  (18 new AI tests all pass). The one failure (`doctor-documents` →
+  "lets a doctor read their own audit timeline") was reproduced
+  identically on a pristine HEAD worktree — **pre-existing, unrelated
+  to this work**.
+- **Deferred, disclosed, not faked** — no AI provider credential exists
+  in this environment, so every generation endpoint returns **503 with
+  an explicit reason** and produces no clinical text (**TD-0041**); PHI
+  reaches a third-party provider with no BAA by default, mitigated but
+  not solved by `AI_INCLUDE_PATIENT_IDENTIFIERS=false` and self-hosted
+  Ollama (**TD-0042**). No browser walkthrough or screenshots this
+  session, by instruction (mirrors TD-0035/TD-0036).
+
+---
+
 ## 2026-08-05 — Milestone 14 (Staff & Attendance) — complete
 
 Continued from the now-replaced `NEXT.md`, which framed this as a

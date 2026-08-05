@@ -13,6 +13,7 @@ import {
   Pill,
   Scan,
   Settings,
+  Sparkles,
   Stethoscope,
   Syringe,
   Users,
@@ -69,6 +70,7 @@ export const navigation: NavSection[] = [
       },
       { label: 'Radiology', href: '/dashboard/radiology', icon: Scan, permission: 'radiology.read' },
       { label: 'Nursing', href: '/dashboard/nursing', icon: Syringe, permission: 'ipd.nursing.read' },
+      { label: 'AI Assistant', href: '/dashboard/ai', icon: Sparkles, permission: 'ai.read' },
     ],
   },
   {

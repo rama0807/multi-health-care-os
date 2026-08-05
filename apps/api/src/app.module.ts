@@ -5,12 +5,14 @@ import { EventEmitterModule } from '@nestjs/event-emitter'
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler'
 import { LoggerModule } from 'nestjs-pino'
 
+import { AiCommonModule } from './common/ai/ai-common.module'
 import { EmailModule } from './common/email/email.module'
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard'
 import { PermissionsGuard } from './common/guards/permissions.guard'
 import { PermissionsModule } from './common/permissions/permissions.module'
 import { RedisModule } from './common/redis/redis.module'
 import { StorageModule } from './common/storage/storage.module'
+import aiConfig from './config/ai.config'
 import appConfig from './config/app.config'
 import databaseConfig from './config/database.config'
 import emailConfig from './config/email.config'
@@ -47,7 +49,7 @@ import { PrismaModule } from './prisma/prisma.module'
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, jwtConfig, redisConfig, emailConfig, storageConfig],
+      load: [appConfig, databaseConfig, jwtConfig, redisConfig, emailConfig, storageConfig, aiConfig],
       envFilePath: ['.env.local', '.env'],
     }),
     LoggerModule.forRoot({
@@ -79,6 +81,7 @@ import { PrismaModule } from './prisma/prisma.module'
     RedisModule,
     EmailModule,
     StorageModule,
+    AiCommonModule,
     HealthModule,
     PermissionsModule,
     RolesModule,

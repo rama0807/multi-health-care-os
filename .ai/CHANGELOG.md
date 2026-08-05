@@ -508,3 +508,89 @@
 - Common backend infra: JWT auth guard, permissions guard/service, CSRF
   guard, audit listener/service, email module, Redis module.
 - CI workflow, Docker Compose (dev + prod), commitlint + Husky hooks.
+
+## 2026-08-05 — Milestone 15, Checkpoint 15.1: AI Clinical Assistant
+
+### Added — AI platform layer (`apps/api/src/common/ai/`)
+
+- **Provider abstraction** over four real vendors behind one
+  `AiProviderAdapter` interface, selected by config — mirrors
+  `StorageService`'s driver pattern (ADR-0023):
+  - `OpenAiProvider` — `POST {base}/chat/completions`, SSE streaming
+    with `stream_options.include_usage`.
+  - `AnthropicProvider` — `POST {base}/messages`, lifts the system
+    prompt to the top-level `system` field, joins `message_start`
+    input tokens with `message_delta` output tokens when streaming.
+  - `GeminiProvider` — `generateContent`/`streamGenerateContent`,
+    `systemInstruction` mapping, assistant→`model` role rename, API
+    key sent as a header so it never lands in an access log.
+  - `OllamaProvider` — self-hosted, no API key, newline-delimited JSON
+    stream rather than SSE.
+- `AiClientService` — the only thing domain modules inject. Owns
+  feature flags, exponential-backoff retry over retryable failures
+  only, request timeouts, token accounting, cost derivation, and
+  provider-error → HTTP mapping that never echoes raw provider text.
+- `ai.config.ts` — config-driven provider/model/limits/retry/costs.
+  Treats placeholder credentials (`sk-xxxxxxxxxxxx`) as **absent**.
+
+### Added — AI domain layer (`apps/api/src/modules/ai/`)
+
+- Seven clinical generators over data the repo already stores: **SOAP
+  Note**, **Clinical Note Summarization**, **Lab Result
+  Summarization**, **Radiology Report Summarization**, **Prescription
+  Explanation**, **Discharge Summary**, **Referral Letter**.
+- `ClinicalContextService` — read-only prompt-context assembly reusing
+  the existing EMR, Laboratory, Radiology, Prescriptions and IPD
+  modules (current clinical-note version only, lab flags repeated from
+  the laboratory module rather than recomputed, radiology summarization
+  refused when no report has been released).
+- Prompt templates — bundled defaults (shared clinical guardrails:
+  use only supplied context, never invent findings, draft for
+  clinician review) plus org-scoped, append-only versioned overrides.
+- `POST /ai/generate` and `POST /ai/generate/stream` (SSE over POST,
+  bypassing the response envelope), `GET /ai/status`,
+  `GET /ai/conversations[/:id]`, `GET /ai/usage[/summary]`,
+  and prompt-template read/create-version/activate endpoints.
+- Conversation logging (`AiConversation`/`AiMessage`), usage +
+  token accounting (`AiUsageLog`, including **failed** dispatches), and
+  audit integration that records the metadata without copying
+  generated clinical text into the audit row.
+
+### Added — Schema
+
+Migration `20260804231008_ai_clinical_assistant`: `AiConversation`,
+`AiMessage`, `AiUsageLog`, `AiPromptTemplate`, plus the
+`AiProviderType`/`AiFeature`/`AiMessageRole`/`AiRequestStatus` enums.
+
+### Added — RBAC
+
+New `ai` resource (`read`/`generate`/`manage`) and `ai.templates`
+(`read`/`manage`). `ai.read`/`ai.generate` are own-scope capable —
+Doctor is own-scoped (own patients only), Nurse is all-scope, and
+org-wide usage reporting is `ai.manage`-gated.
+
+### Added — Frontend
+
+- `apps/web/src/components/ai/` — a streaming `AiAssistDialog` (live
+  deltas, editable draft, copy, stop, regenerate, disclaimer, token/
+  latency/attempt metadata) and a permission-gated `AiAssistButton`.
+- `/dashboard/ai` — Assistant / Conversations / Usage tabs plus a
+  provider-status card, with a new `ai.read`-gated sidebar item.
+- "AI SOAP note" and "AI summary" on the Encounter detail header;
+  "AI draft" on the IPD Discharge tab, which drafts into the hospital-
+  course field for the clinician to edit (never auto-saved).
+
+### Not delivered — disclosed, not faked
+
+No AI provider credential exists in this environment, so every
+generation endpoint returns **503 with an explicit reason** and no
+clinical text is produced (**TD-0041**). PHI is sent to a third-party
+provider with no BAA by default; `AI_INCLUDE_PATIENT_IDENTIFIERS=false`
+and self-hosted Ollama are the two built-in mitigations (**TD-0042**).
+
+### Verification
+
+`pnpm lint`, `pnpm typecheck`, `pnpm test` (558 unit, 75 suites),
+`pnpm build` all green. E2E: 18 AI e2e tests pass; the full serial
+suite's one pre-existing `doctor-documents` failure was confirmed
+against a pristine HEAD worktree and is unrelated to this work.

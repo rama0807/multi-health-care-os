@@ -6,6 +6,112 @@
 
 ---
 
+## Session: 2026-08-05 (Milestone 15, Checkpoint 15.1 — AI Clinical Assistant, complete)
+
+### What was completed
+Read `CLAUDE.md`/`NEXT.md`/`PROJECT_CONTEXT.md`/`SESSION_LOG.md` first
+per instruction, then split Milestone 15 into five checkpoints
+(recorded in `NEXT.md`, reasoned in **ADR-0023**) and implemented
+**15.1 only**. Confirmed before designing that `apps/api/src/modules/ai/`
+was a 29-line no-op scaffold and that no AI schema/enum existed.
+
+- **Provider abstraction** (`apps/api/src/common/ai/`): `AiProviderAdapter`
+  + four real HTTP adapters (OpenAI, Anthropic, Gemini, Ollama), a
+  `useFactory` picking one from `ConfigService` (StorageModule's exact
+  pattern), and `AiClientService` (feature flags, retry with backoff,
+  timeouts, token accounting, cost, error mapping). Streaming and
+  non-streaming share one code path; only the sink differs.
+- **Domain layer** (`apps/api/src/modules/ai/`): seven generators over
+  one discriminated-union `POST /ai/generate` (+ SSE `/stream` over
+  POST), `ClinicalContextService` (read-only reuse of EMR/Laboratory/
+  Radiology/Prescriptions/IPD), bundled-default + org-override prompt
+  templates, conversation/usage/audit persistence.
+- **Schema**: migration `20260804231008_ai_clinical_assistant` —
+  `AiConversation`, `AiMessage`, `AiUsageLog`, `AiPromptTemplate` +
+  `AiProviderType`/`AiFeature`/`AiMessageRole`/`AiRequestStatus`.
+  Applied to both `medicore_dev` and `medicore_test`.
+- **RBAC**: `ai` (`read`/`generate`/`manage`) and `ai.templates`
+  (`read`/`manage`) added to the seed catalog; Doctor own-scoped,
+  Nurse all-scope.
+- **Frontend**: `components/ai/` (streaming dialog + gated button),
+  `/dashboard/ai` (Assistant/Conversations/Usage), sidebar item, and
+  entry points on the Encounter detail header and IPD Discharge tab.
+
+### Files modified
+New: `apps/api/src/config/ai.config.ts`, `apps/api/src/common/ai/**`
+(interface, errors, token accounting, stream parsing, 4 adapters,
+client service, global module, 4 spec files),
+`apps/api/src/modules/ai/**` (generation/conversations/usage/templates
+services + 3 controllers + context builder + prompts + dto + 3 specs),
+`apps/api/test/ai.e2e-spec.ts`, `packages/types/src/ai.ts`,
+`apps/web/src/lib/api/ai.ts`, `apps/web/src/components/ai/**`,
+`apps/web/src/app/dashboard/ai/page.tsx`.
+Modified: `apps/api/src/app.module.ts`, `packages/database/prisma/
+schema.prisma`, `packages/database/prisma/seed.ts`,
+`packages/types/src/index.ts`, `apps/web/src/lib/api/client.ts`
+(exported `getCsrfToken` for the streaming fetch),
+`apps/web/src/components/layout/sidebar.tsx`, the Encounter detail
+page, the IPD discharge tab, and all `.ai/` docs.
+Deleted: `apps/api/src/modules/ai/ai.service.ts` (the no-op scaffold).
+
+### Architectural decisions made
+**ADR-0023** — the five-checkpoint split; provider abstraction in
+`common/ai` not `modules/ai`; real HTTP adapters rather than stubs;
+bundled-default + DB-override prompt templates (not a nullable-org
+unique index); honest token accounting with a `tokensEstimated` flag
+and config-driven costs; own-scope-capable `ai.generate`; two
+feature-flag layers checked *before* any PHI read; SSE over POST rather
+than Nest's GET-only `@Sse()`; one generic endpoint over a
+discriminated union rather than seven controllers.
+
+### Known issues
+- **TD-0041 (new, High):** no AI provider credential exists here.
+  `ai.config.ts` treats `sk-xxxxxxxxxxxx`-style placeholders as absent,
+  so every generation endpoint returns **503 with an explicit reason**
+  and no clinical text is produced. The e2e suite asserts that contract
+  rather than asserting generated output.
+- **TD-0042 (new, High):** clinical context goes to a third-party
+  provider with no BAA by default. Two built mitigations —
+  `AI_INCLUDE_PATIENT_IDENTIFIERS=false` (pseudonymisation, *not* Safe
+  Harbor) and `AI_PROVIDER=OLLAMA` (nothing leaves the deployment).
+- **Pre-existing, not mine:** `doctor-documents.e2e-spec.ts` → "lets a
+  doctor read their own audit timeline" fails with 403. Reproduced
+  identically on a pristine `HEAD` worktree, so it predates this work.
+  Worth a dedicated look next session.
+- `NEXT.md`'s note about test containers was **stale**: there is no
+  `medicore-postgres`/`medicore-redis` pair on 5434/6381. The running
+  compose containers are `medicore_postgres` (5432) and `medicore_redis`
+  (6379). E2E specs default to 5434/6381 via `??=`, so run them as:
+  `cd apps/api && DATABASE_URL="postgresql://medicore:medicore@localhost:5432/medicore_test?schema=public" REDIS_PORT=6379 npx jest --config jest-e2e.config.ts --runInBand`.
+  **`pnpm test:e2e` does not work for this** — turbo strips the env
+  vars, so every suite targets the non-existent 5434 and all 18 fail.
+  Use `--runInBand`; the parallel default also causes spurious failures.
+
+### Verification
+`pnpm lint` ✅, `pnpm typecheck` ✅, `pnpm test` ✅ (558 unit, 75 suites
+— 45 new), `pnpm build` ✅. E2E run serially with the env above:
+**295 passed / 296**, the single failure being the pre-existing
+`doctor-documents` one confirmed against a clean HEAD worktree. All 18
+new AI e2e tests pass. Not browser-verified and no screenshots — by
+explicit instruction this session (mirrors TD-0035/TD-0036).
+
+### Recommended next task
+**Checkpoint 15.2 — AI Document Intelligence** (scope in `NEXT.md`).
+It must reuse `common/ai` rather than adding a second provider path.
+If a real API key becomes available first, the higher-value move is to
+extend `apps/api/test/ai.e2e-spec.ts` with the generation-path
+assertions TD-0041 currently blocks — that validates 15.1's whole
+pipeline before 15.2 builds on it.
+
+### Completion percentage
+Overall: unchanged in structure — Milestone 15 is now 1 of 5
+checkpoints complete (~20% of the milestone). `ai` module: **100% for
+Checkpoint 15.1**. No other module's percentage changed; the EMR,
+Laboratory, Radiology, Prescriptions and IPD modules were read from,
+never modified.
+
+---
+
 ## Session: 2026-08-05 (Bugfix — doctors dashboard-stats 500)
 
 ### What was completed

@@ -3,68 +3,137 @@
 > The next logical task(s) to pick up. Replaced (not appended) whenever a
 > milestone completes — this file always describes "start here," not history.
 
+## Milestone 15 — AI Features: Checkpoint Plan
+
+Milestone 15 is split into **five checkpoints** (recorded as **ADR-0023**
+in `DECISIONS.md`). The split follows the same precedent as Milestones
+4/5/6/12: each checkpoint is independently shippable, has its own
+verification pass, and does not require the next one to be useful.
+
+The ordering is deliberate: **15.1 builds the whole AI platform layer**
+(provider abstraction, prompt templates, conversation/usage/audit
+logging, feature flags, retry, token accounting, streaming transport)
+and proves it with the seven text-in/text-out clinical generators, which
+need no new input-ingestion path. Every later checkpoint reuses that
+layer rather than re-inventing it.
+
+### Checkpoint 15.1 — AI Clinical Assistant ✅ COMPLETE (2026-08-05)
+
+Platform layer + seven generators over data that **already exists** in
+the EMR/Laboratory/Radiology/Prescriptions/IPD modules:
+
+- Provider abstraction (OpenAI, Anthropic, Gemini, Ollama) behind one
+  interface, selected by config — mirrors `StorageService`'s driver
+  pattern.
+- Prompt templates (bundled defaults + DB-stored, versioned org
+  overrides).
+- Conversation logging, audit logging, usage tracking, token accounting.
+- Streaming (SSE) and non-streaming request paths.
+- RBAC (`ai.generate`/`ai.read`/`ai.manage`, `ai.templates.*`), with
+  doctor own-scope on generation.
+- Feature flags (global kill switch + per-feature disable).
+- Retry with exponential backoff + typed error mapping.
+- Generators: SOAP Note, Clinical Note Summarization, Lab Result
+  Summarization, Radiology Report Summarization, Prescription
+  Explanation, Discharge Summary, Referral Letter.
+
+### Checkpoint 15.2 — AI Document Intelligence (NEXT)
+
+Reuses 15.1's platform layer end to end; adds **new input ingestion**:
+
+- Lab report **PDF → text extraction → summarization** (the uploaded
+  `LabTest.reportFileUrl` path, not the structured-results path 15.1
+  already covers).
+- Prescription **image OCR → structured `PrescriptionItem[]`
+  extraction**, with a human review-and-confirm step before anything is
+  written to a real prescription.
+- Radiology **external report file → text extraction → summarization**
+  (`RadiologyAttachment` of type `EXTERNAL_REPORT`/`PDF`).
+- A shared `DocumentExtractionService` over the existing
+  `StorageService` — no parallel storage path.
+- Frontend: an "Extract & review" flow on the existing Lab Orders /
+  Radiology Attachments / Prescriptions tabs.
+
+Prerequisite to check first: whether a vision-capable model is
+reachable with the configured provider (the abstraction already carries
+a `supportsVision` capability flag — see `ai-provider.interface.ts`).
+
+### Checkpoint 15.3 — AI Voice & Ambient Documentation
+
+- New audio upload path (`StorageService`-backed) — the only one of the
+  three roadmap input sources with no existing upload route.
+- Transcription capability added to the provider abstraction
+  (Whisper-class), config-driven like completion.
+- Ambient consultation transcript → SOAP extraction → a **draft**
+  `ClinicalNote` version the doctor edits and saves (never auto-commits
+  clinical text).
+- Frontend: a record/upload widget on the Encounter detail page's
+  Subjective tab.
+
+### Checkpoint 15.4 — Conversational Assistant & Scheduling Chatbot
+
+- Multi-turn chat over the existing `AiConversation`/`AiMessage` models
+  (15.1 already writes them; this checkpoint adds the turn-taking read
+  path and continuation).
+- Tool/function-calling in the provider abstraction, wired to the
+  existing `AvailabilityService`/`AppointmentsService` so the assistant
+  books real slots rather than describing them.
+- Frontend: a streaming chatbot widget.
+
+### Checkpoint 15.5 — AI Governance, Analytics & Admin
+
+- Per-org usage/cost dashboard over `AiUsageLog` (15.1 writes it; this
+  checkpoint visualizes and reports on it).
+- Quotas and rate caps per org/user/feature, enforced before dispatch.
+- Prompt-template admin UI (versioning, activate, roll back) over the
+  `AiPromptTemplate` model 15.1 introduced.
+- Model-routing configuration per feature (cheap model for
+  summarization, stronger model for generation).
+- Safety/guardrail review queue for flagged generations.
+
+---
+
 ## Immediate Next Task
 
-**Milestone 15 — AI Features**, per `docs/roadmap.md`. Milestone 14
-(Staff & Attendance) is now fully complete — backend, frontend, tests,
-docs all done, all verification green. Do not re-implement or
-re-verify anything from Milestone 14.
+**Checkpoint 15.2 — AI Document Intelligence** (scope above).
 
-### Scope, per `docs/roadmap.md`
+### What's already in the repo — do not rebuild
 
-- Provider abstraction layer (OpenAI + Anthropic adapters)
-- Prompt management system (DB-stored, versioned)
-- Lab report PDF → text extraction → AI summarization
-- Prescription image OCR → structured data extraction
-- Voice recording → Whisper transcription → SOAP note extraction
-- Appointment scheduling chatbot (streaming)
-- AI usage tracking per org
-- Frontend: AI features in context (summary panel, OCR review, chatbot
-  widget)
+- `apps/api/src/common/ai/` — the complete provider abstraction
+  (`AiProvider` interface, OpenAI/Anthropic/Gemini/Ollama adapters,
+  `AiClientService` with retry/token accounting/usage logging/streaming,
+  `ai.config.ts`). **Reuse it; do not add a second provider path.**
+- `apps/api/src/modules/ai/` — prompt templates, clinical context
+  builders, the seven generators, conversations/usage read APIs,
+  RBAC-gated controllers.
+- Schema: `AiConversation`, `AiMessage`, `AiUsageLog`,
+  `AiPromptTemplate` + the `AiProviderType`/`AiFeature`/`AiMessageRole`/
+  `AiRequestStatus` enums.
+- Frontend: `apps/web/src/components/ai/` (streaming assist dialog +
+  button) and `/dashboard/ai` (conversations + usage).
 
-### What's already in the repo — verify before assuming either way
+### Credential status — read before starting
 
-A quick look (not a full audit — do that first) found:
-- `apps/api/src/modules/ai/` already exists (controller/service/module)
-  — check whether it's a no-op scaffold (the standing precedent in this
-  repo before every AI-adjacent milestone) or something real.
-- **This milestone is genuinely credential-blocked** in this
-  environment: no `OPENAI_API_KEY`/`ANTHROPIC_API_KEY` (real values —
-  `apps/api/.env` currently holds placeholder `sk-xxxxxxxxxxxx`-style
-  strings), and prior sessions have consistently disclosed rather than
-  faked AI features for exactly this reason (see TECH_DEBT TD-0015
-  SMS, TD-0018 lab-report AI summarization, TD-0019 image
-  interpretation/PACS). Read `TECH_DEBT.md` for the full list before
-  starting, and raise the credential question with the user rather
-  than fabricating provider responses.
-- Every prior milestone in this repo found an unaudited pre-existing
-  scaffold that shaped the actual design (`Medication`→`Drug`,
-  `MedicalRecord`→`Encounter`, `Ward`/`Bed`/`Admission`, `Staff`) —
-  check whether any AI-related schema/enum already exists
-  unaudited before designing new models.
-- Lab report PDFs (`laboratory` module), prescription images
-  (`StorageService`-backed uploads on `Prescription`/encounter
-  attachments), and voice recordings (no existing upload path — would
-  be new) are the three real input sources named above; read each
-  relevant module's existing PDF/attachment generation before deciding
-  how AI summarization/OCR would plug in, rather than inventing a
-  parallel storage path.
+**Still genuinely credential-blocked in this environment.**
+`apps/api/.env` holds placeholder `sk-xxxxxxxxxxxx` /
+`sk-ant-xxxxxxxxxxxx` values. Checkpoint 15.1 handled this the way this
+repo has always handled credential gaps (TD-0015 SMS, TD-0019 PACS,
+TD-0027 payment gateway, TD-0039 biometric): the **full pipeline is
+real**, and when no provider is configured every AI endpoint returns a
+`503` with an explicit "AI is not configured" message — it does **not**
+return fabricated clinical text. See **TD-0041**.
+
+Checkpoint 15.2 must hold the same line: no fabricated OCR output, no
+fabricated extraction results.
 
 ### Process reminders (from `CLAUDE.md`)
 
-- Per the repository reading policy: this task touches a new `ai`
-  module plus read-only integration points into Laboratory,
-  Prescriptions, Appointments, and Organizations (for per-org usage
-  tracking). Do not re-scan Staff/Attendance/Inventory/IPD/Billing
-  beyond reading one page as a UI-pattern reference if needed.
-- Run full verification before calling any task done: `pnpm lint &&
-  pnpm typecheck && pnpm test && pnpm test:e2e && pnpm build`. The test
-  DB containers are named `medicore-postgres`/`medicore-redis` (mapped
-  to host ports 5434/6381 per `apps/api/.env`) — start them with
-  `docker start medicore-postgres medicore-redis`, not `docker compose
-  up`, which creates a *different*, unmapped container pair.
-- If real AI provider credentials are genuinely unavailable, disclose
-  the gap explicitly (mirroring TD-0015/TD-0018/TD-0019/TD-0027)
-  rather than fabricating a response — ask the user whether to build
-  the full pipeline against a real key they'll provide, stub the
-  provider-adapter interface only, or defer the feature entirely.
+- Reading policy: 15.2 touches `common/ai`, `modules/ai`, Laboratory,
+  Radiology, Prescriptions, and `common/storage`. Do not re-scan
+  Staff/Attendance/Inventory/IPD/Billing.
+- Full verification before calling anything done: `pnpm lint && pnpm
+  typecheck && pnpm test && pnpm test:e2e && pnpm build`. Test DB
+  containers are `medicore-postgres`/`medicore-redis` (host ports
+  5434/6381) — start with `docker start medicore-postgres
+  medicore-redis`, **not** `docker compose up`, which creates a
+  different, unmapped pair.

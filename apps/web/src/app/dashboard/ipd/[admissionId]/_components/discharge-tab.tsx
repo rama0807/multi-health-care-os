@@ -10,6 +10,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CheckCircle2, FileDown, Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
+import { AiAssistButton } from '@/components/ai/ai-assist-button'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -210,7 +211,18 @@ export function DischargeTab({
       </div>
 
       <div className="rounded-lg border bg-card p-4">
-        <h3 className="text-sm font-semibold text-foreground">Discharge summary</h3>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-foreground">Discharge summary</h3>
+          {/* Drafts the narrative into "Course in hospital" for the clinician to
+              edit — it is never saved without an explicit Save action below. */}
+          <AiAssistButton
+            feature="DISCHARGE_SUMMARY"
+            contextRefs={{ admissionId }}
+            label="AI draft"
+            onAccept={setCourseInHospital}
+            acceptLabel="Use as hospital course"
+          />
+        </div>
         <div className="mt-3 space-y-2">
           <div>
             <Label className="text-xs">Final diagnosis *</Label>

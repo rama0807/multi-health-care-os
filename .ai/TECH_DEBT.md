@@ -1205,3 +1205,89 @@ favour of a `toJson(schema, value)` helper that parses before casting.
 Also worth auditing the other `Json` columns (`Doctor.
 languagesSpoken`, `Organization.settings`) for the same class of
 writer/reader drift.
+
+---
+
+## TD-0041: No AI provider credential exists — every AI endpoint returns 503, and no clinical text is generated
+
+Opened: 2026-08-05
+Status: Open — genuinely credential-blocked, disclosed not faked
+Severity: High (blocks the feature entirely, not the code)
+
+**Description:** Checkpoint 15.1 built the complete AI Clinical
+Assistant — provider abstraction over four real vendors, prompt
+templates, conversation logging, audit, usage/token accounting, RBAC,
+feature flags, retry, and both streaming and non-streaming transports.
+What it cannot do in this environment is call a provider:
+`apps/api/.env` holds placeholder credentials (`OPENAI_API_KEY=
+sk-xxxxxxxxxxxx`, `ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxx`), no
+`GEMINI_API_KEY` is set, and no Ollama server is running.
+
+`ai.config.ts` treats a run of 6+ `x`s as a placeholder and therefore
+as *absent*, deliberately: sending a placeholder key would produce a
+provider 401 that reads like an outage rather than what it is —
+no credential. With no configured provider, `AiClientService.
+assertAvailable()` throws before any patient data is read, and every
+generation endpoint returns **503 with an explicit reason**. It does
+**not** return fabricated clinical text, a canned sample, or a "demo
+mode" response. This is the same line this repo has held for every
+credential-blocked integration (TD-0015 SMS, TD-0018 lab AI
+summarization, TD-0019 PACS/DICOM, TD-0027 payment gateway, TD-0039
+biometric attendance).
+
+**Impact:** The seven generators are reachable, RBAC-gated, audited,
+and fully wired end to end in both API and UI — and produce nothing.
+The `/dashboard/ai` page and the `AiAssistDialog` both surface the
+exact reason ("OPENAI_API_KEY is not set (or is still a placeholder
+value)") rather than failing opaquely. The e2e suite asserts *this
+contract* — 503-with-a-reason — rather than asserting generated text,
+because there is no honest way to assert output that isn't produced.
+
+**Resolution plan:** Set a real key for whichever provider the
+deployment uses (`AI_PROVIDER` + the matching `*_API_KEY`, or point
+`OLLAMA_BASE_URL` at a running Ollama for a fully self-hosted setup).
+Then extend `apps/api/test/ai.e2e-spec.ts` with the generation-path
+assertions it currently cannot make. No code change is required —
+the pipeline is complete; only the credential is missing.
+
+---
+
+## TD-0042: Clinical context is sent to a third-party AI provider with no BAA and no de-identification by default
+
+Opened: 2026-08-05
+Status: Open — mitigations exist, policy decision outstanding
+Severity: High (compliance, not correctness)
+
+**Description:** The AI generators work by sending assembled clinical
+context — patient demographics, clinical notes, vitals, diagnoses, lab
+results, radiology reports, prescriptions, nursing notes — to whichever
+provider `AI_PROVIDER` selects. For OpenAI/Anthropic/Gemini that is a
+third-party processor. This repo has no signed Business Associate
+Agreement with any of them, no data-processing agreement, no
+provider-side zero-retention configuration, and no record of patient
+consent to third-party processing.
+
+Two mitigations are built and working, but neither is a substitute for
+a BAA:
+1. `AI_INCLUDE_PATIENT_IDENTIFIERS=false` replaces the patient name and
+   UHID with `[redacted]` in every context block while keeping age,
+   sex and clinical content (which are load-bearing for the output).
+   This is *pseudonymisation*, not HIPAA Safe Harbor de-identification
+   — free-text clinical notes can still carry identifiers the builder
+   cannot detect.
+2. `AI_PROVIDER=OLLAMA` runs entirely self-hosted, so no PHI leaves the
+   deployment at all. This is the only configuration in which the
+   compliance question does not arise.
+
+**Impact:** A deployment that enables AI against a hosted provider
+without a BAA is very likely in breach of HIPAA (and of India's DPDP
+Act for this system's primary market). Nothing in the code prevents
+that configuration today — it is disclosed here rather than silently
+permitted.
+
+**Resolution plan:** Before any production enablement: (a) sign a BAA
+with the chosen provider and enable zero-retention, or (b) deploy
+Ollama and set `AI_PROVIDER=OLLAMA`. Additionally worth building in
+Checkpoint 15.5: a per-organization AI opt-in setting (rather than a
+deployment-wide flag), a recorded patient-consent check before
+generation, and a real de-identification pass over free-text fields.

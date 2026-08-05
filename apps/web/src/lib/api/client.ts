@@ -15,6 +15,10 @@ export function getAccessToken(): string | null {
   return accessToken
 }
 
+export function getCsrfToken(): string | null {
+  return getCsrfTokenFromCookie()
+}
+
 function getCsrfTokenFromCookie(): string | null {
   if (typeof document === 'undefined') return null
   const match = document.cookie.match(/(?:^|;\s*)medicore_csrf=([^;]+)/)

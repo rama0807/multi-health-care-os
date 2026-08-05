@@ -684,7 +684,68 @@ schema/RBAC design.
   per-day/per-hour payroll rate is a disclosed convention
   (`monthlySalary / 30`), not a configurable pay policy (TD-0037).
 
-See `.ai/NEXT.md` for **Milestone 15 — AI Features**, next.
+## Milestone 15, Checkpoint 15.1 — AI Clinical Assistant: Complete
+
+Completed in a single session (2026-08-05). Milestone 15 is split into
+five checkpoints — see **ADR-0023** and `NEXT.md` for the full plan;
+15.1 is the *platform* checkpoint, deliberately proving every
+cross-cutting AI concern against seven generators that read data the
+repo already stores, so 15.2–15.5 each add one capability on top.
+
+- **Provider abstraction** (`apps/api/src/common/ai/`) — one
+  `AiProviderAdapter` interface with four real HTTP adapters (OpenAI
+  Chat Completions, Anthropic Messages, Gemini `generateContent`,
+  self-hosted Ollama), selected by a `useFactory` off `ConfigService`
+  exactly as `StorageModule` selects its disk/S3 driver. Domain code
+  injects only `AiClientService`, so changing vendor is a config change.
+- `AiClientService` owns feature flags (global `AI_ENABLED` kill switch
+  + per-feature `AI_DISABLED_FEATURES`), exponential-backoff retry over
+  retryable failures only, request timeouts, token accounting, cost
+  derivation, and provider-error → HTTP mapping.
+- **Seven generators**: SOAP Note, Clinical Note Summarization, Lab
+  Result Summarization, Radiology Report Summarization, Prescription
+  Explanation, Discharge Summary, Referral Letter — all behind one
+  discriminated-union `POST /ai/generate`, with an SSE `POST
+  /ai/generate/stream` sharing the same code path.
+- `ClinicalContextService` assembles prompt context read-only from the
+  existing EMR, Laboratory, Radiology, Prescriptions and IPD modules —
+  current clinical-note version only, laboratory's own abnormal flags
+  repeated rather than recomputed, radiology summarization refused when
+  no report has been released.
+- **Prompt templates** — bundled defaults carrying shared clinical
+  guardrails (use only supplied context, never invent findings, this is
+  a draft for clinician review), overridable per organization by
+  append-only versioned `AiPromptTemplate` rows.
+- Conversation logging (`AiConversation`/`AiMessage`), per-org usage and
+  token accounting (`AiUsageLog`, including failed dispatches, with a
+  `tokensEstimated` flag so an estimate is never mistaken for a metered
+  count), and audit integration that records metadata without copying
+  generated clinical text into the audit row.
+- **RBAC** — new `ai` (`read`/`generate`/`manage`) and `ai.templates`
+  (`read`/`manage`) namespaces; `ai.generate` is own-scope capable
+  (a doctor generates only for their own patients, mirroring
+  `medical_records`/`prescriptions`), Nurse is all-scope, org-wide
+  usage reporting is `ai.manage`-gated.
+- **Frontend** — a streaming `AiAssistDialog` (live deltas, editable
+  draft, copy/stop/regenerate, disclaimer, token/latency metadata) and
+  a permission-gated `AiAssistButton`; `/dashboard/ai`
+  (Assistant/Conversations/Usage + provider status) with a new sidebar
+  item; "AI SOAP note"/"AI summary" on the Encounter detail header; and
+  "AI draft" on the IPD Discharge tab, which drafts into the
+  hospital-course field for the clinician to edit — never auto-saved.
+- 45 new unit tests (558 API total) and 18 new e2e tests passing;
+  lint/typecheck/build clean. Not browser-verified — explicit
+  instruction this session, mirroring TD-0035/TD-0036.
+- **Deferred, disclosed, not faked**: no AI provider credential exists
+  in this environment, so every generation endpoint returns **503 with
+  an explicit reason** and produces no clinical text (**TD-0041**) —
+  placeholder `sk-xxxxxxxxxxxx` keys are deliberately read as *absent*.
+  Clinical context reaches a third-party provider with no BAA by
+  default; `AI_INCLUDE_PATIENT_IDENTIFIERS=false` (pseudonymisation)
+  and `AI_PROVIDER=OLLAMA` (nothing leaves the deployment) are the two
+  built-in mitigations (**TD-0042**).
+
+See `.ai/NEXT.md` for **Checkpoint 15.2 — AI Document Intelligence**, next.
 
 ## Milestone Screenshots
 

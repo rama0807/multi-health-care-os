@@ -88,6 +88,14 @@ const RESOURCE_ACTIONS: Record<string, string[]> = {
   leave: ['read', 'approve', 'manage'],
   shifts: ['read', 'create', 'update', 'delete'],
   'shifts.roster': ['read', 'create', 'update'],
+  // AI Features (Milestone 15 Checkpoint 15.1 / ADR-0023) — `ai.generate` runs
+  // a clinical generator, `ai.read` views conversation transcripts, and
+  // `ai.manage` is the admin-shaped org-wide usage/token reporting surface
+  // (mirrors `billing.manage`'s requester/reviewer separation). `ai.templates`
+  // is separate because editing a prompt changes clinical output for the whole
+  // organization — a strictly narrower audience than running a generator.
+  ai: ['read', 'generate', 'manage'],
+  'ai.templates': ['read', 'manage'],
   users: ['read', 'create', 'update', 'manage'],
   roles: ['read', 'create', 'update'],
   organizations: ['read', 'update'],
@@ -137,6 +145,10 @@ const OWN_SCOPE_PERMISSIONS: Array<{ resource: string; action: string }> = [
   { resource: 'leave', action: 'read' },
   { resource: 'leave', action: 'manage' },
   { resource: 'shifts.roster', action: 'read' },
+  // A doctor may only generate against, and read back, AI output for records
+  // where they are the treating doctor — mirrors medical_records/prescriptions.
+  { resource: 'ai', action: 'read' },
+  { resource: 'ai', action: 'generate' },
 ]
 
 /**
@@ -258,6 +270,12 @@ const ROLE_SPECS: RoleSpec[] = [
       { resource: 'ipd.discharge', action: 'read' },
       { resource: 'ipd.discharge', action: 'create' },
       { resource: 'ipd.discharge', action: 'manage' },
+      // Own-scoped, mirroring medical_records/prescriptions (ADR-0023): a
+      // doctor generates and reads AI drafts only for their own patients.
+      // No `ai.manage` — org-wide usage/cost reporting is an admin surface.
+      { resource: 'ai', action: 'read', scope: 'own' },
+      { resource: 'ai', action: 'generate', scope: 'own' },
+      { resource: 'ai.templates', action: 'read' },
     ],
     user: { email: 'doctor@medicore.demo', firstName: 'Priya', lastName: 'Sharma' },
   },
@@ -284,6 +302,11 @@ const ROLE_SPECS: RoleSpec[] = [
       // Nursing documentation, MAR administration, doctor-order visibility,
       // nursing-task management, and discharge-checklist/summary editing —
       // but not discharge approval or finalization (doctor-only).
+      // All-scope like the rest of the nurse's ward surfaces (ipd.nursing's
+      // precedent): summarising a lab report or an admission's course is
+      // ward-level work, not doctor-specific.
+      { resource: 'ai', action: 'read' },
+      { resource: 'ai', action: 'generate' },
       { resource: 'ipd.nursing', action: 'read' },
       { resource: 'ipd.nursing', action: 'create' },
       { resource: 'ipd.orders', action: 'read' },

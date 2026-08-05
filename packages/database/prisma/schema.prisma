@@ -544,6 +544,9 @@ model Organization {
   holidays                  Holiday[]
   leaveTypeConfigs          LeaveTypeConfig[]
   staffLeaves               StaffLeave[]
+  aiConversations           AiConversation[]
+  aiUsageLogs               AiUsageLog[]
+  aiPromptTemplates         AiPromptTemplate[]
 
   @@index([slug])
   @@map("organizations")
@@ -577,6 +580,7 @@ model User {
   staffProfile  Staff?
   auditLogs     AuditLog[]
   notifications Notification[]
+  aiUsageLogs   AiUsageLog[]
 
   @@index([organizationId])
   @@index([email])
@@ -1086,6 +1090,7 @@ model Patient {
   preAuthorizations PreAuthorization[]
   notifications     Notification[]
   dispenseOrders    DispenseOrder[]
+  aiConversations   AiConversation[]
 
   @@unique([uhid, organizationId])
   @@unique([phone, organizationId])
@@ -1225,6 +1230,7 @@ model Encounter {
   preAuthorizations PreAuthorization[]
   insuranceClaims   InsuranceClaim[]
   admissions        Admission[]
+  aiConversations   AiConversation[]
 
   @@index([patientId, organizationId])
   @@index([doctorId, organizationId])
@@ -3697,4 +3703,157 @@ model AuditLog {
   @@index([resource, resourceId, organizationId])
   @@index([userId, organizationId])
   @@map("audit_logs")
+}
+
+// ─── AI (Milestone 15, Checkpoint 15.1 — ADR-0023) ─────────────────────────
+
+/// Which vendor adapter served a request. Stored per `AiUsageLog` row (not
+/// read back from config at report time) so historical usage stays accurate
+/// after an org switches providers.
+enum AiProviderType {
+  OPENAI
+  ANTHROPIC
+  GEMINI
+  OLLAMA
+}
+
+/// One value per clinical generator. Also the feature-flag key
+/// (`AI_DISABLED_FEATURES`) and the prompt-template lookup key.
+enum AiFeature {
+  SOAP_NOTE
+  CLINICAL_NOTE_SUMMARY
+  LAB_RESULT_SUMMARY
+  RADIOLOGY_REPORT_SUMMARY
+  PRESCRIPTION_EXPLANATION
+  DISCHARGE_SUMMARY
+  REFERRAL_LETTER
+}
+
+enum AiMessageRole {
+  SYSTEM
+  USER
+  ASSISTANT
+}
+
+enum AiRequestStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+}
+
+/// A single AI interaction thread. Checkpoint 15.1 writes exactly one
+/// assistant turn per conversation (the generators are one-shot); the model
+/// is multi-turn-shaped on purpose so Checkpoint 15.4's chat assistant
+/// continues an existing thread rather than needing a second table.
+model AiConversation {
+  id               String    @id @default(cuid())
+  organizationId   String
+  feature          AiFeature
+  title            String
+  /// Context the generation was run against — all optional because which one
+  /// applies depends on `feature` (an encounter for SOAP notes, an admission
+  /// for a discharge summary, and so on).
+  patientId        String?
+  encounterId      String?
+  labTestId        String?
+  radiologyOrderId String?
+  prescriptionId   String?
+  admissionId      String?
+  createdByUserId  String
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  patient      Patient?     @relation(fields: [patientId], references: [id])
+  encounter    Encounter?   @relation(fields: [encounterId], references: [id])
+  messages     AiMessage[]
+  usageLogs    AiUsageLog[]
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([patientId])
+  @@index([encounterId])
+  @@index([createdByUserId])
+  @@map("ai_conversations")
+}
+
+/// Append-only transcript of a conversation. `sequence` is 0-based and unique
+/// per conversation, so replaying a thread never depends on `createdAt`
+/// tie-breaking (system + user messages are written in the same millisecond).
+model AiMessage {
+  id             String        @id @default(cuid())
+  conversationId String
+  sequence       Int
+  role           AiMessageRole
+  content        String
+  tokenCount     Int?
+  createdAt      DateTime      @default(now())
+
+  conversation AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, sequence])
+  @@index([conversationId])
+  @@map("ai_messages")
+}
+
+/// One row per provider dispatch (including failed ones), for per-org usage
+/// tracking and token accounting. `tokensEstimated` is the honesty flag: a
+/// provider that returns real usage sets it `false`; a stream that omits
+/// usage falls back to a documented heuristic and sets it `true`, so no
+/// consumer can mistake an estimate for a metered count (ADR-0023).
+model AiUsageLog {
+  id               String          @id @default(cuid())
+  organizationId   String
+  conversationId   String?
+  userId           String?
+  feature          AiFeature
+  provider         AiProviderType
+  model            String
+  status           AiRequestStatus @default(PENDING)
+  streamed         Boolean         @default(false)
+  promptTokens     Int             @default(0)
+  completionTokens Int             @default(0)
+  totalTokens      Int             @default(0)
+  tokensEstimated  Boolean         @default(false)
+  /// Derived from `AI_INPUT_COST_PER_1K`/`AI_OUTPUT_COST_PER_1K`, which
+  /// default to 0 — a 0 here means "no price configured," not "free."
+  estimatedCostUsd Decimal         @default(0) @db.Decimal(12, 6)
+  latencyMs        Int             @default(0)
+  /// How many provider calls this dispatch took, including retries.
+  attempts         Int             @default(1)
+  errorCode        String?
+  errorMessage     String?
+  createdAt        DateTime        @default(now())
+
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  conversation AiConversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  user         User?           @relation(fields: [userId], references: [id])
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([organizationId, feature])
+  @@index([conversationId])
+  @@map("ai_usage_logs")
+}
+
+/// Org-scoped, versioned override of a bundled default prompt. The defaults
+/// in `modules/ai/prompts/` are the source of truth and always work against
+/// an empty table; a row here only wins when it is the highest `version` for
+/// its (organization, feature) pair *and* `isActive` (ADR-0023).
+model AiPromptTemplate {
+  id                 String    @id @default(cuid())
+  organizationId     String
+  feature            AiFeature
+  version            Int
+  systemPrompt       String
+  userPromptTemplate String
+  description        String?
+  isActive           Boolean   @default(true)
+  createdByUserId    String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, feature, version])
+  @@index([organizationId, feature])
+  @@map("ai_prompt_templates")
 }

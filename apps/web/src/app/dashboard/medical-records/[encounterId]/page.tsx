@@ -45,6 +45,7 @@ import {
   YAxis,
 } from 'recharts'
 
+import { AiAssistButton } from '@/components/ai/ai-assist-button'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -197,16 +198,26 @@ export default function EncounterDetailPage() {
             {new Date(encounter.encounterDate).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
           </p>
         </div>
-        {canUpdate && forward && (
-          <Button
-            size="sm"
-            onClick={() => statusMutation.mutate(forward)}
-            disabled={statusMutation.isPending}
-          >
-            {statusMutation.isPending ? <Loader2 className="animate-spin" /> : <Check />}
-            Mark {formatEnumLabel(forward)}
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Drafts only — the dialog hands text back for review, it never writes to the chart. */}
+          <AiAssistButton feature="SOAP_NOTE" contextRefs={{ encounterId }} label="AI SOAP note" />
+          <AiAssistButton
+            feature="CLINICAL_NOTE_SUMMARY"
+            contextRefs={{ encounterId }}
+            label="AI summary"
+            variant="ghost"
+          />
+          {canUpdate && forward && (
+            <Button
+              size="sm"
+              onClick={() => statusMutation.mutate(forward)}
+              disabled={statusMutation.isPending}
+            >
+              {statusMutation.isPending ? <Loader2 className="animate-spin" /> : <Check />}
+              Mark {formatEnumLabel(forward)}
+            </Button>
+          )}
+        </div>
       </div>
 
       <Tabs defaultValue="subjective">

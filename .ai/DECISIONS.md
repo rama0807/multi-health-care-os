@@ -1560,3 +1560,128 @@ attendance corrections apply immediately with no approval gate
 (TD-0038); no browser walkthrough this session (TD-0036), matching
 Milestone 13's TD-0035 precedent under the same kind of explicit
 instruction.
+
+---
+
+## ADR-0023: Milestone 15 split into five checkpoints; 15.1 delivers the AI platform layer plus seven clinical generators
+
+**Date:** 2026-08-05
+**Status:** Accepted
+**Context:** Milestone 15 ("AI Features") is the largest single
+milestone left on `docs/roadmap.md`: a provider abstraction, prompt
+management, PDF/image/voice ingestion, a streaming scheduling chatbot,
+per-org usage tracking, and frontend surfaces across half the modules
+in the system. Delivering it in one pass would violate this repo's
+own 45–60-minute/one-checkpoint session rule and would couple an
+untested platform layer to three separate new input-ingestion paths.
+
+The session's explicit instruction also expanded the first checkpoint
+beyond `NEXT.md`'s prior framing: seven named clinical generators
+(SOAP note, clinical note summarization, lab result summarization,
+radiology report summarization, prescription explanation, discharge
+summary, referral letter) plus the full non-functional list
+(abstraction over four providers, prompt templates, conversation
+logging, audit logging, streaming, usage tracking, RBAC, feature
+flags, retry/error handling, token accounting, config-driven provider
+selection).
+
+**Decision:**
+
+1. **Five checkpoints** (full scope in `NEXT.md`): 15.1 AI Clinical
+   Assistant, 15.2 AI Document Intelligence, 15.3 AI Voice & Ambient
+   Documentation, 15.4 Conversational Assistant & Scheduling Chatbot,
+   15.5 AI Governance/Analytics/Admin.
+
+2. **15.1 is the platform checkpoint.** It builds every cross-cutting
+   AI concern once and proves it against the seven generators, which
+   were chosen precisely because they are *text-in/text-out over data
+   the repo already stores*. No new upload path, no new file parsing,
+   no new external dependency beyond the provider HTTP call itself.
+   Checkpoints 15.2–15.5 each add exactly one new capability on top of
+   an already-verified layer.
+
+3. **The provider abstraction lives in `apps/api/src/common/ai/`, not
+   in `modules/ai/`** — mirroring `common/storage`'s driver pattern
+   (`STORAGE_DRIVER` symbol + a `useFactory` that picks the driver from
+   `ConfigService`) exactly. `AI_PROVIDER` is a DI symbol resolving to
+   one of four adapters (OpenAI, Anthropic, Gemini, Ollama);
+   `AiClientService` is the only thing any domain module ever injects,
+   so switching providers is a config change, not a code change.
+   `modules/ai/` holds domain logic only (context building, prompt
+   selection, the generators, conversation/usage read APIs).
+
+4. **Providers are real HTTP clients, not stubs.** Each adapter targets
+   its vendor's real endpoint (`/v1/chat/completions`, `/v1/messages`,
+   `:generateContent`, `/api/chat`) with real request/response and SSE
+   parsing. This repo has no AI credentials (`apps/api/.env` holds
+   placeholder `sk-xxxxxxxxxxxx` strings), so **when no provider is
+   configured every AI endpoint returns `503 Service Unavailable` with
+   an explicit message** — it never returns fabricated clinical text.
+   This follows the standing precedent for credential-blocked features
+   (TD-0015 SMS, TD-0018 lab AI, TD-0019 PACS, TD-0027 payment
+   gateway, TD-0039 biometric) and is recorded as **TD-0041**.
+   Adapters are unit-tested against a mocked `fetch`, which verifies
+   request shaping, response/usage mapping, SSE decoding, and error
+   classification without inventing a model response.
+
+5. **Prompt templates: bundled defaults + optional DB override.**
+   `DEFAULT_PROMPT_TEMPLATES` (a typed record in
+   `modules/ai/prompts/`) is the source of truth and always works with
+   an empty database; `AiPromptTemplate` rows are org-scoped, versioned
+   overrides looked up per (organization, feature) with the highest
+   active version winning. Rationale: a nullable `organizationId` in a
+   `@@unique` would have Postgres NULL-distinctness semantics, and a
+   seeded-per-org copy would drift silently from the code that renders
+   it. Templates are `{{placeholder}}`-rendered — deliberately not a
+   template engine, so a prompt can never execute code.
+
+6. **Token accounting is honest about its source.** Providers that
+   return real usage (OpenAI/Anthropic non-streaming, Gemini,
+   Ollama) have it recorded verbatim. Where a stream omits usage, a
+   documented `ceil(chars / 4)` heuristic fills in and
+   `AiUsageLog.tokensEstimated` is set `true`, so no consumer can
+   mistake an estimate for a metered count. Cost is likewise
+   config-driven (`AI_INPUT_COST_PER_1K`/`AI_OUTPUT_COST_PER_1K`,
+   default `0`) rather than a hardcoded price table that would go
+   stale — a `0` cost reads as "not configured," not "free."
+
+7. **RBAC:** new `ai` resource with `read`/`generate`/`manage`, plus
+   `ai.templates` with `read`/`manage`. `ai.generate` is **own-scope
+   capable**, resolved exactly like `medical_records`/`prescriptions`
+   (`PermissionsService.getScope` + `DoctorRefService.
+   findDoctorProfileForUser`): a doctor may only generate against
+   encounters/orders/prescriptions/admissions where they are the
+   treating doctor. Nurses get all-scope `read`/`generate` for the
+   ward-level summarization features, matching `ipd.nursing`'s
+   precedent.
+
+8. **Two feature-flag layers.** `AI_ENABLED` is a global kill switch;
+   `AI_DISABLED_FEATURES` is a comma-separated per-feature list. Both
+   are checked before any context is assembled — a disabled feature
+   never reads patient data, which matters because context assembly is
+   itself a PHI read.
+
+9. **Streaming is SSE over `POST`, not Nest's `@Sse()`.** `@Sse()`
+   implies `GET`, and these requests carry a body (feature +
+   context refs) that does not belong in a query string next to
+   patient identifiers. The streaming controller therefore writes
+   `text/event-stream` to the raw Fastify reply, deliberately
+   bypassing `ResponseTransformInterceptor`. Both transports share one
+   code path in `AiClientService`; only the sink differs.
+
+10. **One generic `POST /ai/generate` (+ `/stream`) over a
+    discriminated-union DTO**, not seven bespoke endpoints. The
+    features differ only in which context builder runs and which
+    template is selected; seven controllers would have duplicated the
+    flag check, scope check, conversation write, and audit write seven
+    times. The zod discriminated union keeps each feature's required
+    context refs strictly typed at the edge.
+
+**Consequences:** Checkpoints 15.2–15.5 inherit a verified platform and
+must not introduce a second provider path, a second usage-logging
+table, or a second prompt-rendering mechanism. Until real credentials
+exist, every AI surface in the product is reachable, RBAC-gated,
+audited, and honest — and produces no clinical content (TD-0041).
+Because a `503` is the correct configured-off response, the e2e suite
+asserts *that* contract rather than asserting generated text, and will
+need extending once a key is available.

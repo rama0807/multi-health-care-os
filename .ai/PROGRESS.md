@@ -4,6 +4,65 @@
 > after every completed task. Pair with `CHANGELOG.md` (human-facing summary)
 > and `MODULE_STATUS.md` (per-module state).
 
+## 2026-08-05 — Milestone 3 (Patient Management) — complete
+
+Explicit instruction paused AI development after Checkpoint 15.1 and
+asked for the next unfinished *non-AI* HMS milestone, determined from
+`docs/roadmap.md` and `MODULE_STATUS.md` (`patients` was the only
+pre-Milestone-15 module still "In Progress / Unaudited"). Read
+`patients.service.ts`/`.controller.ts`/`.service.spec.ts` end to end
+before writing anything: CRUD, UHID generation, search, timeline,
+documents, emergency contacts, and duplicate *detection* were already
+real and tested. Exactly three roadmap deliverables were missing:
+family linkage, patient merge, and CSV import. See **ADR-0024** for the
+full design.
+
+- **Schema** (migration `20260805095836_patient_family_and_merge`,
+  applied to both `medicore_dev`/`medicore_test`): `Patient` gained
+  `headOfFamilyId` (self-relation `FamilyMembers`, one level deep by
+  design) and `mergedIntoId` (self-relation `PatientMerges`), both
+  indexed.
+- **Backend** (`apps/api/src/modules/patients/`): `linkFamilyMember`/
+  `unlinkFamilyMember`/`listFamilyMembers` (family graph kept flat by
+  application-layer validation, not a DB constraint); `mergePatients`
+  (transactionally reassigns `patientId` across all 16 linked models —
+  `PATIENT_LINKED_MODELS` — plus family dependents, then soft-deletes
+  the source with `mergedIntoId` set; `restore()` now refuses a merged
+  record); `importFromCsv` (a hand-rolled RFC 4180 parser in
+  `csv-parser.util.ts`, sequential per-row `create()` reuse, 500-row
+  cap, per-row success/failure reporting). New DTOs
+  (`link-family-member.dto.ts`, `merge-patients.dto.ts`) and shared
+  types (`LinkFamilyMemberSchema`, `MergePatientsSchema`, `FamilyGroup`,
+  `PatientMergeResult`, `CsvImportResult`) in `packages/types/src/patient.ts`.
+- **RBAC**: new `patients.manage` action (seed.ts), gating `POST
+  /patients/merge` and `POST /patients/import` — admin-only by default
+  (mirrors `billing.manage`); family link/unlink reuse the existing
+  `patients.update`.
+- **Audit**: `audit.listener.ts` gained `patient.family_linked`/
+  `family_unlinked`/`merged`/`import_completed` handlers.
+- **Tests**: 20 new unit tests (`patients.service.spec.ts` +
+  `csv-parser.util.spec.ts`, 578 API total) and 4 new e2e tests
+  (`patients.e2e-spec.ts`, 299 total across 18 suites, zero failures).
+- **Frontend**: `lib/api/patients.ts` extended (`getPatientFamily`,
+  `linkFamilyMember`, `unlinkFamilyMember`, `mergePatients`,
+  `importPatientsCsv`). Patient detail page gained a "Family" tab
+  (view the resolved group from either the head or a member, link/
+  unlink) and a "Merge" action in the header (patient search picker +
+  direction choice, `patients.manage`-gated) with a banner on a merged
+  record linking to the survivor. Patient list page gained an "Import
+  CSV" dialog (`patients.manage`-gated) showing a per-row result list.
+- **Full verification, all green**: `pnpm lint`/`typecheck`/`test`
+  (578 API + 6 web unit)/`build` clean across all 6 packages;
+  `test:e2e` 299/299 passing (18 suites, run against the
+  `medicore-postgres`/`medicore-redis` containers on 5434/6381 per the
+  established `--runInBand` workaround). Not browser-verified —
+  explicit instruction this session (no Playwright, no screenshots).
+- **Milestone 15 (AI) deliberately left untouched** beyond Checkpoint
+  15.1, per instruction — `NEXT.md` still describes 15.2 as the AI
+  continuation point whenever AI work resumes.
+
+---
+
 ## 2026-08-05 — Milestone 15, Checkpoint 15.1 (AI Clinical Assistant) — complete
 
 Milestone 15 was first split into five checkpoints (**ADR-0023**, plan

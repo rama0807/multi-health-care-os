@@ -1685,3 +1685,80 @@ audited, and honest — and produces no clinical content (TD-0041).
 Because a `503` is the correct configured-off response, the e2e suite
 asserts *that* contract rather than asserting generated text, and will
 need extending once a key is available.
+
+---
+
+## ADR-0024: Milestone 3 (Patient Management) completion — family linkage, patient merge, and CSV import
+
+**Date:** 2026-08-05
+**Status:** Accepted
+**Context:** AI development was explicitly paused after Checkpoint
+15.1 with instruction to resume the next unfinished *non-AI* HMS
+milestone. `docs/roadmap.md`'s Milestone 3 — Patient Management — had
+every deliverable checkbox unchecked despite the module being in daily
+use by every later-built milestone (`MODULE_STATUS.md` listed
+`patients` as "In Progress / Unaudited," the only pre-Milestone-15
+clinical/admin module without a "Completed" row). Reading
+`patients.service.ts`/`patients.controller.ts` end to end confirmed
+CRUD, UHID generation, search (name/UHID/phone/DOB), the patient
+profile/timeline, document upload, emergency contacts, and duplicate
+*detection* were all already real and tested — the same "unaudited
+scaffold that's actually mostly built" pattern Inventory (Milestone 13)
+and Staff (Milestone 14) hit before their own milestones. Exactly three
+roadmap deliverables were genuinely missing: **family linkage** (head
+of family → members), **patient merge** (duplicate detection existed;
+nothing acted on a confirmed duplicate), and **CSV import**.
+
+**Decision:**
+
+1. **Family linkage is one level deep by construction** —
+   `Patient.headOfFamilyId` (self-relation) with no separate junction
+   table. A head of family cannot itself be someone else's dependent,
+   and a patient who already has dependents cannot join another
+   family — both enforced in `PatientsService`, not the DB, so listing
+   a family is a single `headOfFamilyId` lookup rather than a
+   variable-depth graph walk. Reparenting an existing family isn't
+   supported (every member must be unlinked first) — a disclosed
+   simplification, not a silent gap.
+
+2. **Merge reassigns every other module's `patientId` column inside
+   one transaction, then soft-deletes the source with a new
+   `mergedIntoId` pointer** — reusing the existing soft-delete plumbing
+   (`deletedAt`/`isActive`) rather than inventing a third patient
+   lifecycle state. `PATIENT_LINKED_MODELS` in `patients.service.ts` is
+   the authoritative list of every model with a direct `patientId`
+   column (16 total, including `Payment`/`Charge`, which carry a bare
+   `patientId` string with **no** Prisma relation to `Patient` by
+   original schema design — the column is still real and still gets
+   reassigned). `restore()` now refuses a merged record, since its data
+   has already moved to the survivor — attempting to resurrect it
+   independently would silently orphan nothing but confuse the UI.
+
+3. **CSV import reuses `PatientsService.create()` per row**, not a
+   parallel bulk-insert path — identical UHID generation, phone-
+   conflict detection, and Zod validation as a manual registration.
+   Rows are processed sequentially (not in parallel) since UHID
+   generation counts existing patients per organization inside a
+   per-org advisory lock; a 500-row cap bounds worst-case request time.
+   A hand-rolled RFC 4180 parser (`csv-parser.util.ts`) was used instead
+   of a new dependency — the grammar is small, and `PayrollService`
+   already writes CSV by hand elsewhere in this repo (Milestone 14).
+   Per the repo's standing rule against fabricated success, a failing
+   row is recorded with its reason and the rest of the file still
+   processes — no row silently disappears and no fabricated patient is
+   ever created from unparseable input.
+
+4. **`patients.manage` is a new permission**, gating merge and CSV
+   import only — ordinary `create`/`update` do not imply it. Mirrors
+   `billing.manage`/`insurance.settlement`'s requester/approver
+   precedent for bulk or hard-to-reverse actions; granted to Hospital
+   Admin only by default (via the "every permission" blanket grant),
+   not to Receptionist alongside their existing `patients.create`/
+   `update`.
+
+**Consequences:** Milestone 3 is now fully complete against
+`docs/roadmap.md`'s deliverable list. Any future module that adds a
+`patientId` column must be added to `PATIENT_LINKED_MODELS` or a merge
+will silently leave that module's records pointing at the deactivated
+source patient — flagged here so it isn't missed the way `Payment`'s
+un-related Prisma relation would otherwise have been easy to overlook.

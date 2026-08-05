@@ -19,6 +19,8 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator'
 import { RequirePermissions } from '../../common/decorators/permissions.decorator'
 
 import { CreatePatientDto } from './dto/create-patient.dto'
+import { LinkFamilyMemberDto } from './dto/link-family-member.dto'
+import { MergePatientsDto } from './dto/merge-patients.dto'
 import { UpdatePatientDto } from './dto/update-patient.dto'
 import { PatientsService } from './patients.service'
 
@@ -139,6 +141,12 @@ export class PatientsController {
     return this.patientsService.listDocuments(orgId, id)
   }
 
+  @Get(':id/family')
+  @RequirePermissions('patients.read')
+  getFamily(@CurrentUser('orgId') orgId: string, @Param('id') id: string) {
+    return this.patientsService.listFamilyMembers(orgId, id)
+  }
+
   @Post()
   @RequirePermissions('patients.create')
   create(
@@ -147,6 +155,31 @@ export class PatientsController {
     @Body() dto: CreatePatientDto,
   ) {
     return this.patientsService.create(orgId, dto, userId)
+  }
+
+  @Post('merge')
+  @RequirePermissions('patients.manage')
+  merge(
+    @CurrentUser('orgId') orgId: string,
+    @CurrentUser('sub') userId: string,
+    @Body() dto: MergePatientsDto,
+  ) {
+    return this.patientsService.mergePatients(orgId, dto.sourcePatientId, dto.targetPatientId, userId)
+  }
+
+  @Post('import')
+  @ApiConsumes('multipart/form-data')
+  @RequirePermissions('patients.manage')
+  async importCsv(
+    @CurrentUser('orgId') orgId: string,
+    @CurrentUser('sub') userId: string,
+    @Req() request: FastifyRequest,
+  ) {
+    const data = await request.file()
+    if (!data) throw new BadRequestException('No file uploaded — send multipart/form-data with a "file" field')
+
+    const buffer = await data.toBuffer()
+    return this.patientsService.importFromCsv(orgId, buffer, userId)
   }
 
   @Post(':id/documents')
@@ -189,6 +222,27 @@ export class PatientsController {
     @Body() dto: UpdatePatientDto,
   ) {
     return this.patientsService.update(orgId, id, dto, userId)
+  }
+
+  @Patch(':id/family')
+  @RequirePermissions('patients.update')
+  linkFamily(
+    @CurrentUser('orgId') orgId: string,
+    @CurrentUser('sub') userId: string,
+    @Param('id') id: string,
+    @Body() dto: LinkFamilyMemberDto,
+  ) {
+    return this.patientsService.linkFamilyMember(orgId, id, dto.headOfFamilyId, userId)
+  }
+
+  @Delete(':id/family')
+  @RequirePermissions('patients.update')
+  unlinkFamily(
+    @CurrentUser('orgId') orgId: string,
+    @CurrentUser('sub') userId: string,
+    @Param('id') id: string,
+  ) {
+    return this.patientsService.unlinkFamilyMember(orgId, id, userId)
   }
 
   @Post(':id/restore')

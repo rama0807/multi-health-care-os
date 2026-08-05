@@ -6,6 +6,32 @@
 ## [Unreleased]
 
 ### Added
+- **Milestone 3 — Patient Management (complete):** see ADR-0024. AI
+  development (Milestone 15) was explicitly paused after Checkpoint
+  15.1; this closes the last three unchecked deliverables on the
+  pre-existing (unaudited) Patient module — CRUD, UHID generation,
+  search, timeline, documents, emergency contacts, and duplicate
+  *detection* already existed and were already tested.
+  - Family linkage — link/unlink a patient under a head of family
+    (`Patient.headOfFamilyId`, one level deep by design), view the
+    resolved family group from either the head or a member.
+  - Patient merge — merge a confirmed duplicate into a survivor;
+    reassigns every other module's `patientId` column (16 models) plus
+    any family dependents inside one transaction, then soft-deletes
+    the source with a new `mergedIntoId` pointer. `restore()` now
+    refuses a merged record.
+  - CSV import — bulk-register patients from an uploaded CSV (up to
+    500 rows), reusing the same validation/UHID-generation/phone-
+    conflict path as a manual registration; per-row success/failure
+    report, no fabricated rows on a bad file.
+  - New `patients.manage` permission gating merge and CSV import
+    (admin-only by default, mirrors `billing.manage`).
+  - Frontend: a "Family" tab and a "Merge" dialog on the patient detail
+    page; an "Import CSV" dialog on the patient list page.
+  - 20 new API unit tests (578 total) + 4 new e2e tests (299 total,
+    18 suites); lint/typecheck/test/build all clean. Not browser-
+    verified — explicit instruction this session (no Playwright, no
+    screenshots).
 - **Milestone 14 — Staff & Attendance (complete):** see ADR-0022 for
   the full design (scope, schema, RBAC). Non-doctor staff only —
   doctors keep their existing dedicated scheduling/leave system.

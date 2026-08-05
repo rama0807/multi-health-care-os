@@ -1,6 +1,6 @@
 'use client'
 
-import { Gender } from '@medicore/types'
+import { type CsvImportResult, Gender } from '@medicore/types'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowDown,
@@ -11,6 +11,7 @@ import {
   Plus,
   RotateCcw,
   Trash2,
+  Upload,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
@@ -43,7 +44,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
-import { deletePatient, listPatients, restorePatient } from '@/lib/api/patients'
+import { deletePatient, importPatientsCsv, listPatients, restorePatient } from '@/lib/api/patients'
 import { useAuth } from '@/lib/auth/auth-context'
 import { cn } from '@/lib/utils'
 
@@ -73,6 +74,7 @@ export default function PatientsListPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [confirmBulkDeactivate, setConfirmBulkDeactivate] = useState(false)
   const [isBulkActing, setIsBulkActing] = useState(false)
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
 
   // Debounce free-text search so we don't fire a request per keystroke.
   useEffect(() => {
@@ -163,6 +165,7 @@ export default function PatientsListPage() {
   const canCreate = hasPermission('patients.create')
   const canUpdate = hasPermission('patients.update')
   const canDelete = hasPermission('patients.delete')
+  const canManage = hasPermission('patients.manage')
 
   return (
     <div className="space-y-4">
@@ -177,6 +180,12 @@ export default function PatientsListPage() {
           <Button variant="outline" disabled title="CSV export is coming soon">
             Export
           </Button>
+          {canManage && (
+            <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+              <Upload />
+              Import CSV
+            </Button>
+          )}
           {canCreate && (
             <Button asChild>
               <Link href="/dashboard/patients/new">
@@ -368,7 +377,110 @@ export default function PatientsListPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ImportCsvDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onImported={() => void queryClient.invalidateQueries({ queryKey: ['patients'] })}
+      />
     </div>
+  )
+}
+
+function ImportCsvDialog({
+  open,
+  onOpenChange,
+  onImported,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onImported: () => void
+}) {
+  const { toast } = useToast()
+  const [file, setFile] = useState<File | null>(null)
+  const [result, setResult] = useState<CsvImportResult | null>(null)
+  const [isImporting, setIsImporting] = useState(false)
+
+  async function handleImport() {
+    if (!file) return
+    setIsImporting(true)
+    try {
+      const importResult = await importPatientsCsv(file)
+      setResult(importResult)
+      onImported()
+      toast({
+        title: 'Import complete',
+        description: `${importResult.created} of ${importResult.total} row${importResult.total === 1 ? '' : 's'} created`,
+      })
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Import failed', description: getErrorMessage(error) })
+    } finally {
+      setIsImporting(false)
+    }
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        onOpenChange(next)
+        if (!next) {
+          setFile(null)
+          setResult(null)
+        }
+      }}
+    >
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Import patients from CSV</DialogTitle>
+          <DialogDescription>
+            Header row required: firstName, lastName, phone, dateOfBirth (YYYY-MM-DD), gender, and
+            optionally email, bloodGroup, address, city, state, pincode, emergencyContactName,
+            emergencyContactPhone. Up to 500 rows per file.
+          </DialogDescription>
+        </DialogHeader>
+
+        {!result ? (
+          <div className="space-y-3">
+            <Input type="file" accept=".csv,text/csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+          </div>
+        ) : (
+          <div className="max-h-72 space-y-2 overflow-y-auto">
+            <p className="text-sm text-muted-foreground">
+              {result.created} created · {result.failed} failed · {result.total} total
+            </p>
+            <ul className="divide-y rounded-md border text-sm">
+              {result.results.map((r) => (
+                <li key={r.row} className="flex items-center justify-between gap-2 p-2">
+                  <span>Row {r.row}</span>
+                  {r.success ? (
+                    <span className="font-mono text-xs text-muted-foreground">{r.uhid}</span>
+                  ) : (
+                    <span className="text-xs text-destructive">{r.error}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <DialogFooter>
+          {result ? (
+            <Button onClick={() => onOpenChange(false)}>Done</Button>
+          ) : (
+            <>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button onClick={() => void handleImport()} disabled={!file || isImporting}>
+                {isImporting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                Import
+              </Button>
+            </>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 

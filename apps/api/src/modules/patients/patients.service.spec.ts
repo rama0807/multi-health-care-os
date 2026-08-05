@@ -24,10 +24,44 @@ function buildPatient(overrides: Partial<Record<string, unknown>> = {}) {
     metadata: {},
     isActive: true,
     deletedAt: null,
+    headOfFamilyId: null,
+    mergedIntoId: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
   }
+}
+
+const PATIENT_LINKED_MODEL_KEYS = [
+  'patientDocument',
+  'appointment',
+  'encounter',
+  'prescription',
+  'labTest',
+  'radiologyOrder',
+  'admission',
+  'invoice',
+  'payment',
+  'insuranceClaim',
+  'patientInsurance',
+  'preAuthorization',
+  'charge',
+  'dispenseOrder',
+  'notification',
+  'aiConversation',
+] as const
+
+function buildMergeTx() {
+  const tx: Record<string, Record<string, jest.Mock>> = {
+    patient: {
+      updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      update: jest.fn().mockResolvedValue(buildPatient({ id: 'patient_source', mergedIntoId: 'patient_target' })),
+    },
+  }
+  for (const key of PATIENT_LINKED_MODEL_KEYS) {
+    tx[key] = { updateMany: jest.fn().mockResolvedValue({ count: 1 }) }
+  }
+  return tx
 }
 
 describe('PatientsService', () => {
@@ -386,6 +420,191 @@ describe('PatientsService', () => {
       prisma.patient.findFirst.mockResolvedValue(null)
 
       await expect(service.getTimeline('org_1', 'missing')).rejects.toThrow(NotFoundException)
+    })
+  })
+
+  describe('restore', () => {
+    it('refuses to restore a merged patient', async () => {
+      prisma.patient.findFirst.mockResolvedValue(
+        buildPatient({ deletedAt: new Date(), isActive: false, mergedIntoId: 'patient_target' }),
+      )
+
+      await expect(service.restore('org_1', 'patient_1')).rejects.toThrow(BadRequestException)
+    })
+  })
+
+  describe('family linkage', () => {
+    it('rejects linking a patient to themselves', async () => {
+      await expect(service.linkFamilyMember('org_1', 'patient_1', 'patient_1')).rejects.toThrow(
+        BadRequestException,
+      )
+    })
+
+    it('rejects linking to a head that is itself a dependent', async () => {
+      prisma.patient.findFirst
+        .mockResolvedValueOnce(buildPatient({ id: 'patient_1' }))
+        .mockResolvedValueOnce(buildPatient({ id: 'patient_head', headOfFamilyId: 'someone_else' }))
+
+      await expect(service.linkFamilyMember('org_1', 'patient_1', 'patient_head')).rejects.toThrow(
+        /already a member of another family/,
+      )
+    })
+
+    it('rejects linking a patient who is already head of a family', async () => {
+      prisma.patient.findFirst
+        .mockResolvedValueOnce(buildPatient({ id: 'patient_1' }))
+        .mockResolvedValueOnce(buildPatient({ id: 'patient_head' }))
+      prisma.patient.count.mockResolvedValue(2)
+
+      await expect(service.linkFamilyMember('org_1', 'patient_1', 'patient_head')).rejects.toThrow(
+        /already head of a family/,
+      )
+    })
+
+    it('links a patient under a head of family and emits an event', async () => {
+      prisma.patient.findFirst
+        .mockResolvedValueOnce(buildPatient({ id: 'patient_1' }))
+        .mockResolvedValueOnce(buildPatient({ id: 'patient_head' }))
+      prisma.patient.count.mockResolvedValue(0)
+      prisma.patient.update.mockResolvedValue(buildPatient({ id: 'patient_1', headOfFamilyId: 'patient_head' }))
+
+      const result = await service.linkFamilyMember('org_1', 'patient_1', 'patient_head', 'user_1')
+
+      expect(result.headOfFamilyId).toBe('patient_head')
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        'patient.family_linked',
+        expect.objectContaining({ patientId: 'patient_1', metadata: { headOfFamilyId: 'patient_head' } }),
+      )
+    })
+
+    it('rejects unlinking a patient with no head of family set', async () => {
+      prisma.patient.findFirst.mockResolvedValue(buildPatient())
+
+      await expect(service.unlinkFamilyMember('org_1', 'patient_1')).rejects.toThrow(BadRequestException)
+    })
+
+    it('unlinks a patient and emits an event', async () => {
+      prisma.patient.findFirst.mockResolvedValue(buildPatient({ headOfFamilyId: 'patient_head' }))
+      prisma.patient.update.mockResolvedValue(buildPatient({ headOfFamilyId: null }))
+
+      const result = await service.unlinkFamilyMember('org_1', 'patient_1', 'user_1')
+
+      expect(result.headOfFamilyId).toBeNull()
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        'patient.family_unlinked',
+        expect.objectContaining({ metadata: { previousHeadOfFamilyId: 'patient_head' } }),
+      )
+    })
+
+    it('resolves the family group from a member', async () => {
+      prisma.patient.findFirst
+        .mockResolvedValueOnce(buildPatient({ id: 'patient_1', headOfFamilyId: 'patient_head' }))
+        .mockResolvedValueOnce(buildPatient({ id: 'patient_head' }))
+      prisma.patient.findMany.mockResolvedValue([buildPatient({ id: 'patient_1', headOfFamilyId: 'patient_head' })])
+
+      const group = await service.listFamilyMembers('org_1', 'patient_1')
+
+      expect(group.headOfFamily.id).toBe('patient_head')
+      expect(group.members).toHaveLength(1)
+    })
+
+    it('resolves the family group from the head itself', async () => {
+      prisma.patient.findFirst.mockResolvedValueOnce(buildPatient({ id: 'patient_head' }))
+      prisma.patient.findMany.mockResolvedValue([])
+
+      const group = await service.listFamilyMembers('org_1', 'patient_head')
+
+      expect(group.headOfFamily.id).toBe('patient_head')
+      expect(group.members).toEqual([])
+    })
+  })
+
+  describe('mergePatients', () => {
+    it('rejects merging a patient into themselves', async () => {
+      await expect(service.mergePatients('org_1', 'patient_1', 'patient_1')).rejects.toThrow(
+        BadRequestException,
+      )
+    })
+
+    it('reassigns every linked model and soft-deletes the source patient', async () => {
+      prisma.patient.findFirst
+        .mockResolvedValueOnce(buildPatient({ id: 'patient_source' }))
+        .mockResolvedValueOnce(buildPatient({ id: 'patient_target' }))
+
+      const tx = buildMergeTx()
+      prisma.$transaction.mockImplementation((cb: (tx: unknown) => unknown) => cb(tx))
+
+      const result = await service.mergePatients('org_1', 'patient_source', 'patient_target', 'user_1')
+
+      expect(result.survivorPatientId).toBe('patient_target')
+      expect(result.mergedPatientId).toBe('patient_source')
+      expect(result.reassignedCounts.appointment).toBe(1)
+      expect(result.reassignedCounts.familyMembers).toBe(0)
+      expect(tx.appointment.updateMany).toHaveBeenCalledWith({
+        where: { patientId: 'patient_source' },
+        data: { patientId: 'patient_target' },
+      })
+      expect(tx.patient.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'patient_source' },
+          data: expect.objectContaining({ mergedIntoId: 'patient_target', isActive: false }),
+        }),
+      )
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        'patient.merged',
+        expect.objectContaining({ patientId: 'patient_source' }),
+      )
+    })
+  })
+
+  describe('importFromCsv', () => {
+    it('rejects an empty file', async () => {
+      await expect(service.importFromCsv('org_1', Buffer.from(''))).rejects.toThrow(BadRequestException)
+    })
+
+    it('rejects a header-only file with no data rows', async () => {
+      await expect(
+        service.importFromCsv('org_1', Buffer.from('firstName,lastName,phone,dateOfBirth,gender\n')),
+      ).rejects.toThrow(/no data rows/)
+    })
+
+    it('creates valid rows and records validation/conflict failures per row', async () => {
+      const csv = [
+        'firstName,lastName,phone,dateOfBirth,gender',
+        'Asha,Rao,9876543210,1990-05-15,FEMALE',
+        'Bad,Row,123,not-a-date,FEMALE',
+        'Vikram,Nair,9900112233,1988-11-20,MALE',
+      ].join('\n')
+
+      prisma.patient.findUnique
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(buildPatient({ phone: '9900112233' }))
+      const txPatient = (prisma as unknown as { __txPatient: { create: jest.Mock } }).__txPatient
+      txPatient.create.mockResolvedValue(buildPatient({ id: 'patient_new', uhid: 'MED-2026-000002' }))
+
+      const result = await service.importFromCsv('org_1', Buffer.from(csv), 'user_1')
+
+      expect(result.total).toBe(3)
+      expect(result.created).toBe(1)
+      expect(result.failed).toBe(2)
+      expect(result.results[0]).toEqual(
+        expect.objectContaining({ row: 2, success: true, patientId: 'patient_new' }),
+      )
+      expect(result.results[1]).toEqual(expect.objectContaining({ row: 3, success: false }))
+      expect(result.results[2]).toEqual(
+        expect.objectContaining({ row: 4, success: false, error: expect.stringMatching(/already exists/) }),
+      )
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        'patient.import_completed',
+        expect.objectContaining({ total: 3, created: 1, failed: 2 }),
+      )
+    })
+
+    it('rejects a file over the row cap', async () => {
+      const rows = Array.from({ length: 501 }, (_, i) => `First${i},Last,9876543${String(i).padStart(3, '0')},1990-05-15,FEMALE`)
+      const csv = ['firstName,lastName,phone,dateOfBirth,gender', ...rows].join('\n')
+
+      await expect(service.importFromCsv('org_1', Buffer.from(csv))).rejects.toThrow(/limited to 500 rows/)
     })
   })
 })

@@ -68,6 +68,7 @@ describe('Patients (e2e)', () => {
       { resource: 'patients', action: 'create', scope: 'all' },
       { resource: 'patients', action: 'update', scope: 'all' },
       { resource: 'patients', action: 'delete', scope: 'all' },
+      { resource: 'patients', action: 'manage', scope: 'all' },
     ]
     for (const perm of patientPermissions) {
       await prisma.permission.upsert({
@@ -249,6 +250,157 @@ describe('Patients (e2e)', () => {
 
     await request(server).get(`/api/v1/patients/${patientId}`).set(authed()).expect(200)
   }, 30_000)
+
+  it('links two patients as a family, lists the group, then unlinks', async () => {
+    const headRes = await request(server)
+      .post('/api/v1/patients')
+      .set(authed())
+      .send({
+        firstName: 'Ramesh',
+        lastName: 'Gupta',
+        phone: '9811100001',
+        dateOfBirth: '1975-02-10',
+        gender: 'MALE',
+      })
+      .expect(201)
+    const memberRes = await request(server)
+      .post('/api/v1/patients')
+      .set(authed())
+      .send({
+        firstName: 'Sunita',
+        lastName: 'Gupta',
+        phone: '9811100002',
+        dateOfBirth: '2001-06-01',
+        gender: 'FEMALE',
+      })
+      .expect(201)
+
+    const headId = headRes.body.data.id as string
+    const memberId = memberRes.body.data.id as string
+
+    await request(server)
+      .patch(`/api/v1/patients/${memberId}/family`)
+      .set(authed())
+      .send({ headOfFamilyId: headId })
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.data.headOfFamilyId).toBe(headId)
+      })
+
+    await request(server)
+      .get(`/api/v1/patients/${memberId}/family`)
+      .set(authed())
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.data.headOfFamily.id).toBe(headId)
+        expect(res.body.data.members.map((m: { id: string }) => m.id)).toContain(memberId)
+      })
+
+    await request(server).delete(`/api/v1/patients/${memberId}/family`).set(authed()).expect(200)
+
+    await request(server)
+      .get(`/api/v1/patients/${memberId}/family`)
+      .set(authed())
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.data.headOfFamily.id).toBe(memberId)
+      })
+  })
+
+  it('merges a duplicate patient into a survivor, reassigning linked records', async () => {
+    const survivorRes = await request(server)
+      .post('/api/v1/patients')
+      .set(authed())
+      .send({
+        firstName: 'Meera',
+        lastName: 'Iyer',
+        phone: '9822200001',
+        dateOfBirth: '1992-08-15',
+        gender: 'FEMALE',
+      })
+      .expect(201)
+    const duplicateRes = await request(server)
+      .post('/api/v1/patients')
+      .set(authed())
+      .send({
+        firstName: 'Meera',
+        lastName: 'Iyer',
+        phone: '9822200002',
+        dateOfBirth: '1992-08-15',
+        gender: 'FEMALE',
+      })
+      .expect(201)
+
+    const survivorId = survivorRes.body.data.id as string
+    const duplicateId = duplicateRes.body.data.id as string
+
+    // Give the duplicate a document so there's something real to reassign.
+    const uploadRes = await request(server)
+      .post(`/api/v1/patients/${duplicateId}/documents`)
+      .set(authed())
+      .field('documentType', 'AADHAAR')
+      .attach('file', Buffer.from('%PDF-1.4 fake content'), {
+        filename: 'aadhaar.pdf',
+        contentType: 'application/pdf',
+      })
+      .expect(201)
+
+    await request(server)
+      .post('/api/v1/patients/merge')
+      .set(authed())
+      .send({ sourcePatientId: duplicateId, targetPatientId: survivorId })
+      .expect(201)
+      .expect((res) => {
+        expect(res.body.data.survivorPatientId).toBe(survivorId)
+        expect(res.body.data.mergedPatientId).toBe(duplicateId)
+        expect(res.body.data.reassignedCounts.patientDocument).toBe(1)
+      })
+
+    // The merged record is soft-deleted...
+    await request(server).get(`/api/v1/patients/${duplicateId}`).set(authed()).expect(404)
+
+    // ...and cannot be independently restored.
+    await request(server).post(`/api/v1/patients/${duplicateId}/restore`).set(authed()).expect(400)
+
+    // The document moved to the survivor.
+    await request(server)
+      .get(`/api/v1/patients/${survivorId}/documents`)
+      .set(authed())
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.data).toHaveLength(1)
+        expect(res.body.data[0].id).toBe(uploadRes.body.data.id)
+      })
+  })
+
+  it('imports patients from a CSV file, reporting per-row success and failure', async () => {
+    const csv = [
+      'firstName,lastName,phone,dateOfBirth,gender',
+      'Karan,Mehta,9833300001,1995-04-12,MALE',
+      'Bad,Row,123,not-a-date,MALE',
+    ].join('\n')
+
+    const res = await request(server)
+      .post('/api/v1/patients/import')
+      .set(authed())
+      .attach('file', Buffer.from(csv), { filename: 'patients.csv', contentType: 'text/csv' })
+      .expect(201)
+
+    expect(res.body.data.total).toBe(2)
+    expect(res.body.data.created).toBe(1)
+    expect(res.body.data.failed).toBe(1)
+    expect(res.body.data.results[0]).toEqual(expect.objectContaining({ row: 2, success: true }))
+    expect(res.body.data.results[1]).toEqual(expect.objectContaining({ row: 3, success: false }))
+
+    await request(server)
+      .get('/api/v1/patients/search')
+      .set(authed())
+      .query({ phone: '9833300001' })
+      .expect(200)
+      .expect((res2) => {
+        expect(res2.body.data.data).toHaveLength(1)
+      })
+  })
 
   it('rejects patient routes without a bearer token', async () => {
     await request(server).get('/api/v1/patients').expect(401)

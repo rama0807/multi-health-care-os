@@ -12,7 +12,12 @@ const DEMO_PASSWORD = 'Demo@12345'
 // (patients/medical_records/prescriptions) — everything else stays `all`
 // until later milestones build ownership-aware modules.
 const RESOURCE_ACTIONS: Record<string, string[]> = {
-  patients: ['read', 'create', 'update', 'delete'],
+  // `manage` gates the two bulk/destructive operations added for Milestone 3
+  // completion — merging duplicate records (reassigns every other module's
+  // patientId) and CSV import — kept admin-only by default, mirroring
+  // `billing.manage`/`insurance.settlement`'s requester/approver precedent
+  // rather than granting it alongside ordinary create/update.
+  patients: ['read', 'create', 'update', 'delete', 'manage'],
   doctors: ['read', 'create', 'update', 'delete'],
   'doctors.schedule': ['read', 'update'],
   'doctors.leave': ['read', 'approve', 'manage'],

@@ -79,21 +79,60 @@ pnpm db:generate / db:migrate / db:migrate:dev / db:push / db:seed / db:studio
 ## Overall Completion
 
 **Status: Foundational scaffolding in place; most modules unaudited.
-Milestone 4 (Doctors + Scheduling), Milestone 5 (Appointment Management),
-Milestone 6 (Clinical: Medical Records — both Checkpoint 6.1 EMR
-Foundation and Checkpoint 6.2 Orders & Prescriptions), Milestone 7
-(Laboratory Management), Milestone 8 (Radiology Management),
-Milestone 9 (Pharmacy Management), Milestone 10 (Billing),
-Milestone 11 (Insurance Management), Milestone 12 (IPD & Bed
+Milestone 3 (Patient Management), Milestone 4 (Doctors + Scheduling),
+Milestone 5 (Appointment Management), Milestone 6 (Clinical: Medical
+Records — both Checkpoint 6.1 EMR Foundation and Checkpoint 6.2 Orders
+& Prescriptions), Milestone 7 (Laboratory Management), Milestone 8
+(Radiology Management), Milestone 9 (Pharmacy Management), Milestone 10
+(Billing), Milestone 11 (Insurance Management), Milestone 12 (IPD & Bed
 Management — both Checkpoint 12.1 Admission/Wards/Beds and
 Checkpoint 12.2 Nursing/MAR/Discharge), Milestone 13 (General
 Inventory), and Milestone 14 (Staff & Attendance) are complete
-end-to-end (backend, frontend, tests, docs); everything else's
-percentage is still provisional.**
+end-to-end (backend, frontend, tests, docs); Milestone 15 (AI Features)
+is 1 of 5 checkpoints complete (15.1 — AI Clinical Assistant), with AI
+development explicitly paused; everything else's percentage is still
+provisional.**
 
 See `MODULE_STATUS.md` for the authoritative, maintained breakdown. Until a
 session performs a full audit of each module's actual implementation depth,
 treat any other percentage here as provisional.
+
+## Milestone 3 — Patient Management: Complete
+
+Most of this milestone predates `.ai/` and was built and used
+unaudited by every later milestone (patient search/registration is a
+dependency of Appointments, EMR, Billing, IPD, and more) — `docs/
+roadmap.md`'s checkboxes were simply never ticked. Completed this
+session (2026-08-05) after AI development (Milestone 15) was
+explicitly paused following Checkpoint 15.1, with instruction to
+resume the next unfinished non-AI milestone. See **ADR-0024**.
+
+- **Already present, confirmed by reading the code, not rebuilt:**
+  Patient CRUD with per-org, advisory-lock-serialized UHID generation;
+  search by name/UHID/phone/DOB; a patient profile page with a
+  cross-module timeline (appointments, admissions, lab tests,
+  radiology orders, prescriptions, invoices, audit events); document
+  upload (`StorageService` reuse); emergency contacts; duplicate
+  *detection* with a confidence score; soft-delete/restore.
+- **Added this session — the three genuinely missing deliverables:**
+  - Family linkage (`Patient.headOfFamilyId`, one level deep by
+    design) — link/unlink a member under a head of family, view the
+    resolved group from either side.
+  - Patient merge — acts on a confirmed duplicate: reassigns every
+    other module's `patientId` column (16 models) plus any family
+    dependents inside one transaction, then soft-deletes the source
+    with a new `mergedIntoId` pointer.
+  - CSV import — bulk registration (up to 500 rows) through the same
+    validation/UHID-generation/phone-conflict path as a manual
+    registration, with a per-row success/failure report.
+- New `patients.manage` permission (admin-only by default) gates merge
+  and CSV import; family link/unlink reuse the existing
+  `patients.update`.
+- Frontend: a "Family" tab and a "Merge" dialog on the patient detail
+  page; an "Import CSV" dialog on the patient list page.
+- 20 new unit tests (578 API total) + 4 new e2e tests (299 total, 18
+  suites, zero failures); lint/typecheck/build clean. Not
+  browser-verified this session (explicit instruction).
 
 ## Milestone 4 — Doctor Management & Scheduling: Complete
 

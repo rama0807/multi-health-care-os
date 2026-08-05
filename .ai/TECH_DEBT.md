@@ -1291,3 +1291,34 @@ Ollama and set `AI_PROVIDER=OLLAMA`. Additionally worth building in
 Checkpoint 15.5: a per-organization AI opt-in setting (rather than a
 deployment-wide flag), a recorded patient-consent check before
 generation, and a real de-identification pass over free-text fields.
+
+---
+
+## TD-0043: `PATIENT_LINKED_MODELS` is a hand-maintained list — a future module adding a `patientId` column can silently break merge
+
+Opened: 2026-08-05
+Status: Open
+Severity: Medium
+
+**Description:** `PatientsService.mergePatients` (Milestone 3
+completion, ADR-0024) reassigns every other module's `patientId` column
+from a merged (duplicate) patient to the survivor by iterating a fixed
+array, `PATIENT_LINKED_MODELS`, in `patients.service.ts`. There is no
+schema-level or test-level check that this array stays in sync with
+every model that actually has a `patientId` column — it was built by
+grepping `schema.prisma` once, by hand.
+
+**Impact:** If a future milestone adds a new model with a `patientId`
+column (direct FK or a bare unenforced string, mirroring `Payment`/
+`Charge`'s existing pattern) and doesn't also add it to
+`PATIENT_LINKED_MODELS`, merging two patients will silently leave that
+new module's records pointing at the now-deactivated source patient —
+a data-integrity bug that produces no error and is easy to miss in
+review, since nothing fails loudly.
+
+**Resolution plan:** A schema-introspection test (Prisma DMMF —
+enumerate every model with a field literally named `patientId` and
+assert it's covered by `PATIENT_LINKED_MODELS`) would catch this at
+`pnpm test` time instead of relying on manual discipline. Not built
+this session — scoped as a follow-up test-infrastructure improvement
+rather than blocking Milestone 3's completion.

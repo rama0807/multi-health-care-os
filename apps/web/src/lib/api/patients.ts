@@ -1,10 +1,13 @@
 import type {
   CreatePatientDto,
+  CsvImportResult,
   DuplicateCheckDto,
   DuplicateMatch,
+  FamilyGroup,
   PaginatedResponse,
   Patient,
   PatientDocument,
+  PatientMergeResult,
   PatientSearchQuery,
   PatientTimelineEntry,
   PatientWithSummary,
@@ -96,4 +99,36 @@ export async function getRecentDuplicateAlerts(limit = 5): Promise<DuplicateMatc
     params: { limit },
   })
   return data.data.alerts
+}
+
+export async function getPatientFamily(id: string): Promise<FamilyGroup> {
+  const { data } = await apiClient.get<{ data: FamilyGroup }>(`/patients/${id}/family`)
+  return data.data
+}
+
+export async function linkFamilyMember(id: string, headOfFamilyId: string): Promise<Patient> {
+  const { data } = await apiClient.patch<{ data: Patient }>(`/patients/${id}/family`, { headOfFamilyId })
+  return data.data
+}
+
+export async function unlinkFamilyMember(id: string): Promise<void> {
+  await apiClient.delete(`/patients/${id}/family`)
+}
+
+export async function mergePatients(sourcePatientId: string, targetPatientId: string): Promise<PatientMergeResult> {
+  const { data } = await apiClient.post<{ data: PatientMergeResult }>('/patients/merge', {
+    sourcePatientId,
+    targetPatientId,
+  })
+  return data.data
+}
+
+export async function importPatientsCsv(file: File): Promise<CsvImportResult> {
+  const form = new FormData()
+  form.append('file', file)
+
+  const { data } = await apiClient.post<{ data: CsvImportResult }>('/patients/import', form, {
+    headers: { 'Content-Type': undefined },
+  })
+  return data.data
 }

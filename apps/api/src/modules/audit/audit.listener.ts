@@ -17,6 +17,15 @@ interface PatientEventPayload {
   organizationId: string
   userId?: string
   documentId?: string
+  metadata?: Record<string, unknown>
+}
+
+interface PatientImportEventPayload {
+  organizationId: string
+  userId?: string
+  total: number
+  created: number
+  failed: number
 }
 
 interface DoctorEventPayload {
@@ -461,6 +470,33 @@ export class AuditListener {
   @OnEvent('patient.document_uploaded')
   onPatientDocumentUploaded(payload: PatientEventPayload) {
     return this.persistPatientEvent(payload, 'patient.document_uploaded')
+  }
+
+  @OnEvent('patient.family_linked')
+  onPatientFamilyLinked(payload: PatientEventPayload) {
+    return this.persistPatientEvent(payload, 'patient.family_linked')
+  }
+
+  @OnEvent('patient.family_unlinked')
+  onPatientFamilyUnlinked(payload: PatientEventPayload) {
+    return this.persistPatientEvent(payload, 'patient.family_unlinked')
+  }
+
+  @OnEvent('patient.merged')
+  onPatientMerged(payload: PatientEventPayload) {
+    return this.persistPatientEvent(payload, 'patient.merged')
+  }
+
+  @OnEvent('patient.import_completed')
+  onPatientImportCompleted(payload: PatientImportEventPayload) {
+    return this.auditService.record({
+      organizationId: payload.organizationId,
+      userId: payload.userId,
+      action: 'patient.import_completed',
+      resource: 'Patient',
+      resourceId: 'bulk-import',
+      after: { total: payload.total, created: payload.created, failed: payload.failed },
+    })
   }
 
   @OnEvent('doctor.created')
@@ -1403,7 +1439,7 @@ export class AuditListener {
       action,
       resource: 'Patient',
       resourceId: payload.patientId,
-      after: payload.documentId ? { documentId: payload.documentId } : undefined,
+      after: payload.documentId ? { documentId: payload.documentId } : payload.metadata,
     })
   }
 

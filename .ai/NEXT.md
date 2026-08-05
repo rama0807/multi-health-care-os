@@ -3,41 +3,69 @@
 > The next logical task(s) to pick up. Replaced (not appended) whenever a
 > milestone completes — this file always describes "start here," not history.
 
-## Milestone 15 — AI Features: Checkpoint Plan
+## Immediate Next Task
 
-Milestone 15 is split into **five checkpoints** (recorded as **ADR-0023**
-in `DECISIONS.md`). The split follows the same precedent as Milestones
-4/5/6/12: each checkpoint is independently shippable, has its own
-verification pass, and does not require the next one to be useful.
+**Milestone 16 — Reports & Analytics** (`docs/roadmap.md`).
 
-The ordering is deliberate: **15.1 builds the whole AI platform layer**
-(provider abstraction, prompt templates, conversation/usage/audit
-logging, feature flags, retry, token accounting, streaming transport)
-and proves it with the seven text-in/text-out clinical generators, which
-need no new input-ingestion path. Every later checkpoint reuses that
-layer rather than re-inventing it.
+AI development (Milestone 15) is **explicitly paused** after Checkpoint
+15.1 — see "AI Features — paused" below for that plan, preserved for
+whenever AI work resumes. This session closed Milestone 3 (Patient
+Management), the last unfinished *non-AI* milestone before Milestone
+15 — see **ADR-0024** and `PROJECT_CONTEXT.md`'s Milestone 3 section.
+Every roadmap milestone 1–14 is now complete end-to-end; **Milestone
+16 — Reports & Analytics is the next unfinished non-AI milestone.**
 
-### Checkpoint 15.1 — AI Clinical Assistant ✅ COMPLETE (2026-08-05)
+### Milestone 16 scope (`docs/roadmap.md`)
 
-Platform layer + seven generators over data that **already exists** in
-the EMR/Laboratory/Radiology/Prescriptions/IPD modules:
+- OPD/IPD statistics dashboard
+- Revenue reports (daily, monthly, by service type)
+- Doctor-wise consultation reports
+- Lab test volume reports
+- Bed occupancy reports
+- Patient demographics report
+- Custom date range reports
+- PDF/Excel export for all reports
+- Frontend: reports module with charts (Recharts)
 
-- Provider abstraction (OpenAI, Anthropic, Gemini, Ollama) behind one
-  interface, selected by config — mirrors `StorageService`'s driver
-  pattern.
-- Prompt templates (bundled defaults + DB-stored, versioned org
-  overrides).
-- Conversation logging, audit logging, usage tracking, token accounting.
-- Streaming (SSE) and non-streaming request paths.
-- RBAC (`ai.generate`/`ai.read`/`ai.manage`, `ai.templates.*`), with
-  doctor own-scope on generation.
-- Feature flags (global kill switch + per-feature disable).
-- Retry with exponential backoff + typed error mapping.
-- Generators: SOAP Note, Clinical Note Summarization, Lab Result
-  Summarization, Radiology Report Summarization, Prescription
-  Explanation, Discharge Summary, Referral Letter.
+### What's already in the repo — do not rebuild
 
-### Checkpoint 15.2 — AI Document Intelligence (NEXT)
+Every module this reports on already exists and is fully built:
+Appointments, Medical Records/Encounters, Laboratory, Radiology,
+Billing (`Invoice`/`Payment`/`Charge`), IPD (`Admission`/`Bed`/`Ward`),
+Patients. A reports module is a **read-only aggregation layer** over
+existing tables — it should not duplicate any write path. Check
+whether `recharts` is already a frontend dependency before adding it
+(`apps/web/package.json`) — the roadmap names it explicitly.
+
+### Process reminders (from `CLAUDE.md`)
+
+- Reading policy: Milestone 16 touches every clinical/billing/IPD
+  module read-only. Read schemas and existing dashboard-stats query
+  patterns (e.g. `IpdDashboardService.getStats`,
+  `BillingDashboardService`, `InsuranceDashboardService`) as the
+  precedent for how this repo already does aggregation — don't
+  re-read full module business logic that reports won't touch.
+- Full verification before calling anything done: `pnpm lint && pnpm
+  typecheck && pnpm test && pnpm test:e2e && pnpm build`. Test DB
+  containers are `medicore-postgres`/`medicore-redis` (host ports
+  5434/6381) — start with `docker start medicore-postgres
+  medicore-redis`. `pnpm test:e2e` does not propagate the env vars
+  jest-e2e specs default to — run e2e specs directly instead:
+  `cd apps/api && DATABASE_URL="postgresql://medicore:medicore@localhost:5434/medicore_test?schema=public" REDIS_PORT=6381 npx jest --config jest-e2e.config.ts --runInBand`.
+
+---
+
+## AI Features — paused (resume here when AI work is unpaused)
+
+Milestone 15 is split into **five checkpoints** (**ADR-0023**).
+**15.1 — AI Clinical Assistant is complete** (provider abstraction,
+prompt templates, conversation/usage/audit logging, feature flags,
+retry, token accounting, streaming transport, and seven text-in/
+text-out clinical generators). **15.2–15.5 are explicitly not
+started** and must not be picked up without a fresh instruction to
+resume AI work.
+
+### Checkpoint 15.2 — AI Document Intelligence (next AI checkpoint)
 
 Reuses 15.1's platform layer end to end; adds **new input ingestion**:
 
@@ -91,49 +119,19 @@ a `supportsVision` capability flag — see `ai-provider.interface.ts`).
   summarization, stronger model for generation).
 - Safety/guardrail review queue for flagged generations.
 
----
-
-## Immediate Next Task
-
-**Checkpoint 15.2 — AI Document Intelligence** (scope above).
-
-### What's already in the repo — do not rebuild
-
-- `apps/api/src/common/ai/` — the complete provider abstraction
-  (`AiProvider` interface, OpenAI/Anthropic/Gemini/Ollama adapters,
-  `AiClientService` with retry/token accounting/usage logging/streaming,
-  `ai.config.ts`). **Reuse it; do not add a second provider path.**
-- `apps/api/src/modules/ai/` — prompt templates, clinical context
-  builders, the seven generators, conversations/usage read APIs,
-  RBAC-gated controllers.
-- Schema: `AiConversation`, `AiMessage`, `AiUsageLog`,
-  `AiPromptTemplate` + the `AiProviderType`/`AiFeature`/`AiMessageRole`/
-  `AiRequestStatus` enums.
-- Frontend: `apps/web/src/components/ai/` (streaming assist dialog +
-  button) and `/dashboard/ai` (conversations + usage).
-
-### Credential status — read before starting
+### Credential status — still relevant whenever AI work resumes
 
 **Still genuinely credential-blocked in this environment.**
 `apps/api/.env` holds placeholder `sk-xxxxxxxxxxxx` /
-`sk-ant-xxxxxxxxxxxx` values. Checkpoint 15.1 handled this the way this
-repo has always handled credential gaps (TD-0015 SMS, TD-0019 PACS,
-TD-0027 payment gateway, TD-0039 biometric): the **full pipeline is
-real**, and when no provider is configured every AI endpoint returns a
-`503` with an explicit "AI is not configured" message — it does **not**
-return fabricated clinical text. See **TD-0041**.
-
+`sk-ant-xxxxxxxxxxxx` values. When no provider is configured every AI
+endpoint returns a `503` with an explicit "AI is not configured"
+message — it does **not** return fabricated clinical text (TD-0041).
 Checkpoint 15.2 must hold the same line: no fabricated OCR output, no
 fabricated extraction results.
 
-### Process reminders (from `CLAUDE.md`)
-
-- Reading policy: 15.2 touches `common/ai`, `modules/ai`, Laboratory,
-  Radiology, Prescriptions, and `common/storage`. Do not re-scan
-  Staff/Attendance/Inventory/IPD/Billing.
-- Full verification before calling anything done: `pnpm lint && pnpm
-  typecheck && pnpm test && pnpm test:e2e && pnpm build`. Test DB
-  containers are `medicore-postgres`/`medicore-redis` (host ports
-  5434/6381) — start with `docker start medicore-postgres
-  medicore-redis`, **not** `docker compose up`, which creates a
-  different, unmapped pair.
+What's already in the repo for AI — do not rebuild: `apps/api/src/
+common/ai/` (the complete provider abstraction), `apps/api/src/
+modules/ai/` (prompt templates, clinical context builders, the seven
+generators, conversations/usage read APIs, RBAC-gated controllers),
+the `AiConversation`/`AiMessage`/`AiUsageLog`/`AiPromptTemplate` schema
++ enums, and `apps/web/src/components/ai/`/`/dashboard/ai`.

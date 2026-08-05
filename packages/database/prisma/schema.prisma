@@ -1076,6 +1076,24 @@ model Patient {
   createdAt             DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
 
+  // Family linkage (Milestone 3) — one level deep by design (a head of
+  // family cannot itself be someone else's member, enforced in
+  // PatientsService, not the DB): every member points at the same head,
+  // so listing a family is a single `headOfFamilyId` lookup rather than a
+  // graph walk.
+  headOfFamilyId String?
+  headOfFamily   Patient?  @relation("FamilyMembers", fields: [headOfFamilyId], references: [id])
+  familyMembers  Patient[] @relation("FamilyMembers")
+
+  // Patient merge (Milestone 3) — a merged (duplicate) record is soft-
+  // deleted and points at the surviving record it was merged into; every
+  // other module's patientId column is reassigned to the survivor at merge
+  // time (see PatientsService.mergePatients), so this pointer exists purely
+  // for provenance/audit, not for read-time redirection.
+  mergedIntoId String?
+  mergedInto   Patient?  @relation("PatientMerges", fields: [mergedIntoId], references: [id])
+  mergedFrom   Patient[] @relation("PatientMerges")
+
   organization      Organization       @relation(fields: [organizationId], references: [id])
   documents         PatientDocument[]
   appointments      Appointment[]
@@ -1097,6 +1115,8 @@ model Patient {
   @@index([organizationId])
   @@index([uhid])
   @@index([phone])
+  @@index([headOfFamilyId])
+  @@index([mergedIntoId])
   @@map("patients")
 }
 

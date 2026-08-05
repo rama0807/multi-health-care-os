@@ -22,6 +22,8 @@ export interface Patient {
   emergencyContactPhone: string | null
   organizationId: string
   isActive: boolean
+  headOfFamilyId: string | null
+  mergedIntoId: string | null
   createdAt: Date
   updatedAt: Date
 }
@@ -129,4 +131,47 @@ export interface PatientSummaryCounts {
 
 export interface PatientWithSummary extends Patient {
   summary: PatientSummaryCounts
+}
+
+// ─── Family linkage ─────────────────────────────────────────────────────────
+
+export const LinkFamilyMemberSchema = z.object({
+  headOfFamilyId: z.string().min(1),
+})
+export type LinkFamilyMemberDto = z.infer<typeof LinkFamilyMemberSchema>
+
+export interface FamilyGroup {
+  headOfFamily: Patient
+  members: Patient[]
+}
+
+// ─── Patient merge ──────────────────────────────────────────────────────────
+
+export const MergePatientsSchema = z.object({
+  sourcePatientId: z.string().min(1),
+  targetPatientId: z.string().min(1),
+})
+export type MergePatientsDto = z.infer<typeof MergePatientsSchema>
+
+export interface PatientMergeResult {
+  survivorPatientId: string
+  mergedPatientId: string
+  reassignedCounts: Record<string, number>
+}
+
+// ─── CSV import ─────────────────────────────────────────────────────────────
+
+export interface CsvImportRowResult {
+  row: number
+  success: boolean
+  patientId?: string
+  uhid?: string
+  error?: string
+}
+
+export interface CsvImportResult {
+  total: number
+  created: number
+  failed: number
+  results: CsvImportRowResult[]
 }

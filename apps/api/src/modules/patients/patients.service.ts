@@ -1,10 +1,15 @@
 import {
   BloodGroup,
   CreatePatientDto,
+  CreatePatientSchema,
+  CsvImportResult,
+  CsvImportRowResult,
   DuplicateCheckDto,
   DuplicateMatch,
+  FamilyGroup,
   Gender,
   Patient,
+  PatientMergeResult,
   PatientSearchQuery,
   PatientSummaryCounts,
   PatientTimelineEntry,
@@ -21,6 +26,8 @@ import { StorageService } from '../../common/storage/storage.service'
 import { PrismaService } from '../../prisma/prisma.service'
 import { OrganizationsService } from '../organizations/organizations.service'
 
+import { parseCsv } from './csv-parser.util'
+
 export interface UploadedFileInput {
   buffer: Buffer
   fileName: string
@@ -30,6 +37,31 @@ export interface UploadedFileInput {
 
 const ALLOWED_DOCUMENT_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'application/pdf'])
 const MAX_DOCUMENT_SIZE_BYTES = 10 * 1024 * 1024
+const MAX_CSV_IMPORT_ROWS = 500
+
+// Every other model with a direct (unenforced or FK) `patientId` column —
+// reassigned in `mergePatients` from the merged record to the survivor.
+// `payment`/`charge` carry a bare `patientId` string with no Prisma
+// relation to Patient (deliberate — see their own schema comments), but
+// the column itself is real and still needs reassigning.
+const PATIENT_LINKED_MODELS = [
+  'patientDocument',
+  'appointment',
+  'encounter',
+  'prescription',
+  'labTest',
+  'radiologyOrder',
+  'admission',
+  'invoice',
+  'payment',
+  'insuranceClaim',
+  'patientInsurance',
+  'preAuthorization',
+  'charge',
+  'dispenseOrder',
+  'notification',
+  'aiConversation',
+] as const
 
 @Injectable()
 export class PatientsService {
@@ -189,6 +221,11 @@ export class PatientsService {
       where: { id, organizationId, deletedAt: { not: null } },
     })
     if (!patient) throw new NotFoundException('Deleted patient not found')
+    if (patient.mergedIntoId) {
+      throw new BadRequestException(
+        'This patient was merged into another record and cannot be independently restored',
+      )
+    }
 
     const restored = await this.prisma.patient.update({
       where: { id },
@@ -198,6 +235,239 @@ export class PatientsService {
     this.eventEmitter.emit('patient.restored', { patientId: id, organizationId, userId: actorUserId })
 
     return this.toResponse(restored)
+  }
+
+  /**
+   * Links `patientId` under `headOfFamilyId` as a dependent. The family
+   * graph is kept one level deep by construction: a head of family can't
+   * itself be someone else's dependent, and a patient who is already a
+   * head (has their own dependents) can't be re-linked under someone else
+   * — both would otherwise require walking a variable-depth chain on every
+   * read. Reparenting an existing family isn't supported (disclosed, not
+   * silently handled) — unlink every member first.
+   */
+  async linkFamilyMember(
+    organizationId: string,
+    patientId: string,
+    headOfFamilyId: string,
+    actorUserId?: string,
+  ): Promise<Patient> {
+    if (patientId === headOfFamilyId) {
+      throw new BadRequestException('A patient cannot be their own head of family')
+    }
+
+    const [, head] = await Promise.all([
+      this.requireActive(organizationId, patientId),
+      this.requireActive(organizationId, headOfFamilyId),
+    ])
+
+    if (head.headOfFamilyId) {
+      throw new BadRequestException(
+        'The selected patient is already a member of another family — link to their head of family instead',
+      )
+    }
+
+    const existingMemberCount = await this.prisma.patient.count({ where: { headOfFamilyId: patientId } })
+    if (existingMemberCount > 0) {
+      throw new BadRequestException(
+        'This patient is already head of a family — unlink their members before joining another family',
+      )
+    }
+
+    const updated = await this.prisma.patient.update({
+      where: { id: patientId },
+      data: { headOfFamilyId },
+    })
+
+    this.eventEmitter.emit('patient.family_linked', {
+      patientId,
+      organizationId,
+      userId: actorUserId,
+      metadata: { headOfFamilyId },
+    })
+
+    return this.toResponse(updated)
+  }
+
+  async unlinkFamilyMember(organizationId: string, patientId: string, actorUserId?: string): Promise<Patient> {
+    const patient = await this.requireActive(organizationId, patientId)
+    if (!patient.headOfFamilyId) {
+      throw new BadRequestException('This patient has no head of family set')
+    }
+
+    const previousHeadOfFamilyId = patient.headOfFamilyId
+    const updated = await this.prisma.patient.update({
+      where: { id: patientId },
+      data: { headOfFamilyId: null },
+    })
+
+    this.eventEmitter.emit('patient.family_unlinked', {
+      patientId,
+      organizationId,
+      userId: actorUserId,
+      metadata: { previousHeadOfFamilyId },
+    })
+
+    return this.toResponse(updated)
+  }
+
+  async listFamilyMembers(organizationId: string, patientId: string): Promise<FamilyGroup> {
+    const patient = await this.requireActive(organizationId, patientId)
+    const headId = patient.headOfFamilyId ?? patient.id
+
+    const head = patient.headOfFamilyId
+      ? await this.prisma.patient.findFirst({ where: { id: headId, organizationId, deletedAt: null } })
+      : patient
+    if (!head) throw new NotFoundException('Head of family not found')
+
+    const members = await this.prisma.patient.findMany({
+      where: { headOfFamilyId: headId, organizationId, deletedAt: null },
+      orderBy: { firstName: 'asc' },
+    })
+
+    return {
+      headOfFamily: this.toResponse(head),
+      members: members.map((m) => this.toResponse(m)),
+    }
+  }
+
+  /**
+   * Merges `sourcePatientId` into `targetPatientId`: every other module's
+   * `patientId` column (see `PATIENT_LINKED_MODELS`) and any dependents the
+   * source was head of family for are reassigned to the target inside one
+   * transaction, then the source is soft-deleted with `mergedIntoId` set —
+   * reusing the existing soft-delete plumbing rather than a new "merged"
+   * status. `restore()` refuses a merged record (see above) since its data
+   * has already moved to the survivor.
+   */
+  async mergePatients(
+    organizationId: string,
+    sourcePatientId: string,
+    targetPatientId: string,
+    actorUserId?: string,
+  ): Promise<PatientMergeResult> {
+    if (sourcePatientId === targetPatientId) {
+      throw new BadRequestException('Cannot merge a patient into themselves')
+    }
+
+    await this.requireActive(organizationId, sourcePatientId)
+    await this.requireActive(organizationId, targetPatientId)
+
+    const reassignedCounts: Record<string, number> = {}
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const model of PATIENT_LINKED_MODELS) {
+        const delegate = tx[model] as { updateMany: (args: unknown) => Promise<{ count: number }> }
+        const result = await delegate.updateMany({
+          where: { patientId: sourcePatientId },
+          data: { patientId: targetPatientId },
+        })
+        reassignedCounts[model] = result.count
+      }
+
+      const familyResult = await tx.patient.updateMany({
+        where: { headOfFamilyId: sourcePatientId },
+        data: { headOfFamilyId: targetPatientId },
+      })
+      reassignedCounts.familyMembers = familyResult.count
+
+      await tx.patient.update({
+        where: { id: sourcePatientId },
+        data: { mergedIntoId: targetPatientId, isActive: false, deletedAt: new Date() },
+      })
+    })
+
+    this.eventEmitter.emit('patient.merged', {
+      patientId: sourcePatientId,
+      organizationId,
+      userId: actorUserId,
+      metadata: { mergedIntoId: targetPatientId, reassignedCounts },
+    })
+
+    return { survivorPatientId: targetPatientId, mergedPatientId: sourcePatientId, reassignedCounts }
+  }
+
+  /**
+   * Bulk-registers patients from a CSV upload, one row at a time through
+   * the same `create()` path a manual registration uses — so UHID
+   * generation, phone-conflict detection, and validation are identical,
+   * not a parallel bulk-insert code path. Rows are processed sequentially
+   * (not in parallel) since UHID generation counts existing patients per
+   * organization; a bounded 500-row cap keeps a bad upload from running
+   * for minutes. A failing row is recorded and processing continues — one
+   * bad row never aborts the rest of the file.
+   */
+  async importFromCsv(organizationId: string, buffer: Buffer, actorUserId?: string): Promise<CsvImportResult> {
+    const text = buffer.toString('utf-8').replace(/^\uFEFF/, '')
+    const rows = parseCsv(text)
+    if (rows.length === 0) throw new BadRequestException('CSV file is empty')
+
+    const header = rows[0].map((h) => h.trim())
+    const dataRows = rows.slice(1)
+    if (dataRows.length === 0) throw new BadRequestException('CSV has a header row but no data rows')
+    if (dataRows.length > MAX_CSV_IMPORT_ROWS) {
+      throw new BadRequestException(`CSV import is limited to ${MAX_CSV_IMPORT_ROWS} rows per file`)
+    }
+
+    const results: CsvImportRowResult[] = []
+    let created = 0
+
+    for (let index = 0; index < dataRows.length; index++) {
+      const rowNumber = index + 2 // +1 for the header row, +1 for 1-indexing
+      const cols = dataRows[index]
+      const record: Record<string, string> = {}
+      header.forEach((key, colIndex) => {
+        record[key] = (cols[colIndex] ?? '').trim()
+      })
+
+      const candidate = {
+        firstName: record.firstName,
+        lastName: record.lastName,
+        email: record.email || undefined,
+        phone: record.phone,
+        dateOfBirth: record.dateOfBirth,
+        gender: record.gender,
+        bloodGroup: record.bloodGroup || undefined,
+        address: record.address || undefined,
+        city: record.city || undefined,
+        state: record.state || undefined,
+        pincode: record.pincode || undefined,
+        emergencyContactName: record.emergencyContactName || undefined,
+        emergencyContactPhone: record.emergencyContactPhone || undefined,
+      }
+
+      const parsed = CreatePatientSchema.safeParse(candidate)
+      if (!parsed.success) {
+        results.push({
+          row: rowNumber,
+          success: false,
+          error: parsed.error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`).join('; '),
+        })
+        continue
+      }
+
+      try {
+        const patient = await this.create(organizationId, parsed.data, actorUserId)
+        results.push({ row: rowNumber, success: true, patientId: patient.id, uhid: patient.uhid })
+        created++
+      } catch (error) {
+        results.push({
+          row: rowNumber,
+          success: false,
+          error: error instanceof ConflictException ? error.message : 'Failed to create patient',
+        })
+      }
+    }
+
+    this.eventEmitter.emit('patient.import_completed', {
+      organizationId,
+      userId: actorUserId,
+      total: dataRows.length,
+      created,
+      failed: dataRows.length - created,
+    })
+
+    return { total: dataRows.length, created, failed: dataRows.length - created, results }
   }
 
   async checkDuplicates(organizationId: string, dto: DuplicateCheckDto): Promise<DuplicateMatch[]> {

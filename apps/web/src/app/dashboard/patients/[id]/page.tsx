@@ -6,9 +6,10 @@ import {
   BloodGroup,
   DocumentType,
   Gender,
+  type Patient,
   PatientInsuranceType,
-  UpdatePatientSchema,
   type PatientTimelineEntryType,
+  UpdatePatientSchema,
   type UpdatePatientDto,
 } from '@medicore/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -19,6 +20,7 @@ import {
   Calendar,
   FileText,
   FlaskConical,
+  GitMerge,
   Loader2,
   type LucideIcon,
   Pencil,
@@ -27,9 +29,12 @@ import {
   Receipt,
   RotateCcw,
   Scan,
+  Search,
   Trash2,
   Upload,
   User,
+  Users,
+  X,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
@@ -58,9 +63,14 @@ import {
   deletePatient,
   deletePatientDocument,
   getPatient,
+  getPatientFamily,
   getPatientTimeline,
+  linkFamilyMember,
   listPatientDocuments,
+  listPatients,
+  mergePatients,
   restorePatient,
+  unlinkFamilyMember,
   updatePatient,
   uploadPatientDocument,
 } from '@/lib/api/patients'
@@ -84,9 +94,11 @@ export default function PatientDetailPage() {
   const queryClient = useQueryClient()
 
   const [confirmDeactivate, setConfirmDeactivate] = useState(false)
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false)
 
   const canUpdate = hasPermission('patients.update')
   const canDelete = hasPermission('patients.delete')
+  const canManage = hasPermission('patients.manage')
 
   const patientQuery = useQuery({
     queryKey: ['patients', 'detail', patientId],
@@ -157,6 +169,12 @@ export default function PatientDetailPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {patient.isActive && canManage && (
+            <Button variant="outline" size="sm" onClick={() => setMergeDialogOpen(true)}>
+              <GitMerge />
+              Merge
+            </Button>
+          )}
           {patient.isActive && canDelete && (
             <Button variant="destructive" size="sm" onClick={() => setConfirmDeactivate(true)}>
               <Trash2 />
@@ -172,12 +190,27 @@ export default function PatientDetailPage() {
         </div>
       </div>
 
+      {patient.mergedIntoId && (
+        <Alert>
+          <GitMerge className="h-4 w-4" />
+          <AlertTitle>This record was merged</AlertTitle>
+          <AlertDescription>
+            All linked records were moved to another patient profile.{' '}
+            <Link href={`/dashboard/patients/${patient.mergedIntoId}`} className="underline">
+              View the surviving record
+            </Link>
+            .
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Tabs defaultValue="profile">
         <TabsList className="flex-wrap">
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="medical">Medical Summary</TabsTrigger>
           <TabsTrigger value="insurance">Insurance</TabsTrigger>
           <TabsTrigger value="admissions">Admissions</TabsTrigger>
+          <TabsTrigger value="family">Family</TabsTrigger>
           <TabsTrigger value="emergency">Emergency Contact</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
@@ -205,6 +238,9 @@ export default function PatientDetailPage() {
         </TabsContent>
         <TabsContent value="admissions">
           <PatientAdmissionsTab patientId={patientId} />
+        </TabsContent>
+        <TabsContent value="family">
+          <FamilyTab patient={patient} canUpdate={canUpdate} />
         </TabsContent>
         <TabsContent value="emergency">
           <EmergencyContactTab patient={patient} canUpdate={canUpdate} />
@@ -243,7 +279,190 @@ export default function PatientDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <MergeDialog
+        open={mergeDialogOpen}
+        onOpenChange={setMergeDialogOpen}
+        patient={patient}
+        onMerged={(survivorId) => {
+          setMergeDialogOpen(false)
+          if (survivorId !== patient.id) router.push(`/dashboard/patients/${survivorId}`)
+          else void queryClient.invalidateQueries({ queryKey: ['patients'] })
+        }}
+      />
     </div>
+  )
+}
+
+function PatientSearchPicker({
+  excludeId,
+  selected,
+  onSelect,
+}: {
+  excludeId: string
+  selected: Patient | null
+  onSelect: (patient: Patient | null) => void
+}) {
+  const [query, setQuery] = useState('')
+
+  const searchQuery = useQuery({
+    queryKey: ['patients', 'search', query],
+    queryFn: () => listPatients({ q: query, limit: 8 }),
+    enabled: query.trim().length >= 2,
+  })
+
+  if (selected) {
+    return (
+      <div className="flex items-center justify-between rounded-md border p-2">
+        <div>
+          <p className="text-sm font-medium">{selected.fullName}</p>
+          <p className="font-mono text-xs text-muted-foreground">
+            {selected.uhid} · {selected.phone}
+          </p>
+        </div>
+        <Button variant="ghost" size="sm" onClick={() => onSelect(null)}>
+          Change
+        </Button>
+      </div>
+    )
+  }
+
+  const results = (searchQuery.data?.data ?? []).filter((p) => p.id !== excludeId)
+
+  return (
+    <div className="space-y-1.5">
+      <div className="relative">
+        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+        <Input
+          className="pl-8"
+          placeholder="Search by name, phone, or UHID..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </div>
+      {query.trim().length >= 2 && (
+        <div className="max-h-40 overflow-y-auto rounded-md border">
+          {searchQuery.isLoading ? (
+            <p className="p-2 text-xs text-muted-foreground">Searching...</p>
+          ) : results.length ? (
+            results.map((p) => (
+              <button
+                type="button"
+                key={p.id}
+                onClick={() => onSelect(p)}
+                className="flex w-full flex-col items-start p-2 text-left text-sm hover:bg-muted"
+              >
+                <span className="font-medium">{p.fullName}</span>
+                <span className="font-mono text-xs text-muted-foreground">
+                  {p.uhid} · {p.phone}
+                </span>
+              </button>
+            ))
+          ) : (
+            <p className="p-2 text-xs text-muted-foreground">No patients found.</p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function MergeDialog({
+  open,
+  onOpenChange,
+  patient,
+  onMerged,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  patient: Patient
+  onMerged: (survivorPatientId: string) => void
+}) {
+  const { toast } = useToast()
+  const [otherPatient, setOtherPatient] = useState<Patient | null>(null)
+  const [direction, setDirection] = useState<'thisIntoOther' | 'otherIntoThis'>('otherIntoThis')
+
+  const mutation = useMutation({
+    mutationFn: () => {
+      if (!otherPatient) throw new Error('Choose a patient first')
+      return direction === 'thisIntoOther'
+        ? mergePatients(patient.id, otherPatient.id)
+        : mergePatients(otherPatient.id, patient.id)
+    },
+    onSuccess: (result) => {
+      toast({ title: 'Patients merged' })
+      onMerged(result.survivorPatientId)
+      setOtherPatient(null)
+    },
+    onError: (error) => toast({ variant: 'destructive', title: 'Merge failed', description: getErrorMessage(error) }),
+  })
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        onOpenChange(next)
+        if (!next) setOtherPatient(null)
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Merge duplicate patient record</DialogTitle>
+          <DialogDescription>
+            Every appointment, encounter, prescription, lab/radiology order, invoice, and document belonging
+            to the duplicate record moves to the survivor. This cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <p className="text-sm">
+            Merging <span className="font-medium">{patient.fullName}</span> ({patient.uhid}) with:
+          </p>
+          <PatientSearchPicker excludeId={patient.id} selected={otherPatient} onSelect={setOtherPatient} />
+
+          {otherPatient && (
+            <div className="space-y-2 rounded-md border p-3">
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="radio"
+                  className="mt-1"
+                  checked={direction === 'otherIntoThis'}
+                  onChange={() => setDirection('otherIntoThis')}
+                />
+                <span>
+                  Keep <span className="font-medium">{patient.fullName}</span>, merge{' '}
+                  <span className="font-medium">{otherPatient.fullName}</span> into it
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="radio"
+                  className="mt-1"
+                  checked={direction === 'thisIntoOther'}
+                  onChange={() => setDirection('thisIntoOther')}
+                />
+                <span>
+                  Keep <span className="font-medium">{otherPatient.fullName}</span>, merge{' '}
+                  <span className="font-medium">{patient.fullName}</span> into it
+                </span>
+              </label>
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => mutation.mutate()}
+            disabled={!otherPatient || mutation.isPending}
+          >
+            {mutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            Merge
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -992,6 +1211,125 @@ function PatientAdmissionsTab({ patientId }: { patientId: string }) {
           </ul>
         )}
       </div>
+    </div>
+  )
+}
+
+function FamilyTab({ patient, canUpdate }: { patient: Patient; canUpdate: boolean }) {
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
+  const [linking, setLinking] = useState(false)
+  const [headCandidate, setHeadCandidate] = useState<Patient | null>(null)
+
+  const familyQuery = useQuery({
+    queryKey: ['patients', 'family', patient.id],
+    queryFn: () => getPatientFamily(patient.id),
+  })
+
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['patients', 'family', patient.id] })
+    void queryClient.invalidateQueries({ queryKey: ['patients', 'detail', patient.id] })
+  }
+
+  const linkMutation = useMutation({
+    mutationFn: (headOfFamilyId: string) => linkFamilyMember(patient.id, headOfFamilyId),
+    onSuccess: () => {
+      toast({ title: 'Family linked' })
+      setLinking(false)
+      setHeadCandidate(null)
+      invalidate()
+    },
+    onError: (error) => toast({ variant: 'destructive', title: 'Could not link family', description: getErrorMessage(error) }),
+  })
+
+  const unlinkMutation = useMutation({
+    mutationFn: () => unlinkFamilyMember(patient.id),
+    onSuccess: () => {
+      toast({ title: 'Removed from family' })
+      invalidate()
+    },
+    onError: (error) => toast({ variant: 'destructive', title: 'Could not unlink', description: getErrorMessage(error) }),
+  })
+
+  if (familyQuery.isLoading) {
+    return (
+      <div className="flex h-24 items-center justify-center">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  const group = familyQuery.data
+  const isHead = group?.headOfFamily.id === patient.id
+  const otherMembers = (group?.members ?? []).filter((m) => m.id !== patient.id)
+  const hasFamily = otherMembers.length > 0
+
+  return (
+    <div className="space-y-4">
+      {hasFamily && group ? (
+        <div className="rounded-lg border bg-card p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm font-medium text-foreground">{isHead ? 'Head of family' : 'Family group'}</p>
+            {!isHead && canUpdate && (
+              <Button variant="ghost" size="sm" onClick={() => unlinkMutation.mutate()} disabled={unlinkMutation.isPending}>
+                {unlinkMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+                Remove from family
+              </Button>
+            )}
+          </div>
+          <ul className="divide-y">
+            <li className="flex items-center gap-3 py-2 text-sm">
+              <Users className="h-4 w-4 text-primary" />
+              <div>
+                <Link href={`/dashboard/patients/${group.headOfFamily.id}`} className="font-medium hover:underline">
+                  {group.headOfFamily.fullName}
+                </Link>
+                <span className="ml-2 text-xs text-muted-foreground">Head of family</span>
+              </div>
+            </li>
+            {otherMembers.map((m) => (
+              <li key={m.id} className="flex items-center gap-3 py-2 text-sm">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <Link href={`/dashboard/patients/${m.id}`} className="hover:underline">
+                  {m.fullName}
+                </Link>
+                <span className="font-mono text-xs text-muted-foreground">{m.uhid}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <p className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
+          This patient isn&apos;t linked to a family group yet.
+        </p>
+      )}
+
+      {canUpdate && isHead && !hasFamily && !linking && (
+        <Button variant="outline" size="sm" onClick={() => setLinking(true)}>
+          <Plus className="h-3.5 w-3.5" />
+          Link to a family
+        </Button>
+      )}
+
+      {canUpdate && isHead && !hasFamily && linking && (
+        <div className="space-y-2 rounded-lg border bg-card p-4">
+          <p className="text-sm font-medium">Link this patient under a head of family</p>
+          <PatientSearchPicker excludeId={patient.id} selected={headCandidate} onSelect={setHeadCandidate} />
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={() => { setLinking(false); setHeadCandidate(null) }}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              disabled={!headCandidate || linkMutation.isPending}
+              onClick={() => headCandidate && linkMutation.mutate(headCandidate.id)}
+            >
+              {linkMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              Link
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

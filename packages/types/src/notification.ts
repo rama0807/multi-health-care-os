@@ -4,7 +4,7 @@ import { z } from 'zod'
 //
 // Every module in MediCore notifies through this one surface. The shapes here
 // describe the *message* and its *delivery*, never the domain event that
-// produced it — an event listener translates its own module's payload into a
+// produced it - an event listener translates its own module's payload into a
 // send call, and nothing about billing, laboratory or IPD leaks into this file.
 
 // ─── Enums (mirror the Prisma enums of the same name) ───────────────────────
@@ -173,7 +173,7 @@ export interface Notification {
 
 export interface NotificationUnreadSummary {
   unread: number
-  /** Unread notifications at `CRITICAL` priority — drives the bell's red state. */
+  /** Unread notifications at `CRITICAL` priority - drives the bell's red state. */
   critical: number
   pinned: number
   byCategory: Array<{ category: NotificationCategory; count: number }>
@@ -196,7 +196,7 @@ export interface NotificationQuery {
   to?: string
 }
 
-/** Org-wide history (Checkpoint 18.6) — adds the dimensions an admin needs. */
+/** Org-wide history (Checkpoint 18.6) - adds the dimensions an admin needs. */
 export interface NotificationHistoryQuery extends NotificationQuery {
   recipientId?: string
   channel?: NotificationChannel
@@ -308,7 +308,7 @@ export interface UserDevice {
   isActive: boolean
   lastSeenAt: string
   createdAt: string
-  /** Last 8 characters only — a push token is a credential. */
+  /** Last 8 characters only - a push token is a credential. */
   tokenSuffix: string
 }
 
@@ -318,7 +318,7 @@ export interface PushConfigStatus {
   /** FCM Web Push public VAPID key; null when push is not configured. */
   vapidPublicKey: string | null
   projectId: string | null
-  /** Populated when `configured` is false — states exactly what is missing. */
+  /** Populated when `configured` is false - states exactly what is missing. */
   reason: string | null
 }
 
@@ -398,7 +398,7 @@ export interface NotificationDeliveryStats {
   byPriority: Array<{ priority: NotificationPriority; count: number }>
   /** Daily volume, `YYYY-MM-DD` local-time buckets. */
   series: Array<{ bucket: string; sent: number; failed: number }>
-  /** Null when nothing was attempted in the period — never a misleading 0. */
+  /** Null when nothing was attempted in the period - never a misleading 0. */
   successRate: string | null
   failureRate: string | null
 }
@@ -422,7 +422,7 @@ export interface NotificationProviderStatus {
   channel: NotificationChannel
   providerName: string
   configured: boolean
-  /** Why it is unconfigured — shown verbatim; never "coming soon". */
+  /** Why it is unconfigured - shown verbatim; never "coming soon". */
   reason: string | null
 }
 

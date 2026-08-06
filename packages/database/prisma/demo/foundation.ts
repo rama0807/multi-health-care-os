@@ -350,7 +350,7 @@ export async function seedFoundation(
     })
   }
 
-  // ── Pharmacy catalog — one row per batch (ADR-0014) ─────────────────────
+  // ── Pharmacy catalog - one row per batch (ADR-0014) ─────────────────────
   const drugs: DemoContext['drugs'] = []
   for (let i = 0; i < DRUGS.length; i += 1) {
     const spec = DRUGS[i]
@@ -424,7 +424,7 @@ export async function seedFoundation(
       })
 
       for (let b = 1; b <= wardSpec.bedsPerRoom; b += 1) {
-        // A small number of beds are out of service — the bed grid should
+        // A small number of beds are out of service - the bed grid should
         // not be uniformly available.
         const statusRoll = rnd()
         const status = statusRoll < 0.04 ? 'MAINTENANCE' : statusRoll < 0.09 ? 'CLEANING' : 'AVAILABLE'
@@ -485,7 +485,7 @@ export async function seedFoundation(
     }
   }
 
-  // Roughly 45% of patients carry insurance — the rest are cash patients.
+  // Roughly 45% of patients carry insurance - the rest are cash patients.
   const insuredPatients = pickMany(patients, Math.round(patients.length * 0.45))
   const patientInsurances: DemoInsurance[] = []
   for (let i = 0; i < insuredPatients.length; i += 1) {

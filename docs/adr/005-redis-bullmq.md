@@ -21,12 +21,12 @@ We need:
 ### Redis for Caching
 
 Redis's in-memory data structures match our use cases exactly:
-- **Strings** — JWT blacklist, OTP storage, rate limit counters
-- **Hashes** — Session data, user permissions cache
-- **Sorted Sets** — Rate limiting with sliding window
-- **Lists** — Audit log streaming buffer
+- **Strings** - JWT blacklist, OTP storage, rate limit counters
+- **Hashes** - Session data, user permissions cache
+- **Sorted Sets** - Rate limiting with sliding window
+- **Lists** - Audit log streaming buffer
 
-TTL support at the key level means cache expiration is automatic — no background cleanup jobs needed.
+TTL support at the key level means cache expiration is automatic - no background cleanup jobs needed.
 
 **Alternative considered:** Memcached. Rejected because it lacks persistence (we need refresh tokens to survive restarts), has no pub/sub, and doesn't support complex data structures.
 
@@ -51,7 +51,7 @@ const worker = new Worker('reports', async (job) => {
 ```
 
 Key advantages:
-- **Durability:** Jobs persist in Redis — a worker crash doesn't lose the job
+- **Durability:** Jobs persist in Redis - a worker crash doesn't lose the job
 - **Retry logic:** Exponential backoff with configurable attempts
 - **Priority queues:** Emergency notifications before report generation
 - **Delayed jobs:** Schedule appointment reminders 24h in advance
@@ -60,10 +60,10 @@ Key advantages:
 
 **Alternative considered:** RabbitMQ. More powerful for complex routing, but adds operational complexity (separate service, different API). BullMQ on Redis is sufficient for our workload and reduces infrastructure dependencies.
 
-**Alternative considered:** AWS SQS (in cloud deployment). Valid for production, but BullMQ works locally, in staging, and in production without changing code — SQS would require local simulation.
+**Alternative considered:** AWS SQS (in cloud deployment). Valid for production, but BullMQ works locally, in staging, and in production without changing code - SQS would require local simulation.
 
 ## Consequences
 
-- Redis is a required dependency (not optional) — sessions break without it
+- Redis is a required dependency (not optional) - sessions break without it
 - BullMQ workers run inside the same NestJS process in development; as separate processes in production
 - Redis cluster mode supported for high availability in production

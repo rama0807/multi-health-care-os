@@ -8,7 +8,7 @@ export type PermissionScope = 'all' | 'own' | null
 export class PermissionsService {
   /**
    * Resolves the effective scope a caller holds for a given "resource.action"
-   * pair. Guards only prove *some* access exists — services call this to
+   * pair. Guards only prove *some* access exists - services call this to
    * decide whether an ownership filter (e.g. `WHERE doctorId = user.sub`)
    * must be added to the underlying query. `.all` always wins over `.own`
    * when a caller somehow holds both.

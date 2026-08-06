@@ -190,7 +190,7 @@ export class AuthService {
         sessionId: result.sessionId,
         orgId: result.organizationId,
       })
-      throw new UnauthorizedException('Session revoked — refresh token was already used')
+      throw new UnauthorizedException('Session revoked - refresh token was already used')
     }
 
     if (result.outcome === 'invalid') {
@@ -247,7 +247,7 @@ export class AuthService {
     return this.toAuthenticatedUser(user, authContext)
   }
 
-  /** Always resolves — never reveals whether an email address exists. */
+  /** Always resolves - never reveals whether an email address exists. */
   async forgotPassword(email: string): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { email } })
     if (!user) return
@@ -257,7 +257,7 @@ export class AuthService {
     const { subject, html } = passwordResetTemplate(user.firstName, resetUrl)
     // Off the request path (Milestone 19.3): this endpoint deliberately
     // answers the same way whether or not the address exists, so awaiting the
-    // provider only leaks how long the lookup took — and lets its latency
+    // provider only leaks how long the lookup took - and lets its latency
     // shape the timing side channel this method exists to avoid.
     this.background.run('auth.password_reset_email', () =>
       this.emailService.send({ to: user.email, subject, html }),
@@ -325,7 +325,7 @@ export class AuthService {
     const verifyUrl = `${process.env.FRONTEND_URL ?? 'http://localhost:3000'}/verify-email?token=${token}`
     const { subject, html } = verifyEmailTemplate(firstName, verifyUrl)
     // Off the request path (Milestone 19.3). Registration must not fail
-    // because a mail provider is slow or down — the account was created, and
+    // because a mail provider is slow or down - the account was created, and
     // `resendVerificationEmail` is the product's own retry.
     this.background.run('auth.verification_email', () =>
       this.emailService.send({ to: email, subject, html }),

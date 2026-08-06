@@ -10,7 +10,7 @@ import { CreateDrugDto } from './dto/create-drug.dto'
 import { UpdateDrugDto } from './dto/update-drug.dto'
 
 /**
- * Drug Catalog — see ADR-0014. Not own-scoped: `pharmacy.*` is all-scope
+ * Drug Catalog - see ADR-0014. Not own-scoped: `pharmacy.*` is all-scope
  * for every role that has it (staff-facing, like billing/insurance), so
  * only the plain permission gates these routes.
  */

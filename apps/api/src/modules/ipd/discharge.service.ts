@@ -30,7 +30,7 @@ const SUMMARY_WITH_RELATIONS_INCLUDE = {
 } satisfies Prisma.DischargeSummaryInclude
 
 /**
- * Discharge workflow — doctor approval → nursing checklist + discharge
+ * Discharge workflow - doctor approval → nursing checklist + discharge
  * summary → finalize (vacates the bed, raises the per-stay room charge,
  * closes the encounter, sets `AdmissionStatus.DISCHARGED`). See ADR-0019.
  */
@@ -248,7 +248,7 @@ export class DischargeService {
   /**
    * Finalizes discharge: vacates the bed (reuses `BedAllocationService.vacate`'s
    * bed→CLEANING pattern), raises a per-stay room charge via the Charge Engine
-   * (days stayed × `Room.chargesPerDay` — elapsed time from `admittedAt` to now,
+   * (days stayed × `Room.chargesPerDay` - elapsed time from `admittedAt` to now,
    * rounded up to the next whole day, minimum 1 day), closes the encounter, and
    * sets `AdmissionStatus.DISCHARGED`.
    */
@@ -292,7 +292,7 @@ export class DischargeService {
             encounterId: admission.encounterId ?? undefined,
             sourceModule: ChargeSourceModule.IPD,
             sourceId: admission.id,
-            description: `Room charges — ${room.ward.name} (${daysStayed} day${daysStayed > 1 ? 's' : ''})`,
+            description: `Room charges - ${room.ward.name} (${daysStayed} day${daysStayed > 1 ? 's' : ''})`,
             quantity: daysStayed,
             unitPrice: Number(room.chargesPerDay),
             discountPercent: 0,

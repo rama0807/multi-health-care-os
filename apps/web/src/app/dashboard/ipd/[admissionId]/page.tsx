@@ -90,7 +90,7 @@ export default function AdmissionDetailPage() {
   const vacateMutation = useMutation({
     mutationFn: () => vacateBed(admissionId, {}),
     onSuccess: () => {
-      toast({ title: 'Bed vacated — sent for cleaning' })
+      toast({ title: 'Bed vacated - sent for cleaning' })
       invalidate()
     },
     onError: (error) => toast({ variant: 'destructive', title: 'Could not vacate bed', description: getErrorMessage(error) }),
@@ -176,11 +176,11 @@ export default function AdmissionDetailPage() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <InfoCard label="Attending doctor" value={`${admission.attendingDoctor.fullName} (${admission.attendingDoctor.specialization})`} />
             <InfoCard label="Type" value={formatEnumLabel(admission.type)} />
-            <InfoCard label="Department" value={admission.department?.name ?? '—'} />
+            <InfoCard label="Department" value={admission.department?.name ?? '-'} />
             <InfoCard label="Ward" value={`${admission.ward.name} (${formatEnumLabel(admission.ward.type)})`} />
-            <InfoCard label="Room" value={admission.room?.roomNumber ?? '—'} />
+            <InfoCard label="Room" value={admission.room?.roomNumber ?? '-'} />
             <InfoCard label="Admitted" value={formatDateTime(admission.admittedAt)} />
-            <InfoCard label="Expected discharge" value={admission.expectedDischargeAt ? formatDateTime(admission.expectedDischargeAt) : '—'} />
+            <InfoCard label="Expected discharge" value={admission.expectedDischargeAt ? formatDateTime(admission.expectedDischargeAt) : '-'} />
             {admission.patientInsurance && (
               <InfoCard label="Insurance" value={`${admission.patientInsurance.provider.name} · ${admission.patientInsurance.plan.name}`} />
             )}
@@ -410,7 +410,7 @@ function AllocateBedDialog({
             {reservedBedId && <SelectItem value={reservedBedId}>Currently reserved bed</SelectItem>}
             {options.map((b) => (
               <SelectItem key={b.id} value={b.id}>
-                {b.bedNumber} — {b.room.roomNumber}
+                {b.bedNumber} - {b.room.roomNumber}
               </SelectItem>
             ))}
           </SelectContent>
@@ -487,7 +487,7 @@ function TransferBedDialog({
             <SelectContent>
               {options.map((b) => (
                 <SelectItem key={b.id} value={b.id}>
-                  {b.bedNumber} — {b.ward.name} / {b.room.roomNumber}
+                  {b.bedNumber} - {b.ward.name} / {b.room.roomNumber}
                 </SelectItem>
               ))}
             </SelectContent>

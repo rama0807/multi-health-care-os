@@ -39,10 +39,10 @@ const ALLOWED_DOCUMENT_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/w
 const MAX_DOCUMENT_SIZE_BYTES = 10 * 1024 * 1024
 const MAX_CSV_IMPORT_ROWS = 500
 
-// Every other model with a direct (unenforced or FK) `patientId` column —
+// Every other model with a direct (unenforced or FK) `patientId` column -
 // reassigned in `mergePatients` from the merged record to the survivor.
 // `payment`/`charge` carry a bare `patientId` string with no Prisma
-// relation to Patient (deliberate — see their own schema comments), but
+// relation to Patient (deliberate - see their own schema comments), but
 // the column itself is real and still needs reassigning.
 const PATIENT_LINKED_MODELS = [
   'patientDocument',
@@ -133,7 +133,7 @@ export class PatientsService {
     if (conflict) {
       throw conflict.deletedAt
         ? new ConflictException(
-            'A previously deleted patient with this phone number exists — restore that record instead of registering a new one',
+            'A previously deleted patient with this phone number exists - restore that record instead of registering a new one',
           )
         : new ConflictException('A patient with this phone number already exists')
     }
@@ -242,9 +242,9 @@ export class PatientsService {
    * graph is kept one level deep by construction: a head of family can't
    * itself be someone else's dependent, and a patient who is already a
    * head (has their own dependents) can't be re-linked under someone else
-   * — both would otherwise require walking a variable-depth chain on every
+   * - both would otherwise require walking a variable-depth chain on every
    * read. Reparenting an existing family isn't supported (disclosed, not
-   * silently handled) — unlink every member first.
+   * silently handled) - unlink every member first.
    */
   async linkFamilyMember(
     organizationId: string,
@@ -263,14 +263,14 @@ export class PatientsService {
 
     if (head.headOfFamilyId) {
       throw new BadRequestException(
-        'The selected patient is already a member of another family — link to their head of family instead',
+        'The selected patient is already a member of another family - link to their head of family instead',
       )
     }
 
     const existingMemberCount = await this.prisma.patient.count({ where: { headOfFamilyId: patientId } })
     if (existingMemberCount > 0) {
       throw new BadRequestException(
-        'This patient is already head of a family — unlink their members before joining another family',
+        'This patient is already head of a family - unlink their members before joining another family',
       )
     }
 
@@ -335,7 +335,7 @@ export class PatientsService {
    * Merges `sourcePatientId` into `targetPatientId`: every other module's
    * `patientId` column (see `PATIENT_LINKED_MODELS`) and any dependents the
    * source was head of family for are reassigned to the target inside one
-   * transaction, then the source is soft-deleted with `mergedIntoId` set —
+   * transaction, then the source is soft-deleted with `mergedIntoId` set -
    * reusing the existing soft-delete plumbing rather than a new "merged"
    * status. `restore()` refuses a merged record (see above) since its data
    * has already moved to the survivor.
@@ -389,12 +389,12 @@ export class PatientsService {
 
   /**
    * Bulk-registers patients from a CSV upload, one row at a time through
-   * the same `create()` path a manual registration uses — so UHID
+   * the same `create()` path a manual registration uses - so UHID
    * generation, phone-conflict detection, and validation are identical,
    * not a parallel bulk-insert code path. Rows are processed sequentially
    * (not in parallel) since UHID generation counts existing patients per
    * organization; a bounded 500-row cap keeps a bad upload from running
-   * for minutes. A failing row is recorded and processing continues — one
+   * for minutes. A failing row is recorded and processing continues - one
    * bad row never aborts the rest of the file.
    */
   async importFromCsv(organizationId: string, buffer: Buffer, actorUserId?: string): Promise<CsvImportResult> {
@@ -592,7 +592,7 @@ export class PatientsService {
       ...appointments.map((a) => ({
         id: a.id,
         type: 'APPOINTMENT' as const,
-        title: `${a.type} appointment — ${a.status}`,
+        title: `${a.type} appointment - ${a.status}`,
         description: a.chiefComplaint ?? undefined,
         occurredAt: a.scheduledAt,
         metadata: { appointmentNumber: a.appointmentNumber, status: a.status },
@@ -600,7 +600,7 @@ export class PatientsService {
       ...admissions.map((a) => ({
         id: a.id,
         type: 'ADMISSION' as const,
-        title: `Admission — ${a.status}`,
+        title: `Admission - ${a.status}`,
         description: a.admissionReason,
         occurredAt: a.admittedAt,
         metadata: { admissionNumber: a.admissionNumber },
@@ -608,14 +608,14 @@ export class PatientsService {
       ...labTests.map((l) => ({
         id: l.id,
         type: 'LAB_TEST' as const,
-        title: `Lab order — ${l.status}`,
+        title: `Lab order - ${l.status}`,
         occurredAt: l.createdAt,
         metadata: { labOrderNumber: l.labOrderNumber },
       })),
       ...radiologyOrders.map((r) => ({
         id: r.id,
         type: 'RADIOLOGY' as const,
-        title: `${r.modality} — ${r.bodyPart} (${r.status})`,
+        title: `${r.modality} - ${r.bodyPart} (${r.status})`,
         occurredAt: r.createdAt,
         metadata: { orderNumber: r.orderNumber },
       })),
@@ -628,7 +628,7 @@ export class PatientsService {
       ...invoices.map((i) => ({
         id: i.id,
         type: 'INVOICE' as const,
-        title: `Invoice ${i.invoiceNumber} — ${i.status}`,
+        title: `Invoice ${i.invoiceNumber} - ${i.status}`,
         description: `₹${i.totalAmount.toString()}`,
         occurredAt: i.createdAt,
       })),
@@ -661,7 +661,7 @@ export class PatientsService {
     await this.requireActive(organizationId, patientId)
 
     if (!ALLOWED_DOCUMENT_MIME_TYPES.has(file.mimeType)) {
-      throw new BadRequestException('Unsupported file type — allowed: PNG, JPEG, WEBP, PDF')
+      throw new BadRequestException('Unsupported file type - allowed: PNG, JPEG, WEBP, PDF')
     }
     if (file.size > MAX_DOCUMENT_SIZE_BYTES) {
       throw new BadRequestException('File exceeds the 10MB upload limit')

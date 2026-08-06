@@ -1,4 +1,4 @@
-# MediCore — production stack (Milestone 19.5).
+# MediCore - production stack (Milestone 19.5).
 #
 # Run with an env file beside this one holding every variable referenced below;
 # the API refuses to boot if the security-critical ones are missing or left on
@@ -9,10 +9,10 @@
 # See docs/operations/deployment.md for the full procedure, and
 # docs/operations/production-checklist.md before the first real deployment.
 #
-# The `version:` key is deliberately absent — Compose v2 ignores it and warns.
+# The `version:` key is deliberately absent - Compose v2 ignores it and warns.
 
 x-logging: &default-logging
-  # Without this, container logs grow until the disk is full — the most common
+  # Without this, container logs grow until the disk is full - the most common
   # cause of a self-inflicted outage on a single-host deployment.
   driver: json-file
   options:
@@ -76,7 +76,7 @@ services:
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_PORT: ${REDIS_PORT:-6379}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
-      # RS256 keypair — `pnpm --filter @medicore/api keys:generate`.
+      # RS256 keypair - `pnpm --filter @medicore/api keys:generate`.
       JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY:?JWT_PRIVATE_KEY is required}
       JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:?JWT_PUBLIC_KEY is required}
       JWT_ACCESS_TOKEN_EXPIRY: ${JWT_ACCESS_TOKEN_EXPIRY:-15m}
@@ -100,7 +100,7 @@ services:
       S3_PUBLIC_URL: ${S3_PUBLIC_URL:-}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-}
-    # No published port — nginx is the only way in.
+    # No published port - nginx is the only way in.
     expose:
       - '4000'
     depends_on:

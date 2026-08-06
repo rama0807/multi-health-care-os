@@ -7,7 +7,7 @@ import { PrismaService } from '../../prisma/prisma.service'
 
 import { AdmissionsService } from './admissions.service'
 
-/** Nursing notes — general/shift-handover/assessment/incident, admission-scoped. See ADR-0019. */
+/** Nursing notes - general/shift-handover/assessment/incident, admission-scoped. See ADR-0019. */
 @Injectable()
 export class NursingNotesService {
   constructor(

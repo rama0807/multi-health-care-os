@@ -5,7 +5,7 @@ import { Drug as PrismaDrug, Prisma } from '@prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 
 /**
- * Drug Catalog — see ADR-0014. One row is one batch of a drug; restocking
+ * Drug Catalog - see ADR-0014. One row is one batch of a drug; restocking
  * the same generic/brand drug with a new batch creates a new row rather
  * than a join to a separate batch table.
  */
@@ -37,7 +37,7 @@ export class DrugCatalogService {
 
     // `lowStockOnly` compares two columns on the same row (`currentStock` vs.
     // `reorderLevel`), which Prisma's query builder can't express in `where`
-    // — filtered in application code instead of a raw query, a pragmatic
+    // - filtered in application code instead of a raw query, a pragmatic
     // simplification given a single org's drug catalog is not large enough
     // for this to be a real pagination cost (see TECH_DEBT).
     if (query.lowStockOnly) {
@@ -113,7 +113,7 @@ export class DrugCatalogService {
     return this.toResponse(drug)
   }
 
-  /** Manual stock correction (new delivery, wastage, damage, count adjustment) — see roadmap's "Adjust stock." */
+  /** Manual stock correction (new delivery, wastage, damage, count adjustment) - see roadmap's "Adjust stock." */
   async adjustStock(organizationId: string, id: string, dto: AdjustDrugStockDto): Promise<Drug> {
     const drug = await this.requireDrug(organizationId, id)
     const nextStock = drug.currentStock + dto.quantity

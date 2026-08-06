@@ -31,14 +31,14 @@ import type { ElementType } from 'react'
  * at this array, which coupled "what pages exist" to "how the rail is drawn".
  *
  * Permission strings are checked with `useAuth().hasPermission`, which appends
- * `.all`/`.own` — so `patients.read` matches either scope.
+ * `.all`/`.own` - so `patients.read` matches either scope.
  */
 
 export interface NavItem {
   label: string
   href: string
   icon: ElementType
-  /** "resource.action" — omit to always show the item. */
+  /** "resource.action" - omit to always show the item. */
   permission?: string
   /** Nested destinations, rendered as a disclosure group in the sidebar. */
   children?: Array<Omit<NavItem, 'icon' | 'children'> & { icon?: ElementType }>
@@ -211,7 +211,7 @@ export const navigation: NavSection[] = [
 /**
  * Actions offered by the "New" button in the top bar and the sidebar.
  *
- * Every entry points at a route that already exists — a quick-create menu that
+ * Every entry points at a route that already exists - a quick-create menu that
  * offers a flow the user cannot complete is worse than no menu, and this list
  * is permission-filtered by the same `hasPermission` check as navigation.
  */

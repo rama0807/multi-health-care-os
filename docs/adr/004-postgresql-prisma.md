@@ -30,7 +30,7 @@ Healthcare applications are a perfect fit for PostgreSQL:
 
 **Row-Level Security:** PostgreSQL's RLS is a second line of defense for tenant isolation. Even if application code has a bug that omits `organizationId`, RLS at the DB level prevents cross-tenant data leakage.
 
-**Full-text search:** Patient name search, diagnosis lookup, and medication search can use PostgreSQL's built-in `tsvector` search — no Elasticsearch for basic cases.
+**Full-text search:** Patient name search, diagnosis lookup, and medication search can use PostgreSQL's built-in `tsvector` search - no Elasticsearch for basic cases.
 
 **PostGIS (future):** If we add location-based features (nearest clinic, doctor geo-routing), PostGIS extension is available.
 
@@ -45,10 +45,10 @@ Healthcare applications are a perfect fit for PostgreSQL:
 | Schema introspection | Yes | Yes | Yes |
 | Ecosystem | Large | Large | Growing |
 
-Prisma's generated client gives **complete type safety** from schema to query result — no casting, no `any`. The schema file is the single source of truth.
+Prisma's generated client gives **complete type safety** from schema to query result - no casting, no `any`. The schema file is the single source of truth.
 
 ```typescript
-// TypeScript knows exactly what this returns — no type assertion needed
+// TypeScript knows exactly what this returns - no type assertion needed
 const patient = await prisma.patient.findUnique({
   where: { id: patientId, organizationId },
   include: { appointments: { include: { doctor: true } } }
@@ -58,10 +58,10 @@ const patient = await prisma.patient.findUnique({
 
 ### Migration Strategy
 
-- Development: `prisma migrate dev` — interactive, creates named migrations
-- Staging/Production: `prisma migrate deploy` — applies pending migrations, no interactivity
+- Development: `prisma migrate dev` - interactive, creates named migrations
+- Staging/Production: `prisma migrate deploy` - applies pending migrations, no interactivity
 - Baseline migrations are committed to source control
-- Never edit a committed migration file — create a new migration instead
+- Never edit a committed migration file - create a new migration instead
 
 ## Rejected Alternatives
 

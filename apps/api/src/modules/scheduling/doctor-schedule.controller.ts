@@ -68,7 +68,7 @@ export class DoctorScheduleController {
 
   /**
    * `RequirePermissions` only proves the caller holds the permission at
-   * *some* scope — it can't tell `.own` from `.all` (that distinction isn't
+   * *some* scope - it can't tell `.own` from `.all` (that distinction isn't
    * knowable from the decorator's static string). Routes that accept an
    * arbitrary `:doctorId` must re-check here that an `.own`-scoped caller's
    * doctorId actually matches their own linked profile.

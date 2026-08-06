@@ -60,7 +60,7 @@ describe('Patients (e2e)', () => {
     server = app.getHttpAdapter().getInstance().server
 
     // Ensure the patients permission catalog exists in the test DB regardless
-    // of whether `db:seed` has been run against it — /auth/register grants
+    // of whether `db:seed` has been run against it - /auth/register grants
     // the new org's admin role every row currently in the Permission table.
     const prisma = app.get(PrismaService)
     const patientPermissions = [
@@ -116,7 +116,7 @@ describe('Patients (e2e)', () => {
       .expect(201)
 
     // AuthService.register derives uhidPrefix from the org slug's first 4
-    // characters uppercased (not a fixed "MED") — see auth.service.ts.
+    // characters uppercased (not a fixed "MED") - see auth.service.ts.
     const expectedPrefix = orgSlug.toUpperCase().slice(0, 4)
     expect(res.body.data.uhid).toMatch(new RegExp(`^${expectedPrefix}-\\d{4}-\\d{6}$`))
     expect(res.body.data.fullName).toBe('Asha Rao')

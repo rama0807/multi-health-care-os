@@ -5,9 +5,9 @@ import { DispenseStatus } from './enums'
 // ─── Drug Catalog ──────────────────────────────────────────────────────────
 
 /**
- * Org-scoped pharmacy catalog — see ADR-0014. One row is one batch of a
+ * Org-scoped pharmacy catalog - see ADR-0014. One row is one batch of a
  * drug (batch number/expiry are catalog fields, not a separate table).
- * `price`/`taxPercent` are Prisma `Decimal` on the wire — serialized as
+ * `price`/`taxPercent` are Prisma `Decimal` on the wire - serialized as
  * strings, same convention as `RadiologyCatalogItem.price`.
  */
 export interface Drug {
@@ -146,7 +146,7 @@ export const CreateDispenseOrderSchema = z.object({
 
 export type CreateDispenseOrderDto = z.infer<typeof CreateDispenseOrderSchema>
 
-/** "Batch selection" — resolves one or more items to a catalog `Drug` (batch) and reserves stock. */
+/** "Batch selection" - resolves one or more items to a catalog `Drug` (batch) and reserves stock. */
 export const PrepareDispenseItemsSchema = z.object({
   items: z
     .array(

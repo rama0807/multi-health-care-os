@@ -22,19 +22,19 @@ Use **Next.js 14 with App Router**, TypeScript, Tailwind CSS, and shadcn/ui.
 ### App Router over Pages Router
 
 The App Router's React Server Components model is the right architecture for a dashboard:
-- Server Components fetch data directly — no waterfall, no client-side loading states for initial data
-- Client Components are opt-in — only interactive parts hydrate
-- Layouts don't re-render on navigation — sidebar and header are persistent
+- Server Components fetch data directly - no waterfall, no client-side loading states for initial data
+- Client Components are opt-in - only interactive parts hydrate
+- Layouts don't re-render on navigation - sidebar and header are persistent
 - Streaming with Suspense boundaries gives perceived performance improvements on slow connections
 
 ### shadcn/ui over component libraries
 
 shadcn/ui is a collection of copy-paste components built on Radix UI primitives and Tailwind CSS. The critical difference from Chakra, MUI, or Mantine:
 
-- **We own the code** — components live in our repo, we can modify them freely
-- **No runtime overhead** — Tailwind is purged at build time, no CSS-in-JS runtime
-- **Accessible by default** — Radix UI handles ARIA, keyboard navigation, focus management
-- **Visual consistency** — all components use the same design tokens
+- **We own the code** - components live in our repo, we can modify them freely
+- **No runtime overhead** - Tailwind is purged at build time, no CSS-in-JS runtime
+- **Accessible by default** - Radix UI handles ARIA, keyboard navigation, focus management
+- **Visual consistency** - all components use the same design tokens
 
 ### TanStack Query v5
 
@@ -60,7 +60,7 @@ export const CreatePatientSchema = z.object({
   // ...
 })
 
-// Used in NestJS DTO and React Hook Form — same schema
+// Used in NestJS DTO and React Hook Form - same schema
 ```
 
 ## Rejected Alternatives

@@ -77,7 +77,7 @@ export default function PaymentsListPage() {
                   <TableCell>
                     <Badge variant="outline">{formatEnumLabel(p.paymentMode)}</Badge>
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{p.referenceNumber ?? p.transactionId ?? '—'}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{p.referenceNumber ?? p.transactionId ?? '-'}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{new Date(p.paidAt).toLocaleString('en-IN')}</TableCell>
                   <TableCell>
                     <Button variant="ghost" size="sm" onClick={() => void downloadReceiptPdf(p.id, p.paymentNumber)}>

@@ -2,7 +2,7 @@
 const nextConfig = {
   transpilePackages: ['@medicore/types', '@medicore/ui'],
   // typedRoutes requires every href to resolve to a page that already
-  // exists — incompatible with a nav that intentionally links ahead to
+  // exists - incompatible with a nav that intentionally links ahead to
   // pages future milestones haven't built yet (patients, billing, etc.).
   images: {
     remotePatterns: [

@@ -9,13 +9,13 @@ import { RedisService } from './redis.service'
  * Three rules keep it from becoming a source of stale clinical data:
  *
  * 1. **Every key is tenant-scoped.** `key()` refuses to build one without an
- *    organization id, so a cached read cannot leak across tenants — the one
+ *    organization id, so a cached read cannot leak across tenants - the one
  *    failure mode that would matter more than any latency it saves.
  * 2. **Redis being down is a cache miss, never an error.** A caching layer
  *    that can fail a request is a new outage source, not an optimisation, so
  *    every operation degrades to calling the loader.
  * 3. **Nothing patient-identifiable is cached.** The call sites are
- *    configuration-shaped data — templates, settings — that changes on an
+ *    configuration-shaped data - templates, settings - that changes on an
  *    explicit admin action, which is what makes invalidation exact rather
  *    than a guessed TTL.
  */
@@ -25,10 +25,10 @@ export class CacheService {
 
   constructor(private readonly redis: RedisService) {}
 
-  /** `medicore:cache:<org>:<namespace>[:<suffix>]` — one shape, everywhere. */
+  /** `medicore:cache:<org>:<namespace>[:<suffix>]` - one shape, everywhere. */
   key(organizationId: string, namespace: string, suffix?: string): string {
     if (!organizationId) {
-      throw new Error('CacheService keys must be tenant-scoped — organizationId is required')
+      throw new Error('CacheService keys must be tenant-scoped - organizationId is required')
     }
     return `medicore:cache:${organizationId}:${namespace}${suffix ? `:${suffix}` : ''}`
   }
@@ -39,7 +39,7 @@ export class CacheService {
       return raw === null ? undefined : (JSON.parse(raw) as T)
     } catch (error) {
       // Covers both a Redis failure and a value written by an older code
-      // version whose shape no longer parses — either way, miss and reload.
+      // version whose shape no longer parses - either way, miss and reload.
       this.logger.debug(`Cache read failed for ${key}: ${(error as Error).message}`)
       return undefined
     }
@@ -55,7 +55,7 @@ export class CacheService {
 
   /**
    * The read-through path. `undefined` from the loader is cached as a genuine
-   * "there is nothing here" — the alternative would re-query the database on
+   * "there is nothing here" - the alternative would re-query the database on
    * every request for exactly the lookups that miss most often.
    */
   async wrap<T>(key: string, ttlSeconds: number, loader: () => Promise<T>): Promise<T> {
@@ -81,7 +81,7 @@ export class CacheService {
    * type *and* per locale).
    *
    * Uses `SCAN`, never `KEYS`: `KEYS` is O(n) over the whole keyspace and
-   * blocks the single-threaded Redis server — on a shared instance that is an
+   * blocks the single-threaded Redis server - on a shared instance that is an
    * outage for every tenant, triggered by one admin saving a form.
    */
   async invalidatePrefix(prefix: string): Promise<number> {

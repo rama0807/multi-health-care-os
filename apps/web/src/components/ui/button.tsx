@@ -8,13 +8,13 @@ import { cn } from "@/lib/utils"
 /**
  * Design System V2.
  *
- * Heights step 7/8/9/10 rather than the shadcn default 9/10/11 — enterprise
+ * Heights step 7/8/9/10 rather than the shadcn default 9/10/11 - enterprise
  * density. Every variant resolves through brand tokens, so a tenant's colour
  * reaches the fill, the hover, the active state and the focus ring without a
  * component change.
  *
  * Pre-V2 variants (`default`, `destructive`, `outline`, `secondary`, `ghost`,
- * `link`) and sizes are all preserved — roughly ninety pages depend on them.
+ * `link`) and sizes are all preserved - roughly ninety pages depend on them.
  */
 const buttonVariants = cva(
   "relative inline-flex select-none items-center justify-center gap-1.5 whitespace-nowrap rounded-md text-sm font-medium transition-[background-color,border-color,color,box-shadow] duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
@@ -23,7 +23,7 @@ const buttonVariants = cva(
       variant: {
         default:
           "bg-primary text-primary-foreground shadow-xs hover:bg-primary-hover active:bg-primary-active",
-        /** Tinted brand button — the workhorse for secondary page actions. */
+        /** Tinted brand button - the workhorse for secondary page actions. */
         soft: "bg-primary-subtle text-primary-subtle-foreground hover:bg-primary-subtle/70",
         destructive:
           "bg-destructive text-destructive-foreground shadow-xs hover:bg-destructive/90",
@@ -61,7 +61,7 @@ export interface ButtonProps
   asChild?: boolean
   /**
    * Swaps the label for a spinner and disables the button. The button keeps
-   * its width while loading — a shrinking button under the cursor causes
+   * its width while loading - a shrinking button under the cursor causes
    * mis-clicks, which in this domain can mean a double-charged invoice.
    */
   loading?: boolean

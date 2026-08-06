@@ -31,7 +31,7 @@ export interface OnboardUserResult {
  * later) calls this from inside its own transaction before creating its
  * profile row, instead of reimplementing account creation per role.
  *
- * Deliberately knows nothing about Doctor/Nurse/etc. profile tables — the
+ * Deliberately knows nothing about Doctor/Nurse/etc. profile tables - the
  * caller is responsible for checking whether the returned user already has
  * its kind of profile.
  */
@@ -89,7 +89,7 @@ export class StaffOnboardingService {
   }
 
   /**
-   * Fire after the caller's transaction has committed — never inside it, so
+   * Fire after the caller's transaction has committed - never inside it, so
    * a rollback can never leave a user holding an email that promised access
    * that doesn't exist.
    *
@@ -128,7 +128,7 @@ export class StaffOnboardingService {
     const role = await tx.role.findFirst({ where: { organizationId, systemRole } })
     if (!role) {
       throw new NotFoundException(
-        `No '${systemRole}' role is configured for this organization — an administrator must create it first`,
+        `No '${systemRole}' role is configured for this organization - an administrator must create it first`,
       )
     }
     return role

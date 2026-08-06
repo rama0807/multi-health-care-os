@@ -15,7 +15,7 @@ export interface ReceiptPdfData {
 }
 
 /**
- * Printable payment receipt — hospital branding + a QR placeholder (see
+ * Printable payment receipt - hospital branding + a QR placeholder (see
  * `billing-invoice-pdf.ts`'s doc comment for why it's a disclosed visual
  * placeholder, not a real scannable payment code).
  */
@@ -55,7 +55,7 @@ export async function generateReceiptPdf(data: ReceiptPdfData): Promise<Buffer> 
     doc.moveDown(0.5)
     doc.font('Helvetica-Bold').fontSize(14).text(`Amount received: ${data.currency} ${data.amount}`)
 
-    // QR placeholder — no real payment gateway is configured (see the
+    // QR placeholder - no real payment gateway is configured (see the
     // invoice PDF's doc comment for the same disclosed practice).
     doc.moveDown(1.5)
     doc.rect(40, doc.y, 60, 60).stroke()

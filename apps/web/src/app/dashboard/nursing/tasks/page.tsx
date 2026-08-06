@@ -129,7 +129,7 @@ export default function NursingTasksQueuePage() {
                   <TableCell>
                     <StatusBadge status={t.priority} />
                   </TableCell>
-                  <TableCell className="text-sm">{t.dueAt ? formatDateTime(t.dueAt) : '—'}</TableCell>
+                  <TableCell className="text-sm">{t.dueAt ? formatDateTime(t.dueAt) : '-'}</TableCell>
                   <TableCell>
                     <StatusBadge status={t.status} />
                   </TableCell>

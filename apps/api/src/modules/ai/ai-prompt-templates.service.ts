@@ -22,7 +22,7 @@ export interface ResolvedPromptTemplate extends PromptTemplateDefinition {
  * overrides one per organization when it is the highest active version for
  * that (organization, feature). This means an empty database is a working
  * database, and an org can roll back simply by deactivating its override
- * (ADR-0023). Editing is version-add-only — rows are never mutated in place,
+ * (ADR-0023). Editing is version-add-only - rows are never mutated in place,
  * mirroring `ClinicalNote`/`RadiologyReport`'s append-only precedent.
  */
 @Injectable()
@@ -48,7 +48,7 @@ export class AiPromptTemplatesService {
     return { ...DEFAULT_PROMPT_TEMPLATES[feature], version: 0, isBuiltIn: true }
   }
 
-  /** Every feature's effective template — an override where one exists, otherwise the default. */
+  /** Every feature's effective template - an override where one exists, otherwise the default. */
   async listEffective(organizationId: string): Promise<AiPromptTemplate[]> {
     return Promise.all(
       AI_FEATURES.map(async (feature) => {

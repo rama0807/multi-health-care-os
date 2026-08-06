@@ -73,7 +73,7 @@ function PurchaseOrdersPageInner() {
   return (
     <PageLayout
       title="Purchase Orders"
-      description="Orders placed with a vendor — optionally converted from an approved request."
+      description="Orders placed with a vendor - optionally converted from an approved request."
       actions={
         canCreate && (
           <Button onClick={() => setCreateOpen(true)}>

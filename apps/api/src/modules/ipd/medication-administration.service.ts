@@ -27,7 +27,7 @@ type DoseWithItem = PrismaMedicationAdministration & {
 }
 
 /**
- * Medication Administration Record — one row per scheduled/PRN/STAT dose
+ * Medication Administration Record - one row per scheduled/PRN/STAT dose
  * instance. Reuses `Prescription`/`PrescriptionItem` as the source of what's
  * prescribed (see ADR-0019); this service owns only the admin-log lifecycle.
  */

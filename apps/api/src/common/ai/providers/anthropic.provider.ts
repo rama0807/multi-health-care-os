@@ -76,7 +76,7 @@ export class AnthropicProvider implements AiProviderAdapter {
     const response = await this.dispatch(request, true)
 
     // Input tokens arrive on `message_start`, output tokens on `message_delta`
-    // — they must be joined before a usage event can be emitted.
+    // - they must be joined before a usage event can be emitted.
     let promptTokens: number | null = null
 
     for await (const line of readLines(response.body)) {

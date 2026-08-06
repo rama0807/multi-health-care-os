@@ -101,7 +101,7 @@ export default function PlatformAuditPage() {
                 <TableCell>{row.resource}</TableCell>
                 <TableCell>{row.userEmail ?? 'System'}</TableCell>
                 <TableCell className="text-xs text-muted-foreground">
-                  {row.ipAddress ?? '—'}
+                  {row.ipAddress ?? '-'}
                 </TableCell>
               </TableRow>
             ))}
@@ -136,7 +136,7 @@ export default function PlatformAuditPage() {
       )}
 
       <p className="text-xs text-muted-foreground">
-        Before/after snapshots are omitted from this cross-tenant view — they can contain tenant
+        Before/after snapshots are omitted from this cross-tenant view - they can contain tenant
         business data. Open the tenant&apos;s own audit log for the full record.
       </p>
     </div>

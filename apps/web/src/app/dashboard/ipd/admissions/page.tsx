@@ -226,7 +226,7 @@ function AdmitPatientWizard({
       void queryClient.invalidateQueries({ queryKey: ['ipd', 'beds', 'list'] })
       void queryClient.invalidateQueries({ queryKey: ['ipd', 'wards', 'list'] })
       void queryClient.invalidateQueries({ queryKey: ['ipd', 'dashboard-stats'] })
-      toast({ title: `Admitted — ${created.admissionNumber}` })
+      toast({ title: `Admitted - ${created.admissionNumber}` })
       onOpenChange(false)
       reset()
       router.push(`/dashboard/ipd/${created.id}`)
@@ -301,7 +301,7 @@ function AdmitPatientWizard({
                 <SelectContent>
                   {doctorsQuery.data?.data.map((d) => (
                     <SelectItem key={d.id} value={d.id}>
-                      {d.fullName} — {d.specialization}
+                      {d.fullName} - {d.specialization}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -364,7 +364,7 @@ function AdmitPatientWizard({
                 }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Room (optional — can allocate later)" />
+                  <SelectValue placeholder="Room (optional - can allocate later)" />
                 </SelectTrigger>
                 <SelectContent>
                   {roomsQuery.data?.data.map((r) => (
@@ -376,7 +376,7 @@ function AdmitPatientWizard({
               </Select>
               <Select value={bedId} onValueChange={setBedId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Bed (optional — can allocate later)" />
+                  <SelectValue placeholder="Bed (optional - can allocate later)" />
                 </SelectTrigger>
                 <SelectContent>
                   {bedsQuery.data?.data.map((b) => (

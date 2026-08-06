@@ -12,7 +12,7 @@ import { Prisma, NotificationPreference as PrismaNotificationPreference } from '
 
 import { PrismaService } from '../../prisma/prisma.service'
 
-/** Channels a user may switch on or off. IN_APP is always on — see below. */
+/** Channels a user may switch on or off. IN_APP is always on - see below. */
 const TOGGLEABLE: Array<{ channel: NotificationChannel; field: keyof PrismaNotificationPreference }> = [
   { channel: NotificationChannel.EMAIL, field: 'emailEnabled' },
   { channel: NotificationChannel.PUSH, field: 'pushEnabled' },
@@ -115,7 +115,7 @@ export class NotificationPreferenceService {
   /**
    * Whether one channel may carry one notification for one user, and why not.
    *
-   * `at` is the moment the decision is made — passed in rather than read from
+   * `at` is the moment the decision is made - passed in rather than read from
    * the clock so the quiet-hours rule is testable and so a delivery retried
    * hours later is re-evaluated against the time it actually goes out.
    */
@@ -130,7 +130,7 @@ export class NotificationPreferenceService {
 
     // SILENT is written to the centre and goes nowhere else, by definition.
     if (priority === NotificationPriority.SILENT && channel !== NotificationChannel.IN_APP) {
-      return { allowed: false, reason: 'Silent priority — in-app only' }
+      return { allowed: false, reason: 'Silent priority - in-app only' }
     }
 
     const categoryPreference = preference.categoryPreferences[category]

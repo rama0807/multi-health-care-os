@@ -148,7 +148,7 @@ export default function NotificationAdminPage() {
                 </Table>
               </TableContainer>
               <p className="mt-3 text-xs text-muted-foreground">
-                &ldquo;Suppressed&rdquo; means a channel was skipped before any attempt — muted category, quiet
+                &ldquo;Suppressed&rdquo; means a channel was skipped before any attempt - muted category, quiet
                 hours, or no address on file. It is deliberately excluded from the success rate.
               </p>
             </CardContent>
@@ -278,7 +278,7 @@ function HistoryTable({
             {showDeliveries &&
               notification.deliveries?.map((delivery) => (
                 <p key={delivery.id} className="text-xs text-danger">
-                  {humanCategory(delivery.channel)} — {delivery.failureReason} (attempt {delivery.attempts})
+                  {humanCategory(delivery.channel)} - {delivery.failureReason} (attempt {delivery.attempts})
                 </p>
               ))}
 
@@ -407,7 +407,7 @@ function SendTab() {
           placeholder="NURSE, RECEPTIONIST"
         />
         <p className="text-xs text-muted-foreground">
-          Comma-separated system roles or custom role names. There is no user picker yet — see TECH_DEBT.
+          Comma-separated system roles or custom role names. There is no user picker yet - see TECH_DEBT.
         </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-3">

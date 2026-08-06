@@ -34,7 +34,7 @@ export class ClinicalNotesService {
   }
 
   /**
-   * Always inserts a new version — never updates an existing row. This is
+   * Always inserts a new version - never updates an existing row. This is
    * the entire enforcement of "never overwrite historical notes" (ADR-0008):
    * there is deliberately no `update` method on this service.
    */

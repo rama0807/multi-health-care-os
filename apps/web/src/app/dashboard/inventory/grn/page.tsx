@@ -72,7 +72,7 @@ function GoodsReceiptPageInner() {
   return (
     <PageLayout
       title="Goods Receipt Notes"
-      description="Physical receipt of goods against a sent purchase order — updates stock on completion."
+      description="Physical receipt of goods against a sent purchase order - updates stock on completion."
       actions={
         canCreate && (
           <Button onClick={() => setCreateOpen(true)}>
@@ -223,7 +223,7 @@ function CreateGrnDialog({ open, onOpenChange, fromPoId }: { open: boolean; onOp
               <SelectContent>
                 {(eligiblePosQuery.data?.data ?? []).map((po) => (
                   <SelectItem key={po.id} value={po.id}>
-                    {po.poNumber} — {po.vendor.name}
+                    {po.poNumber} - {po.vendor.name}
                   </SelectItem>
                 ))}
               </SelectContent>

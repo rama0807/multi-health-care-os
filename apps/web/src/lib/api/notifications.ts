@@ -27,7 +27,7 @@ import { apiClient } from './client'
  * Communication & Notification Platform client (Milestone 18).
  *
  * Three surfaces, matching the API's three controllers exactly:
- * `/notifications` (the caller's own centre — no permission needed),
+ * `/notifications` (the caller's own centre - no permission needed),
  * `/notifications/admin` (org-wide, permission-gated), and
  * `/platform/notifications` (platform owner only).
  */

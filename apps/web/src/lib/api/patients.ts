@@ -76,7 +76,7 @@ export async function uploadPatientDocument(
   form.append('documentType', documentType)
   form.append('file', file)
 
-  // Let the browser set its own multipart boundary — an explicit
+  // Let the browser set its own multipart boundary - an explicit
   // Content-Type here (or the instance's default application/json) would
   // ship without a boundary and the server couldn't parse the body.
   const { data } = await apiClient.post<{ data: PatientDocument }>(`/patients/${id}/documents`, form, {

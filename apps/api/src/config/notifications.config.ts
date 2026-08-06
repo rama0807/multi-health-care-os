@@ -6,7 +6,7 @@ import { registerAs } from '@nestjs/config'
  * Mirrors `ai.config.ts`'s placeholder handling: a value made of repeated `x`s
  * is a `.env.example` leftover, not a credential. Treating one as configured
  * would produce provider 401s that read like an outage instead of what they
- * are — nothing set up. Every channel therefore reports an honest
+ * are - nothing set up. Every channel therefore reports an honest
  * "not configured" and the delivery is recorded FAILED with that reason,
  * never marked sent (the same line TD-0015/TD-0027/TD-0041 already hold).
  */
@@ -39,13 +39,13 @@ export default registerAs('notifications', () => ({
   /**
    * The background worker that drains the retry queue and releases scheduled
    * notifications. Off under `NODE_ENV=test` by default so unit and e2e runs
-   * are deterministic — a timer firing mid-assertion is the classic source of
+   * are deterministic - a timer firing mid-assertion is the classic source of
    * a flaky suite.
    */
   workerEnabled: toBool(process.env.NOTIFICATIONS_WORKER_ENABLED, process.env.NODE_ENV !== 'test'),
   /** How often the worker ticks. */
   workerIntervalMs: toInt(process.env.NOTIFICATIONS_WORKER_INTERVAL_MS, 30_000),
-  /** Deliveries claimed per tick — bounds one tick's blast radius. */
+  /** Deliveries claimed per tick - bounds one tick's blast radius. */
   workerBatchSize: toInt(process.env.NOTIFICATIONS_WORKER_BATCH, 50),
 
   /** Attempts per channel before a delivery is FAILED for good. */
@@ -64,7 +64,7 @@ export default registerAs('notifications', () => ({
    * Firebase Cloud Messaging (Checkpoint 18.2). The three service-account
    * fields are what FCM's HTTP v1 API needs to mint an OAuth2 token; the
    * VAPID public key is what the *browser* needs to subscribe. Push is
-   * "configured" only when all four are present — a half-set of credentials
+   * "configured" only when all four are present - a half-set of credentials
    * cannot deliver anything and should say so rather than fail at send time.
    */
   fcm: {
@@ -77,7 +77,7 @@ export default registerAs('notifications', () => ({
 
   /**
    * SMS and WhatsApp are provider abstractions only, by explicit instruction
-   * for this milestone — no paid provider is integrated. `LOG` writes the
+   * for this milestone - no paid provider is integrated. `LOG` writes the
    * message to the application log and marks the delivery SENT with
    * `providerName: 'log'`, which is honest in development and must never be
    * used in production; anything else reports "not configured" and fails the

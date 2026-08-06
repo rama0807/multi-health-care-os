@@ -41,7 +41,7 @@ const col = (key: string, label: string, type: ReportColumnDef['type'] = 'string
 
 /**
  * Projects a registry entry down to the public definition, listing the fields
- * explicitly rather than spreading around `run` — the definition is what
+ * explicitly rather than spreading around `run` - the definition is what
  * crosses the API boundary, so it should be built by inclusion, not by
  * remembering to exclude the one field that must never be serialised.
  */
@@ -62,7 +62,7 @@ function toDefinition(entry: RegistryEntry): ReportDefinition {
  * Every runnable report is one entry pairing a `ReportDefinition` (what the
  * builder UI renders as filters and columns) with a `run` function that
  * reshapes an existing Checkpoint 17.1 service's output into flat rows.
- * Nothing here queries the database directly — the registry is a projection
+ * Nothing here queries the database directly - the registry is a projection
  * layer, so CSV, Excel and PDF export share exactly one code path and can
  * never drift from the on-screen report they came from.
  */
@@ -282,7 +282,7 @@ export class ReportRegistryService {
         label: 'Radiology machine load',
         module: 'Radiology',
         description:
-          'Studies and scheduled minutes per machine. Relative load only — this schema models no machine capacity.',
+          'Studies and scheduled minutes per machine. Relative load only - this schema models no machine capacity.',
         filters: CLINICAL_FILTERS,
         columns: [
           col('machine', 'Machine'),

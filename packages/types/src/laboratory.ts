@@ -5,7 +5,7 @@ import { AbnormalType, LabTestStatus, Priority } from './enums'
 // ─── Catalog ───────────────────────────────────────────────────────────────
 
 /**
- * Org-configurable catalog of orderable lab tests — see ADR-0012. A catalog
+ * Org-configurable catalog of orderable lab tests - see ADR-0012. A catalog
  * item may define a numeric reference range (`referenceRangeLow`/`High`,
  * used for automatic abnormal-value flagging), a free-text range (for
  * qualitative tests such as "Negative"/"Non-reactive"), or both.
@@ -160,7 +160,7 @@ export const EnterLabResultItemSchema = z.object({
   itemId: z.string().cuid(),
   result: z.string().min(1).max(500),
   /**
-   * Only honored for a non-numeric ("qualitative") result — a numeric
+   * Only honored for a non-numeric ("qualitative") result - a numeric
    * result is always auto-flagged server-side and this is ignored for it.
    * See `abnormal-flagging.ts`.
    */

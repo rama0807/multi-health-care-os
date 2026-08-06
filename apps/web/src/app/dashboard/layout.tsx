@@ -32,7 +32,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header />
         {/*
-         * The main region is the only scroll container in the shell — the
+         * The main region is the only scroll container in the shell - the
          * sidebar and header stay put, which is what lets tables inside a page
          * use sticky headers of their own without two scrollbars fighting.
          */}

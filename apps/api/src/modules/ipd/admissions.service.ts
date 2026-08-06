@@ -55,7 +55,7 @@ type AdmissionWithRelations = PrismaAdmission & {
   } | null
 }
 
-/** Admit / cancel workflow — see ADR-0018. Discharge is Checkpoint 12.2. */
+/** Admit / cancel workflow - see ADR-0018. Discharge is Checkpoint 12.2. */
 @Injectable()
 export class AdmissionsService {
   constructor(
@@ -315,7 +315,7 @@ export class AdmissionsService {
     return this.getById(organizationId, id)
   }
 
-  /** `ipd.admissions.*` can be held at `.own` scope — a doctor manages only admissions where they're attending. */
+  /** `ipd.admissions.*` can be held at `.own` scope - a doctor manages only admissions where they're attending. */
   async assertOwnScopeOk(organizationId: string, id: string, user: JwtPayload, action: string): Promise<void> {
     const scope = this.permissionsService.getScope(user, 'ipd.admissions', action)
     if (scope !== 'own') return

@@ -2,7 +2,7 @@
  * Shared helpers for the demo-data seed (`prisma/seed-demo.ts`).
  *
  * Randomness is deterministic (a fixed-seed LCG) so re-running the seed
- * produces the same dataset — demo screenshots, e2e expectations and manual
+ * produces the same dataset - demo screenshots, e2e expectations and manual
  * walkthroughs stay stable across runs rather than shifting every time.
  */
 
@@ -10,12 +10,12 @@ const SEED = 20260805
 
 let state = SEED
 
-/** Reset the PRNG — called at the start of every seed run for determinism. */
+/** Reset the PRNG - called at the start of every seed run for determinism. */
 export function resetRandom(): void {
   state = SEED
 }
 
-/** Linear congruential generator — deterministic, adequate for demo data. */
+/** Linear congruential generator - deterministic, adequate for demo data. */
 export function rnd(): number {
   state = (state * 1664525 + 1013904223) % 4294967296
   return state / 4294967296
@@ -42,7 +42,7 @@ export function chance(probability: number): boolean {
   return rnd() < probability
 }
 
-/** Round to 2 decimal places — every money value in this seed goes through this. */
+/** Round to 2 decimal places - every money value in this seed goes through this. */
 export function money(value: number): number {
   return Math.round(value * 100) / 100
 }

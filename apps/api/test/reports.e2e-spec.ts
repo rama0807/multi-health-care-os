@@ -38,7 +38,7 @@ describe('Reports & Analytics (e2e)', () => {
   let server: Parameters<typeof request>[0]
   let prisma: PrismaService
 
-  /** Org admin — holds both `reports.read` and `reports.export`. */
+  /** Org admin - holds both `reports.read` and `reports.export`. */
   let adminToken: string
   let orgId: string
 
@@ -93,7 +93,7 @@ describe('Reports & Analytics (e2e)', () => {
     prisma = app.get(PrismaService)
 
     // `reports.read`/`reports.export` already exist in the seed catalog, but
-    // an e2e database may predate them — upsert so this suite is standalone.
+    // an e2e database may predate them - upsert so this suite is standalone.
     for (const action of ['read', 'export']) {
       await prisma.permission.upsert({
         where: { resource_action_scope: { resource: 'reports', action, scope: 'all' } },
@@ -173,7 +173,7 @@ describe('Reports & Analytics (e2e)', () => {
     await app.close()
   })
 
-  // ── Checkpoint 17.1 — Operational reports ──────────────────────────────
+  // ── Checkpoint 17.1 - Operational reports ──────────────────────────────
 
   const OPERATIONAL_REPORTS = [
     'patients',
@@ -245,7 +245,7 @@ describe('Reports & Analytics (e2e)', () => {
     expect(theirs.body.data.registrations).toBe(0)
   })
 
-  // ── Checkpoint 17.2 — Executive dashboards ─────────────────────────────
+  // ── Checkpoint 17.2 - Executive dashboards ─────────────────────────────
 
   it.each(['ceo', 'medical-director', 'operations', 'finance'])(
     'GET /reports/dashboards/%s returns KPIs, charts and tables',
@@ -298,7 +298,7 @@ describe('Reports & Analytics (e2e)', () => {
       .expect(404)
   })
 
-  // ── Checkpoint 17.3 — Report builder ───────────────────────────────────
+  // ── Checkpoint 17.3 - Report builder ───────────────────────────────────
 
   it('lists every report definition with its filters and columns', async () => {
     const res = await request(server).get('/api/v1/reports/builder/definitions').set(auth()).expect(200)
@@ -378,7 +378,7 @@ describe('Reports & Analytics (e2e)', () => {
       .expect(403)
   })
 
-  // ── Checkpoint 17.3 — Saved reports ────────────────────────────────────
+  // ── Checkpoint 17.3 - Saved reports ────────────────────────────────────
 
   it('creates a saved report', async () => {
     const res = await request(server)

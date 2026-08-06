@@ -40,7 +40,7 @@ describe('AiClientService', () => {
       expect(service.getStatus().unavailableReason).toContain('AI_ENABLED=false')
     })
 
-    it('throws 503 when the provider has no credential — it never returns placeholder content', () => {
+    it('throws 503 when the provider has no credential - it never returns placeholder content', () => {
       const { service } = build(
         {},
         { isConfigured: () => false, missingConfigReason: () => 'OPENAI_API_KEY is not set' },
@@ -157,7 +157,7 @@ describe('AiClientService', () => {
       })
     })
 
-    it('estimates usage — and flags it as estimated — when the stream omits it', async () => {
+    it('estimates usage - and flags it as estimated - when the stream omits it', async () => {
       const { service, adapter } = build()
       adapter.stream.mockImplementation(function* () {
         yield { type: 'delta', text: '12345678' }
@@ -173,7 +173,7 @@ describe('AiClientService', () => {
       expect(outcome.completionTokens).toBe(2)
     })
 
-    it('makes exactly one attempt — retrying mid-stream would replay rendered text', async () => {
+    it('makes exactly one attempt - retrying mid-stream would replay rendered text', async () => {
       const { service, adapter } = build()
       adapter.stream.mockImplementation(function* () {
         yield { type: 'delta', text: 'partial' }

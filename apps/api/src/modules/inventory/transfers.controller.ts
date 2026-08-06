@@ -8,7 +8,7 @@ import { RequirePermissions } from '../../common/decorators/permissions.decorato
 import { CreateStockTransferDto } from './dto/create-stock-transfer.dto'
 import { TransfersService } from './transfers.service'
 
-/** Direct store-to-store stock transfers — see ADR-0020. */
+/** Direct store-to-store stock transfers - see ADR-0020. */
 @ApiTags('inventory-transfers')
 @ApiBearerAuth()
 @Controller({ path: 'inventory/transfers', version: '1' })

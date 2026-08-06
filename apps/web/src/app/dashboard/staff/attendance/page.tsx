@@ -104,9 +104,9 @@ export default function AttendancePage() {
                     <StatusBadge status={row.status} />
                     {row.isCorrected && <Badge variant="outline" className="ml-1">Corrected</Badge>}
                   </TableCell>
-                  <TableCell>{row.clockInAt ? new Date(row.clockInAt).toLocaleTimeString('en-IN') : '—'}</TableCell>
-                  <TableCell>{row.clockOutAt ? new Date(row.clockOutAt).toLocaleTimeString('en-IN') : '—'}</TableCell>
-                  <TableCell align="right">{row.workedMinutes ?? '—'}</TableCell>
+                  <TableCell>{row.clockInAt ? new Date(row.clockInAt).toLocaleTimeString('en-IN') : '-'}</TableCell>
+                  <TableCell>{row.clockOutAt ? new Date(row.clockOutAt).toLocaleTimeString('en-IN') : '-'}</TableCell>
+                  <TableCell align="right">{row.workedMinutes ?? '-'}</TableCell>
                   {canCorrect && (
                     <TableCell>
                       <Button variant="ghost" size="sm" onClick={() => setCorrecting(row)}>
@@ -165,7 +165,7 @@ function CorrectDialog({
     <Dialog open onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Correct attendance — {attendance.date}</DialogTitle>
+          <DialogTitle>Correct attendance - {attendance.date}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <Select value={status} onValueChange={(v) => setStatus(v as AttendanceStatus)}>

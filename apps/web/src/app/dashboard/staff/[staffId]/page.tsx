@@ -120,15 +120,15 @@ export default function StaffProfilePage() {
                 </div>
                 <div className="contents">
                   <dt className="text-muted-foreground">Phone</dt>
-                  <dd className="font-medium text-foreground">{staff.phone ?? '—'}</dd>
+                  <dd className="font-medium text-foreground">{staff.phone ?? '-'}</dd>
                 </div>
                 <div className="contents">
                   <dt className="text-muted-foreground">Hospital</dt>
-                  <dd className="font-medium text-foreground">{staff.hospital?.name ?? '—'}</dd>
+                  <dd className="font-medium text-foreground">{staff.hospital?.name ?? '-'}</dd>
                 </div>
                 <div className="contents">
                   <dt className="text-muted-foreground">Department</dt>
-                  <dd className="font-medium text-foreground">{staff.department?.name ?? '—'}</dd>
+                  <dd className="font-medium text-foreground">{staff.department?.name ?? '-'}</dd>
                 </div>
                 <div className="contents">
                   <dt className="text-muted-foreground">Employment type</dt>
@@ -137,7 +137,7 @@ export default function StaffProfilePage() {
                 <div className="contents">
                   <dt className="text-muted-foreground">Reports to</dt>
                   <dd className="font-medium text-foreground">
-                    {staff.reportsTo ? `${staff.reportsTo.fullName} (${staff.reportsTo.designation})` : '—'}
+                    {staff.reportsTo ? `${staff.reportsTo.fullName} (${staff.reportsTo.designation})` : '-'}
                   </dd>
                 </div>
                 <div className="contents">
@@ -147,13 +147,13 @@ export default function StaffProfilePage() {
                 <div className="contents">
                   <dt className="text-muted-foreground">Date of leaving</dt>
                   <dd className="font-medium text-foreground">
-                    {staff.dateOfLeaving ? new Date(staff.dateOfLeaving).toLocaleDateString('en-IN') : '—'}
+                    {staff.dateOfLeaving ? new Date(staff.dateOfLeaving).toLocaleDateString('en-IN') : '-'}
                   </dd>
                 </div>
                 <div className="contents">
                   <dt className="text-muted-foreground">Monthly salary</dt>
                   <dd className="font-medium text-foreground">
-                    {staff.monthlySalary ? `₹${staff.monthlySalary.toLocaleString('en-IN')}` : '—'}
+                    {staff.monthlySalary ? `₹${staff.monthlySalary.toLocaleString('en-IN')}` : '-'}
                   </dd>
                 </div>
               </dl>
@@ -293,9 +293,9 @@ function AttendanceTab({ staffId }: { staffId: string }) {
                   <TableCell>
                     <Badge variant="outline">{formatEnumLabel(day.status)}</Badge>
                   </TableCell>
-                  <TableCell>{day.clockInAt ? new Date(day.clockInAt).toLocaleTimeString('en-IN') : '—'}</TableCell>
-                  <TableCell>{day.clockOutAt ? new Date(day.clockOutAt).toLocaleTimeString('en-IN') : '—'}</TableCell>
-                  <TableCell align="right">{day.workedMinutes ?? '—'}</TableCell>
+                  <TableCell>{day.clockInAt ? new Date(day.clockInAt).toLocaleTimeString('en-IN') : '-'}</TableCell>
+                  <TableCell>{day.clockOutAt ? new Date(day.clockOutAt).toLocaleTimeString('en-IN') : '-'}</TableCell>
+                  <TableCell align="right">{day.workedMinutes ?? '-'}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

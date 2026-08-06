@@ -81,7 +81,7 @@ describe('Doctor documents + audit timeline (e2e)', () => {
       { resource: 'doctors', action: 'read', scope: 'all' },
       // The Doctor role below is granted `doctors.read` at `own` scope so it
       // can read its own audit timeline. This row must be upserted here rather
-      // than assumed — otherwise the suite passes only against a test database
+      // than assumed - otherwise the suite passes only against a test database
       // that happens to have been seeded by `seed.ts` beforehand.
       { resource: 'doctors', action: 'read', scope: 'own' },
       { resource: 'doctors', action: 'create', scope: 'all' },
@@ -199,7 +199,7 @@ describe('Doctor documents + audit timeline (e2e)', () => {
     secondDoctorId = secondDoctorRes.body.data.id
 
     // The onboarding email carries a randomly-generated temporary password
-    // that isn't returned over the API — reset it directly so this suite can
+    // that isn't returned over the API - reset it directly so this suite can
     // log in as the doctor to exercise `.own`-scoped permission checks.
     await prisma.user.update({
       where: { email: doctorEmail },

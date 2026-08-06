@@ -15,7 +15,7 @@ process.env.COOKIE_SECRET ??= 'e2e-test-cookie-secret'
 process.env.FRONTEND_URL ??= 'http://localhost:3000'
 process.env.STORAGE_PROVIDER ??= 'local'
 process.env.LOCAL_STORAGE_PATH ??= './uploads-e2e-test'
-// The worker stays off so the suite drives `tick()` explicitly — a timer
+// The worker stays off so the suite drives `tick()` explicitly - a timer
 // firing between a request and its assertion is the classic flaky-suite bug.
 process.env.NOTIFICATIONS_WORKER_ENABLED = 'false'
 
@@ -44,7 +44,7 @@ describe('Communication & Notification Platform (e2e)', () => {
   let prisma: PrismaService
   let scheduler: NotificationSchedulerService
 
-  /** Org admin — holds every `notifications.*` permission. */
+  /** Org admin - holds every `notifications.*` permission. */
   let adminToken: string
   let orgId: string
 
@@ -103,7 +103,7 @@ describe('Communication & Notification Platform (e2e)', () => {
     prisma = app.get(PrismaService)
     scheduler = app.get(NotificationSchedulerService)
 
-    // An e2e database may predate this milestone's permissions — upsert so the
+    // An e2e database may predate this milestone's permissions - upsert so the
     // suite stands alone, mirroring what `reports.e2e-spec.ts` already does.
     for (const action of ['read', 'send', 'manage']) {
       await prisma.permission.upsert({
@@ -145,7 +145,7 @@ describe('Communication & Notification Platform (e2e)', () => {
     orgId = (await prisma.organization.findUniqueOrThrow({ where: { slug: orgSlug } })).id
 
     // The org admin role was created before these permissions existed in this
-    // database, so top it up — `syncRolePermissions` does the same in the seed.
+    // database, so top it up - `syncRolePermissions` does the same in the seed.
     const notificationPermissions = await prisma.permission.findMany({
       where: { resource: { in: ['notifications'] } },
     })
@@ -160,7 +160,7 @@ describe('Communication & Notification Platform (e2e)', () => {
       })
     }
 
-    // A user with a role that grants nothing — used to prove the inbox needs
+    // A user with a role that grants nothing - used to prove the inbox needs
     // no permission while the admin console does.
     const argon2 = await import('argon2')
     const plainRole = await prisma.role.create({
@@ -197,7 +197,7 @@ describe('Communication & Notification Platform (e2e)', () => {
     await app.close()
   })
 
-  // ── Checkpoint 18.1 — sending & the queue ────────────────────────────────
+  // ── Checkpoint 18.1 - sending & the queue ────────────────────────────────
 
   let sentNotificationId: string
 
@@ -247,7 +247,7 @@ describe('Communication & Notification Platform (e2e)', () => {
     expect(inApp?.status).toBe('SENT')
 
     // Push has no FCM credential in this environment, so it must record an
-    // explicit failure — never a fabricated success.
+    // explicit failure - never a fabricated success.
     const push = deliveries.find((d) => d.channel === 'PUSH')
     expect(push?.status).toBe('FAILED')
     expect(push?.failureReason).toMatch(/not configured|no registered push device/i)
@@ -258,7 +258,7 @@ describe('Communication & Notification Platform (e2e)', () => {
     // database it also clears whatever earlier runs left queued.
   }, 60_000)
 
-  // ── Checkpoint 18.3 — the notification centre ────────────────────────────
+  // ── Checkpoint 18.3 - the notification centre ────────────────────────────
 
   it('lets any authenticated user read their own centre with no permission', async () => {
     const res = await request(server).get('/api/v1/notifications').set(plainAuth()).expect(200)
@@ -327,7 +327,7 @@ describe('Communication & Notification Platform (e2e)', () => {
     expect(res.body.data.data.length).toBeGreaterThan(0)
   })
 
-  // ── Checkpoint 18.5 — preferences ────────────────────────────────────────
+  // ── Checkpoint 18.5 - preferences ────────────────────────────────────────
 
   it('returns working defaults for a user who has never set preferences', async () => {
     const res = await request(server).get('/api/v1/notifications/preferences').set(plainAuth()).expect(200)
@@ -371,7 +371,7 @@ describe('Communication & Notification Platform (e2e)', () => {
       include: { deliveries: true },
     })
 
-    // A muted category is SKIPPED, not FAILED — nothing was attempted, so it
+    // A muted category is SKIPPED, not FAILED - nothing was attempted, so it
     // must not depress the delivery success rate.
     for (const delivery of notification.deliveries) {
       expect(delivery.status).toBe('SKIPPED')
@@ -412,7 +412,7 @@ describe('Communication & Notification Platform (e2e)', () => {
       .expect(400)
   })
 
-  // ── Checkpoint 18.2 — devices ────────────────────────────────────────────
+  // ── Checkpoint 18.2 - devices ────────────────────────────────────────────
 
   it('reports honestly that browser push is not configured', async () => {
     const res = await request(server)
@@ -470,7 +470,7 @@ describe('Communication & Notification Platform (e2e)', () => {
     expect(row.deactivatedAt).not.toBeNull()
   })
 
-  // ── Checkpoint 18.6 — admin console ──────────────────────────────────────
+  // ── Checkpoint 18.6 - admin console ──────────────────────────────────────
 
   it('denies the org-wide console to a user without notifications.read', async () => {
     await request(server).get('/api/v1/notifications/admin/history').set(plainAuth()).expect(403)
@@ -506,7 +506,7 @@ describe('Communication & Notification Platform (e2e)', () => {
       (row: { channel: string }) => row.channel === 'WHATSAPP',
     )
     expect(whatsapp.attempted).toBe(0)
-    // Never a misleading `0.00` — nothing was attempted on this channel.
+    // Never a misleading `0.00` - nothing was attempted on this channel.
     expect(whatsapp.successRate).toBeNull()
   })
 
@@ -575,7 +575,7 @@ describe('Communication & Notification Platform (e2e)', () => {
     expect(first.body.data.version).toBe(1)
 
     const second = await create()
-    // Editing never overwrites — the previous wording stays recoverable.
+    // Editing never overwrites - the previous wording stays recoverable.
     expect(second.body.data.version).toBe(2)
 
     const versions = await request(server)
@@ -614,7 +614,7 @@ describe('Communication & Notification Platform (e2e)', () => {
         variables: { patientName: 'Asha Rao', testName: 'CBC' },
       })
       .expect(201)
-    expect(reverted.body.data.subject).toBe('Lab report ready — CBC')
+    expect(reverted.body.data.subject).toBe('Lab report ready - CBC')
   })
 
   it('renders a missing template variable as a gap, never as raw braces', async () => {
@@ -691,7 +691,7 @@ describe('Communication & Notification Platform (e2e)', () => {
       .expect(400)
   })
 
-  // ── Checkpoint 18.4 — event integration ──────────────────────────────────
+  // ── Checkpoint 18.4 - event integration ──────────────────────────────────
 
   it('notifies the treating doctor when an appointment is booked, and schedules a reminder', async () => {
     // Built through the real modules so the notification comes from the event

@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common'
 
 import { PrismaService } from '../../prisma/prisma.service'
 
-/** "Today's Claims / Pending Approval / Rejected / Settled / Insurance Revenue / Outstanding" — see ADR-0016. */
+/** "Today's Claims / Pending Approval / Rejected / Settled / Insurance Revenue / Outstanding" - see ADR-0016. */
 @Injectable()
 export class InsuranceDashboardService {
   constructor(private readonly prisma: PrismaService) {}

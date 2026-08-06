@@ -36,7 +36,7 @@ import { PrismaService } from '../src/prisma/prisma.service'
 /**
  * No AI provider credential exists in this environment (`apps/api/.env` ships
  * placeholder `sk-xxxxxxxxxxxx` values), so these tests assert the *configured-
- * off contract* — RBAC, validation, the status endpoint, prompt-template
+ * off contract* - RBAC, validation, the status endpoint, prompt-template
  * versioning, and an honest 503 on generation. They deliberately do NOT assert
  * generated clinical text, because none is produced without a real key
  * (ADR-0023 / TD-0041). Extend this suite once a key is available.
@@ -283,7 +283,7 @@ describe('AI Clinical Assistant (e2e)', () => {
   })
 
   describe('conversations and usage', () => {
-    it('lists conversations (empty — nothing generated without a credential)', async () => {
+    it('lists conversations (empty - nothing generated without a credential)', async () => {
       const res = await request(server).get('/api/v1/ai/conversations').set(authed()).expect(200)
 
       expect(res.body.data.data).toEqual([])

@@ -230,7 +230,7 @@ export class AttendanceService {
     }
   }
 
-  /** One calendar month of attendance for a single staff member — only days with a recorded row are returned. */
+  /** One calendar month of attendance for a single staff member - only days with a recorded row are returned. */
   async calendar(organizationId: string, staffId: string, month: string): Promise<Attendance[]> {
     await this.staffRef.requireStaff(organizationId, staffId)
     const [year, monthNum] = month.split('-').map(Number)

@@ -25,14 +25,14 @@ type AttendanceRow = {
 /**
  * Staff & attendance reporting (Checkpoint 17.1).
  *
- * Overtime deliberately reuses `ShiftsService.standardMinutes` — the same
- * rostered-shift rule `PayrollService` applies — instead of assuming a fixed
+ * Overtime deliberately reuses `ShiftsService.standardMinutes` - the same
+ * rostered-shift rule `PayrollService` applies - instead of assuming a fixed
  * workday. A second definition here would let payroll prep and the staff
  * report disagree about the same person's month, which is exactly the kind
  * of duplicated business logic this milestone is not allowed to introduce.
  *
  * `Attendance.date` is a `@db.Date` column, so every comparison goes through
- * `toDbDateOnly` — the helper the attendance module writes with — so a report
+ * `toDbDateOnly` - the helper the attendance module writes with - so a report
  * can never straddle a row by an hour of timezone offset.
  */
 @Injectable()
@@ -114,7 +114,7 @@ export class StaffReportsService {
   }
 
   /**
-   * Overtime is only defined against a rostered shift — an attendance row
+   * Overtime is only defined against a rostered shift - an attendance row
    * with no shift has no standard to exceed, so it contributes zero rather
    * than being measured against an invented default day.
    */
@@ -130,7 +130,7 @@ export class StaffReportsService {
   }
 
   /**
-   * Leave days are clipped to the reporting window — a two-week leave that
+   * Leave days are clipped to the reporting window - a two-week leave that
    * starts before the window contributes only the days that fall inside it,
    * so two adjacent monthly reports sum to the same total as one report over
    * the combined span.
@@ -139,7 +139,7 @@ export class StaffReportsService {
     let days = 0
     for (const leave of leaves) {
       const start = leave.startDate > from ? leave.startDate : from
-      // `endDate` is inclusive, `to` is exclusive — push the former out by a
+      // `endDate` is inclusive, `to` is exclusive - push the former out by a
       // day before clipping so a single-day leave counts as one, not zero.
       const endExclusive = new Date(leave.endDate.getTime() + MS_PER_DAY)
       const end = endExclusive < to ? endExclusive : to
@@ -159,7 +159,7 @@ export class StaffReportsService {
 
     return groups
       .map((group) => ({
-        // Staff with no department are a real category, not an error — they
+        // Staff with no department are a real category, not an error - they
         // are shown as "Unassigned" rather than dropped from the headcount.
         label: group.departmentId ? (nameById.get(group.departmentId) ?? 'Unknown') : 'Unassigned',
         count: group._count,
@@ -196,7 +196,7 @@ export class StaffReportsService {
           attendanceRatePercent: percentOf(present, own.length),
         }
       })
-      // Staff with no attendance rows in the window carry no signal — listing
+      // Staff with no attendance rows in the window carry no signal - listing
       // them as 0% present would read as absenteeism rather than "not rostered".
       .filter((row) => row.present + row.late + row.absent + row.onLeave > 0)
       .sort((a, b) => b.attendanceRatePercent - a.attendanceRatePercent)

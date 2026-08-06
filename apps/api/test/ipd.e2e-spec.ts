@@ -116,7 +116,7 @@ describe('IPD & Bed Management (e2e)', () => {
 
     const org = await prisma.organization.findUniqueOrThrow({ where: { slug: orgSlug } })
     // `StaffOnboardingService` (used by `DoctorsService.create`) requires a
-    // 'DOCTOR'-system-role row to already exist for the org — the demo org
+    // 'DOCTOR'-system-role row to already exist for the org - the demo org
     // gets one from `seed.ts`'s ROLE_SPECS, but a register()-created test org
     // doesn't, so it must be created explicitly (mirrors prescriptions.e2e-spec.ts).
     await prisma.role.create({
@@ -396,7 +396,7 @@ describe('IPD & Bed Management (e2e)', () => {
   })
 
   it('cancels the admission and releases its bed', async () => {
-    // The admission was vacated (no bed) in the previous test — re-allocate
+    // The admission was vacated (no bed) in the previous test - re-allocate
     // bed2 first so this test genuinely exercises cancel's bed-release path.
     await request(server).patch(`/api/v1/ipd/beds/${bed2Id}`).set(authed()).send({ status: 'AVAILABLE' }).expect(200)
     await request(server)

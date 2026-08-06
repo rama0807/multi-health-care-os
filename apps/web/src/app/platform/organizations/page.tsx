@@ -357,7 +357,7 @@ export default function PlatformOrganizationsPage() {
       <Dialog open={Boolean(planTarget)} onOpenChange={(open) => !open && setPlanTarget(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Subscription — {planTarget?.name}</DialogTitle>
+            <DialogTitle>Subscription - {planTarget?.name}</DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
@@ -417,7 +417,7 @@ export default function PlatformOrganizationsPage() {
             />
           </div>
           <p className="text-xs text-muted-foreground">
-            Leave a limit blank for unlimited. No payment gateway is connected — this records the
+            Leave a limit blank for unlimited. No payment gateway is connected - this records the
             commercial agreement only.
           </p>
           <DialogFooter>

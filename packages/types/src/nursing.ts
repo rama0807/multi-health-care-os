@@ -97,7 +97,7 @@ export interface IntakeOutputRecord {
   otherOutputMl: number | null
   notes: string | null
   recordedByUserId: string
-  /** Server-computed at read time from the intake/output fields above — not persisted (mirrors `Vital.bmi`'s computed-field precedent). */
+  /** Server-computed at read time from the intake/output fields above - not persisted (mirrors `Vital.bmi`'s computed-field precedent). */
   totalIntakeMl: number
   totalOutputMl: number
   balanceMl: number

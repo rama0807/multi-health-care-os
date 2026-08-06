@@ -5,7 +5,7 @@ import { FastifyRequest } from 'fastify'
 /**
  * Isolates the Platform Owner console (Checkpoint 16.2).
  *
- * This is an *additional* gate, never a replacement for `PermissionsGuard` —
+ * This is an *additional* gate, never a replacement for `PermissionsGuard` -
  * every `/platform/*` route still carries `@RequirePermissions('platform.…')`
  * and both must pass. Membership of the platform tenant alone grants nothing,
  * and holding a `platform.*` permission inside a customer organization grants
@@ -20,7 +20,7 @@ export class PlatformGuard implements CanActivate {
     const user = request.user
 
     if (!user?.isPlatform) {
-      // Deliberately the same generic message a missing permission produces —
+      // Deliberately the same generic message a missing permission produces -
       // the console's existence isn't advertised to tenant users.
       throw new ForbiddenException('Access denied')
     }

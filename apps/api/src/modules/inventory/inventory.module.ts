@@ -30,7 +30,7 @@ import { VendorsController } from './vendors.controller'
 import { VendorsService } from './vendors.service'
 
 /**
- * General Hospital Inventory & Procurement (Milestone 13 / ADR-0020) —
+ * General Hospital Inventory & Procurement (Milestone 13 / ADR-0020) -
  * item master, stores, stock ledger, procurement (PR -> PO -> GRN ->
  * vendor invoice), vendor management, internal requisitions, asset
  * management, and stock audit. Replaces the 3-line no-op scaffold and the

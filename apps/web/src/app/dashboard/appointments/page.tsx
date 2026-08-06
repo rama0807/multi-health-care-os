@@ -95,7 +95,7 @@ function addDays(dateStr: string, days: number): string {
 }
 
 /**
- * Only the primary forward transition is surfaced as a one-click button —
+ * Only the primary forward transition is surfaced as a one-click button -
  * the state machine (see ADR-0006 / AppointmentsService.ALLOWED_TRANSITIONS)
  * also permits Cancel/No-show from most states, which live in the overflow
  * menu instead of competing for primary-button space.
@@ -199,7 +199,7 @@ export default function AppointmentsPage() {
             <SelectItem value="all">All doctors</SelectItem>
             {doctorsQuery.data?.data.map((d) => (
               <SelectItem key={d.id} value={d.id}>
-                Dr. {d.fullName} — {d.specialization}
+                Dr. {d.fullName} - {d.specialization}
               </SelectItem>
             ))}
           </SelectContent>
@@ -476,7 +476,7 @@ function WalkInDialog({
         <DialogHeader>
           <DialogTitle>Walk-in patient</DialogTitle>
           <DialogDescription>
-            Slots the patient into the doctor&apos;s next available opening today — no need to pick a time.
+            Slots the patient into the doctor&apos;s next available opening today - no need to pick a time.
           </DialogDescription>
         </DialogHeader>
 
@@ -772,7 +772,7 @@ function BookAppointmentDialog({
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Each occurrence is booked independently — one that conflicts with an existing appointment is
+                Each occurrence is booked independently - one that conflicts with an existing appointment is
                 skipped and reported, not silently dropped.
               </p>
             </>

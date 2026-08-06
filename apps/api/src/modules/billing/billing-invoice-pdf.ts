@@ -27,10 +27,10 @@ export interface InvoicePdfData {
 }
 
 /**
- * A structured, system-generated invoice — itemized with per-line GST
+ * A structured, system-generated invoice - itemized with per-line GST
  * breakdown, org branding (name/address/GSTIN), and a QR placeholder (no
- * real UPI/payment-gateway integration is configured in this repo — see
- * TECH_DEBT — so this is a disclosed visual placeholder, not a scannable
+ * real UPI/payment-gateway integration is configured in this repo - see
+ * TECH_DEBT - so this is a disclosed visual placeholder, not a scannable
  * payment code, the same "disclosed placeholder" practice as the
  * DICOM/ICD-10 placeholders in earlier milestones).
  */
@@ -110,7 +110,7 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> 
       doc.font('Helvetica').text(data.notes)
     }
 
-    // QR placeholder — see this function's doc comment.
+    // QR placeholder - see this function's doc comment.
     doc.rect(50, doc.y + 20, 70, 70).stroke()
     doc.fontSize(7).text('QR (integration\npending)', 50, doc.y + 48, { width: 70, align: 'center' })
 

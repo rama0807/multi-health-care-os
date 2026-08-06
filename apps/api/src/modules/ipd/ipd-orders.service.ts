@@ -14,7 +14,7 @@ import { PrismaService } from '../../prisma/prisma.service'
 
 import { AdmissionsService } from './admissions.service'
 
-/** Doctor orders against an admission — diet/fluid/activity/oxygen/isolation. */
+/** Doctor orders against an admission - diet/fluid/activity/oxygen/isolation. */
 @Injectable()
 export class IpdOrdersService {
   constructor(

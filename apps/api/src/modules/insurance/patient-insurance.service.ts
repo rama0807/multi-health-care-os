@@ -23,7 +23,7 @@ const PATIENT_INSURANCE_INCLUDE = {
 
 /**
  * A patient's enrollment in a plan ("each patient may have Primary
- * Insurance, Secondary Insurance") — see ADR-0016. Not own-scoped: any
+ * Insurance, Secondary Insurance") - see ADR-0016. Not own-scoped: any
  * staff member handling billing/claims for this patient needs it, not just
  * the treating doctor.
  */
@@ -64,7 +64,7 @@ export class PatientInsuranceService {
     })
     if (existingActive) {
       throw new ConflictException(
-        `Patient already has an active ${dto.type.toLowerCase()} insurance — expire or deactivate it first`,
+        `Patient already has an active ${dto.type.toLowerCase()} insurance - expire or deactivate it first`,
       )
     }
 

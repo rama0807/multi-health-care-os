@@ -23,7 +23,7 @@ import { DoctorRefService } from '../scheduling/doctor-ref.service'
 
 /**
  * IN_PROGRESS is the only entry state (created that way). COMPLETED and
- * AMENDED can flip back and forth — a doctor may reopen a completed
+ * AMENDED can flip back and forth - a doctor may reopen a completed
  * encounter to correct/add something, which itself is recorded as an
  * amendment rather than silently rewriting a completed record.
  */

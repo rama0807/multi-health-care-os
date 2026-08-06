@@ -208,7 +208,7 @@ function NewDispenseDialog({
           <SelectContent>
             {prescriptionsQuery.data?.data.map((p) => (
               <SelectItem key={p.id} value={p.id}>
-                {p.prescriptionNumber} — {p.patient.fullName}
+                {p.prescriptionNumber} - {p.patient.fullName}
               </SelectItem>
             ))}
           </SelectContent>

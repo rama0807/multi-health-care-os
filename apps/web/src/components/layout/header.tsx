@@ -31,7 +31,7 @@ function initials(firstName: string, lastName: string): string {
  * The application command bar.
  *
  * Left: working context and global search. Right: the four things a clinical
- * user reaches for mid-task — tasks, AI, notifications, and their own account.
+ * user reaches for mid-task - tasks, AI, notifications, and their own account.
  *
  * Every destination here is permission-gated against a page that exists. An
  * icon button that opens a 403 or a 404 is worse than an absent one, because it
@@ -156,7 +156,7 @@ function IconLink({
  * Light / dark / system.
  *
  * Dark mode is a fully re-derived palette in this design system, not an
- * inversion, and a tenant's branding is derived separately for it — so this is
+ * inversion, and a tenant's branding is derived separately for it - so this is
  * a first-class control rather than a novelty. Renders a neutral placeholder
  * until mounted: reading the resolved theme during SSR is what causes the
  * icon to flip on hydration.

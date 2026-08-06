@@ -34,7 +34,7 @@ export default function PayrollPage() {
   return (
     <PageLayout
       title="Payroll Preparation"
-      description="Attendance summaries, overtime, and leave deductions — export only, no pay-run processing."
+      description="Attendance summaries, overtime, and leave deductions - export only, no pay-run processing."
       width="full"
       actions={
         <>
@@ -76,7 +76,7 @@ export default function PayrollPage() {
                     {entry.fullName}
                     <span className="ml-1 text-xs text-muted-foreground">({entry.employeeId})</span>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{entry.departmentName ?? '—'}</TableCell>
+                  <TableCell className="text-muted-foreground">{entry.departmentName ?? '-'}</TableCell>
                   <TableCell align="right">{entry.daysPresent}</TableCell>
                   <TableCell align="right">{entry.daysLate}</TableCell>
                   <TableCell align="right">{entry.daysHalfDay}</TableCell>
@@ -84,9 +84,9 @@ export default function PayrollPage() {
                   <TableCell align="right">{entry.paidLeaveDays}</TableCell>
                   <TableCell align="right">{entry.unpaidLeaveDays}</TableCell>
                   <TableCell align="right">{entry.overtimeMinutes}</TableCell>
-                  <TableCell align="right">{entry.overtimeAmount != null ? `₹${entry.overtimeAmount.toLocaleString('en-IN')}` : '—'}</TableCell>
+                  <TableCell align="right">{entry.overtimeAmount != null ? `₹${entry.overtimeAmount.toLocaleString('en-IN')}` : '-'}</TableCell>
                   <TableCell align="right">
-                    {entry.leaveDeductionAmount != null ? `₹${entry.leaveDeductionAmount.toLocaleString('en-IN')}` : '—'}
+                    {entry.leaveDeductionAmount != null ? `₹${entry.leaveDeductionAmount.toLocaleString('en-IN')}` : '-'}
                   </TableCell>
                   <TableCell align="right" className="font-medium">{entry.netPayableDays}</TableCell>
                 </TableRow>

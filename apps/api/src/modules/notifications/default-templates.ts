@@ -16,7 +16,7 @@ import { NotificationCategory, NotificationPriority, NotificationType } from '@m
  * wording per channel creates per-channel override rows.
  *
  * `deepLink` is where a click lands, and is the single place those routes are
- * defined — the push service worker, the in-app centre and the email button
+ * defined - the push service worker, the in-app centre and the email button
  * all read the rendered value rather than each building a URL.
  */
 export interface DefaultNotificationTemplate {
@@ -113,7 +113,7 @@ export const DEFAULT_NOTIFICATION_TEMPLATES: Record<NotificationType, DefaultNot
     category: NotificationCategory.LABORATORY,
     priority: NotificationPriority.LOW,
     icon: 'TestTube',
-    subject: 'Sample collected — {{testName}}',
+    subject: 'Sample collected - {{testName}}',
     body: 'The sample for {{testName}} ({{patientName}}) has been collected.',
     deepLink: '/dashboard/laboratory/orders/{{labTestId}}',
     variables: ['testName', 'patientName', 'labTestId'],
@@ -124,7 +124,7 @@ export const DEFAULT_NOTIFICATION_TEMPLATES: Record<NotificationType, DefaultNot
     category: NotificationCategory.LABORATORY,
     priority: NotificationPriority.HIGH,
     icon: 'FlaskConical',
-    subject: 'Lab report ready — {{testName}}',
+    subject: 'Lab report ready - {{testName}}',
     body: 'The {{testName}} report for {{patientName}} is ready.{{abnormalNote}}',
     deepLink: '/dashboard/laboratory/orders/{{labTestId}}',
     variables: ['testName', 'patientName', 'labTestId', 'abnormalNote'],
@@ -137,7 +137,7 @@ export const DEFAULT_NOTIFICATION_TEMPLATES: Record<NotificationType, DefaultNot
     category: NotificationCategory.RADIOLOGY,
     priority: NotificationPriority.HIGH,
     icon: 'Scan',
-    subject: 'Radiology report released — {{studyName}}',
+    subject: 'Radiology report released - {{studyName}}',
     body: 'The {{studyName}} report for {{patientName}} has been released.',
     deepLink: '/dashboard/radiology/{{radiologyOrderId}}',
     variables: ['studyName', 'patientName', 'radiologyOrderId'],

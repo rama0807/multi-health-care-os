@@ -26,7 +26,7 @@ import { EmptyState } from '@/components/ui/empty-state'
  * Chart primitives for the reports module (Milestone 17 Checkpoint 17.4).
  *
  * Uses `recharts`, which was already a dependency of this app (the encounter
- * weight-trend chart uses it) — no new chart library was added. Every chart is
+ * weight-trend chart uses it) - no new chart library was added. Every chart is
  * driven by the `DashboardChart` shape the API returns, so the backend decides
  * *what* is plotted and this file only decides how it looks.
  */
@@ -214,7 +214,7 @@ function renderChart(chart: DashboardChart): React.ReactElement {
 }
 
 /**
- * A categorical heatmap — one tile per row, shaded by its value relative to
+ * A categorical heatmap - one tile per row, shaded by its value relative to
  * the largest in the set. Recharts has no heatmap primitive, so this is a
  * plain CSS grid rather than an abused scatter chart; it also keeps the
  * numeric value visible, which a pure colour scale would hide.

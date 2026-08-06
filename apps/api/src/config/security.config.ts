@@ -29,7 +29,7 @@ const AUTH_THROTTLE_TTL_DEFAULT = 60
  * Deliberately not as small as a single user's credentials would suggest.
  *
  * The throttler keys on `request.ip`, and a hospital LAN puts every
- * workstation behind one NAT address — a limit tuned for one attacker would
+ * workstation behind one NAT address - a limit tuned for one attacker would
  * lock out a whole ward at shift change. Brute-force protection against a
  * *specific account* is the per-user lockout in `AuthService` (5 failed
  * attempts → temporary lock), which NAT cannot dilute. This tier is the
@@ -42,7 +42,7 @@ const AUTH_THROTTLE_LIMIT_DEFAULT = 20
  * The per-route override credential endpoints apply with `@Throttle(...)`.
  *
  * Reads `process.env` directly rather than `ConfigService` because a decorator
- * is evaluated when its class is *loaded* — before the DI container exists.
+ * is evaluated when its class is *loaded* - before the DI container exists.
  * The defaults are kept identical to the `throttle.auth*` values below, and
  * `env.validation.ts` type-checks the same variables at boot.
  */
@@ -71,7 +71,7 @@ export default registerAs('security', () => {
      * Browser origins allowed to call the API with credentials. Defaults to
      * `FRONTEND_URL` so existing deployments keep working; `CORS_ORIGINS`
      * takes over when a deployment serves more than one front end (an admin
-     * host, a staging alias). A wildcard is never accepted — the API is
+     * host, a staging alias). A wildcard is never accepted - the API is
      * credentialed, and `Access-Control-Allow-Origin: *` is invalid with
      * `credentials: true` anyway.
      */
@@ -85,7 +85,7 @@ export default registerAs('security', () => {
      * `X-Forwarded-For` is only trustworthy behind a proxy we control
      * (`infra/nginx/nginx.conf`). Trusting it when directly exposed would let
      * any caller spoof `request.ip` and therefore defeat per-IP rate limiting
-     * and the IP recorded on every audit row — so it is off unless declared.
+     * and the IP recorded on every audit row - so it is off unless declared.
      */
     trustProxy: toBool(process.env.TRUST_PROXY, false),
 
@@ -95,7 +95,7 @@ export default registerAs('security', () => {
     hstsPreload: toBool(process.env.HSTS_PRELOAD, false),
 
     /**
-     * The API serves JSON, uploaded files and — unless disabled — the Swagger
+     * The API serves JSON, uploaded files and - unless disabled - the Swagger
      * UI. Swagger needs inline script/style, so the CSP is relaxed exactly
      * where it is mounted and strict everywhere else; disabling the docs in
      * production removes the exception entirely.
@@ -104,7 +104,7 @@ export default registerAs('security', () => {
 
     /**
      * Global throttling. The defaults match what shipped before this
-     * milestone (100 requests/minute); the auth tier is new — credential
+     * milestone (100 requests/minute); the auth tier is new - credential
      * endpoints are the ones worth spending a much smaller budget on.
      */
     throttle: {
@@ -119,7 +119,7 @@ export default registerAs('security', () => {
      * still describes the deployment. When `METRICS_TOKEN` is set the endpoint
      * requires `Authorization: Bearer <token>`. When it is not, the endpoint
      * stays open in development (where a local Prometheus needs no ceremony)
-     * and **fails closed in production** — an unauthenticated scrape target on
+     * and **fails closed in production** - an unauthenticated scrape target on
      * a public interface is worse than no scrape target.
      */
     metricsToken: process.env.METRICS_TOKEN?.trim() || undefined,

@@ -74,7 +74,7 @@ export class TransfersService {
     return transfer as unknown as InventoryStockTransfer
   }
 
-  /** Deducts stock from the source store — the transfer is now physically in motion. */
+  /** Deducts stock from the source store - the transfer is now physically in motion. */
   async dispatch(organizationId: string, userId: string, id: string): Promise<InventoryStockTransfer> {
     const transfer = await this.requireTransfer(organizationId, id)
     if (transfer.status !== StockTransferStatus.DRAFT) {

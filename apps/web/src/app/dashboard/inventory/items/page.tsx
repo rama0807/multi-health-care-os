@@ -79,7 +79,7 @@ export default function InventoryItemsPage() {
   return (
     <PageLayout
       title="Item Master"
-      description="Non-drug inventory catalog — equipment, consumables, and supplies."
+      description="Non-drug inventory catalog - equipment, consumables, and supplies."
       actions={
         <>
           <Button asChild variant="outline">
@@ -156,8 +156,8 @@ export default function InventoryItemsPage() {
                   <TableCell>
                     <Badge variant="outline">{formatEnumLabel(item.itemType)}</Badge>
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{item.category?.name ?? '—'}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{item.unit?.symbol ?? '—'}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{item.category?.name ?? '-'}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{item.unit?.symbol ?? '-'}</TableCell>
                   <TableCell align="right" className="text-xs">₹{item.unitCost}</TableCell>
                   <TableCell>
                     <StatusBadge status={item.isActive ? 'ACTIVE' : 'INACTIVE'} />

@@ -60,7 +60,7 @@ export default function PurchaseRequestsPage() {
   return (
     <PageLayout
       title="Purchase Requests"
-      description="The first step of the procurement chain — request, approve, convert to a PO."
+      description="The first step of the procurement chain - request, approve, convert to a PO."
       actions={
         canCreate && (
           <Button onClick={() => setCreateOpen(true)}>

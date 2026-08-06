@@ -13,7 +13,7 @@ import { StorageUsageService } from './storage-usage.service'
  * isolation guard plus the two metering services the Organization Usage tab
  * and the Platform Owner console both read.
  *
- * `@Global()` mirrors how `PermissionsModule` is consumed — the guard and
+ * `@Global()` mirrors how `PermissionsModule` is consumed - the guard and
  * interceptor are wired at app level, so re-importing this module in every
  * feature module would be noise.
  */

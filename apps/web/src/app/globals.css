@@ -3,11 +3,11 @@
 @tailwind utilities;
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * MediCore Design System V2 — token layer
+ * MediCore Design System V2 - token layer
  *
  * Every colour in this application resolves through a *semantic* token
  * declared here. No component may hardcode a hex value, because an
- * organization's branding (ADR-0031) rewrites this layer at runtime — a
+ * organization's branding (ADR-0031) rewrites this layer at runtime - a
  * hardcoded colour is a colour that silently ignores the tenant's brand.
  *
  * Colours are stored as bare HSL channels (`210 24% 16%`) rather than
@@ -16,8 +16,8 @@
  * `hsl(var(--primary))`.
  *
  * The palette is deliberately desaturated and cool-neutral. Clinical software
- * is read for eight hours at a stretch; saturation belongs to *data* — a
- * critical lab value, an overdue invoice — not to chrome.
+ * is read for eight hours at a stretch; saturation belongs to *data* - a
+ * critical lab value, an overdue invoice - not to chrome.
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 @layer base {
@@ -35,13 +35,13 @@
     --card-foreground: 215 25% 12%;
     --popover: 0 0% 100%;
     --popover-foreground: 215 25% 12%;
-    /* Scrim behind modals — never pure black, which reads as a hole. */
+    /* Scrim behind modals - never pure black, which reads as a hole. */
     --overlay: 215 30% 12%;
 
     /* ── Text ─────────────────────────────────────────────────────────────
      * Three emphasis levels. `foreground` is body copy at 15.9:1 on surface,
      * `muted-foreground` is metadata at 5.6:1 (passes AA for normal text),
-     * `subtle-foreground` is for decoration only — never for information a
+     * `subtle-foreground` is for decoration only - never for information a
      * user must read, because it does not pass AA.
      */
     --foreground: 215 25% 12%;
@@ -69,7 +69,7 @@
     --primary-subtle-foreground: 221 83% 34%;
     --primary-border: 221 70% 86%;
 
-    /* An organization's `accentColor` and `secondaryColor` land here — on
+    /* An organization's `accentColor` and `secondaryColor` land here - on
      * their *own* tokens, not on `--accent`/`--secondary`. Those two are
      * neutral interaction surfaces (dropdown hover, muted buttons) used on
      * nearly every screen; branding them turns every hover into a saturated
@@ -88,7 +88,7 @@
     --brand-secondary-subtle-foreground: 280 50% 34%;
     --brand-secondary-border: 280 40% 86%;
 
-    /* Neutral interaction surfaces — never branded (see above). */
+    /* Neutral interaction surfaces - never branded (see above). */
     --secondary: 214 20% 94%;
     --secondary-foreground: 215 25% 20%;
     --secondary-hover: 214 20% 90%;
@@ -145,7 +145,7 @@
     --destructive: 0 72% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Neutral/inactive status — a draft, a cancelled order, an archived row. */
+    /* Neutral/inactive status - a draft, a cancelled order, an archived row. */
     --neutral-subtle: 214 20% 95%;
     --neutral-subtle-foreground: 215 16% 38%;
     --neutral-border: 214 18% 86%;
@@ -153,7 +153,7 @@
     /* ── Charts ───────────────────────────────────────────────────────────
      * Chart 1 is the brand colour, so the primary series follows the tenant.
      * 2–8 are a fixed, hue-spaced, equal-lightness ramp chosen to stay
-     * distinguishable under the two most common colour-vision deficiencies —
+     * distinguishable under the two most common colour-vision deficiencies -
      * ordered so that adjacent series are maximally separated.
      */
     --chart-1: 221 83% 53%;
@@ -191,7 +191,7 @@
     --scrollbar-thumb: 214 14% 78%;
     --scrollbar-thumb-hover: 214 12% 62%;
 
-    /* Layout rhythm — read by the app shell so header/sidebar geometry is
+    /* Layout rhythm - read by the app shell so header/sidebar geometry is
      * declared once instead of duplicated as magic numbers in two files. */
     --header-height: 3.25rem;
     --sidebar-width: 15rem;
@@ -201,7 +201,7 @@
   .dark {
     /* Dark mode is a genuine re-derivation, not an inversion. Surfaces climb
      * *toward* light as they rise (the physical model), and every status tint
-     * is re-tuned — a light-mode tint at 95% lightness becomes an unreadable
+     * is re-tuned - a light-mode tint at 95% lightness becomes an unreadable
      * glare panel on a dark background. */
     --background: 222 24% 8%;
     --surface: 220 20% 11%;
@@ -297,7 +297,7 @@
     --chart-7: 330 70% 65%;
     --chart-8: 94 45% 55%;
 
-    /* Shadows carry almost no weight on a dark surface — depth there comes
+    /* Shadows carry almost no weight on a dark surface - depth there comes
      * from the border and the surface step, so these stay deliberately faint
      * rather than being scaled up into black smudges. */
     --shadow-xs: 0 1px 2px 0 hsl(222 40% 2% / 0.3);
@@ -324,7 +324,7 @@
   }
 
   /*
-   * Numerals align in columns everywhere numbers are compared — tables, stat
+   * Numerals align in columns everywhere numbers are compared - tables, stat
    * cards, currency, vitals. Applied by element and by opt-in class so a
    * component does not have to remember.
    */
@@ -350,7 +350,7 @@
   }
 
   /*
-   * Scrollbars — slim, trackless, and rounded so they read as an overlay
+   * Scrollbars - slim, trackless, and rounded so they read as an overlay
    * instead of the chunky grey gutter the platform default draws.
    * Firefox gets the standard properties; Chrome/Safari get the -webkit- rules.
    */
@@ -383,7 +383,7 @@
 
   /*
    * Motion is a hint, never a performance. Anyone who has asked their OS to
-   * calm down gets no transforms and effectively instant transitions —
+   * calm down gets no transforms and effectively instant transitions -
    * including the Radix enter/exit animations, which are keyframe-driven and
    * would otherwise ignore a `transition-duration` override.
    */

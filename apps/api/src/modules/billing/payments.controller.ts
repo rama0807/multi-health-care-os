@@ -9,7 +9,7 @@ import { RequirePermissions } from '../../common/decorators/permissions.decorato
 import { CreatePaymentDto } from './dto/create-payment.dto'
 import { PaymentsService } from './payments.service'
 
-/** Payment collection — see ADR-0015. `billing.*` stays all-scope (staff-facing). */
+/** Payment collection - see ADR-0015. `billing.*` stays all-scope (staff-facing). */
 @ApiTags('billing-payments')
 @ApiBearerAuth()
 @Controller({ path: 'billing', version: '1' })

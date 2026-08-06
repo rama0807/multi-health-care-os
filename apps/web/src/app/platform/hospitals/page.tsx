@@ -85,7 +85,7 @@ export default function PlatformHospitalsPage() {
                   <p className="text-sm">{hospital.organizationName}</p>
                   <p className="text-xs text-muted-foreground">{hospital.organizationSlug}</p>
                 </TableCell>
-                <TableCell>{hospital.city ?? '—'}</TableCell>
+                <TableCell>{hospital.city ?? '-'}</TableCell>
                 <TableCell className="text-right">{hospital.departmentCount}</TableCell>
                 <TableCell>{formatDate(hospital.createdAt)}</TableCell>
                 <TableCell>

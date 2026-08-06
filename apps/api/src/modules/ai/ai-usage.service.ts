@@ -11,7 +11,7 @@ import { Prisma } from '@prisma/client'
 
 import { PrismaService } from '../../prisma/prisma.service'
 
-/** Read side of `AiUsageLog` — the write side lives in `AiGenerationService`. */
+/** Read side of `AiUsageLog` - the write side lives in `AiGenerationService`. */
 @Injectable()
 export class AiUsageService {
   constructor(private readonly prisma: PrismaService) {}

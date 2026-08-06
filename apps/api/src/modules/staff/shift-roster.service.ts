@@ -27,7 +27,7 @@ export class ShiftRosterService {
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
-  /** The "weekly roster" view — every assignment for a date range, optionally scoped to one staff/shift/department. */
+  /** The "weekly roster" view - every assignment for a date range, optionally scoped to one staff/shift/department. */
   async list(organizationId: string, query: ShiftRosterQuery): Promise<ShiftRoster[]> {
     const where: Prisma.ShiftRosterWhereInput = {
       organizationId,
@@ -86,7 +86,7 @@ export class ShiftRosterService {
     return this.toResponse(roster)
   }
 
-  /** Assign the same shift (or day off) to several staff at once for one date — the "Staff assignment" bulk action. */
+  /** Assign the same shift (or day off) to several staff at once for one date - the "Staff assignment" bulk action. */
   async bulkAssign(
     organizationId: string,
     dto: BulkAssignShiftRosterDto,
@@ -113,7 +113,7 @@ export class ShiftRosterService {
     await this.prisma.shiftRoster.delete({ where: { id } })
   }
 
-  /** Internal — consumed by AttendanceService to know which shift (if any) applies on a given staff/date. */
+  /** Internal - consumed by AttendanceService to know which shift (if any) applies on a given staff/date. */
   async findForStaffAndDate(organizationId: string, staffId: string, date: Date): Promise<RosterWithRelations | null> {
     return this.prisma.shiftRoster.findFirst({
       where: { staffId, date, organizationId },

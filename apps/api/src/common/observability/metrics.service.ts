@@ -14,7 +14,7 @@ import { collectDefaultMetrics, Counter, Gauge, Histogram, Registry } from 'prom
  * organization identifier. Prometheus keeps one time series per label
  * combination forever, so a tenant-labelled counter is both a cardinality
  * problem and a way for operational telemetry to start describing clinical
- * activity. Per-tenant usage already has a home — `ApiUsageService`.
+ * activity. Per-tenant usage already has a home - `ApiUsageService`.
  */
 @Injectable()
 export class MetricsService implements OnModuleDestroy {
@@ -29,7 +29,7 @@ export class MetricsService implements OnModuleDestroy {
 
   constructor() {
     this.registry.setDefaultLabels({ service: 'medicore-api' })
-    // Process, heap, GC and event-loop-lag series — the half of an incident
+    // Process, heap, GC and event-loop-lag series - the half of an incident
     // that application counters cannot explain. Skipped under test, where
     // every `TestingModule` would otherwise attach its own event-loop monitor.
     if (process.env.NODE_ENV !== 'test') {

@@ -4,7 +4,7 @@ import { Ward as PrismaWard, Prisma } from '@prisma/client'
 
 import { PrismaService } from '../../prisma/prisma.service'
 
-/** Ward inventory CRUD — see ADR-0018. Not own-scoped: ward inventory isn't tied to a doctor. */
+/** Ward inventory CRUD - see ADR-0018. Not own-scoped: ward inventory isn't tied to a doctor. */
 @Injectable()
 export class WardsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -115,7 +115,7 @@ export class WardsService {
     return this.toResponse(updated)
   }
 
-  /** Soft-deactivate (mirrors `DoctorsService.deactivate`) — a ward with beds/admissions is never hard-deleted. */
+  /** Soft-deactivate (mirrors `DoctorsService.deactivate`) - a ward with beds/admissions is never hard-deleted. */
   async deactivate(organizationId: string, id: string): Promise<Ward> {
     const ward = await this.requireWard(organizationId, id)
     if (ward.status === (WardStatus.INACTIVE as unknown as PrismaWard['status'])) {

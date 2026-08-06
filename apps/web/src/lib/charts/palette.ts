@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 /**
  * Chart colours, resolved from the design-system tokens.
  *
- * Charting libraries want concrete colour strings, not CSS variables — a
+ * Charting libraries want concrete colour strings, not CSS variables - a
  * `<Bar fill="hsl(var(--chart-1))" />` works in SVG but breaks the moment the
  * library needs to compute a gradient or a legend swatch. So this reads the
  * computed value of each token once and hands back real `hsl(...)` strings.

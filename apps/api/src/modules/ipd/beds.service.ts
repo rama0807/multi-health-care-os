@@ -16,7 +16,7 @@ type BedWithRelations = PrismaBed & {
   ward: { id: string; name: string; code: string; type: string }
 }
 
-/** Bed inventory CRUD. Occupied/available transitions happen only through `BedAllocationService` — see ADR-0018. */
+/** Bed inventory CRUD. Occupied/available transitions happen only through `BedAllocationService` - see ADR-0018. */
 @Injectable()
 export class BedsService {
   constructor(
@@ -129,11 +129,11 @@ export class BedsService {
     return this.toResponse(updated)
   }
 
-  /** Soft-deactivate — blocks the bed from future allocation rather than deleting the row. */
+  /** Soft-deactivate - blocks the bed from future allocation rather than deleting the row. */
   async deactivate(organizationId: string, id: string): Promise<Bed> {
     const bed = await this.requireBed(organizationId, id)
     if (bed.status === (BedStatus.OCCUPIED as unknown as PrismaBed['status'])) {
-      throw new ConflictException('Cannot deactivate an occupied bed — vacate it first')
+      throw new ConflictException('Cannot deactivate an occupied bed - vacate it first')
     }
     const updated = await this.prisma.bed.update({
       where: { id },

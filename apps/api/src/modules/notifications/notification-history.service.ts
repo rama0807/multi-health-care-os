@@ -197,7 +197,7 @@ export class NotificationHistoryService {
   }
 
   /**
-   * Removes a notification from a user's centre. Deliveries cascade with it —
+   * Removes a notification from a user's centre. Deliveries cascade with it -
    * a user deleting their own copy should not leave orphaned delivery rows
    * inflating the organization's statistics.
    */
@@ -225,7 +225,7 @@ export class NotificationHistoryService {
       this.prisma.notification.findMany({
         where,
         include: { deliveries: includeDeliveries, recipient: RECIPIENT_SELECT },
-        // Pinned first, then newest — the timeline a user expects to see.
+        // Pinned first, then newest - the timeline a user expects to see.
         orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }],
         skip,
         take: limit,
@@ -269,7 +269,7 @@ function inboxFilter(filter?: NotificationQuery['filter']): Prisma.NotificationW
       return { priority: NotificationPriority.CRITICAL, isArchived: false }
     case 'all':
     default:
-      // "All" means the active inbox — archived is a separate drawer, not a
+      // "All" means the active inbox - archived is a separate drawer, not a
       // subset of everything, mirroring how mail clients behave.
       return { isArchived: false }
   }

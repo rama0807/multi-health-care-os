@@ -19,7 +19,7 @@ import {
  *   delivery row names the driver so nobody can mistake it for a real message.
  * - anything else (the default) reports "not configured" and **fails** the
  *   delivery with that reason. It never reports a message as sent that was
- *   not sent — the same line Milestone 5 held when SMS confirmations were
+ *   not sent - the same line Milestone 5 held when SMS confirmations were
  *   first deferred (TD-0015).
  *
  * Adding a real vendor is a new class implementing this interface plus one
@@ -46,7 +46,7 @@ export class SmsProvider implements NotificationChannelProvider {
 
   unconfiguredReason(): string | null {
     if (this.isConfigured()) return null
-    return 'No SMS provider is configured — set SMS_DRIVER=LOG for local development, or add a real provider adapter'
+    return 'No SMS provider is configured - set SMS_DRIVER=LOG for local development, or add a real provider adapter'
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await -- the interface is async
@@ -66,7 +66,7 @@ export class SmsProvider implements NotificationChannelProvider {
     }
 
     // SMS has no title; a real vendor would receive exactly this body.
-    this.logger.log(`[sms:log-driver] To ${request.destination}: ${request.title} — ${request.body}`)
+    this.logger.log(`[sms:log-driver] To ${request.destination}: ${request.title} - ${request.body}`)
     return { ok: true, providerName: this.providerName, retryable: false }
   }
 }

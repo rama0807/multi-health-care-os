@@ -20,7 +20,7 @@ interface AiAssistButtonProps {
 }
 
 /**
- * Renders nothing for a user without `ai.generate` — the same permission the
+ * Renders nothing for a user without `ai.generate` - the same permission the
  * API enforces, so the button never appears where the call would 403.
  */
 export function AiAssistButton({

@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils"
  * Design System V2.
  *
  * Badges are square-ish (`rounded`, not `rounded-full`) and use tint + tinted
- * text rather than a solid fill. A screen showing thirty statuses at once —
- * which every queue in this application does — turns into confetti with solid
+ * text rather than a solid fill. A screen showing thirty statuses at once -
+ * which every queue in this application does - turns into confetti with solid
  * pills, and the row content stops being the thing you read first.
  *
  * For domain status values, prefer `<StatusBadge>`: it maps a status string to
@@ -21,7 +21,7 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default: "border-primary-border bg-primary-subtle text-primary-subtle-foreground",
-        /** Solid brand — reserve for a single emphatic badge, e.g. a count. */
+        /** Solid brand - reserve for a single emphatic badge, e.g. a count. */
         solid: "border-transparent bg-primary text-primary-foreground",
         secondary: "border-transparent bg-secondary text-secondary-foreground",
         outline: "border-border text-muted-foreground",
@@ -53,7 +53,7 @@ export interface BadgeProps
     VariantProps<typeof badgeVariants> {
   /**
    * Prefixes a filled dot in the badge's own tone. Colour alone must never be
-   * the only signal (WCAG 1.4.1), and the label carries that — the dot is the
+   * the only signal (WCAG 1.4.1), and the label carries that - the dot is the
    * scannability aid on a dense queue.
    */
   dot?: boolean

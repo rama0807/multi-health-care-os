@@ -211,7 +211,7 @@ export class RadiologyOrdersController {
     await this.ordersService.assertOwnScopeOk(orgId, id, user, 'update')
 
     const data = await request.file()
-    if (!data) throw new BadRequestException('No file uploaded — send multipart/form-data')
+    if (!data) throw new BadRequestException('No file uploaded - send multipart/form-data')
     const buffer = await data.toBuffer()
 
     return this.ordersService.uploadReportFile(
@@ -241,7 +241,7 @@ export class RadiologyOrdersController {
     }
 
     const data = await request.file()
-    if (!data) throw new BadRequestException('No file uploaded — send multipart/form-data')
+    if (!data) throw new BadRequestException('No file uploaded - send multipart/form-data')
     const buffer = await data.toBuffer()
 
     return this.ordersService.addFileAttachment(
@@ -294,7 +294,7 @@ export class RadiologyOrdersController {
 
   /**
    * For an `.own`-scoped reader, force the list to their own doctor profile
-   * — an explicit `doctorId` for someone else is rejected rather than
+   * - an explicit `doctorId` for someone else is rejected rather than
    * silently ignored (same pattern as `LabTestsController`).
    */
   private async resolveOwnScopedDoctorId(

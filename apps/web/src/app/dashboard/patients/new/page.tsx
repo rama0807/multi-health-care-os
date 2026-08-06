@@ -166,7 +166,7 @@ export default function NewPatientPage() {
     <PageLayout
       breadcrumbs={[{ label: 'Patients', href: '/dashboard/patients' }, { label: 'New' }]}
       title="Register new patient"
-      description={`Step ${step + 1} of ${STEPS.length} — ${STEPS[step].title}`}
+      description={`Step ${step + 1} of ${STEPS.length} - ${STEPS[step].title}`}
       width="narrow"
     >
       {draftRestored && (
@@ -418,7 +418,7 @@ export default function NewPatientPage() {
                     <ul className="space-y-1">
                       {duplicates.slice(0, 3).map((match) => (
                         <li key={match.patient.id} className="text-sm">
-                          {match.patient.fullName} · {match.patient.uhid} · {match.patient.phone} —{' '}
+                          {match.patient.fullName} · {match.patient.uhid} · {match.patient.phone} -{' '}
                           {match.confidence}% match
                         </li>
                       ))}
@@ -486,11 +486,11 @@ function ReviewSummary({ values }: { values: CreatePatientDto }) {
     ['Name', `${values.firstName} ${values.lastName}`],
     ['Date of birth', values.dateOfBirth],
     ['Gender', values.gender],
-    ['Blood group', values.bloodGroup ?? '—'],
+    ['Blood group', values.bloodGroup ?? '-'],
     ['Phone', values.phone],
-    ['Email', values.email ?? '—'],
-    ['Address', [values.address, values.city, values.state, values.pincode].filter(Boolean).join(', ') || '—'],
-    ['Emergency contact', values.emergencyContactName ?? '—'],
+    ['Email', values.email ?? '-'],
+    ['Address', [values.address, values.city, values.state, values.pincode].filter(Boolean).join(', ') || '-'],
+    ['Emergency contact', values.emergencyContactName ?? '-'],
   ]
 
   return (

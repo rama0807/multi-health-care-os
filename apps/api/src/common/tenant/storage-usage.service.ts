@@ -6,14 +6,14 @@ import { PrismaService } from '../../prisma/prisma.service'
 /**
  * Storage consumption per organization (Checkpoint 16.2).
  *
- * Summed from the `fileSizeBytes` column each upload path already writes —
+ * Summed from the `fileSizeBytes` column each upload path already writes -
  * it is *not* read back from the storage bucket, so it measures what MediCore
  * recorded rather than what the disk/S3 driver currently holds. Orphaned
  * objects left behind by a failed delete are therefore invisible here; see
  * TECH_DEBT TD-0047.
  *
  * Only these five models carry a size column today. A future module that adds
- * an upload path must be added here too — the same hand-maintained-list caveat
+ * an upload path must be added here too - the same hand-maintained-list caveat
  * already recorded for `PATIENT_LINKED_MODELS` (TD-0043).
  */
 @Injectable()
@@ -88,7 +88,7 @@ export class StorageUsageService {
    * Cross-tenant totals for the platform console. `StaffDocument` carries
    * `organizationId` directly so it can be grouped in the database; the other
    * four reach their organization through a parent relation, which Prisma's
-   * `groupBy` cannot traverse — those are rolled up in memory.
+   * `groupBy` cannot traverse - those are rolled up in memory.
    */
   async getTotalBytesByOrganization(): Promise<Map<string, number>> {
     const totals = new Map<string, number>()

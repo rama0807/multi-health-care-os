@@ -165,7 +165,7 @@ export default function AssetDetailPage() {
                       <TableCell>
                         <StatusBadge status={m.status} />
                       </TableCell>
-                      <TableCell className="text-xs">{m.cost ? `₹${m.cost}` : '—'}</TableCell>
+                      <TableCell className="text-xs">{m.cost ? `₹${m.cost}` : '-'}</TableCell>
                       {canUpdate && (
                         <TableCell>
                           {(m.status === AssetMaintenanceStatus.SCHEDULED || m.status === AssetMaintenanceStatus.IN_PROGRESS) && (
@@ -256,7 +256,7 @@ function AssignDialog({ assetId, currentStoreId, onOpenChange }: { assetId: stri
           {target === 'user' && (
             <>
               <Input placeholder="User ID" value={assignedToUserId} onChange={(e) => setAssignedToUserId(e.target.value)} />
-              <p className="text-xs text-muted-foreground">Assign by internal user ID — no staff picker exists yet (see TECH_DEBT).</p>
+              <p className="text-xs text-muted-foreground">Assign by internal user ID - no staff picker exists yet (see TECH_DEBT).</p>
             </>
           )}
           <Select value={storeId} onValueChange={setStoreId}>

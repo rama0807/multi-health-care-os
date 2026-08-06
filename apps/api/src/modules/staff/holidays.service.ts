@@ -37,7 +37,7 @@ export class HolidaysService {
     await this.prisma.holiday.delete({ where: { id } })
   }
 
-  /** Internal — consumed by PayrollService to count holiday days in a month. */
+  /** Internal - consumed by PayrollService to count holiday days in a month. */
   async findInRange(organizationId: string, from: Date, to: Date): Promise<PrismaHoliday[]> {
     return this.prisma.holiday.findMany({ where: { organizationId, date: { gte: from, lte: to } } })
   }

@@ -1,13 +1,13 @@
 # Operations Guide
 
-> Milestone 19.5 — day-two operation of a running MediCore deployment.
+> Milestone 19.5 - day-two operation of a running MediCore deployment.
 
 ## Endpoints an operator uses
 
 | Path | Auth | Purpose |
 |---|---|---|
 | `GET /healthz` | none | nginx is alive (static, never reaches the API) |
-| `GET /api/health/live` | none | the API process is alive — **checks no dependency** |
+| `GET /api/health/live` | none | the API process is alive - **checks no dependency** |
 | `GET /api/health/ready` | none | API + Postgres + Redis; 503 while draining |
 | `GET /api/health` | none | detailed; also mounted at `/api/v1/health` |
 | `GET /api/metrics` | `Bearer $METRICS_TOKEN` | Prometheus exposition |
@@ -15,7 +15,7 @@
 **Liveness and readiness are not interchangeable.** A liveness failure means
 "restart this container". A readiness failure means "stop sending it traffic,
 leave it running". Wiring a database check into liveness is how a five-minute
-Postgres blip becomes a full restart of every API instance — which removes the
+Postgres blip becomes a full restart of every API instance - which removes the
 capacity that would have served traffic the moment the database returned.
 
 ## Configuration you can change without a code deploy
@@ -25,7 +25,7 @@ recreating the container, not rebuilding the image.
 
 | Variable | Default | Effect |
 |---|---|---|
-| `LOG_LEVEL` | `info` | `debug` for an incident; revert afterwards — it is verbose and costs money in a log sink |
+| `LOG_LEVEL` | `info` | `debug` for an incident; revert afterwards - it is verbose and costs money in a log sink |
 | `DB_SLOW_QUERY_MS` | `300` | threshold for slow-query warnings; `0` disables |
 | `THROTTLE_LIMIT` / `THROTTLE_AUTH_LIMIT` | `100` / `20` | per-IP budgets per minute |
 | `SHUTDOWN_DRAIN_MS` | `5000` | how long to serve after `SIGTERM` before closing |
@@ -36,7 +36,7 @@ recreating the container, not rebuilding the image.
 ## Reading the logs
 
 Logs are JSON (pino) in production. Every line from a request carries
-`requestId`, `traceId`, `spanId`, and — once authentication has resolved —
+`requestId`, `traceId`, `spanId`, and - once authentication has resolved -
 `organizationId` and `userId`.
 
 ```bash
@@ -60,7 +60,7 @@ the front end and the API all report one id for one user action.
 
 **What is never logged:** `Authorization`, `Cookie`, `X-CSRF-Token` and
 `Set-Cookie` are redacted at the pino level. Slow-query logging prints the
-parameterised SQL only, never the bound values — those are patient
+parameterised SQL only, never the bound values - those are patient
 identifiers, names and clinical codes.
 
 ## Routine tasks
@@ -81,7 +81,7 @@ Redis and survive, so clients recover on their next refresh. Expect a burst of
 ### Rotating the metrics token
 
 Change `METRICS_TOKEN`, recreate the API, update the Prometheus scrape config.
-A stale token produces 403s, not a silent gap — the `up` metric goes to 0.
+A stale token produces 403s, not a silent gap - the `up` metric goes to 0.
 
 ### Suspending a tenant
 
@@ -94,7 +94,7 @@ expiry. No deployment or restart is involved.
 
 `docker compose stop api` sends `SIGTERM`, which flips readiness to 503 before
 anything stops serving. If you need a longer drain than 5s, raise
-`SHUTDOWN_DRAIN_MS` **and** `stop_grace_period` together — Docker kills the
+`SHUTDOWN_DRAIN_MS` **and** `stop_grace_period` together - Docker kills the
 process when the grace period expires regardless of what the drain is doing.
 
 ## Capacity notes

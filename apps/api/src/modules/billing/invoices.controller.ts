@@ -14,7 +14,7 @@ import { CreateInvoiceDto } from './dto/create-invoice.dto'
 import { RejectDiscountDto } from './dto/reject-discount.dto'
 import { InvoicesService } from './invoices.service'
 
-/** Invoicing — see ADR-0015. `billing.*` stays all-scope (staff-facing). */
+/** Invoicing - see ADR-0015. `billing.*` stays all-scope (staff-facing). */
 @ApiTags('billing-invoices')
 @ApiBearerAuth()
 @Controller({ path: 'billing/invoices', version: '1' })

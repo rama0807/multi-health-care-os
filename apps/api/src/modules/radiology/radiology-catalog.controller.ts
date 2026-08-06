@@ -10,7 +10,7 @@ import { RadiologyCatalogService } from './radiology-catalog.service'
 
 /**
  * Org-configurable catalog of orderable radiology studies (ADR-0013). Not
- * own-scoped — a catalog item isn't tied to an ordering doctor, so only the
+ * own-scoped - a catalog item isn't tied to an ordering doctor, so only the
  * plain `radiology.*` permission (all-scope) gates these routes, mirroring
  * `LabCatalogController`.
  */

@@ -1,4 +1,4 @@
-# MediCore — AI-Powered Hospital Management System
+# MediCore - AI-Powered Hospital Management System
 
 > A production-grade, multi-tenant SaaS platform for hospitals, clinics, and diagnostic centers. Built with a modern, AI-first architecture designed for real-world healthcare workflows.
 
@@ -9,7 +9,7 @@
 
 ## Project Vision
 
-Healthcare software is fragmented, outdated, and slow. MediCore is designed to be the system that clinical teams actually want to use — fast, intelligent, and built around real hospital workflows.
+Healthcare software is fragmented, outdated, and slow. MediCore is designed to be the system that clinical teams actually want to use - fast, intelligent, and built around real hospital workflows.
 
 MediCore handles the full operational lifecycle of a healthcare facility:
 
@@ -237,7 +237,7 @@ pnpm --filter @medicore/web build
 | M2: Authentication, Organization & RBAC | Done | Week 3 |
 | M3: Patient Management | Planned | Week 4 |
 | M4: Appointments & Scheduling | Planned | Week 5 |
-| M5: Clinical — Medical Records | Planned | Week 6 |
+| M5: Clinical - Medical Records | Planned | Week 6 |
 | M6: Laboratory & Radiology | Planned | Week 7 |
 | M7: Billing & Insurance | Planned | Week 8-9 |
 | M8: Pharmacy & Inventory | Planned | Week 10 |

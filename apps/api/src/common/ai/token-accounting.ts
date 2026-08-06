@@ -3,7 +3,7 @@ import { AiProviderUsage } from './ai-provider.interface'
 /**
  * Fallback ratio for providers/streams that don't report metered usage. ~4
  * characters per token is the widely-used approximation for English prose and
- * is close enough for budgeting — but any usage derived from it is flagged
+ * is close enough for budgeting - but any usage derived from it is flagged
  * `estimated`, and `AiUsageLog.tokensEstimated` records that in the database,
  * so nothing downstream mistakes it for a billed count (ADR-0023).
  */

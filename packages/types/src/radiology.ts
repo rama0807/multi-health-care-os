@@ -6,7 +6,7 @@ import { Priority, RadiologyAttachmentType, RadiologyStatus } from './enums'
 
 /**
  * Org-configurable catalog of orderable radiology studies (Milestone 8,
- * ADR-0013) — mirrors LabTestCatalogItem's role. Unlike lab tests, a
+ * ADR-0013) - mirrors LabTestCatalogItem's role. Unlike lab tests, a
  * radiology order has no per-item structured results, so the catalog exists
  * purely to standardize ordering (name/code/price/duration/contrast) rather
  * than to drive abnormal-value logic.
@@ -161,7 +161,7 @@ export interface RadiologyOrderQuery {
 // ─── Reports ───────────────────────────────────────────────────────────────
 
 /**
- * Append-only, versioned report content — mirrors ClinicalNote's "never
+ * Append-only, versioned report content - mirrors ClinicalNote's "never
  * overwrite" pattern. `RadiologyOrder` denormalizes the latest version's
  * content directly onto itself for cheap list/queue reads.
  */
@@ -206,7 +206,7 @@ export interface RadiologyAttachment {
 
 /**
  * `EXTERNAL_IMAGING`/`DICOM_PLACEHOLDER` attachments are metadata-only (no
- * real file) — e.g. an accession number or study instance UID referencing an
+ * real file) - e.g. an accession number or study instance UID referencing an
  * outside PACS. `IMAGE`/`PDF` require an actual uploaded file, validated
  * separately by the controller/service (multipart upload, not this schema).
  */

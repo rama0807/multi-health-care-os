@@ -21,7 +21,7 @@ import { useAuth } from '@/lib/auth/auth-context'
 import { flattenNavigation, quickActions } from './nav-config'
 
 /**
- * Global ⌘K / Ctrl+K command palette — searches real patients (by name,
+ * Global ⌘K / Ctrl+K command palette - searches real patients (by name,
  * phone, or UHID) and doubles as quick navigation and quick creation across
  * every page the user has access to.
  *

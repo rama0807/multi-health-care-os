@@ -65,7 +65,7 @@ describe('BillingReportsService', () => {
     const report = await service.getReport('org_1', range)
 
     // An invoice raised this month but only part-paid must not make
-    // collections equal revenue — that conflation is the classic error here.
+    // collections equal revenue - that conflation is the classic error here.
     expect(report.revenue).toBe('1000.00')
     expect(report.collections).toBe('400.00')
     expect(report.collectionsByMode).toEqual([{ label: 'CASH', amount: '400.00' }])
@@ -98,7 +98,7 @@ describe('BillingReportsService', () => {
     prisma.invoice.findMany.mockImplementation((args: { select: Record<string, unknown> }) =>
       args.select.balanceDue
         ? Promise.resolve([
-            // Raised 70 days ago but only due 10 days ago — not 90 days overdue.
+            // Raised 70 days ago but only due 10 days ago - not 90 days overdue.
             { balanceDue: decimal('500'), createdAt: seventyDaysAgo, dueDate: tenDaysAgo },
           ])
         : Promise.resolve([]),

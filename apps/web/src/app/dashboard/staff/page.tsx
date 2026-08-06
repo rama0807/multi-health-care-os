@@ -123,7 +123,7 @@ export default function StaffDashboardPage() {
           <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
             <div>
               <p className="text-sm font-medium text-foreground">Your attendance today</p>
-              <p className="text-xs text-muted-foreground">{myProfileQuery.data.fullName} — {myProfileQuery.data.designation}</p>
+              <p className="text-xs text-muted-foreground">{myProfileQuery.data.fullName} - {myProfileQuery.data.designation}</p>
             </div>
             <div className="flex gap-2">
               <Button size="sm" onClick={() => clockInMutation.mutate()} disabled={clockInMutation.isPending}>

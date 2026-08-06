@@ -31,7 +31,7 @@ export interface EncounterSummaryPdfData {
 }
 
 /**
- * A claim-support document summarizing an encounter's clinical record —
+ * A claim-support document summarizing an encounter's clinical record -
  * built for insurance auto-attach (see ADR-0016), not exposed as a
  * standalone medical-records feature. Renders whatever sub-records exist;
  * an encounter with no clinical notes/diagnoses yet still produces a valid
@@ -94,7 +94,7 @@ export async function generateEncounterSummaryPdf(data: EncounterSummaryPdfData)
       doc.font('Helvetica').fontSize(9)
       for (const v of data.vitals) {
         doc.text(
-          `${v.recordedAt.toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })} — ` +
+          `${v.recordedAt.toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })} - ` +
             `BP ${v.bloodPressureSystolic ?? '-'}/${v.bloodPressureDiastolic ?? '-'}, Pulse ${v.pulse ?? '-'}, ` +
             `Temp ${v.temperatureCelsius ?? '-'}°C, SpO2 ${v.spo2 ?? '-'}%, ` +
             `Ht ${v.heightCm ?? '-'}cm, Wt ${v.weightKg ?? '-'}kg`,
@@ -107,7 +107,7 @@ export async function generateEncounterSummaryPdf(data: EncounterSummaryPdfData)
       doc.font('Helvetica-Bold').fontSize(11).text('Procedures')
       doc.font('Helvetica').fontSize(9)
       for (const p of data.procedures) {
-        doc.text(`${p.name} — ${p.performedAt.toLocaleDateString('en-IN', { dateStyle: 'medium' })}${p.notes ? `: ${p.notes}` : ''}`)
+        doc.text(`${p.name} - ${p.performedAt.toLocaleDateString('en-IN', { dateStyle: 'medium' })}${p.notes ? `: ${p.notes}` : ''}`)
       }
     }
 

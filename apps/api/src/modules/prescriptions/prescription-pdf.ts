@@ -56,7 +56,7 @@ export async function generatePrescriptionPdf(data: PrescriptionPdfData): Promis
     doc.moveDown(0.3)
 
     doc.font('Helvetica-Bold').text('Prescribed by')
-    doc.font('Helvetica').text(`Dr. ${data.doctor.fullName} — ${data.doctor.specialization}`)
+    doc.font('Helvetica').text(`Dr. ${data.doctor.fullName} - ${data.doctor.specialization}`)
     doc.moveDown(1)
 
     doc.font('Helvetica-Bold').fontSize(12).text('Rx')

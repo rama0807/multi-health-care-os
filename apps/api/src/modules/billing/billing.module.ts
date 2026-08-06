@@ -15,8 +15,8 @@ import { ServiceCatalogController } from './service-catalog.controller'
 import { ServiceCatalogService } from './service-catalog.service'
 
 /**
- * Billing — see ADR-0015. Insurance is explicitly out of scope this
- * milestone (per instruction) — `InsuranceModule` remains its own
+ * Billing - see ADR-0015. Insurance is explicitly out of scope this
+ * milestone (per instruction) - `InsuranceModule` remains its own
  * untouched scaffold, picked up in Milestone 11.
  */
 @Module({

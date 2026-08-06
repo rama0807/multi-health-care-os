@@ -15,8 +15,8 @@ import {
 // ─── Service Catalog ───────────────────────────────────────────────────────
 
 /**
- * Configurable pricing catalog ("service catalog with pricing") — see
- * ADR-0015. `price`/`taxPercent` are Prisma `Decimal` on the wire —
+ * Configurable pricing catalog ("service catalog with pricing") - see
+ * ADR-0015. `price`/`taxPercent` are Prisma `Decimal` on the wire -
  * serialized as strings, same convention as `Drug.price`/`RadiologyCatalogItem.price`.
  */
 export interface ServiceCatalogItem {
@@ -65,7 +65,7 @@ export interface ServiceCatalogItemQuery {
 // ─── Charge Engine ─────────────────────────────────────────────────────────
 
 /**
- * The reusable Charge Engine entity — see ADR-0015. Any clinical module (or
+ * The reusable Charge Engine entity - see ADR-0015. Any clinical module (or
  * a manual cashier action) creates one row; invoice generation sweeps every
  * `PENDING` charge for a patient/encounter into `InvoiceItem` rows.
  */
@@ -92,7 +92,7 @@ export interface Charge {
   createdAt: Date
 }
 
-/** Manual charge creation — "consumed by every clinical module" via `sourceModule`/`sourceId`, not a hard FK. */
+/** Manual charge creation - "consumed by every clinical module" via `sourceModule`/`sourceId`, not a hard FK. */
 export const CreateChargeSchema = z
   .object({
     patientId: z.string().cuid(),
@@ -126,7 +126,7 @@ export interface ChargeQuery {
 
 /**
  * See ADR-0015. `discountApprovalStatus`/`discountApproved*` implement the
- * discount approval workflow — only an `APPROVED` discount is reflected in
+ * discount approval workflow - only an `APPROVED` discount is reflected in
  * `discountAmount`/`totalAmount`/`balanceDue`.
  */
 export interface Invoice {
@@ -183,7 +183,7 @@ export interface InvoiceWithDetails extends Invoice {
   refunds: Refund[]
 }
 
-/** Ad-hoc manual line item — used both for `POST /billing/invoices` and `POST /billing/invoices/:id/items`. */
+/** Ad-hoc manual line item - used both for `POST /billing/invoices` and `POST /billing/invoices/:id/items`. */
 export const InvoiceLineItemSchema = z.object({
   itemName: z.string().min(1).max(200),
   itemCode: z.string().max(50).optional(),
@@ -199,7 +199,7 @@ export type InvoiceLineItemDto = z.infer<typeof InvoiceLineItemSchema>
 /**
  * Creates a DRAFT invoice from manual line items and/or a set of the
  * patient's existing `PENDING` charges (swept in as invoice items and
- * flipped to `INVOICED`) — at least one of `items`/`chargeIds` is required.
+ * flipped to `INVOICED`) - at least one of `items`/`chargeIds` is required.
  */
 export const CreateInvoiceSchema = z
   .object({
@@ -273,10 +273,10 @@ export interface PaymentWithInvoice extends Payment {
 }
 
 /**
- * Records one payment against an invoice — cash/card/UPI/bank transfer
+ * Records one payment against an invoice - cash/card/UPI/bank transfer
  * (NEFT/RTGS)/cheque. Calling this more than once against the same invoice
  * (with different modes and/or partial amounts) is how split and partial
- * payments both work — no separate "split payment" endpoint is needed.
+ * payments both work - no separate "split payment" endpoint is needed.
  */
 export const CreatePaymentSchema = z.object({
   amount: z.number().positive(),
@@ -318,7 +318,7 @@ export interface Refund {
 }
 
 /**
- * Requests a partial or full refund against an invoice/payment — see
+ * Requests a partial or full refund against an invoice/payment - see
  * ADR-0015. A `billing.manage` scope holder's request is auto-approved and
  * completed immediately; anyone else's lands `PENDING` for later approval.
  */

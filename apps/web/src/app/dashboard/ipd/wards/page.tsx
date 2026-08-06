@@ -53,7 +53,7 @@ export default function WardsPage() {
     <PageLayout
       breadcrumbs={[{ label: 'IPD', href: '/dashboard/ipd' }, { label: 'Wards' }]}
       title="Wards"
-      description="Ward inventory — floor, block, type, and bed occupancy."
+      description="Ward inventory - floor, block, type, and bed occupancy."
       actions={
         canCreate && (
           <Button onClick={() => setDialogOpen(true)}>
@@ -90,7 +90,7 @@ export default function WardsPage() {
                     <Badge variant="outline">{formatEnumLabel(w.type)}</Badge>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
-                    {[w.floor && `Floor ${w.floor}`, w.block && `Block ${w.block}`].filter(Boolean).join(' · ') || '—'}
+                    {[w.floor && `Floor ${w.floor}`, w.block && `Block ${w.block}`].filter(Boolean).join(' · ') || '-'}
                   </TableCell>
                   <TableCell>
                     <Link href={`/dashboard/ipd/beds?wardId=${w.id}`} className="text-xs text-primary hover:underline">

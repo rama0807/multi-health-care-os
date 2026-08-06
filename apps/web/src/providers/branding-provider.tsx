@@ -59,7 +59,7 @@ function readCache(organizationId: string | null): CachedBranding | null {
     return raw ? (JSON.parse(raw) as CachedBranding) : null
   } catch {
     // A corrupt or unavailable localStorage (private mode, quota, a manual
-    // edit) must never break rendering — the default palette is a fine answer.
+    // edit) must never break rendering - the default palette is a fine answer.
     return null
   }
 }
@@ -74,7 +74,7 @@ function writeCache(organizationId: string, value: CachedBranding): void {
   }
 }
 
-/** The last organization branded on this device — used before sign-in. */
+/** The last organization branded on this device - used before sign-in. */
 export function readLastKnownOrganizationId(): string | null {
   if (typeof window === 'undefined') return null
   try {
@@ -153,7 +153,7 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
 
 /**
  * Branding for chrome that needs the *name* or *logo* rather than the colours.
- * Colours never come through here — they are already applied as CSS tokens, so
+ * Colours never come through here - they are already applied as CSS tokens, so
  * a component styles itself with `bg-primary`, not with a value read from
  * this hook.
  */

@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 
 /**
- * The identity cell — the leftmost column of nearly every table here: a
+ * The identity cell - the leftmost column of nearly every table here: a
  * patient, a doctor, a vendor, a drug batch.
  *
  * Standardising it does two things a per-page implementation kept getting
@@ -24,7 +24,7 @@ export function initialsFrom(name: string): string {
 
 export interface EntityCellProps extends React.HTMLAttributes<HTMLDivElement> {
   name: React.ReactNode
-  /** UHID, phone, employee code — rendered monospace when `mono`. */
+  /** UHID, phone, employee code - rendered monospace when `mono`. */
   secondary?: React.ReactNode
   /** Set for identifiers; leave off for prose like a department name. */
   mono?: boolean
@@ -82,7 +82,7 @@ export function EntityCell({
 }
 
 /**
- * Two stacked lines with no avatar — a value over its qualifier, e.g. an
+ * Two stacked lines with no avatar - a value over its qualifier, e.g. an
  * amount over its due date, or a test name over its reference range.
  */
 export function StackedCell({

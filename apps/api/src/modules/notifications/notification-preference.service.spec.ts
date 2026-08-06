@@ -28,9 +28,9 @@ function preference(overrides: Partial<NotificationPreference> = {}): Notificati
   }
 }
 
-/** 2026-08-06 23:30 IST — inside a 22:00–07:00 window. */
+/** 2026-08-06 23:30 IST - inside a 22:00–07:00 window. */
 const LATE_NIGHT_IST = new Date('2026-08-06T18:00:00.000Z')
-/** 2026-08-06 15:30 IST — comfortably outside it. */
+/** 2026-08-06 15:30 IST - comfortably outside it. */
 const AFTERNOON_IST = new Date('2026-08-06T10:00:00.000Z')
 
 describe('isWithinQuietHours', () => {

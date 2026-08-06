@@ -19,13 +19,13 @@ export interface ReadinessResult {
 /**
  * Liveness and readiness are answered separately on purpose (Milestone 19.4).
  *
- * **Liveness** asks "is this process wedged?" — the only correct response to a
+ * **Liveness** asks "is this process wedged?" - the only correct response to a
  * failure is to kill and restart the container. It therefore checks nothing
  * external: a Postgres outage must not make an orchestrator restart every API
  * pod, which removes the capacity that would have served traffic the moment
  * the database returns.
  *
- * **Readiness** asks "should traffic be routed here?" — the correct response
+ * **Readiness** asks "should traffic be routed here?" - the correct response
  * to a failure is to take this instance out of rotation and leave it running.
  * It is the probe that checks dependencies, and the one that flips first
  * during a graceful shutdown.
@@ -50,7 +50,7 @@ export class HealthService {
   beginShutdown(): void {
     if (this.shuttingDown) return
     this.shuttingDown = true
-    this.logger.log('Readiness turned off — draining before shutdown')
+    this.logger.log('Readiness turned off - draining before shutdown')
   }
 
   get isShuttingDown(): boolean {

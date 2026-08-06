@@ -15,11 +15,11 @@ const ALERT_LIMIT = 100
  *
  * Unlike laboratory/radiology, pharmacy revenue is derivable exactly: a
  * `DispenseItem` resolves to a specific `Drug` batch, and that batch carries
- * its own price — so revenue is `quantityDispensed x Drug.price`, not an
+ * its own price - so revenue is `quantityDispensed x Drug.price`, not an
  * allocation. Items the pharmacist never resolved to a batch (`drugId` null)
  * are counted in quantity but carry a null revenue rather than a guessed one.
  *
- * Stock alerts are point-in-time (as of "now"), not period-scoped — an
+ * Stock alerts are point-in-time (as of "now"), not period-scoped - an
  * expiring batch is a fact about today's shelf, and date-filtering it would
  * make the alert silently incomplete.
  */
@@ -33,7 +33,7 @@ export class PharmacyReportsService {
     const now = new Date()
 
     const [dispenses, statusGroups, drugs] = await Promise.all([
-      // Only completed dispenses count as "dispensed" — a PREPARING order has
+      // Only completed dispenses count as "dispensed" - a PREPARING order has
       // reserved stock but has not left the counter, so counting it would
       // double-report the same medicine once it completes.
       this.prisma.dispenseOrder.findMany({

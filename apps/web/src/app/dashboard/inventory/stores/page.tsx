@@ -102,7 +102,7 @@ export default function InventoryStoresPage() {
                   <TableCell>
                     <Badge variant="outline">{formatEnumLabel(store.type)}</Badge>
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{store.location ?? '—'}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{store.location ?? '-'}</TableCell>
                   <TableCell>
                     <StatusBadge status={store.isActive ? 'ACTIVE' : 'INACTIVE'} />
                   </TableCell>
@@ -244,7 +244,7 @@ function ManagersDialog({ store, onOpenChange }: { store: InventoryStore; onOpen
     <Dialog open onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Managers — {store.name}</DialogTitle>
+          <DialogTitle>Managers - {store.name}</DialogTitle>
         </DialogHeader>
         <div className="divide-y rounded-lg border">
           {managersQuery.isLoading ? (
@@ -277,7 +277,7 @@ function ManagersDialog({ store, onOpenChange }: { store: InventoryStore; onOpen
         {canUpdate && (
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground">
-              Assign by internal user ID — no staff picker exists yet (see TECH_DEBT).
+              Assign by internal user ID - no staff picker exists yet (see TECH_DEBT).
             </p>
             <div className="flex flex-wrap gap-2">
               <Input placeholder="User ID" value={userId} onChange={(e) => setUserId(e.target.value)} className="max-w-[14rem]" />

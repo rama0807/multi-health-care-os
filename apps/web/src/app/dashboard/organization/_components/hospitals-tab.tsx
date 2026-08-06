@@ -167,7 +167,7 @@ export function HospitalsTab() {
             </DialogTrigger>
             <DialogContent className="max-w-lg">
               <DialogHeader>
-                <DialogTitle>Onboard hospital — step {step} of 3</DialogTitle>
+                <DialogTitle>Onboard hospital - step {step} of 3</DialogTitle>
               </DialogHeader>
 
               {step === 1 && (
@@ -222,7 +222,7 @@ export function HospitalsTab() {
               {step === 2 && (
                 <div className="space-y-3">
                   <p className="text-sm text-muted-foreground">
-                    Add the departments this hospital opens with. Optional — you can add more later.
+                    Add the departments this hospital opens with. Optional - you can add more later.
                   </p>
                   {departments.map((dept, index) => (
                     <div key={index} className="flex items-end gap-2">
@@ -371,7 +371,7 @@ export function HospitalsTab() {
                 <TableRow key={hospital.id}>
                   <TableCell className="font-medium">{hospital.name}</TableCell>
                   <TableCell>{hospital.code}</TableCell>
-                  <TableCell>{hospital.city ?? '—'}</TableCell>
+                  <TableCell>{hospital.city ?? '-'}</TableCell>
                   <TableCell align="right">{hospital._count.departments}</TableCell>
                   <TableCell align="right">{hospital._count.doctors}</TableCell>
                   <TableCell align="right">{hospital._count.staff}</TableCell>

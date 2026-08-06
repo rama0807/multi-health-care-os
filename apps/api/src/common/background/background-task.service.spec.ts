@@ -17,7 +17,7 @@ describe('BackgroundTaskService', () => {
 
   afterEach(() => jest.restoreAllMocks())
 
-  it('returns before the work finishes — that is the whole point', async () => {
+  it('returns before the work finishes - that is the whole point', async () => {
     let finished = false
     service.run('job', async () => {
       await new Promise((resolve) => setImmediate(resolve))

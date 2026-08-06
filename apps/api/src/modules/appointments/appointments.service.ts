@@ -34,7 +34,7 @@ import { DoctorRefService } from '../scheduling/doctor-ref.service'
 
 /**
  * Only forward transitions are valid, plus CANCELLED/NO_SHOW as an exit from
- * any non-terminal state — see ADR-0006. COMPLETED/CANCELLED/NO_SHOW have no
+ * any non-terminal state - see ADR-0006. COMPLETED/CANCELLED/NO_SHOW have no
  * entry here and are therefore terminal (empty allowed-next-set).
  */
 const ALLOWED_TRANSITIONS: Record<AppointmentStatus, AppointmentStatus[]> = {
@@ -182,7 +182,7 @@ export class AppointmentsService {
 
   /**
    * A walk-in still goes through the exact same conflict-checked booking
-   * path as a normal appointment (see ADR-0007) — the only difference is
+   * path as a normal appointment (see ADR-0007) - the only difference is
    * the slot is chosen automatically (the doctor's earliest available slot
    * at/after right now, today) instead of by the caller.
    */
@@ -222,7 +222,7 @@ export class AppointmentsService {
 
   /**
    * Materializes every occurrence as an independent row up front, sharing
-   * one `recurrenceGroupId` (see ADR-0007) — no background job, no
+   * one `recurrenceGroupId` (see ADR-0007) - no background job, no
    * recurrence-rule expansion at read time. Each occurrence goes through
    * the same conflict check as a one-off booking; a conflicting occurrence
    * is reported as failed rather than aborting the whole batch or silently
@@ -300,7 +300,7 @@ export class AppointmentsService {
     )
     if (!slots.some((s) => s.start === requestedStartIso)) {
       throw new ConflictException(
-        'This doctor is not available at the requested time — it may be outside their schedule, during a break, on leave, or already booked',
+        'This doctor is not available at the requested time - it may be outside their schedule, during a break, on leave, or already booked',
       )
     }
 
@@ -346,7 +346,7 @@ export class AppointmentsService {
         appointment.appointmentNumber,
       )
       // Off the request path (Milestone 19.3). This previously swallowed every
-      // failure with `.catch(() => undefined)` — a confirmation that never
+      // failure with `.catch(() => undefined)` - a confirmation that never
       // arrived left no trace anywhere. It is now logged and counted.
       this.background.run('appointments.confirmation_email', () =>
         this.emailService.send({ to: patientEmail, subject, html }),

@@ -165,7 +165,7 @@ export default function NewDoctorPage() {
     <PageLayout
       breadcrumbs={[{ label: 'Doctors', href: '/dashboard/doctors' }, { label: 'New' }]}
       title="Register new doctor"
-      description={`Step ${step + 1} of ${STEPS.length} — ${STEPS[step].title}`}
+      description={`Step ${step + 1} of ${STEPS.length} - ${STEPS[step].title}`}
       width="narrow"
     >
       {draftRestored && (
@@ -547,17 +547,17 @@ function ReviewSummary({
   const rows: Array<[string, string]> = [
     ['Name', `Dr. ${values.firstName} ${values.lastName}`],
     ['Email', values.email],
-    ['Phone', values.phone ?? '—'],
+    ['Phone', values.phone ?? '-'],
     ['Registration No.', values.registrationNumber],
     ['Specialization', values.specialization],
-    ['Sub-specialization', values.subSpecialization ?? '—'],
+    ['Sub-specialization', values.subSpecialization ?? '-'],
     ['Qualification', values.qualification],
     ['Experience', `${values.experienceYears} years`],
-    ['Languages', values.languagesSpoken.join(', ') || '—'],
+    ['Languages', values.languagesSpoken.join(', ') || '-'],
     ['Consultation fee', `₹${values.consultationFee}`],
     ['Joining date', values.joiningDate],
-    ['Hospital', hospitalName ?? '—'],
-    ['Department', departmentName ?? '—'],
+    ['Hospital', hospitalName ?? '-'],
+    ['Department', departmentName ?? '-'],
     ['Availability', values.availabilityStatus],
   ]
 

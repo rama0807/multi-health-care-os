@@ -15,7 +15,7 @@ import { NursingTasksService } from './nursing-tasks.service'
 export class NursingTasksController {
   constructor(private readonly nursingTasksService: NursingTasksService) {}
 
-  /** Org-wide queue — backs `/dashboard/nursing/tasks`. */
+  /** Org-wide queue - backs `/dashboard/nursing/tasks`. */
   @Get('nursing-tasks')
   @RequirePermissions('ipd.tasks.read')
   listQueue(

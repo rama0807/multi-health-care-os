@@ -84,7 +84,7 @@ export function SubscriptionTab() {
 
       <p className="text-xs text-muted-foreground">
         Plan changes are made by the platform operator, not from this dashboard. No payment gateway
-        is connected — a plan records the commercial agreement and does not charge anyone.
+        is connected - a plan records the commercial agreement and does not charge anyone.
       </p>
     </div>
   )

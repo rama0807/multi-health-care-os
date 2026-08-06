@@ -65,7 +65,7 @@ export class ShiftRosterController {
     return { success: true }
   }
 
-  /** `shifts.roster.read` can be held at `.own` scope — force the list to the caller's own staff profile. */
+  /** `shifts.roster.read` can be held at `.own` scope - force the list to the caller's own staff profile. */
   private async resolveOwnScopedStaffId(
     orgId: string,
     user: JwtPayload,

@@ -49,9 +49,9 @@ const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024
 
 /**
  * `ORDERED` can move to `SCHEDULED` (normal path), `REJECTED` (invalid/
- * declined order — never scheduled), or `CANCELLED`. `COMPLETED -> REPORTED`
+ * declined order - never scheduled), or `CANCELLED`. `COMPLETED -> REPORTED`
  * is reachable only through the dedicated `releaseReport` action (requires
- * verification first) — never through this generic map — the same
+ * verification first) - never through this generic map - the same
  * "dedicated action for anything with side effects, generic PATCH only for
  * side-effect-free terminal transitions" idiom `LabTestsService` uses.
  */
@@ -136,10 +136,10 @@ export class RadiologyOrdersService {
   }
 
   /**
-   * Dashboard summary — see `RadiologyController`. `pendingReporting` is
+   * Dashboard summary - see `RadiologyController`. `pendingReporting` is
    * `COMPLETED` (imaging done, no report released yet); `completedStudies`
    * counts both `COMPLETED` and `REPORTED` (the imaging itself is done
-   * either way). `urgent` excludes terminal/reported states — it means
+   * either way). `urgent` excludes terminal/reported states - it means
    * "still needs attention," not "was ever urgent."
    */
   async getDashboardStats(organizationId: string) {
@@ -231,10 +231,10 @@ export class RadiologyOrdersService {
   }
 
   /**
-   * Scheduling — appointment date/time, room, machine, technician,
+   * Scheduling - appointment date/time, room, machine, technician,
    * radiologist, duration (roadmap's dedicated "Scheduling" deliverable).
    * Callable while `ORDERED` (first schedule) or already `SCHEDULED`
-   * (reschedule) — both land on `SCHEDULED`.
+   * (reschedule) - both land on `SCHEDULED`.
    */
   async schedule(
     organizationId: string,
@@ -296,9 +296,9 @@ export class RadiologyOrdersService {
   }
 
   /**
-   * Appends a new versioned report (append-only, mirrors `ClinicalNote` —
+   * Appends a new versioned report (append-only, mirrors `ClinicalNote` -
    * ADR-0008/ADR-0013) and denormalizes its content onto the order for cheap
-   * reads. Only while `COMPLETED` — imaging must be done first, and once
+   * reads. Only while `COMPLETED` - imaging must be done first, and once
    * `REPORTED` the report is locked (no amendment path in this milestone;
    * see TECH_DEBT).
    */
@@ -312,7 +312,7 @@ export class RadiologyOrdersService {
     const currentStatus = order.status as unknown as RadiologyStatus
     if (currentStatus !== RadiologyStatus.COMPLETED) {
       throw new BadRequestException(
-        `Cannot author a report while the order is ${currentStatus} — complete the study first`,
+        `Cannot author a report while the order is ${currentStatus} - complete the study first`,
       )
     }
 
@@ -365,7 +365,7 @@ export class RadiologyOrdersService {
       throw new BadRequestException(`Cannot verify a report while the order is ${currentStatus}`)
     }
     if (order.reports.length === 0) {
-      throw new BadRequestException('No report has been authored yet — add a report first')
+      throw new BadRequestException('No report has been authored yet - add a report first')
     }
 
     const updated = await this.prisma.radiologyOrder.update({
@@ -402,7 +402,7 @@ export class RadiologyOrdersService {
 
   /**
    * External report file upload (e.g. a scanned report from an outside
-   * imaging center) — distinct from `generateReportPdf`'s structured,
+   * imaging center) - distinct from `generateReportPdf`'s structured,
    * system-generated PDF. Requires the study to be `COMPLETED`; marks the
    * order `REPORTED` directly (an external file stands in for the
    * verify/release flow, since there's no in-system text to verify).
@@ -419,7 +419,7 @@ export class RadiologyOrdersService {
       throw new BadRequestException(`Cannot upload a report while the order is ${currentStatus}`)
     }
     if (!ALLOWED_REPORT_MIME_TYPES.has(file.mimeType)) {
-      throw new BadRequestException('Unsupported file type — allowed: PDF, PNG, JPEG, WEBP')
+      throw new BadRequestException('Unsupported file type - allowed: PDF, PNG, JPEG, WEBP')
     }
     if (file.size > MAX_FILE_SIZE_BYTES) {
       throw new BadRequestException('File exceeds the 20MB upload limit')
@@ -496,7 +496,7 @@ export class RadiologyOrdersService {
     return { buffer, fileName: `${order.orderNumber}.pdf` }
   }
 
-  /** Generic status route — only for the side-effect-free terminal transitions (CANCELLED/REJECTED). */
+  /** Generic status route - only for the side-effect-free terminal transitions (CANCELLED/REJECTED). */
   async updateStatus(
     organizationId: string,
     id: string,
@@ -533,7 +533,7 @@ export class RadiologyOrdersService {
     return attachments.map((a) => this.toAttachmentResponse(a))
   }
 
-  /** `IMAGE`/`PDF` attachments — a real uploaded file via `StorageService`. */
+  /** `IMAGE`/`PDF` attachments - a real uploaded file via `StorageService`. */
   async addFileAttachment(
     organizationId: string,
     id: string,
@@ -546,7 +546,7 @@ export class RadiologyOrdersService {
     const allowed = type === RadiologyAttachmentType.IMAGE ? ALLOWED_IMAGE_MIME_TYPES : new Set(['application/pdf'])
     if (!allowed.has(file.mimeType)) {
       throw new BadRequestException(
-        type === RadiologyAttachmentType.IMAGE ? 'Unsupported file type — allowed: PNG, JPEG, WEBP' : 'Only PDF files are accepted',
+        type === RadiologyAttachmentType.IMAGE ? 'Unsupported file type - allowed: PNG, JPEG, WEBP' : 'Only PDF files are accepted',
       )
     }
     if (file.size > MAX_FILE_SIZE_BYTES) {
@@ -572,9 +572,9 @@ export class RadiologyOrdersService {
   }
 
   /**
-   * `EXTERNAL_IMAGING`/`DICOM_PLACEHOLDER` attachments — metadata-only,
+   * `EXTERNAL_IMAGING`/`DICOM_PLACEHOLDER` attachments - metadata-only,
    * referencing a study held in an outside PACS. No real DICOM parsing or
-   * PACS connectivity exists (see TECH_DEBT) — this just records a pointer
+   * PACS connectivity exists (see TECH_DEBT) - this just records a pointer
    * (accession number / external URL / study instance UID) so the order's
    * timeline reflects that imaging exists elsewhere.
    */
@@ -622,7 +622,7 @@ export class RadiologyOrdersService {
 
   /**
    * `radiology.*` can be held at `.own` scope (a doctor managing only
-   * studies they ordered) — same idiom as `LabTestsService.assertOwnScopeOk`.
+   * studies they ordered) - same idiom as `LabTestsService.assertOwnScopeOk`.
    * See ADR-0013.
    */
   async assertOwnScopeOk(organizationId: string, id: string, user: JwtPayload, action: string): Promise<void> {

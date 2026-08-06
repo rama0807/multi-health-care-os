@@ -13,7 +13,7 @@ export interface Shift {
   gracePeriodMinutes: number
   isNightShift: boolean
   isActive: boolean
-  // Derived, not stored — (endTime - startTime), crossing midnight for a
+  // Derived, not stored - (endTime - startTime), crossing midnight for a
   // night shift, minus breakMinutes.
   standardMinutes: number
   createdAt: Date
@@ -81,7 +81,7 @@ export const AssignShiftRosterSchema = z
 
 export type AssignShiftRosterDto = z.infer<typeof AssignShiftRosterSchema>
 
-/** Bulk-assign one shift (or a day off) across several staff for one date — the "Staff assignment" workflow. */
+/** Bulk-assign one shift (or a day off) across several staff for one date - the "Staff assignment" workflow. */
 export const BulkAssignShiftRosterSchema = z.object({
   staffIds: z.array(z.string().min(1)).min(1),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format: YYYY-MM-DD'),

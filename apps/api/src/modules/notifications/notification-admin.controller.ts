@@ -53,7 +53,7 @@ function toRangeQuery(query: Record<string, string | undefined>): ReportFilterQu
  *
  * `notifications.read` reads history and statistics; `notifications.send`
  * composes a message; `notifications.manage` covers the operational levers
- * (templates, retry, cancel) — the same requester/approver separation
+ * (templates, retry, cancel) - the same requester/approver separation
  * `billing.manage` established.
  */
 @ApiTags('notifications-admin')
@@ -119,7 +119,7 @@ export class NotificationAdminController {
       userId,
       action: dto.scheduleAt ? 'notification.scheduled' : 'notification.sent',
       resource: 'Notification',
-      // Recipient count and category, never the message body — the same rule
+      // Recipient count and category, never the message body - the same rule
       // `AiModule` follows for generated clinical text.
       after: {
         recipients: result.created,

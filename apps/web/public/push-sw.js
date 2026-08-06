@@ -23,7 +23,7 @@
 const FALLBACK_URL = '/dashboard/notifications'
 
 self.addEventListener('install', () => {
-  // Take over immediately rather than waiting for every old tab to close —
+  // Take over immediately rather than waiting for every old tab to close -
   // a stale worker would keep routing clicks with an outdated link rule.
   self.skipWaiting()
 })
@@ -74,7 +74,7 @@ self.addEventListener('notificationclick', (event) => {
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       // Prefer focusing an open MediCore tab and navigating it, rather than
-      // opening a duplicate — a clinician with the chart already open should
+      // opening a duplicate - a clinician with the chart already open should
       // stay in the session they are in.
       for (const client of clientList) {
         if (client.url.startsWith(self.location.origin) && 'focus' in client) {

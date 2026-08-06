@@ -106,9 +106,9 @@ export class InsuranceClaimsController {
     @Req() request: FastifyRequest,
   ) {
     const data = await request.file()
-    if (!data) throw new BadRequestException('No file uploaded — send multipart/form-data')
+    if (!data) throw new BadRequestException('No file uploaded - send multipart/form-data')
     if (!ALLOWED_UPLOAD_MIME_TYPES.has(data.mimetype)) {
-      throw new BadRequestException('Unsupported file type — allowed: PNG, JPEG, WEBP, PDF')
+      throw new BadRequestException('Unsupported file type - allowed: PNG, JPEG, WEBP, PDF')
     }
 
     const typeField = data.fields.type as { value?: unknown } | undefined

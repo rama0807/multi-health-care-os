@@ -9,7 +9,7 @@ export const CSRF_HEADER_NAME = 'x-csrf-token'
 /**
  * Double-submit cookie check for the small set of endpoints authenticated via
  * an HttpOnly cookie (refresh/logout/logout-all) rather than a Bearer token.
- * Bearer-authenticated routes never need this — browsers don't auto-attach
+ * Bearer-authenticated routes never need this - browsers don't auto-attach
  * the Authorization header, so those are not CSRF-able by nature. Applied
  * per-route only; never registered as a global guard.
  */
@@ -37,14 +37,14 @@ export class CsrfGuard implements CanActivate {
 
 /**
  * Constant-time comparison. `!==` on secrets leaks their prefix through
- * response timing — a weak signal over one request, a usable one over many,
+ * response timing - a weak signal over one request, a usable one over many,
  * and there is no reason to leave it available.
  */
 function tokensMatch(cookieToken: string, headerToken: string): boolean {
   const a = Buffer.from(cookieToken)
   const b = Buffer.from(headerToken)
   // `timingSafeEqual` throws on a length mismatch, so length is checked first
-  // — it is not secret (the token is a fixed-length nanoid).
+  // - it is not secret (the token is a fixed-length nanoid).
   if (a.length !== b.length) return false
   return timingSafeEqual(a, b)
 }

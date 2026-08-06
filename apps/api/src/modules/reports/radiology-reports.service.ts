@@ -16,7 +16,7 @@ import {
   toPeriod,
 } from './report-range.util'
 
-/** Studies not yet reported — the radiologist's outstanding queue. */
+/** Studies not yet reported - the radiologist's outstanding queue. */
 const PENDING_STATUSES: Prisma.EnumRadiologyStatusFilter = {
   in: ['ORDERED', 'SCHEDULED', 'IN_PROGRESS', 'COMPLETED'],
 }

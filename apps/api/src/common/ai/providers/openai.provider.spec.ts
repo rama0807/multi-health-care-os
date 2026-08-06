@@ -3,7 +3,7 @@ import { OpenAiProvider } from './openai.provider'
 /**
  * Adapters are verified against a mocked `fetch`: request shaping, usage
  * mapping, SSE decoding, and error classification are all real behaviour that
- * can be asserted without a credential — and without inventing a model
+ * can be asserted without a credential - and without inventing a model
  * response as if it were clinical output (ADR-0023).
  */
 describe('OpenAiProvider', () => {

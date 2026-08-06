@@ -23,7 +23,7 @@ describe('report-range.util', () => {
 
       expect(range.days).toBe(30)
       // `to` is exclusive, so it must be the start of tomorrow for today to
-      // be fully included — the single most common off-by-one in reporting.
+      // be fully included - the single most common off-by-one in reporting.
       expect(toDateKey(range.to)).toBe('2026-08-06')
       expect(toDateKey(range.from)).toBe('2026-07-07')
     })

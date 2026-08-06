@@ -1,5 +1,5 @@
 /**
- * Static reference data for the demo seed — clinically and commercially
+ * Static reference data for the demo seed - clinically and commercially
  * plausible content for an Indian multi-speciality hospital, matching the
  * demo organization the base seed creates (Mumbai, INR, 18% GST).
  *
@@ -412,7 +412,7 @@ export const PRESCRIBING_PATTERNS: Record<
 > = {
   'Acute viral febrile illness': [
     { brand: 'Dolo 650', dosage: '1 tablet', frequency: 'TDS (thrice daily)', duration: '5 days', route: 'ORAL', instructions: 'Take after food. Stop if fever settles for 48 hours.' },
-    { brand: 'Cetzine 10', dosage: '1 tablet', frequency: 'OD (once daily)', duration: '5 days', route: 'ORAL', instructions: 'Take at bedtime — may cause drowsiness.' },
+    { brand: 'Cetzine 10', dosage: '1 tablet', frequency: 'OD (once daily)', duration: '5 days', route: 'ORAL', instructions: 'Take at bedtime - may cause drowsiness.' },
   ],
   'Stable angina pectoris': [
     { brand: 'Ecosprin 75', dosage: '1 tablet', frequency: 'OD (once daily)', duration: '30 days', route: 'ORAL', instructions: 'Take after dinner.' },

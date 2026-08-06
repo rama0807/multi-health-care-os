@@ -7,7 +7,7 @@
 
 ## Context
 
-MediCore serves multiple healthcare organizations (hospitals, clinics, diagnostic centers) from a single deployment. Tenant data must be completely isolated — a nurse at Hospital A must never see data from Hospital B, even in the event of application bugs.
+MediCore serves multiple healthcare organizations (hospitals, clinics, diagnostic centers) from a single deployment. Tenant data must be completely isolated - a nurse at Hospital A must never see data from Hospital B, even in the event of application bugs.
 
 ## Decision
 
@@ -27,16 +27,16 @@ MediCore serves multiple healthcare organizations (hospitals, clinics, diagnosti
 | Connection pooling | Efficient (shared pool) | Each tenant needs connection |
 | Scale | Good to millions of tenants | Degrades at hundreds of tenants |
 
-Schema-per-tenant is better when tenants have truly different schemas (custom tables per tenant). Our tenants all share the same data model with configuration differences — row-level is the right fit.
+Schema-per-tenant is better when tenants have truly different schemas (custom tables per tenant). Our tenants all share the same data model with configuration differences - row-level is the right fit.
 
 ## Three-Layer Isolation
 
 ### Layer 1: JWT Claims
 
-Every access token contains `organizationId`. The organization context is extracted from the JWT — never from a user-supplied request parameter.
+Every access token contains `organizationId`. The organization context is extracted from the JWT - never from a user-supplied request parameter.
 
 ```typescript
-// Middleware extracts org context — NOT from req.params or req.body
+// Middleware extracts org context - NOT from req.params or req.body
 const orgId = request.user.organizationId
 ```
 

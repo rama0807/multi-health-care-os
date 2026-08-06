@@ -58,7 +58,7 @@ export default function AssetsPage() {
   return (
     <PageLayout
       title="Assets & Maintenance"
-      description="Biomedical/equipment assets — assignment, calibration, and maintenance history."
+      description="Biomedical/equipment assets - assignment, calibration, and maintenance history."
       actions={
         canCreate && (
           <Button onClick={() => setCreateOpen(true)}>
@@ -130,9 +130,9 @@ export default function AssetsPage() {
                   </TableCell>
                   <TableCell>{a.item.name}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{a.store.name}</TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">{a.serialNumber ?? '—'}</TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">{a.serialNumber ?? '-'}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">
-                    {a.warrantyExpiryDate ? new Date(a.warrantyExpiryDate).toLocaleDateString('en-IN') : '—'}
+                    {a.warrantyExpiryDate ? new Date(a.warrantyExpiryDate).toLocaleDateString('en-IN') : '-'}
                   </TableCell>
                   <TableCell>
                     <StatusBadge status={a.status} />
@@ -233,7 +233,7 @@ function CreateAssetDialog({ open, onOpenChange }: { open: boolean; onOpenChange
           </div>
           {itemsQuery.data?.data.length === 0 && (
             <p className="text-xs text-muted-foreground">
-              No Asset-type items in the catalog yet — add one on the Item Master page with type &quot;Asset&quot; first.
+              No Asset-type items in the catalog yet - add one on the Item Master page with type &quot;Asset&quot; first.
             </p>
           )}
         </div>

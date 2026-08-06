@@ -2,18 +2,18 @@
 
 ---
 
-## Milestone 1 — Foundation & Infrastructure (Week 1–2)
+## Milestone 1 - Foundation & Infrastructure (Week 1–2)
 
 **Goal:** Production-ready project skeleton. Every developer can clone, run `pnpm install && docker-compose up && pnpm dev`, and have a working system.
 
 ### Deliverables
 - [ ] Monorepo setup (Turborepo + pnpm workspaces)
 - [ ] Root tooling: ESLint, Prettier, EditorConfig, commitlint, Husky
-- [ ] `packages/config` — shared TypeScript and ESLint configs
-- [ ] `packages/types` — shared TypeScript interfaces
-- [ ] `packages/database` — Prisma schema, client export
-- [ ] `apps/api` — NestJS project with all modules scaffolded (empty)
-- [ ] `apps/web` — Next.js 14 project with App Router, Tailwind, shadcn
+- [ ] `packages/config` - shared TypeScript and ESLint configs
+- [ ] `packages/types` - shared TypeScript interfaces
+- [ ] `packages/database` - Prisma schema, client export
+- [ ] `apps/api` - NestJS project with all modules scaffolded (empty)
+- [ ] `apps/web` - Next.js 14 project with App Router, Tailwind, shadcn
 - [ ] Docker Compose for local: PostgreSQL, Redis, MailHog
 - [ ] GitHub Actions CI: lint, typecheck, test on PR
 - [ ] Environment configuration strategy
@@ -23,35 +23,35 @@
 
 ---
 
-## Milestone 2 — Authentication & Organization Setup (Week 3)
+## Milestone 2 - Authentication & Organization Setup (Week 3)
 
 **Goal:** Complete auth system with multi-tenancy, RBAC, and organization management.
 
 ### Deliverables
-- [x] Organization registration (onboarding flow) — `POST /auth/register`
-- [x] User registration and email verification — admin-created users + self-registered org admins, Redis-backed verification tokens
-- [x] Login / logout — Argon2, RS256 JWT, HttpOnly refresh cookie, CSRF
-- [x] JWT + refresh token implementation — rotation with reuse (theft) detection
-- [x] RBAC: roles and permissions seeded — DB-driven, `packages/database/prisma/seed.ts`
+- [x] Organization registration (onboarding flow) - `POST /auth/register`
+- [x] User registration and email verification - admin-created users + self-registered org admins, Redis-backed verification tokens
+- [x] Login / logout - Argon2, RS256 JWT, HttpOnly refresh cookie, CSRF
+- [x] JWT + refresh token implementation - rotation with reuse (theft) detection
+- [x] RBAC: roles and permissions seeded - DB-driven, `packages/database/prisma/seed.ts`
 - [x] Password reset flow
-- [x] Session management (active sessions list) — `GET /auth/sessions`, `POST /auth/logout(-all)`
-- [x] Audit log middleware (auto-capture on mutations) — event-listener based (`modules/audit`), not an HTTP interceptor
+- [x] Session management (active sessions list) - `GET /auth/sessions`, `POST /auth/logout(-all)`
+- [x] Audit log middleware (auto-capture on mutations) - event-listener based (`modules/audit`), not an HTTP interceptor
 - [x] Frontend: login page, forgot password, email verification
-- [ ] Frontend: org settings page — backend (`GET/PATCH /organizations/me`) implemented; no frontend page yet
-- [ ] Frontend: user management page (admin) — backend (`modules/users`) implemented; no frontend page yet
-- [ ] Role assignment UI — backend (`modules/roles`, assign/revoke endpoints) implemented; no frontend UI yet
+- [ ] Frontend: org settings page - backend (`GET/PATCH /organizations/me`) implemented; no frontend page yet
+- [ ] Frontend: user management page (admin) - backend (`modules/users`) implemented; no frontend page yet
+- [ ] Role assignment UI - backend (`modules/roles`, assign/revoke endpoints) implemented; no frontend UI yet
 
 Also delivered beyond the original scope: `Hospital` entity (Organization → Hospital → Department hierarchy), hospital-scoped role assignments (`UserRole.hospitalId`), account lockout, `Hospitals`/`Departments` REST modules, and a `/health` endpoint.
 
 ---
 
-## Milestone 3 — Patient Management (Week 4)
+## Milestone 3 - Patient Management (Week 4)
 
 **Goal:** Complete patient registration and management module.
 
 ### Deliverables
 - [ ] Patient CRUD with UHID generation
-- [ ] Patient search (name, UHID, phone — full-text + fuzzy)
+- [ ] Patient search (name, UHID, phone - full-text + fuzzy)
 - [ ] Patient profile page with timeline
 - [ ] Document upload (Aadhaar, insurance card, old reports)
 - [ ] Emergency contacts
@@ -64,14 +64,14 @@ Also delivered beyond the original scope: `Hospital` entity (Organization → Ho
 
 ---
 
-## Milestone 4 — Doctor Management & Scheduling (Week 5)
+## Milestone 4 - Doctor Management & Scheduling (Week 5)
 
 **Goal:** Doctor directory/profile management, then doctor-side scheduling.
 Split into two checkpoints (see ADR-0005) to keep each session's scope
 tight; appointment *booking* itself (patient-facing slot booking, queue,
 status machine) is deferred to a later milestone.
 
-### Checkpoint 4.1 — Doctor Management — ✅ Complete
+### Checkpoint 4.1 - Doctor Management - ✅ Complete
 - [x] Doctor CRUD
 - [x] Professional profile
 - [x] Linked user onboarding (`StaffOnboardingService`, reused across staff roles)
@@ -82,7 +82,7 @@ status machine) is deferred to a later milestone.
 - [x] Tests (unit + e2e)
 - [x] Documentation (`docs/modules/04-doctor-management.md`)
 
-### Checkpoint 4.2 — Doctor Scheduling — ✅ Complete
+### Checkpoint 4.2 - Doctor Scheduling - ✅ Complete
 - [x] Weekly schedules
 - [x] Leave management
 - [x] Availability (beyond the existing `availabilityStatus` enum)
@@ -93,15 +93,15 @@ status machine) is deferred to a later milestone.
 
 ---
 
-## Milestone 5 — Appointment Management (Week 6)
+## Milestone 5 - Appointment Management (Week 6)
 
 **Goal:** Patient-facing appointment booking, on top of Milestone 4's
 scheduling engine. Split into two checkpoints (see ADR-0006) mirroring
 Milestone 4's precedent.
 
-### Checkpoint 5.1 — Core Booking — ✅ Complete
+### Checkpoint 5.1 - Core Booking - ✅ Complete
 - [x] Appointment slot generation (reuses `AvailabilityService` from 4.2,
-      unmodified — see ADR-0006)
+      unmodified - see ADR-0006)
 - [x] Conflict detection
 - [x] Appointment booking (OPD, IPD, emergency, procedure)
 - [x] Appointment status machine (scheduled → confirmed → arrived → in-consultation → completed/cancelled/no-show)
@@ -110,12 +110,12 @@ Milestone 4's precedent.
 - [x] Frontend: booking form with live slot selection
 - [x] Tests (unit + e2e)
 
-### Checkpoint 5.2 — Queue & Recurring — ✅ Complete (SMS deferred)
+### Checkpoint 5.2 - Queue & Recurring - ✅ Complete (SMS deferred)
 - [x] Dedicated walk-in flow (`isWalkIn` flag, auto-assigns next available
-      slot today — see ADR-0007)
+      slot today - see ADR-0007)
 - [x] Recurring appointments (`recurrenceGroupId`, independent rows per
-      occurrence, partial-success reporting — see ADR-0007)
-- [ ] SMS confirmations — **deferred, not attempted**: no SMS provider
+      occurrence, partial-success reporting - see ADR-0007)
+- [ ] SMS confirmations - **deferred, not attempted**: no SMS provider
       (Twilio or otherwise) is configured anywhere in this repo; this is
       genuinely credential-blocked, unlike email. Pick up if/when SMS
       provider credentials are supplied.
@@ -124,7 +124,7 @@ Milestone 4's precedent.
 
 ---
 
-## Milestone 6 — Clinical — Medical Records (Week 7)
+## Milestone 6 - Clinical - Medical Records (Week 7)
 
 **Goal:** Structured clinical documentation per consultation.
 
@@ -142,7 +142,7 @@ Milestone 4's precedent.
 
 ---
 
-## Milestone 7 — Laboratory Management (Week 8)
+## Milestone 7 - Laboratory Management (Week 8)
 
 **Goal:** Lab order management, from consultation to result.
 
@@ -158,7 +158,7 @@ Milestone 4's precedent.
 
 ---
 
-## Milestone 8 — Radiology Management (Week 9)
+## Milestone 8 - Radiology Management (Week 9)
 
 **Goal:** Radiology order tracking, from consultation to report.
 
@@ -169,20 +169,20 @@ Milestone 4's precedent.
 
 ---
 
-## Milestone 9 — Pharmacy Management (Week 10–11)
+## Milestone 9 - Pharmacy Management (Week 10–11)
 
 **Goal:** Pharmacy dispensing, from prescription to dispense, with batch/expiry-tracked stock.
-Reordered ahead of Billing & Insurance per explicit instruction — see ADR-0014.
+Reordered ahead of Billing & Insurance per explicit instruction - see ADR-0014.
 General (non-drug) inventory, purchase orders, and pharmacy↔billing
 integration are explicitly out of scope this milestone (Billing itself
-is out of scope entirely) — see Milestone 10.
+is out of scope entirely) - see Milestone 10.
 
-### Deliverables — ✅ Complete
+### Deliverables - ✅ Complete
 - [x] Drug catalog (generic/brand name, strength, dosage form,
-      manufacturer, batch, expiry, price, tax, active) — one row per
+      manufacturer, batch, expiry, price, tax, active) - one row per
       batch, see ADR-0014
 - [x] Dispense workflow (Pending → Preparing → Ready → Dispensed, plus
-      Cancelled/Returned) — dispense/partial-dispense/complete-dispense/
+      Cancelled/Returned) - dispense/partial-dispense/complete-dispense/
       reject/cancel actions, full history
 - [x] Stock management (current/reserved/available, minimum stock,
       reorder level, expiry tracking, batch tracking)
@@ -190,7 +190,7 @@ is out of scope entirely) — see Milestone 10.
 - [x] REST + Swagger + RBAC (all-scope `pharmacy.*`) + pagination/
       filtering/sorting + audit integration
 - [x] Frontend: `/dashboard/pharmacy` dashboard, `/catalog`, `/dispense`
-      queue, `/stock`, `/[dispenseId]` detail — dispensing queue,
+      queue, `/stock`, `/[dispenseId]` detail - dispensing queue,
       prescription integration (dispense button on an encounter's
       prescription), batch selection, expiry/low-stock warnings, return
       workflow
@@ -198,13 +198,13 @@ is out of scope entirely) — see Milestone 10.
 
 ---
 
-## Milestone 10 — Billing (Week 12)
+## Milestone 10 - Billing (Week 12)
 
 **Goal:** Complete financial operations from charge capture to invoice, payment,
-and refund. Insurance is its own follow-up milestone — see ADR-0015.
+and refund. Insurance is its own follow-up milestone - see ADR-0015.
 
 ### Deliverables
-- [x] Charge Engine — reusable charge entity, consumed by every clinical module
+- [x] Charge Engine - reusable charge entity, consumed by every clinical module
 - [x] Service catalog with pricing
 - [x] Auto-invoice generation from appointment
 - [x] Manual line-item addition
@@ -222,13 +222,13 @@ and refund. Insurance is its own follow-up milestone — see ADR-0015.
 
 ---
 
-## Milestone 11 — Insurance Management (Week 13)
+## Milestone 11 - Insurance Management (Week 13)
 
-**Goal:** Insurance policy management and TPA/cashless claim workflow —
+**Goal:** Insurance policy management and TPA/cashless claim workflow -
 carved out of the original "Billing & Insurance" milestone (see ADR-0015),
 building on the `InsuranceClaim` model and `Invoice.insuranceClaim` relation
 already in the schema. Expanded to full Provider/Plan/Coverage/Pre-Auth/
-Claims/Settlement management per this session's instruction — see ADR-0016.
+Claims/Settlement management per this session's instruction - see ADR-0016.
 
 ### Deliverables
 - [x] Insurance Company/TPA/Corporate Plan provider management
@@ -245,22 +245,22 @@ Claims/Settlement management per this session's instruction — see ADR-0016.
 
 ---
 
-## Milestone 12 — IPD & Bed Management (Week 14)
+## Milestone 12 - IPD & Bed Management (Week 14)
 
-**Goal:** In-patient department workflow — ward/bed inventory, admission
+**Goal:** In-patient department workflow - ward/bed inventory, admission
 through discharge, and the nursing/clinical record that runs alongside it.
 Inserted ahead of General Inventory per explicit instruction at the close of
-Milestone 11 — see ADR-0017; General Inventory and every later milestone
+Milestone 11 - see ADR-0017; General Inventory and every later milestone
 shift by one (13–17 → 14–18, unchanged in content). Split into two
-checkpoints (see ADR-0018) mirroring Milestones 4/5/6's precedent — the
+checkpoints (see ADR-0018) mirroring Milestones 4/5/6's precedent - the
 `Ward`/`Bed`/`Admission` domain surface is large enough to warrant the same
 tight-scope-per-session discipline.
 
-### Checkpoint 12.1 — Admission, Wards & Bed Management — ✅ Complete
+### Checkpoint 12.1 - Admission, Wards & Bed Management - ✅ Complete
 - [x] Ward and bed inventory (ward/room/bed hierarchy, bed status: available/
       reserved/occupied/cleaning/maintenance/blocked)
 - [x] Admission workflow (from an encounter or directly), attending doctor
-      assignment — Emergency/Scheduled/Insurance/Transfer-from-OPD
+      assignment - Emergency/Scheduled/Insurance/Transfer-from-OPD
 - [x] Bed assignment / transfer between wards, rooms, or beds during a stay
       (allocate/reserve/cancel-reservation/vacate/transfer, full history)
 - [x] Bed occupancy dashboard
@@ -268,21 +268,21 @@ tight-scope-per-session discipline.
       Admit Patient wizard, admission detail page
 - [x] Tests (unit + e2e + browser-verified)
 
-### Checkpoint 12.2 — Nursing, Medication Administration & Discharge — ✅ Complete
+### Checkpoint 12.2 - Nursing, Medication Administration & Discharge - ✅ Complete
 - [x] Nursing notes and IPD vitals charting (reuses/extends the existing
       `Vital` model where it fits)
 - [x] Medication administration record (MAR) for IPD
-- [x] Discharge workflow (discharge summary, discharge date, outcome) —
+- [x] Discharge workflow (discharge summary, discharge date, outcome) -
       sets `AdmissionStatus.DISCHARGED`
-- [x] IPD billing integration — a stay's charges accumulate the same way
+- [x] IPD billing integration - a stay's charges accumulate the same way
       OPD `Charge` rows already do, reusing the Milestone 10 Charge Engine
-      (triggered at discharge — see TD-0030)
+      (triggered at discharge - see TD-0030)
 - [x] Frontend: nursing/MAR charting UI, discharge flow, IPD encounter view
 - [x] Tests (unit + e2e + browser-verified)
 
 ---
 
-## Milestone 13 — General Inventory (Week 15)
+## Milestone 13 - General Inventory (Week 15)
 
 **Goal:** Non-drug hospital inventory management (equipment, consumables, supplies).
 
@@ -295,7 +295,7 @@ tight-scope-per-session discipline.
 
 ---
 
-## Milestone 14 — Staff & Attendance (Week 16)
+## Milestone 14 - Staff & Attendance (Week 16)
 
 **Goal:** HR and attendance management for hospital staff.
 
@@ -312,7 +312,7 @@ tight-scope-per-session discipline.
 
 ---
 
-## Milestone 15 — AI Features (Week 17–18)
+## Milestone 15 - AI Features (Week 17–18)
 
 **Goal:** Integrate all planned AI capabilities.
 
@@ -328,7 +328,7 @@ tight-scope-per-session discipline.
 
 ---
 
-## Milestone 16 — Platform & Multi-Tenant Administration (Week 19)
+## Milestone 16 - Platform & Multi-Tenant Administration (Week 19)
 
 **Goal:** Turn MediCore from a hospital application into a SaaS platform
 serving multiple organizations, each containing multiple hospitals.
@@ -336,7 +336,7 @@ serving multiple organizations, each containing multiple hospitals.
 Hierarchy: Platform Owner → Organization → Hospital → Department → Users →
 Patients.
 
-### Checkpoint 16.1 — Organization Management
+### Checkpoint 16.1 - Organization Management
 - [x] Organization CRUD / profile
 - [x] Branding + logo upload (reuses `StorageService`)
 - [x] Organization settings
@@ -349,7 +349,7 @@ Patients.
 - [x] Frontend: Organization Dashboard (Overview / Hospitals / Users /
       Subscription / Usage / Branding / Settings / Audit Logs)
 
-### Checkpoint 16.2 — Platform Owner Console
+### Checkpoint 16.2 - Platform Owner Console
 - [x] View all organizations / hospitals / tenants
 - [x] Enable/disable tenants, suspend + reinstate organizations
 - [x] Manage subscriptions (plans + limits)
@@ -359,20 +359,20 @@ Patients.
 - [x] Platform analytics
 - [x] Frontend: isolated `/platform` console (own layout, own route group)
 
-### Checkpoint 16.3 — Tenant Resolution
+### Checkpoint 16.3 - Tenant Resolution
 - [x] Every authenticated request resolves Platform / Organization / Hospital
 - [x] Extended the existing JWT/session mechanism rather than duplicating it
 
-### Checkpoint 16.4 — Organization Settings
+### Checkpoint 16.4 - Organization Settings
 - [x] Branding, theme, logo, address, tax details, contact details
 - [x] Timezone, currency, language, working hours, holidays, feature flags
 
-### Checkpoint 16.5 — Verification
+### Checkpoint 16.5 - Verification
 - [x] lint / typecheck / test / test:e2e / build all green
 
 ---
 
-## Milestone 17 — Reports & Analytics (Week 20)
+## Milestone 17 - Reports & Analytics (Week 20)
 
 **Goal:** Operational intelligence for hospital administrators.
 
@@ -410,28 +410,28 @@ Patients.
 
 ---
 
-## Milestone 18 — Communication & Notification Platform (Week 21) ✅
+## Milestone 18 - Communication & Notification Platform (Week 21) ✅
 
 **Goal:** Multi-channel patient and staff communication.
 
-**Status: Complete (2026-08-06)** — delivered as seven checkpoints, a wider
+**Status: Complete (2026-08-06)** - delivered as seven checkpoints, a wider
 scope than the list below (templates, delivery tracking, a retry queue,
 scheduled notifications, an organization admin console and platform-owner
 analytics were all added by the session's instruction). See **ADR-0027**.
 
 ### Deliverables
-- [x] Email notifications — reuses the existing `common/email` Resend sender
-- [x] SMS notifications — **provider abstraction with a local log driver
+- [x] Email notifications - reuses the existing `common/email` Resend sender
+- [x] SMS notifications - **provider abstraction with a local log driver
       only**; no paid provider integrated, by instruction (TD-0059)
 - [x] In-app notification center
-- [x] Push notifications — FCM HTTP v1 send path, device registry, service
+- [x] Push notifications - FCM HTTP v1 send path, device registry, service
       worker and click routing; the browser cannot mint a token in this
       deployment and says so (TD-0058)
 - [x] Appointment reminders (scheduled at booking time, cancelled with the
       appointment)
 - [x] Lab result ready notifications (a critical value escalates to
       `CRITICAL` priority)
-- [x] WhatsApp — **provider abstraction with a local log driver only**
+- [x] WhatsApp - **provider abstraction with a local log driver only**
       (TD-0059)
 - [x] Notification preferences per user (channels, quiet hours, email
       frequency, per-category)
@@ -444,54 +444,54 @@ analytics were all added by the session's instruction). See **ADR-0027**.
 
 ---
 
-## Milestone 19 — Production Hardening & Enterprise Readiness (Week 22) ✅ COMPLETE (2026-08-06)
+## Milestone 19 - Production Hardening & Enterprise Readiness (Week 22) ✅ COMPLETE (2026-08-06)
 
 **Goal:** Secure, observable, deployable to production.
 
-Delivered across seven checkpoints — see `.ai/PROGRESS.md` and ADR-0028 /
+Delivered across seven checkpoints - see `.ai/PROGRESS.md` and ADR-0028 /
 ADR-0029 / ADR-0030. The audit that opened the milestone found much of the
 security and query work already correct, so it was left alone; no HMS feature
 and no schema change was added.
 
 ### Deliverables
-- [x] Security audit (OWASP top 10 review) — headers, CORS, CSRF, cookies,
+- [x] Security audit (OWASP top 10 review) - headers, CORS, CSRF, cookies,
       secrets, rate limiting, permissions all reviewed; only genuine gaps fixed
-- [x] Rate limiting on all public endpoints — global tier already existed;
+- [x] Rate limiting on all public endpoints - global tier already existed;
       added a per-route override on the seven credential endpoints
-- [x] Request sanitization and validation hardening — Zod-behind-a-global-pipe
+- [x] Request sanitization and validation hardening - Zod-behind-a-global-pipe
       was already in place; added **startup environment validation** that
       aborts the boot on an unsafe production setting
-- [x] Structured logging with correlation IDs (Pino) — `AsyncLocalStorage`
+- [x] Structured logging with correlation IDs (Pino) - `AsyncLocalStorage`
       context, one shared request-id derivation rule, W3C `traceparent`,
       credential redaction
-- [ ] Error monitoring integration (Sentry) — **not done**: no Sentry DSN or
+- [ ] Error monitoring integration (Sentry) - **not done**: no Sentry DSN or
       account exists in this environment, and the milestone was instructed not
       to invent deployment infrastructure. Structured JSON logs carrying
       `requestId`/`traceId` are the substitute; every unhandled 500 is logged
       with both
-- [x] APM — Prometheus `/api/metrics` (HTTP latency/throughput/in-flight,
+- [x] APM - Prometheus `/api/metrics` (HTTP latency/throughput/in-flight,
       dependency gauge, background-run counter, process/GC/event-loop series),
       plus Prisma slow-query logging. See TD-0069 for the OpenTelemetry gap
-- [x] Database query optimization (N+1 analysis, slow query log) — the two
+- [x] Database query optimization (N+1 analysis, slow query log) - the two
       likely N+1 shapes were already batched; 205 existing indexes cover the
       hot filters; slow-query logging added
-- [ ] Load testing (k6) — **not done**: k6 is not a dependency and a load test
+- [ ] Load testing (k6) - **not done**: k6 is not a dependency and a load test
       against a laptop's Docker Postgres would produce numbers that mislead
       rather than inform. The metrics needed to run one meaningfully now exist
-- [x] Production Docker images (multi-stage, minimal) — already multi-stage;
+- [x] Production Docker images (multi-stage, minimal) - already multi-stage;
       now runs unprivileged, with a healthcheck that points at a path that
       exists
-- [ ] Kubernetes manifests (optional) — **not done**, explicitly optional; the
+- [ ] Kubernetes manifests (optional) - **not done**, explicitly optional; the
       liveness/readiness split and graceful shutdown that a Deployment needs
       are in place
-- [x] Production deployment runbook — `docs/operations/deployment.md` +
+- [x] Production deployment runbook - `docs/operations/deployment.md` +
       `runbook.md` + `operations.md`
-- [x] Disaster recovery procedure — `docs/operations/disaster-recovery.md`
-- [ ] Backup strategy (daily DB snapshots, PITR) — **specified, not
+- [x] Disaster recovery procedure - `docs/operations/disaster-recovery.md`
+- [ ] Backup strategy (daily DB snapshots, PITR) - **specified, not
       implemented (TD-0070)**. MediCore ships no scheduler; backup automation
       belongs to the target infrastructure. **A deployment following the guide
       exactly has no backups.**
-- [x] HIPAA compliance checklist — the compliance section of
+- [x] HIPAA compliance checklist - the compliance section of
       `docs/operations/production-checklist.md`, which names the real open
       items (TD-0042 PHI to a third-party AI provider without a BAA, TD-0059
       log-only SMS/WhatsApp drivers, TD-0050 platform access granularity)
@@ -501,13 +501,13 @@ and no schema change was added.
 
 ## Future Roadmap (Post-MVP)
 
-- **Mobile App** — React Native with offline support for rural clinics
-- **Telemedicine** — Video consultation (WebRTC)
-- **ABDM Integration** — Ayushman Bharat Digital Mission (Health ID, ABHA)
-- **HL7/FHIR** — Interoperability with external hospital systems
-- **LIMS Integration** — Deep integration with laboratory information systems
-- **PACS Integration** — DICOM viewer for radiology
-- **IoT Integration** — Bedside device data (ventilators, monitors)
-- **WhatsApp Bot** — Patient engagement via WhatsApp Business API
-- **Multi-language** — Hindi and regional language support
-- **Franchise Module** — Chain hospital management with centralized reporting
+- **Mobile App** - React Native with offline support for rural clinics
+- **Telemedicine** - Video consultation (WebRTC)
+- **ABDM Integration** - Ayushman Bharat Digital Mission (Health ID, ABHA)
+- **HL7/FHIR** - Interoperability with external hospital systems
+- **LIMS Integration** - Deep integration with laboratory information systems
+- **PACS Integration** - DICOM viewer for radiology
+- **IoT Integration** - Bedside device data (ventilators, monitors)
+- **WhatsApp Bot** - Patient engagement via WhatsApp Business API
+- **Multi-language** - Hindi and regional language support
+- **Franchise Module** - Chain hospital management with centralized reporting

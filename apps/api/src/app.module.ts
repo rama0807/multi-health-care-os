@@ -73,7 +73,7 @@ import { PrismaModule } from './prisma/prisma.module'
         securityConfig,
       ],
       envFilePath: ['.env.local', '.env'],
-      // Runs before a single provider is constructed — an unsafe production
+      // Runs before a single provider is constructed - an unsafe production
       // environment fails the boot rather than serving traffic (ADR-0028).
       validate: validateEnv,
     }),
@@ -189,7 +189,7 @@ import { PrismaModule } from './prisma/prisma.module'
     // the interceptors below it.
     { provide: APP_INTERCEPTOR, useClass: MetricsInterceptor },
     // Runs after the guards, so `request.user` (and therefore the tenant it
-    // belongs to) is already resolved — unauthenticated traffic is not metered.
+    // belongs to) is already resolved - unauthenticated traffic is not metered.
     { provide: APP_INTERCEPTOR, useClass: ApiUsageInterceptor },
   ],
 })

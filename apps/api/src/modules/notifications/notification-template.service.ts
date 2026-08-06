@@ -15,7 +15,7 @@ import { PrismaService } from '../../prisma/prisma.service'
 
 import { DEFAULT_NOTIFICATION_TEMPLATES, DefaultNotificationTemplate } from './default-templates'
 
-/** `{{ variableName }}` — whitespace tolerated, names limited to identifiers. */
+/** `{{ variableName }}` - whitespace tolerated, names limited to identifiers. */
 const VARIABLE_PATTERN = /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g
 
 export type TemplateVariables = Record<string, string | number | boolean | null | undefined>
@@ -23,7 +23,7 @@ export type TemplateVariables = Record<string, string | number | boolean | null 
 const CACHE_NAMESPACE = 'notification-template'
 
 /**
- * A ceiling, not the invalidation mechanism (Milestone 19.2) — publishing or
+ * A ceiling, not the invalidation mechanism (Milestone 19.2) - publishing or
  * rolling back a version drops the entry immediately. The TTL only bounds how
  * long a stale entry could survive a Redis write that failed silently, and how
  * long a second API instance keeps its own copy of a template another instance
@@ -44,7 +44,7 @@ const CACHE_TTL_SECONDS = 300
  * editing a template changes what every future recipient reads, so the
  * previous wording stays recoverable rather than being overwritten. A
  * deactivated override falls back to the bundled default rather than
- * disabling the notification — silence would be the worse failure.
+ * disabling the notification - silence would be the worse failure.
  */
 @Injectable()
 export class NotificationTemplateService {
@@ -58,13 +58,13 @@ export class NotificationTemplateService {
     return this.cache.key(organizationId, CACHE_NAMESPACE, `${key}:${channel}`)
   }
 
-  /** Bundled default for a type. Always defined — the record is exhaustive. */
+  /** Bundled default for a type. Always defined - the record is exhaustive. */
   getDefault(key: NotificationType): DefaultNotificationTemplate {
     return DEFAULT_NOTIFICATION_TEMPLATES[key]
   }
 
   /**
-   * Resolves and renders in one step — the only method the dispatcher calls.
+   * Resolves and renders in one step - the only method the dispatcher calls.
    * An override that fails to resolve is never an error: the bundled default
    * is used, because a template lookup must not be able to stop a clinical
    * notification from going out.
@@ -100,7 +100,7 @@ export class NotificationTemplateService {
     }
   }
 
-  /** Preview for the admin editor — same code path as a real render. */
+  /** Preview for the admin editor - same code path as a real render. */
   async preview(
     organizationId: string,
     key: string,
@@ -141,7 +141,7 @@ export class NotificationTemplateService {
       orderBy: [{ key: 'asc' }, { channel: 'asc' }, { version: 'desc' }],
     })
 
-    // Highest version wins per (key, channel) — the rest stay available
+    // Highest version wins per (key, channel) - the rest stay available
     // through `listVersions`.
     const latest = new Map<string, PrismaNotificationTemplate>()
     for (const row of rows) {
@@ -244,9 +244,9 @@ export class NotificationTemplateService {
   }
 
   /**
-   * Cached (Milestone 19.2). This runs once **per channel per notification** —
+   * Cached (Milestone 19.2). This runs once **per channel per notification** -
    * a single lab-result alert to a doctor with three channels enabled is three
-   * identical queries — while the answer only changes when an administrator
+   * identical queries - while the answer only changes when an administrator
    * publishes or rolls back a version, which is exactly when it is dropped.
    *
    * Most organizations never override a template at all, so the common result
@@ -317,7 +317,7 @@ export class NotificationTemplateService {
 
 /**
  * Substitutes `{{name}}` placeholders. A variable with no supplied value is
- * replaced with an empty string and recorded in `missing` — leaving the raw
+ * replaced with an empty string and recorded in `missing` - leaving the raw
  * `{{name}}` in a message a clinician reads would be worse than a gap, and
  * throwing would suppress the notification entirely.
  */

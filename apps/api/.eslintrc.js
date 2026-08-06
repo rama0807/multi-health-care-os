@@ -11,7 +11,7 @@ module.exports = {
   overrides: [
     {
       // Test assertions routinely touch loosely-typed response bodies
-      // (supertest's `res.body` is `any`) — the strict unsafe-* rules add
+      // (supertest's `res.body` is `any`) - the strict unsafe-* rules add
       // noise here without catching real bugs.
       files: ['**/*.spec.ts', '**/*.e2e-spec.ts'],
       rules: {

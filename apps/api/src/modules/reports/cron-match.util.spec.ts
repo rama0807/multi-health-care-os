@@ -1,6 +1,6 @@
 import { isDueBetween, matchesCron, parseCron } from './cron-match.util'
 
-/** Local-time helper — the matcher evaluates in the server's zone by design. */
+/** Local-time helper - the matcher evaluates in the server's zone by design. */
 function at(iso: string): Date {
   return new Date(iso)
 }
@@ -52,7 +52,7 @@ describe('matchesCron', () => {
   })
 
   it('ORs the two day fields when both are restricted, as crontab does', () => {
-    // "09:00 on the 1st of the month, or on a Monday" — not "both".
+    // "09:00 on the 1st of the month, or on a Monday" - not "both".
     const parsed = parseCron('0 9 1 * 1')!
     // 2026-08-03 is a Monday and not the 1st.
     expect(matchesCron(parsed, at('2026-08-03T09:00:00'))).toBe(true)
@@ -85,7 +85,7 @@ describe('isDueBetween', () => {
   })
 
   it('catches up a schedule missed while the worker was down', () => {
-    // Down from 08:00 to 12:00 — the 09:00 slot is still delivered.
+    // Down from 08:00 to 12:00 - the 09:00 slot is still delivered.
     expect(isDueBetween('0 9 * * *', at('2026-08-06T08:00:00'), at('2026-08-06T12:00:00'))).toBe(true)
   })
 

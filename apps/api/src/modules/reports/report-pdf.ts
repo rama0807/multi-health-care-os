@@ -19,7 +19,7 @@ const LANDSCAPE_COLUMN_THRESHOLD = 6
 /**
  * A structured, system-generated report PDF (Milestone 17 Checkpoint 17.3),
  * following the same pdfkit idiom as the invoice/receipt/discharge
- * generators already in this repo — org header, titled body, paginated table.
+ * generators already in this repo - org header, titled body, paginated table.
  */
 export async function generateReportPdf(data: ReportPdfData): Promise<Buffer> {
   const { organization, result } = data
@@ -89,9 +89,9 @@ export async function generateReportPdf(data: ReportPdfData): Promise<Buffer> {
       const y = doc.y
       result.definition.columns.forEach((column, index) => {
         const value = row[column.key]
-        // A missing measurement prints as an em dash, never as 0 — the two
+        // A missing measurement prints as an em dash, never as 0 - the two
         // mean different things and a printed report cannot be interrogated.
-        const text = value === null || value === undefined || value === '' ? '—' : String(value)
+        const text = value === null || value === undefined || value === '' ? '-' : String(value)
         doc.text(text, PAGE_MARGIN + index * columnWidth, y, {
           width: columnWidth - 4,
           align: alignOf(column.type),
@@ -106,7 +106,7 @@ export async function generateReportPdf(data: ReportPdfData): Promise<Buffer> {
     }
 
     // Truncation is disclosed in the document itself, not only in the UI that
-    // requested it — a PDF outlives the screen it was exported from.
+    // requested it - a PDF outlives the screen it was exported from.
     if (result.truncated) {
       doc.moveDown(0.8)
       doc

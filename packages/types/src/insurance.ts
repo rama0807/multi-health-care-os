@@ -306,7 +306,7 @@ export interface InsuranceClaimWithDetails extends InsuranceClaim {
 }
 
 /**
- * "Every claim must reference Patient, Encounter, Invoice, Insurance" — the
+ * "Every claim must reference Patient, Encounter, Invoice, Insurance" - the
  * patient is derived from the invoice/encounter (both already belong to one
  * patient), not passed separately.
  */

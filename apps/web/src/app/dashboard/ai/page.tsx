@@ -238,7 +238,7 @@ function ConversationsTab() {
                   <Badge variant="outline">{conversation.featureLabel}</Badge>
                 </TableCell>
                 <TableCell className="text-sm">{conversation.title}</TableCell>
-                <TableCell className="text-sm">{conversation.patientName ?? '—'}</TableCell>
+                <TableCell className="text-sm">{conversation.patientName ?? '-'}</TableCell>
                 <TableCell align="right" className="font-mono text-sm">{conversation.totalTokens}</TableCell>
               </TableRow>
             ))}

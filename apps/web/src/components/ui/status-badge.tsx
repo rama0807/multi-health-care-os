@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils"
 /**
  * One place that decides what a domain status *looks* like.
  *
- * MediCore has around twenty status vocabularies — appointments, encounters,
+ * MediCore has around twenty status vocabularies - appointments, encounters,
  * lab orders, radiology, dispensing, invoices, claims, admissions, nursing
  * tasks, procurement. Before this, each page picked its own colour, so
  * "Cancelled" was grey in Pharmacy and red in Billing, and a nurse moving
@@ -14,11 +14,11 @@ import { cn } from "@/lib/utils"
  *
  * The mapping is by *meaning*, not by module:
  *
- * - `success` — a terminal good outcome (Completed, Paid, Dispensed, Settled)
- * - `info`    — actively in flight (In Progress, Under Review, Preparing)
- * - `warning` — waiting on a human (Pending, Submitted, Ordered, Draft-ish)
- * - `danger`  — failed, refused, or clinically urgent (Rejected, Critical)
- * - `neutral` — inert (Draft, Cancelled, Closed, Inactive, Archived)
+ * - `success` - a terminal good outcome (Completed, Paid, Dispensed, Settled)
+ * - `info`    - actively in flight (In Progress, Under Review, Preparing)
+ * - `warning` - waiting on a human (Pending, Submitted, Ordered, Draft-ish)
+ * - `danger`  - failed, refused, or clinically urgent (Rejected, Critical)
+ * - `neutral` - inert (Draft, Cancelled, Closed, Inactive, Archived)
  *
  * Cancelled is deliberately neutral and not red: a cancelled appointment is a
  * normal administrative event, and reserving red for genuine failure is what
@@ -159,7 +159,7 @@ export interface StatusBadgeProps extends Omit<BadgeProps, "children" | "variant
   status: string
   /** Overrides the label while keeping the mapped tone. */
   label?: string
-  /** Overrides the mapped tone. Use sparingly — divergence is the problem. */
+  /** Overrides the mapped tone. Use sparingly - divergence is the problem. */
   tone?: StatusTone
 }
 

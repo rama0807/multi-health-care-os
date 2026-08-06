@@ -53,7 +53,7 @@ export class DoctorDocumentController {
     await this.assertOwnScopeOk(orgId, doctorId, user, 'manage')
 
     const data = await request.file()
-    if (!data) throw new BadRequestException('No file uploaded — send multipart/form-data')
+    if (!data) throw new BadRequestException('No file uploaded - send multipart/form-data')
 
     const documentTypeField = data.fields.documentType as { value?: unknown } | undefined
     const documentType =

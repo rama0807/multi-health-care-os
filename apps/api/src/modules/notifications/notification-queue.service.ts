@@ -7,7 +7,7 @@ import { PrismaService } from '../../prisma/prisma.service'
 
 import { ChannelSendResult } from './channels/channel-provider.interface'
 
-/** Terminal states — never claimed by the worker again. */
+/** Terminal states - never claimed by the worker again. */
 const TERMINAL: NotificationDeliveryStatus[] = [
   NotificationDeliveryStatus.SENT,
   NotificationDeliveryStatus.DELIVERED,
@@ -21,9 +21,9 @@ const TERMINAL: NotificationDeliveryStatus[] = [
  * **The queue is the `notification_deliveries` table, not a separate broker.**
  * `bullmq` is already a dependency and Redis is already wired, so an obvious
  * alternative existed; it was not taken (ADR-0027). Delivery history has to be
- * durable and queryable regardless — the admin console's "failed deliveries"
+ * durable and queryable regardless - the admin console's "failed deliveries"
  * and "retry" screens read exactly the rows a broker would otherwise
- * duplicate — and two stores would eventually disagree about whether a
+ * duplicate - and two stores would eventually disagree about whether a
  * message was sent. A row whose `nextAttemptAt` has elapsed *is* a queued job.
  *
  * Claiming is safe under concurrency: `claimDue` updates rows to `SENDING`
@@ -148,7 +148,7 @@ export class NotificationQueueService {
         lastAttemptAt: now,
         nextAttemptAt,
         failedAt: exhausted ? now : null,
-        // When retries remain, the reason is kept too — the admin console can
+        // When retries remain, the reason is kept too - the admin console can
         // then show *why* something is still retrying, not just that it is.
         failureReason: result.failureReason ?? 'Delivery failed',
         providerName: result.providerName,
@@ -179,7 +179,7 @@ export class NotificationQueueService {
 
   /**
    * Puts failed deliveries back in the queue (Checkpoint 18.6's "retry failed
-   * notifications"). Attempts are **not** reset — an operator needs to see
+   * notifications"). Attempts are **not** reset - an operator needs to see
    * that a message has now been tried seven times, and resetting the counter
    * would let a permanently broken destination retry forever.
    */
@@ -260,7 +260,7 @@ export class NotificationQueueService {
       workerEnabled,
       workerDisabledReason: workerEnabled
         ? null
-        : 'The notification worker is disabled (NOTIFICATIONS_WORKER_ENABLED) — queued deliveries stay queued',
+        : 'The notification worker is disabled (NOTIFICATIONS_WORKER_ENABLED) - queued deliveries stay queued',
     }
   }
 }

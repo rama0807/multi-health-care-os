@@ -21,7 +21,7 @@ export class VitalsService {
 
   /**
    * Powers the patient-level vitals trend chart (across every encounter,
-   * not just one) — the frontend's "Vitals: Charts, History, Comparison"
+   * not just one) - the frontend's "Vitals: Charts, History, Comparison"
    * deliverable needs the full longitudinal series, not a single visit's.
    */
   async listForPatient(organizationId: string, patientId: string): Promise<Vital[]> {

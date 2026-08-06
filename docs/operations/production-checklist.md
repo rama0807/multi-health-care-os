@@ -1,7 +1,7 @@
 # Production Readiness Checklist
 
 > Milestone 19.7. Work through this before the first real deployment.
-> Items marked **⛔** are enforced by the API at boot — it will not start.
+> Items marked **⛔** are enforced by the API at boot - it will not start.
 > Items marked **⚠️** produce a `[startup]` warning that is easy to ignore and
 > should not be.
 
@@ -31,15 +31,15 @@
 - [ ] `/api/metrics` is unreachable from the public internet
 - [ ] Postgres and Redis publish **no** host ports
 - [ ] Redis has a password (`REDIS_PASSWORD`)
-- [ ] Rate limits reviewed against the deployment's NAT topology — a whole
+- [ ] Rate limits reviewed against the deployment's NAT topology - a whole
       hospital may share one address
 
 ## Data
 
-- [ ] ⚠️ `STORAGE_PROVIDER=s3` — otherwise clinical documents die with the
+- [ ] ⚠️ `STORAGE_PROVIDER=s3` - otherwise clinical documents die with the
       container
 - [ ] Object storage has versioning enabled
-- [ ] Postgres backups are **automated** and land off-host (TD-0070 — MediCore
+- [ ] Postgres backups are **automated** and land off-host (TD-0070 - MediCore
       ships no scheduler; this is yours to build)
 - [ ] WAL archiving / PITR is on, if the 15-minute RPO is a real target
 - [ ] A restore has been performed into a scratch environment and verified
@@ -57,41 +57,41 @@
 
 ## Resilience
 
-- [ ] `docker compose stop api` drains cleanly — readiness 503s first, no
+- [ ] `docker compose stop api` drains cleanly - readiness 503s first, no
       dropped requests
 - [ ] `stop_grace_period` exceeds `SHUTDOWN_DRAIN_MS`
 - [ ] Log rotation caps are present on every service
 - [ ] Healthchecks pass on a cold start (`start_period` is long enough)
 - [ ] Restart policy is `unless-stopped`
 
-## Compliance — read before going live with real patients
+## Compliance - read before going live with real patients
 
 These are recorded honestly rather than claimed:
 
-- [ ] **TD-0042** — if AI is enabled against a third-party provider, clinical
+- [ ] **TD-0042** - if AI is enabled against a third-party provider, clinical
       context leaves the deployment. Either a BAA is in place, or
       `AI_PROVIDER=OLLAMA`, or `AI_ENABLED=false`.
-- [ ] **TD-0059** — `SMS_DRIVER` / `WHATSAPP_DRIVER` are **not** `LOG`. The log
+- [ ] **TD-0059** - `SMS_DRIVER` / `WHATSAPP_DRIVER` are **not** `LOG`. The log
       driver writes message bodies, which may contain patient context, to the
       application log.
-- [ ] **TD-0050** — platform-owner access is revocable per organization, not
+- [ ] **TD-0050** - platform-owner access is revocable per organization, not
       per user. Understand who holds it.
-- [ ] **TD-0048** — subscription limits are reported, not enforced. No payment
+- [ ] **TD-0048** - subscription limits are reported, not enforced. No payment
       is taken.
 - [ ] Audit retention meets your jurisdiction's requirement (`audit_logs` is
       append-only and never pruned by the application).
-- [ ] Encryption at rest is enabled on the database volume and the bucket —
+- [ ] Encryption at rest is enabled on the database volume and the bucket -
       MediCore relies on the infrastructure for this and does not encrypt
       columns itself.
 
 ## Known limits at this scale
 
-- [ ] **TD-0067** — rate limiting is per-process; N replicas mean N × the limit
-- [ ] **TD-0068** — every instance runs the notification worker; delivery is
+- [ ] **TD-0067** - rate limiting is per-process; N replicas mean N × the limit
+- [ ] **TD-0068** - every instance runs the notification worker; delivery is
       still exactly-once, but polling is duplicated
-- [ ] **TD-0069** — trace context is propagated but no OpenTelemetry SDK
+- [ ] **TD-0069** - trace context is propagated but no OpenTelemetry SDK
       exports spans
-- [ ] **TD-0046** — API usage metering is a rolling Redis window, not a
+- [ ] **TD-0046** - API usage metering is a rolling Redis window, not a
       billing ledger
 
 ## Sign-off

@@ -6,7 +6,7 @@ import { RequirePermissions } from '../../common/decorators/permissions.decorato
 
 import { BillingDashboardService } from './billing-dashboard.service'
 
-/** Revenue dashboard — see ADR-0015. */
+/** Revenue dashboard - see ADR-0015. */
 @ApiTags('billing-dashboard')
 @ApiBearerAuth()
 @Controller({ path: 'billing', version: '1' })

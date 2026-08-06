@@ -72,7 +72,7 @@ describe('checkEnv', () => {
       expect(errors.join()).toContain('REDIS_HOST')
     })
 
-    it('warns — but does not fail — on a plain-HTTP origin', () => {
+    it('warns - but does not fail - on a plain-HTTP origin', () => {
       const { errors, warnings } = checkEnv(productionEnv({ FRONTEND_URL: 'http://app.medicore.test' }))
       expect(errors).toEqual([])
       expect(warnings.join()).toContain('plain HTTP')

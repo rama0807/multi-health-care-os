@@ -1,7 +1,7 @@
 import { DrugInteractionWarning } from '@medicore/types'
 
 /**
- * Bundled, non-exhaustive seed list of well-known interaction pairs — not a
+ * Bundled, non-exhaustive seed list of well-known interaction pairs - not a
  * connection to a real drug-interaction terminology service (none is
  * configured anywhere in this repo). Matching is on generic/common name
  * substrings, case-insensitive. This is a basic advisory check, not a

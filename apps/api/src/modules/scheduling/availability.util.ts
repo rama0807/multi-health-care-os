@@ -39,7 +39,7 @@ export function combineDateAndMinutes(date: Date, minutesFromMidnight: number): 
  * Formats a Date as a naive local-wall-clock ISO-like string (no UTC
  * conversion, no timezone offset). `.toISOString()` would convert through
  * UTC and shift the displayed clock time by the server's offset from the
- * organization's timezone — since nothing else in this codebase does
+ * organization's timezone - since nothing else in this codebase does
  * per-org timezone-aware conversion yet (see TECH_DEBT), this keeps
  * schedule/availability timestamps showing the intended wall-clock time
  * regardless of where the API process happens to run.
@@ -51,7 +51,7 @@ export function toLocalIsoString(date: Date): string {
 
 /**
  * Local calendar date as YYYY-MM-DD. `date.toISOString().slice(0, 10)` is
- * NOT equivalent — it goes through UTC and can land on the wrong calendar
+ * NOT equivalent - it goes through UTC and can land on the wrong calendar
  * day for any local time within one UTC-offset of midnight (e.g. 00:30 IST
  * is still 2026-08-02T19:00Z the previous UTC day).
  */
@@ -66,7 +66,7 @@ export function toLocalDateString(date: Date): string {
  * `where` comparisons against `effectiveFrom`/`startDate`/`endDate` land on
  * the intended calendar day instead of being off by the server's UTC
  * offset. Read the *local* date components, then re-anchor at UTC midnight
- * — this is the bridge between "the hospital's calendar day" (local
+ * - this is the bridge between "the hospital's calendar day" (local
  * getters) and "what Postgres DATE actually stores" (UTC midnight).
  */
 export function toDbDateOnly(date: Date): Date {

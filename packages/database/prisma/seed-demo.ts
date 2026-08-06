@@ -1,5 +1,5 @@
 /**
- * Demo-data seed — realistic operating data for the demo hospital.
+ * Demo-data seed - realistic operating data for the demo hospital.
  *
  * `prisma/seed.ts` (run via `pnpm db:seed`) deliberately creates only the
  * foundation an empty deployment needs: permissions, roles, the demo

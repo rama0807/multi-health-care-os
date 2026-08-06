@@ -15,7 +15,7 @@ import { useWorkspace } from '@/providers/workspace-provider'
 /**
  * The working-context selector in the top bar.
  *
- * There is exactly one of these in the application — the sidebar shows the
+ * There is exactly one of these in the application - the sidebar shows the
  * resulting context but does not offer a second way to change it, so the two
  * can never disagree.
  *

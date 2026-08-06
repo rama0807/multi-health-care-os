@@ -54,7 +54,7 @@ export default function VendorsPage() {
   return (
     <PageLayout
       title="Vendors"
-      description="Suppliers — contact details, GST/PAN, payment terms, ratings."
+      description="Suppliers - contact details, GST/PAN, payment terms, ratings."
       actions={
         canCreate && (
           <Button onClick={() => setDialogOpen(true)}>
@@ -102,7 +102,7 @@ export default function VendorsPage() {
                 <TableRow key={v.id}>
                   <TableCell className="font-medium">{v.name}</TableCell>
                   <TableCell className="font-mono text-xs">{v.code}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{v.phone ?? v.email ?? '—'}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{v.phone ?? v.email ?? '-'}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{v.paymentTermsDays} days</TableCell>
                   <TableCell>
                     {v.averageRating ? (
@@ -253,7 +253,7 @@ function RateVendorDialog({ vendor, onOpenChange }: { vendor: VendorWithStats; o
     <Dialog open onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Rate — {vendor.name}</DialogTitle>
+          <DialogTitle>Rate - {vendor.name}</DialogTitle>
         </DialogHeader>
         <div className="space-y-2">
           <div className="flex gap-1">

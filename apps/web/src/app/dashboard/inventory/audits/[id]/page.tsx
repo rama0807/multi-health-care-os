@@ -59,7 +59,7 @@ export default function StockAuditDetailPage() {
   const completeMutation = useMutation({
     mutationFn: () => completeStockAudit(params.id),
     onSuccess: () => {
-      toast({ title: 'Audit completed — variances applied to stock' })
+      toast({ title: 'Audit completed - variances applied to stock' })
       invalidate()
     },
     onError: (error) => toast({ variant: 'destructive', title: 'Could not complete', description: getErrorMessage(error) }),
@@ -128,7 +128,7 @@ export default function StockAuditDetailPage() {
           {canManage && audit.status === StockAuditStatus.IN_PROGRESS && (
             <Button size="sm" onClick={() => completeMutation.mutate()} disabled={!allCounted || completeMutation.isPending}>
               {completeMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              Complete — apply variances
+              Complete - apply variances
             </Button>
           )}
           {canUpdate && canCancel && (
@@ -176,11 +176,11 @@ export default function StockAuditDetailPage() {
                           onChange={(e) => setCounts((prev) => ({ ...prev, [item.id]: e.target.value }))}
                         />
                       ) : (
-                        (item.countedQuantity ?? '—')
+                        (item.countedQuantity ?? '-')
                       )}
                     </TableCell>
                     <TableCell align="right" className={variance !== null && variance !== 0 ? 'font-medium text-danger' : 'text-muted-foreground'}>
-                      {variance ?? '—'}
+                      {variance ?? '-'}
                     </TableCell>
                   </TableRow>
                 )

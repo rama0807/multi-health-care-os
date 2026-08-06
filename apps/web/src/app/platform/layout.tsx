@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils'
 /**
  * The Platform Owner console (Checkpoint 16.2).
  *
- * Deliberately its own route group with its own chrome — it does **not** reuse
+ * Deliberately its own route group with its own chrome - it does **not** reuse
  * the dashboard `Sidebar`/`Header`, so no tenant navigation, tenant branding,
  * or clinical module link is ever reachable from here. A user whose
  * organization is not the platform tenant is bounced back to their own

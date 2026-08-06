@@ -241,7 +241,7 @@ export default function PatientDetailPage() {
               ['Medical Records', patient.summary.medicalRecords],
               ['Prescriptions', patient.summary.prescriptions],
             ]}
-            note="Full clinical detail is available once the Medical Records module ships — these are live counts from this patient's linked records."
+            note="Full clinical detail is available once the Medical Records module ships - these are live counts from this patient's linked records."
           />
         </TabsContent>
         <TabsContent value="insurance">
@@ -538,14 +538,14 @@ function ProfileTab({ patient, canUpdate }: ProfileTabProps) {
       ['First name', patient.firstName],
       ['Last name', patient.lastName],
       ['Phone', patient.phone],
-      ['Email', patient.email ?? '—'],
+      ['Email', patient.email ?? '-'],
       ['Date of birth', new Date(patient.dateOfBirth).toLocaleDateString('en-IN', { dateStyle: 'medium' })],
       ['Gender', formatEnumLabel(patient.gender)],
-      ['Blood group', patient.bloodGroup ? formatEnumLabel(patient.bloodGroup) : '—'],
-      ['Address', patient.address ?? '—'],
-      ['City', patient.city ?? '—'],
-      ['State', patient.state ?? '—'],
-      ['Pincode', patient.pincode ?? '—'],
+      ['Blood group', patient.bloodGroup ? formatEnumLabel(patient.bloodGroup) : '-'],
+      ['Address', patient.address ?? '-'],
+      ['City', patient.city ?? '-'],
+      ['State', patient.state ?? '-'],
+      ['Pincode', patient.pincode ?? '-'],
       ['Registered', new Date(patient.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })],
     ]
 
@@ -790,11 +790,11 @@ function EmergencyContactTab({ patient, canUpdate }: ProfileTabProps) {
         <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
           <div>
             <dt className="text-xs uppercase tracking-wide text-muted-foreground">Name</dt>
-            <dd className="text-sm font-medium text-foreground">{patient.emergencyContactName ?? '—'}</dd>
+            <dd className="text-sm font-medium text-foreground">{patient.emergencyContactName ?? '-'}</dd>
           </div>
           <div>
             <dt className="text-xs uppercase tracking-wide text-muted-foreground">Phone</dt>
-            <dd className="text-sm font-medium text-foreground">{patient.emergencyContactPhone ?? '—'}</dd>
+            <dd className="text-sm font-medium text-foreground">{patient.emergencyContactPhone ?? '-'}</dd>
           </div>
         </dl>
       </div>
@@ -904,7 +904,7 @@ function DocumentsTab({ patientId, canUpdate }: { patientId: string; canUpdate: 
             </Select>
           </div>
           <div className="flex-1 space-y-1.5">
-            <label className="text-sm font-medium">File (PDF, PNG, JPEG, WEBP — max 10MB)</label>
+            <label className="text-sm font-medium">File (PDF, PNG, JPEG, WEBP - max 10MB)</label>
             <Input
               type="file"
               accept="application/pdf,image/png,image/jpeg,image/webp"

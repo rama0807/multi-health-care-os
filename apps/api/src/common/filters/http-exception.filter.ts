@@ -22,7 +22,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     // The id the middleware already put in the logs and the `x-request-id`
     // response header (Milestone 19.4). Previously this filter echoed the raw
-    // inbound header, or minted a *fresh* id when there was none — so the id a
+    // inbound header, or minted a *fresh* id when there was none - so the id a
     // user quoted from a failed request matched nothing in the logs. The
     // fallbacks below only matter for a request that failed before the
     // middleware ran.
@@ -55,7 +55,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
       // The correlation ids are repeated in the message because this logger
       // writes through Nest's default context, not the request-scoped pino
-      // child — without them a 500 in the log cannot be tied to the id the
+      // child - without them a 500 in the log cannot be tied to the id the
       // caller was handed.
       this.logger.error(
         `Unhandled exception [requestId=${requestId} traceId=${correlation?.trace.traceId ?? '-'}] ` +

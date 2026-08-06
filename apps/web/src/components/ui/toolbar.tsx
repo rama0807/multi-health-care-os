@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils"
  *
  * The one behaviour worth calling out: `<FilterBar>` renders a "Clear" control
  * whenever `activeCount > 0`. Filtered-empty results are the most common way a
- * user concludes "the data is gone" — a visible, counted escape hatch is what
+ * user concludes "the data is gone" - a visible, counted escape hatch is what
  * prevents that, and it only works if every list surfaces it the same way.
  */
 
@@ -67,7 +67,7 @@ export interface SearchInputProps
 
 /**
  * Search field with a leading icon and a clear button that appears only when
- * there is something to clear. Escape clears it too — the shortcut people
+ * there is something to clear. Escape clears it too - the shortcut people
  * already expect from every other search box they use.
  */
 export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(

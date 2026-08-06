@@ -16,7 +16,7 @@ const TOP_N = 10
  * Platform-wide statistics, analytics and global search (Checkpoint 16.2).
  *
  * Every number is a real aggregate over live tenant data. AI usage reads the
- * `AiUsageLog` rows Checkpoint 15.1 already writes — real metered data rather
+ * `AiUsageLog` rows Checkpoint 15.1 already writes - real metered data rather
  * than the placeholder the brief allowed for. It reads zero until an AI
  * provider credential is configured (TD-0041), which is the honest answer.
  */
@@ -179,7 +179,7 @@ export class PlatformStatsService {
   }
 
   /**
-   * Global search across tenants — organizations, hospitals and users.
+   * Global search across tenants - organizations, hospitals and users.
    *
    * Deliberately limited to *tenant administration* entities. It does not
    * search patients or any clinical record: a platform operator has no

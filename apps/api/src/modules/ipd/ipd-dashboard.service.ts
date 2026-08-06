@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common'
 import { PrismaService } from '../../prisma/prisma.service'
 
 /**
- * Bed occupancy + nursing/discharge dashboard — see ADR-0018/ADR-0019.
+ * Bed occupancy + nursing/discharge dashboard - see ADR-0018/ADR-0019.
  * "Discharges today" now reflects real `AdmissionStatus.DISCHARGED` rows
  * set by `DischargeService.complete` (Checkpoint 12.2).
  */

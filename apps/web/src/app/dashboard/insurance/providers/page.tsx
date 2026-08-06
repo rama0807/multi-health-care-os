@@ -93,7 +93,7 @@ export default function InsuranceProvidersPage() {
                     <Badge variant="outline">{formatEnumLabel(p.type)}</Badge>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
-                    {p.contactPerson ?? '—'} {p.phone ? `· ${p.phone}` : ''}
+                    {p.contactPerson ?? '-'} {p.phone ? `· ${p.phone}` : ''}
                   </TableCell>
                   <TableCell>
                     <StatusBadge status={p.isActive ? 'ACTIVE' : 'INACTIVE'} />

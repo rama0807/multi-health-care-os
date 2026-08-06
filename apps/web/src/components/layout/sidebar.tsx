@@ -38,7 +38,7 @@ const COLLAPSE_KEY = 'medicore.sidebar.collapsed'
  *   and re-collapsing on every page load is a papercut repeated fifty times a
  *   shift. Collapsed items keep their labels as tooltips, so the rail never
  *   becomes a row of unlabelled glyphs.
- * - **The active item carries the organization's brand colour** — a tinted
+ * - **The active item carries the organization's brand colour** - a tinted
  *   background plus a left marker. Two signals, because the marker survives
  *   when the tint is too subtle on a given tenant's palette, and neither
  *   depends on colour alone.
@@ -58,7 +58,7 @@ export function Sidebar() {
     try {
       setCollapsed(window.localStorage.getItem(COLLAPSE_KEY) === 'true')
     } catch {
-      /* preference unavailable — default expanded */
+      /* preference unavailable - default expanded */
     }
   }, [])
 
@@ -322,7 +322,7 @@ function WorkspaceSwitcher({
   }
 
   // Identity only. Switching hospitals lives in the top bar's
-  // `<HospitalSelector>` — one control, one place, so the two can never show
+  // `<HospitalSelector>` - one control, one place, so the two can never show
   // different answers.
   const subtitle = activeHospital?.name ?? (canSwitch ? 'All hospitals' : 'Organization')
 

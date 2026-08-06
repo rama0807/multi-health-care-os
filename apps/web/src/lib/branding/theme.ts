@@ -14,7 +14,7 @@ import {
  *
  * Emitted as a stylesheet rather than inline styles on `<html>` for one
  * reason: dark mode. The app toggles a `.dark` class, and a tenant's palette
- * needs a *different* derivation under it — a mid-blue that is perfect on white
+ * needs a *different* derivation under it - a mid-blue that is perfect on white
  * is invisible on near-black. Inline styles can only express one set of values;
  * a stylesheet expresses both and lets the cascade pick.
  */
@@ -65,7 +65,7 @@ function primaryTokens(color: Hsl, mode: ThemeMode): Partial<Record<BrandToken, 
     'primary-subtle': hslToTokenString(roles.subtle),
     'primary-subtle-foreground': hslToTokenString(roles.subtleForeground),
     'primary-border': hslToTokenString(roles.border),
-    // The focus ring follows the brand — it is the most repeated brand moment
+    // The focus ring follows the brand - it is the most repeated brand moment
     // in a keyboard-driven clinical UI.
     ring: hslToTokenString(roles.base),
     'sidebar-item-active': hslToTokenString(sidebar.itemActive),
@@ -101,7 +101,7 @@ function secondaryTokens(color: Hsl, mode: ThemeMode): Partial<Record<BrandToken
 
 /**
  * Resolves every tenant-writable token for one mode. An unset or unparseable
- * colour contributes nothing, so the default palette shows through — a tenant
+ * colour contributes nothing, so the default palette shows through - a tenant
  * who configures only a primary keeps MediCore's accent and secondary rather
  * than getting a half-applied theme.
  */
@@ -129,7 +129,7 @@ function declarations(tokens: Partial<Record<BrandToken, string>>): string {
 }
 
 /**
- * Builds the full stylesheet — light values on `:root`, dark values under
+ * Builds the full stylesheet - light values on `:root`, dark values under
  * `.dark`. Returns an empty string when the organization has configured
  * nothing, so no element is injected at all in the default case.
  */

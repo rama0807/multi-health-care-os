@@ -9,7 +9,7 @@ import { FcmPushProvider } from './channels/fcm-push.provider'
 /**
  * Push device registry (Checkpoint 18.2).
  *
- * One user has many devices — a browser profile is a device, and clinicians
+ * One user has many devices - a browser profile is a device, and clinicians
  * routinely use a ward workstation and a personal laptop. Registration is
  * idempotent on the token: FCM issues a token to exactly one installation, so
  * a token that reappears means the installation moved to a different user or
@@ -93,7 +93,7 @@ export class UserDeviceService {
     return rows.map(toResponse)
   }
 
-  /** Active tokens for a recipient — what the FCM provider fans out over. */
+  /** Active tokens for a recipient - what the FCM provider fans out over. */
   async activeTokens(userId: string): Promise<string[]> {
     const rows = await this.prisma.userDevice.findMany({
       where: { userId, isActive: true },

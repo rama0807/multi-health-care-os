@@ -46,4 +46,4 @@ src/modules/example/
 
 ## Cross-Module Dependencies
 
-All shared types are in `@medicore/types`. Modules import each other's **services** only — never each other's repositories or direct Prisma models.
+All shared types are in `@medicore/types`. Modules import each other's **services** only - never each other's repositories or direct Prisma models.

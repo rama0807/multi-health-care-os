@@ -9,7 +9,7 @@ import { CreateInventoryStoreDto } from './dto/create-inventory-store.dto'
 import { UpdateInventoryStoreDto } from './dto/update-inventory-store.dto'
 import { StoresService } from './stores.service'
 
-/** Store management (Central/ICU/OT/Ward/... stores) — see ADR-0020. */
+/** Store management (Central/ICU/OT/Ward/... stores) - see ADR-0020. */
 @ApiTags('inventory-stores')
 @ApiBearerAuth()
 @Controller({ path: 'inventory/stores', version: '1' })

@@ -245,7 +245,7 @@ describe('RadiologyOrdersService', () => {
     })
   })
 
-  describe('report authoring — addReportVersion / verifyReport / releaseReport', () => {
+  describe('report authoring - addReportVersion / verifyReport / releaseReport', () => {
     it('rejects authoring a report before the study is COMPLETED', async () => {
       prisma.radiologyOrder.findFirst.mockResolvedValue(buildOrderRow({ status: 'IN_PROGRESS' }))
 
@@ -326,7 +326,7 @@ describe('RadiologyOrdersService', () => {
     })
   })
 
-  describe('updateStatus (generic — CANCELLED/REJECTED only)', () => {
+  describe('updateStatus (generic - CANCELLED/REJECTED only)', () => {
     it('rejects a non-terminal status via the generic endpoint', async () => {
       await expect(service.updateStatus('org_1', 'rad_1', { status: 'IN_PROGRESS' } as never)).rejects.toThrow(
         BadRequestException,

@@ -8,7 +8,7 @@ import { ApiUsageService } from './api-usage.service'
 /**
  * Meters one API request per authenticated organization (Checkpoint 16.2).
  *
- * Unauthenticated requests (login, health, refresh) are not counted — they
+ * Unauthenticated requests (login, health, refresh) are not counted - they
  * belong to no tenant yet. The increment is fire-and-forget: it is not
  * awaited, so metering adds no latency to the response, and
  * `ApiUsageService.increment` already swallows its own failures.

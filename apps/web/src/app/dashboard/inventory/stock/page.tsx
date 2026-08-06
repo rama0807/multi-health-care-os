@@ -196,7 +196,7 @@ function StockLevelsTab() {
                     {s.reorderLevel}
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
-                    {s.batches[0]?.expiryDate ? new Date(s.batches[0].expiryDate).toLocaleDateString('en-IN') : '—'}
+                    {s.batches[0]?.expiryDate ? new Date(s.batches[0].expiryDate).toLocaleDateString('en-IN') : '-'}
                   </TableCell>
                   {canUpdate && (
                     <TableCell className="flex gap-1">
@@ -352,7 +352,7 @@ function AdjustStockDialog({ stock, onOpenChange }: { stock: InventoryStockWithR
     <Dialog open onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Adjust stock — {stock.item.name}</DialogTitle>
+          <DialogTitle>Adjust stock - {stock.item.name}</DialogTitle>
         </DialogHeader>
         <div className="space-y-2">
           <Select value={type} onValueChange={(v) => setType(v as typeof type)}>
@@ -418,7 +418,7 @@ function LevelsDialog({ stock, onOpenChange }: { stock: InventoryStockWithRefs; 
     <Dialog open onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Stock levels — {stock.item.name}</DialogTitle>
+          <DialogTitle>Stock levels - {stock.item.name}</DialogTitle>
         </DialogHeader>
         <div className="grid grid-cols-3 gap-2">
           <Input placeholder="Reorder level" type="number" value={reorderLevel} onChange={(e) => setReorderLevel(e.target.value)} />

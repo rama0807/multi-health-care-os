@@ -1,13 +1,13 @@
-# MediCore — Database Design
+# MediCore - Database Design
 
 ## Design Principles
 
-1. **Every table has `organizationId`** — multi-tenant row-level isolation
-2. **Every table has `createdAt` + `updatedAt`** — audit trail
-3. **Soft deletes where appropriate** — patients, doctors are never hard-deleted; use `deletedAt`
-4. **No nullable foreign keys where avoidable** — use explicit status fields instead
-5. **CUID2 for primary keys** — collision-resistant, sortable, no sequential guessing
-6. **JSONB for configuration** — `settings`, `metadata`, `formData` avoid premature column proliferation
+1. **Every table has `organizationId`** - multi-tenant row-level isolation
+2. **Every table has `createdAt` + `updatedAt`** - audit trail
+3. **Soft deletes where appropriate** - patients, doctors are never hard-deleted; use `deletedAt`
+4. **No nullable foreign keys where avoidable** - use explicit status fields instead
+5. **CUID2 for primary keys** - collision-resistant, sortable, no sequential guessing
+6. **JSONB for configuration** - `settings`, `metadata`, `formData` avoid premature column proliferation
 
 ---
 
@@ -72,7 +72,7 @@ erDiagram
     UserRole {
         string userId FK
         string roleId FK
-        string hospitalId FK "nullable — null means org-wide, set means scoped to one hospital"
+        string hospitalId FK "nullable - null means org-wide, set means scoped to one hospital"
         datetime assignedAt
         string assignedBy FK
     }
@@ -490,7 +490,7 @@ erDiagram
     User ||--o| Doctor : "profile"
     User ||--o| Staff : "profile"
     %% Refresh tokens and sessions are Redis-only (see ARCHITECTURE.md's
-    %% Redis key table) — deliberately not a Postgres table, per ADR-006.
+    %% Redis key table) - deliberately not a Postgres table, per ADR-006.
 
     Department ||--o{ Doctor : "has"
     Department ||--o{ Staff : "has"

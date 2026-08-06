@@ -73,7 +73,7 @@ export class GoodsReceiptService {
       if (!poItem) throw new BadRequestException('One or more items do not belong to this purchase order')
       const remaining = poItem.quantityOrdered - poItem.quantityReceived
       if (item.quantityReceived > remaining) {
-        throw new BadRequestException(`Cannot receive ${item.quantityReceived} of "${poItem.itemId}" — only ${remaining} remain on the PO`)
+        throw new BadRequestException(`Cannot receive ${item.quantityReceived} of "${poItem.itemId}" - only ${remaining} remain on the PO`)
       }
     }
 

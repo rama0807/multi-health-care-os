@@ -9,12 +9,12 @@ import { LeaveTypesService } from './leave-types.service'
 import { ShiftsService } from './shifts.service'
 
 /**
- * Payroll *preparation* only — attendance/leave summaries, a derived per-day
+ * Payroll *preparation* only - attendance/leave summaries, a derived per-day
  * rate for overtime and unpaid-leave deduction, and an export. No pay-run,
  * payslip, or disbursement processing (deliberately out of scope this
- * milestone — see TECH_DEBT). The per-day rate uses the common Indian
+ * milestone - see TECH_DEBT). The per-day rate uses the common Indian
  * payroll convention `monthlySalary / 30`, regardless of the month's actual
- * length — a disclosed, standard approximation, not a fabricated one.
+ * length - a disclosed, standard approximation, not a fabricated one.
  */
 @Injectable()
 export class PayrollService {

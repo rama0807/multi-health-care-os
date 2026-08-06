@@ -9,7 +9,7 @@ import { CreateGoodsReceiptNoteDto } from './dto/create-goods-receipt-note.dto'
 import { CreateVendorReturnDto } from './dto/create-vendor-return.dto'
 import { GoodsReceiptService } from './goods-receipt.service'
 
-/** Goods Receipt Notes + Vendor Returns — see ADR-0020. */
+/** Goods Receipt Notes + Vendor Returns - see ADR-0020. */
 @ApiTags('inventory-grn')
 @ApiBearerAuth()
 @Controller({ path: 'inventory', version: '1' })

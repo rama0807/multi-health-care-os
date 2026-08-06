@@ -1,6 +1,6 @@
 # Runbook
 
-> Milestone 19.7 — symptom → diagnosis → action. Start here during an
+> Milestone 19.7 - symptom → diagnosis → action. Start here during an
 > incident; the reasoning lives in the other guides.
 
 ## First five minutes, whatever the symptom
@@ -19,8 +19,8 @@ docker compose -f docker-compose.prod.yml logs --tail=200 api
 
 ## The API will not start
 
-**`Refusing to start — N environment problem(s)`**
-The startup validator. Each bullet is a specific variable. Fix it — do not
+**`Refusing to start - N environment problem(s)`**
+The startup validator. Each bullet is a specific variable. Fix it - do not
 disable the check; it exists because a production process on a public cookie
 secret is a compromise waiting to happen.
 
@@ -38,7 +38,7 @@ version prefix changes.
 ## Everything is slow
 
 1. `histogram_quantile(0.95, …http_request_duration_seconds_bucket…)` by
-   `route` — one endpoint, or all of them?
+   `route` - one endpoint, or all of them?
 2. One endpoint → look for its slow queries:
    `docker compose logs api | jq 'select(.msg | test("^Slow query"))'`
 3. All endpoints → check `nodejs_eventloop_lag_p99_seconds` and
@@ -55,13 +55,13 @@ the database.
 
 ## Users are being logged out
 
-- **Redis restarted or was flushed** — sessions live there. Expected; users
+- **Redis restarted or was flushed** - sessions live there. Expected; users
   sign in again.
-- **`COOKIE_SECRET` changed** — CSRF cookies stop validating on
+- **`COOKIE_SECRET` changed** - CSRF cookies stop validating on
   refresh/logout. Expected once, then stable.
-- **`JWT_PUBLIC_KEY` changed** — every access token is invalid. Expect up to
+- **`JWT_PUBLIC_KEY` changed** - every access token is invalid. Expect up to
   15 minutes of 401s while clients refresh.
-- **The organization was suspended** — `Organization.isActive = false` is
+- **The organization was suspended** - `Organization.isActive = false` is
   enforced on every request, so it logs a whole tenant out immediately. Check
   the platform console before assuming a bug.
 
@@ -76,7 +76,7 @@ the nginx and application limiters key on the client IP.
 - Raise `THROTTLE_LIMIT` / `THROTTLE_AUTH_LIMIT` and recreate the API.
 - If `TRUST_PROXY` is unset behind nginx, **every** request appears to come
   from the proxy and one busy user throttles everyone. Set `TRUST_PROXY=true`
-  — but only when a proxy you control sets `X-Forwarded-For`, otherwise any
+  - but only when a proxy you control sets `X-Forwarded-For`, otherwise any
   caller can spoof their address.
 
 ---
@@ -92,7 +92,7 @@ docker compose logs api | jq 'select(.msg | test("^Background task"))'
 
 Check `medicore_background_runs_total{outcome="failure"}` for the rate, and
 `RESEND_API_KEY` / `EMAIL_FROM` for configuration. In-app notifications use a
-different path — the `notification_deliveries` table — and the admin console's
+different path - the `notification_deliveries` table - and the admin console's
 "Failed deliveries" tab shows those with a per-channel reason.
 
 ---
@@ -100,7 +100,7 @@ different path — the `notification_deliveries` table — and the admin console
 ## Notifications are queued but not delivered
 
 1. Is the worker on? `NOTIFICATIONS_WORKER_ENABLED`.
-2. `medicore_background_runs_total{job="notifications.tick"}` — is it ticking,
+2. `medicore_background_runs_total{job="notifications.tick"}` - is it ticking,
    and is `outcome="failure"` climbing?
 3. Organization console → Notifications → Failed deliveries, which reports the
    provider's own reason per channel.
@@ -111,10 +111,10 @@ different path — the `notification_deliveries` table — and the admin console
 
 ## `/api/metrics` returns 404 or 403
 
-- **404 in production** — `METRICS_TOKEN` is unset. The endpoint fails closed
+- **404 in production** - `METRICS_TOKEN` is unset. The endpoint fails closed
   rather than serving openly. Set it and recreate.
-- **403** — the token is wrong, or the header is not `Authorization: Bearer …`.
-- **Connection refused from outside** — nginx restricts the path to private
+- **403** - the token is wrong, or the header is not `Authorization: Bearer …`.
+- **Connection refused from outside** - nginx restricts the path to private
   networks. Scrape from inside them.
 
 ---
@@ -125,7 +125,7 @@ different path — the `notification_deliveries` table — and the admin console
   If the cap is missing on a service, that is the cause.
 - Postgres WAL: an `archive_command` that keeps failing will fill the volume.
   Check `pg_stat_archiver`.
-- Uploads: only when `STORAGE_PROVIDER` is not `s3` — which also means those
+- Uploads: only when `STORAGE_PROVIDER` is not `s3` - which also means those
   documents are not backed up. Fix both together.
 
 ---

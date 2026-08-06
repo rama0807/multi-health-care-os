@@ -6,9 +6,9 @@ import { InvoiceStatus as PrismaInvoiceStatus, Prisma, Refund as PrismaRefund, R
 import { PrismaService } from '../../prisma/prisma.service'
 
 /**
- * Refunds — see ADR-0015. A `billing.manage` scope holder's request is
+ * Refunds - see ADR-0015. A `billing.manage` scope holder's request is
  * auto-approved and completed immediately; anyone else's lands `PENDING`
- * until a manage-scope holder approves it — the same approval-workflow
+ * until a manage-scope holder approves it - the same approval-workflow
  * shape as `InvoicesService`'s discount fields. Any completed refund
  * (partial or full) flips the invoice to `REFUNDED`, mirroring
  * `DispenseOrder`'s `RETURNED`-on-any-return precedent (ADR-0014).
@@ -67,7 +67,7 @@ export class RefundsService {
 
     const status = invoice.status as unknown as InvoiceStatus
     if (status !== InvoiceStatus.PAID && status !== InvoiceStatus.PARTIALLY_PAID && status !== InvoiceStatus.REFUNDED) {
-      throw new BadRequestException(`Cannot refund an invoice that is ${status} — no payment has been collected yet`)
+      throw new BadRequestException(`Cannot refund an invoice that is ${status} - no payment has been collected yet`)
     }
 
     if (dto.paymentId) {
@@ -131,7 +131,7 @@ export class RefundsService {
     const invoice = await this.prisma.invoice.findFirstOrThrow({ where: { id: refund.invoiceId } })
     const remaining = await this.remainingRefundableAmount(invoice.id, Number(invoice.paidAmount), refund.id)
     if (Number(refund.amount) > remaining) {
-      throw new BadRequestException('This refund now exceeds the invoice\'s refundable balance — reject it instead')
+      throw new BadRequestException('This refund now exceeds the invoice\'s refundable balance - reject it instead')
     }
 
     const now = new Date()

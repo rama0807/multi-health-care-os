@@ -126,7 +126,7 @@ export async function uploadEncounterAttachment(
   form.append('documentType', documentType)
   form.append('file', file)
 
-  // Let the browser set its own multipart boundary — an explicit
+  // Let the browser set its own multipart boundary - an explicit
   // Content-Type here would ship without one and the server couldn't parse
   // the body.
   const { data } = await apiClient.post<{ data: EncounterAttachment }>(

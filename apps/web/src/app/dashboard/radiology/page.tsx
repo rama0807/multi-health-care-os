@@ -88,7 +88,7 @@ export default function RadiologyDashboardPage() {
                     <StatusBadge status={order.status} />
                     <span>{order.patient.fullName}</span>
                     <span className="text-xs text-muted-foreground">
-                      {order.modality} — {order.bodyPart}
+                      {order.modality} - {order.bodyPart}
                     </span>
                   </Link>
                 </li>

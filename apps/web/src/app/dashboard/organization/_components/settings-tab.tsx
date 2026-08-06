@@ -32,7 +32,7 @@ const WEEKDAYS = [
 /**
  * Feature flags are free-form on the server (a `Record<string, boolean>`), but
  * the UI offers the set MediCore reads today plus whatever an organization has
- * already stored — so the form never silently drops a flag added by a future
+ * already stored - so the form never silently drops a flag added by a future
  * module.
  */
 const KNOWN_FEATURE_FLAGS = [
@@ -248,7 +248,7 @@ export function SettingsTab() {
             </Field>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            Changing the UHID prefix affects only newly registered patients — existing UHIDs are
+            Changing the UHID prefix affects only newly registered patients - existing UHIDs are
             never rewritten.
           </p>
           </CardContent>
@@ -391,7 +391,7 @@ function HolidaysPanel({ canManage }: { canManage: boolean }) {
         <div>
           <h3 className="text-sm font-semibold text-foreground">Holiday calendar ({year})</h3>
           <p className="text-xs text-muted-foreground">
-            Shared with Staff attendance and leave — the same calendar, not a copy.
+            Shared with Staff attendance and leave - the same calendar, not a copy.
           </p>
         </div>
         {canManage && (

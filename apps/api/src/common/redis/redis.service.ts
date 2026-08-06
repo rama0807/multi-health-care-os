@@ -38,7 +38,7 @@ export class RedisService implements OnModuleDestroy {
     return (await this.client.exists(key)) === 1
   }
 
-  /** Atomic read+delete — used for single-use tokens (email verification, password reset). */
+  /** Atomic read+delete - used for single-use tokens (email verification, password reset). */
   async getdel(key: string): Promise<string | null> {
     // ioredis exposes GETDEL directly on modern Redis; fall back to a small Lua script otherwise.
     if (typeof (this.client as unknown as { getdel?: unknown }).getdel === 'function') {

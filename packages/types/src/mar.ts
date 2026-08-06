@@ -37,7 +37,7 @@ export interface MedicationAdministrationWithDetails extends MedicationAdministr
 
 export const GenerateScheduledDosesSchema = z.object({
   prescriptionItemId: z.string().cuid(),
-  /** Local times of day, e.g. ["08:00", "14:00", "20:00"] — one scheduled row per time per day for `days`. */
+  /** Local times of day, e.g. ["08:00", "14:00", "20:00"] - one scheduled row per time per day for `days`. */
   times: z.array(z.string().regex(/^\d{2}:\d{2}$/)).min(1),
   days: z.number().int().min(1).max(30).default(1),
   route: z.string().max(100).optional(),

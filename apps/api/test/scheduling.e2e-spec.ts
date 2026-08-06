@@ -35,7 +35,7 @@ import { ResponseTransformInterceptor } from '../src/common/interceptors/respons
 import { PrismaService } from '../src/prisma/prisma.service'
 
 // Local-calendar-date arithmetic (deliberately not `toISOString().slice(0,10)`
-// — see availability.util.ts's toLocalDateString for why that can land on
+// - see availability.util.ts's toLocalDateString for why that can land on
 // the wrong day near local midnight in non-UTC-aligned timezones).
 function isoDate(daysFromNow: number): string {
   const date = new Date()
@@ -209,7 +209,7 @@ describe('Scheduling (e2e)', () => {
     doctorId = doctorRes.body.data.id
 
     // The onboarding email carries a randomly-generated temporary password
-    // that isn't returned over the API — reset it directly so this suite can
+    // that isn't returned over the API - reset it directly so this suite can
     // log in as the doctor to exercise `.own`-scoped permission checks.
     await prisma.user.update({
       where: { email: doctorEmail },
@@ -317,7 +317,7 @@ describe('Scheduling (e2e)', () => {
           expect(res.body.data.isActive).toBe(false)
         })
 
-      // No active version now applies — GET falls back to null.
+      // No active version now applies - GET falls back to null.
       await request(server)
         .get(`/api/v1/doctors/${doctorId}/schedule`)
         .set(authed())

@@ -23,7 +23,7 @@ interface OllamaChatResponse {
 }
 
 /**
- * Ollama (`POST {baseUrl}/api/chat`) — the self-hosted option, so there is no
+ * Ollama (`POST {baseUrl}/api/chat`) - the self-hosted option, so there is no
  * API key: a reachable base URL is what "configured" means. Its stream is
  * newline-delimited JSON rather than SSE, which is why the line reader is
  * shared but the SSE `data:` unwrapping is not used here.

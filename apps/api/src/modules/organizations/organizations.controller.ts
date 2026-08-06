@@ -29,7 +29,7 @@ import { SubscriptionsService } from './subscriptions.service'
  * The Organization Dashboard's API surface (Checkpoint 16.1 / 16.4).
  *
  * Every route is scoped to the caller's own organization via
- * `@CurrentUser('orgId')` — no route here accepts an organization id, so an
+ * `@CurrentUser('orgId')` - no route here accepts an organization id, so an
  * organization admin structurally cannot read or write another tenant's data.
  * Cross-tenant reads live in the separate `/platform` module.
  */
@@ -123,7 +123,7 @@ export class OrganizationsController {
     @Req() request: FastifyRequest,
   ) {
     const data = await request.file()
-    if (!data) throw new BadRequestException('No file uploaded — send multipart/form-data')
+    if (!data) throw new BadRequestException('No file uploaded - send multipart/form-data')
 
     const buffer = await data.toBuffer()
     return this.organizationsService.uploadLogo(
@@ -140,7 +140,7 @@ export class OrganizationsController {
     return { success: true }
   }
 
-  // ── Subscription (read-only for a tenant — see SubscriptionsService) ────
+  // ── Subscription (read-only for a tenant - see SubscriptionsService) ────
 
   @Get('me/subscription')
   @RequirePermissions('organizations.read')

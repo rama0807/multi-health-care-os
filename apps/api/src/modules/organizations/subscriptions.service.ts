@@ -11,7 +11,7 @@ import { AuditService } from '../audit/audit.service'
  * Deliberately split by direction: an organization admin may **read** their
  * own subscription from the Organization Dashboard, but only the Platform
  * Owner may change a plan or a limit. That mirrors `billing.manage`'s
- * requester/approver separation — a tenant cannot grant itself a bigger quota.
+ * requester/approver separation - a tenant cannot grant itself a bigger quota.
  *
  * There is no payment-gateway integration anywhere in this repo, so a plan
  * change here records the commercial agreement; it does not charge anyone.
@@ -49,7 +49,7 @@ export class SubscriptionsService {
       return {
         // Prisma's enums are string-literal unions; `@medicore/types` declares
         // them as TypeScript enums. Structurally identical, nominally
-        // distinct — cast at the Prisma boundary, this repo's existing idiom.
+        // distinct - cast at the Prisma boundary, this repo's existing idiom.
         plan: org.subscriptionTier as unknown as SubscriptionSummary['plan'],
         status: expired ? SubscriptionStatus.EXPIRED : SubscriptionStatus.ACTIVE,
         startsAt: org.createdAt,

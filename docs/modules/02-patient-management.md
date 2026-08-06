@@ -1,7 +1,7 @@
 # Module: Patient Management
 
 ## Purpose
-Central patient registry. Every patient in the hospital has a record here. This module is the foundation — all other clinical and billing modules reference patients.
+Central patient registry. Every patient in the hospital has a record here. This module is the foundation - all other clinical and billing modules reference patients.
 
 ## Responsibilities
 - Patient registration with auto-generated UHID
@@ -12,8 +12,8 @@ Central patient registry. Every patient in the hospital has a record here. This 
 - Patient history aggregation (timeline)
 
 ## Database Entities
-- `Patient` — core record
-- `PatientDocument` — uploaded files
+- `Patient` - core record
+- `PatientDocument` - uploaded files
 
 ## REST Endpoints
 
@@ -66,8 +66,8 @@ to_tsvector('english', first_name || ' ' || last_name || ' ' || uhid || ' ' || p
 Fallback to `ILIKE` for simple prefix matching.
 
 ## Dependencies
-- `StorageService` — file upload/download via S3/MinIO
-- `OrganizationsModule` — org settings (UHID prefix)
+- `StorageService` - file upload/download via S3/MinIO
+- `OrganizationsModule` - org settings (UHID prefix)
 
 ## Events Published
 - `patient.registered`

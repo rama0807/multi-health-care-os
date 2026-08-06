@@ -30,7 +30,7 @@ export class S3StorageDriver implements StorageDriver {
 
   // Constructed lazily (not in the constructor) so that selecting the local
   // driver in an environment without S3 credentials never fails app bootstrap
-  // — this driver is only exercised, and only then validated, if it's chosen.
+  // - this driver is only exercised, and only then validated, if it's chosen.
   private getClient(): S3Client {
     if (this.client) return this.client
 

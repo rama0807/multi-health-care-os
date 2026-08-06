@@ -79,7 +79,7 @@ export class ReportExportService {
 
   /**
    * RFC 4180 CSV, matching the hand-rolled writer conventions already used by
-   * Payroll Prep's export — quote every field, double any embedded quote, and
+   * Payroll Prep's export - quote every field, double any embedded quote, and
    * use CRLF line endings so Excel opens it without an import wizard.
    */
   toCsv(result: ReportRunResult): string {
@@ -93,7 +93,7 @@ export class ReportExportService {
       lines.push(result.definition.columns.map((column) => escape(row[column.key])).join(','))
     }
 
-    // A truncated export that looks complete is worse than no export — the
+    // A truncated export that looks complete is worse than no export - the
     // cap is stated in the file itself, not just in the UI that requested it.
     if (result.truncated) {
       lines.push('')

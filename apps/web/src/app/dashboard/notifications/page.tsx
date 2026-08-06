@@ -67,8 +67,8 @@ const PAGE_SIZE = 20
  * The full notification centre (Checkpoint 18.3).
  *
  * Timeline-shaped: pinned first, then newest, grouped by day. Every action a
- * user has over their own notifications lives here — read/unread, pin,
- * archive, delete, search, filter and paginate — while the bell in the header
+ * user has over their own notifications lives here - read/unread, pin,
+ * archive, delete, search, filter and paginate - while the bell in the header
  * stays a summary.
  */
 export default function NotificationCentrePage() {

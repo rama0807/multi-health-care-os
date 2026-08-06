@@ -43,7 +43,7 @@ export function sseData(line: string): string | null {
   return payload
 }
 
-/** SSE payloads are best-effort — a malformed frame is skipped, not fatal. */
+/** SSE payloads are best-effort - a malformed frame is skipped, not fatal. */
 export function parseJson<T>(payload: string): T | null {
   try {
     return JSON.parse(payload) as T

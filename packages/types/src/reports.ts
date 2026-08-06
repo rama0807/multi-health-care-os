@@ -4,7 +4,7 @@ import { z } from 'zod'
 //
 // Every shape here describes a *read-only aggregation* over data other
 // modules already own. Nothing in this file introduces a new clinical,
-// billing or inventory concept — if a number cannot be derived from an
+// billing or inventory concept - if a number cannot be derived from an
 // existing column it is not reported (see TECH_DEBT for the two metrics
 // this rule genuinely constrains: appointment waiting time and radiology
 // machine utilisation).
@@ -22,7 +22,7 @@ export type ReportExportFormat = 'csv' | 'xlsx' | 'pdf'
  * date strings (`YYYY-MM-DD` or a full ISO timestamp); omitting them
  * defaults to the last 30 days. `hospitalId`/`departmentId`/`doctorId`
  * are only honoured by reports whose underlying table can actually be
- * narrowed by them — each report documents which it supports.
+ * narrowed by them - each report documents which it supports.
  */
 export interface ReportFilterQuery {
   from?: string
@@ -48,7 +48,7 @@ export interface ReportSeriesPoint {
   value: number
 }
 
-/** One point on a monetary time series — amounts are fixed-2 decimal strings. */
+/** One point on a monetary time series - amounts are fixed-2 decimal strings. */
 export interface ReportAmountSeriesPoint {
   bucket: string
   amount: string
@@ -101,7 +101,7 @@ export interface PatientReport {
   registrationTrend: ReportSeriesPoint[]
   /**
    * Patients with at least one appointment, encounter or admission in the
-   * period — "active" means clinically seen, not `Patient.isActive`.
+   * period - "active" means clinically seen, not `Patient.isActive`.
    */
   activePatients: number
   /** Registered-in-period patients who were seen in the period. */
@@ -143,7 +143,7 @@ export interface AppointmentReport {
   doctorUtilisation: DoctorUtilisationRow[]
   /**
    * Mean minutes between an appointment's `scheduledAt` and the start of
-   * its `Encounter` — a *scheduling delay*, not a waiting-room time. No
+   * its `Encounter` - a *scheduling delay*, not a waiting-room time. No
    * arrival/check-in timestamp exists in this schema (TD-0051), so this is
    * the closest honest measure and is labelled as such in the UI. Null when
    * no appointment in the period has a linked encounter.
@@ -173,7 +173,7 @@ export interface DoctorWorkloadRow {
   doctorName: string
   specialization: string
   departmentName: string | null
-  /** Non-IPD encounters — the outpatient consultation load. */
+  /** Non-IPD encounters - the outpatient consultation load. */
   opdLoad: number
   /** Admissions where this doctor is the attending physician. */
   ipdLoad: number
@@ -250,7 +250,7 @@ export interface RadiologyReportStats {
   turnaroundSampleSize: number
   /**
    * Relative machine load, derived from scheduled study minutes. This is not
-   * a duty-cycle utilisation figure — no machine-capacity or operating-hours
+   * a duty-cycle utilisation figure - no machine-capacity or operating-hours
    * model exists in this schema (TD-0052).
    */
   machineUtilisation: RadiologyMachineRow[]
@@ -491,7 +491,7 @@ export interface DashboardKpi {
   format: 'number' | 'currency' | 'percent' | 'days' | 'hours'
   /** Period-over-period change, null when there is no meaningful previous value. */
   changePercent: number | null
-  /** Whether a rise in this metric is good — drives the up/down colouring. */
+  /** Whether a rise in this metric is good - drives the up/down colouring. */
   higherIsBetter: boolean
   hint?: string
 }
@@ -541,7 +541,7 @@ export interface ReportColumnDef {
 
 export type ReportFilterKey = 'from' | 'to' | 'groupBy' | 'hospitalId' | 'departmentId' | 'doctorId'
 
-/** A runnable report in the registry — the single source of truth for the builder. */
+/** A runnable report in the registry - the single source of truth for the builder. */
 export interface ReportDefinition {
   key: string
   label: string
@@ -557,7 +557,7 @@ export interface ReportRunResult {
   period: ReportPeriod
   rows: Array<Record<string, string | number | null>>
   totalRows: number
-  /** Set when `rows` was capped — the UI must disclose the truncation. */
+  /** Set when `rows` was capped - the UI must disclose the truncation. */
   truncated: boolean
 }
 
@@ -572,7 +572,7 @@ export interface SavedReport {
   createdByUserId: string
   createdByName: string | null
   /**
-   * Scheduling is a **placeholder** in Milestone 17 — the fields are
+   * Scheduling is a **placeholder** in Milestone 17 - the fields are
    * persisted so Milestone 18 (Notifications) has somewhere to read from,
    * but nothing in this repo dispatches a scheduled report yet (TD-0053).
    */
@@ -602,7 +602,7 @@ export const CreateSavedReportSchema = z.object({
   filters: ReportFilterSchema.optional(),
   isShared: z.boolean().optional(),
   scheduleEnabled: z.boolean().optional(),
-  // Validated for shape even though nothing dispatches it yet (TD-0053) —
+  // Validated for shape even though nothing dispatches it yet (TD-0053) -
   // persisting an unparseable cron would just move the failure to whoever
   // builds the dispatcher in Milestone 18.
   scheduleCron: z

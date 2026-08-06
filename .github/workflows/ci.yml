@@ -149,7 +149,7 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     # Gated on the test jobs too (Milestone 19.6). Previously `build` needed
-    # only lint/typecheck, so a green "Build" could — and did — sit next to a
+    # only lint/typecheck, so a green "Build" could - and did - sit next to a
     # failing test suite and read as a passing pipeline.
     needs: [lint-and-typecheck, test-api, test-web]
     steps:

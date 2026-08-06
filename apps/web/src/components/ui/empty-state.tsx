@@ -8,8 +8,8 @@ import { cn } from "@/lib/utils"
  * The four states a data surface can be in besides "has data".
  *
  * These are separate on purpose. "No patients yet" and "no patients match
- * *this filter*" call for completely different actions — the first wants a
- * create button, the second wants a clear-filters button — and collapsing them
+ * *this filter*" call for completely different actions - the first wants a
+ * create button, the second wants a clear-filters button - and collapsing them
  * into one grey "No data" is the single most common way a dashboard wastes a
  * user's time.
  *
@@ -33,7 +33,7 @@ export interface EmptyStateProps extends React.HTMLAttributes<HTMLDivElement> {
   description?: React.ReactNode
   /** Primary call to action. */
   action?: { label: string; onClick?: () => void; href?: string; icon?: React.ElementType }
-  /** Secondary escape hatch — usually "Clear filters". */
+  /** Secondary escape hatch - usually "Clear filters". */
   secondaryAction?: { label: string; onClick?: () => void }
   /** Sits inline inside a card/table body rather than owning the viewport. */
   compact?: boolean
@@ -114,12 +114,12 @@ export function EmptyState({
 
 /**
  * The canonical rendering of "no value". Never substitute `0`, `-`, or an empty
- * cell — an em dash with a screen-reader label says *not recorded* explicitly.
+ * cell - an em dash with a screen-reader label says *not recorded* explicitly.
  */
 export function EmptyValue({ label = "Not recorded" }: { label?: string }) {
   return (
     <span className="text-subtle-foreground" title={label}>
-      <span aria-hidden="true">—</span>
+      <span aria-hidden="true">-</span>
       <span className="sr-only">{label}</span>
     </span>
   )

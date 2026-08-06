@@ -59,7 +59,7 @@ const MAX_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024
 
 /**
  * Cashless/TPA pre-authorization workflow ("Draft → Submitted → Under
- * Review → Approved/Partially Approved/Rejected/Cancelled") — see
+ * Review → Approved/Partially Approved/Rejected/Cancelled") - see
  * ADR-0016. Not own-scoped: a cashier/billing clerk files pre-auths across
  * every doctor's patients, the same reasoning as `billing.*`/`insurance.claims.*`.
  */
@@ -226,7 +226,7 @@ export class PreAuthorizationService {
     await this.requireWithRelations(organizationId, id)
 
     if (!ALLOWED_ATTACHMENT_MIME_TYPES.has(file.mimeType)) {
-      throw new BadRequestException('Unsupported file type — allowed: PNG, JPEG, WEBP, PDF')
+      throw new BadRequestException('Unsupported file type - allowed: PNG, JPEG, WEBP, PDF')
     }
     if (file.size > MAX_ATTACHMENT_SIZE_BYTES) {
       throw new BadRequestException('File exceeds the 10MB upload limit')

@@ -92,7 +92,7 @@ export async function seedInventory(prisma: PrismaClient, ctx: DemoContext): Pro
         brandId: spec.brand ? brandByName.get(spec.brand) : undefined,
         name: spec.name,
         code: spec.code,
-        description: `${spec.name} — ${spec.itemType === 'ASSET' ? 'capital equipment' : 'consumable'} stocked by the central store.`,
+        description: `${spec.name} - ${spec.itemType === 'ASSET' ? 'capital equipment' : 'consumable'} stocked by the central store.`,
         itemType: spec.itemType as never,
         hsnCode: spec.hsnCode,
         gstPercent: spec.gstPercent,
@@ -227,7 +227,7 @@ export async function seedInventory(prisma: PrismaClient, ctx: DemoContext): Pro
       })
 
       if (item.spec.trackBatch || item.spec.trackExpiry) {
-        // Split the holding across batches with staggered expiries —
+        // Split the holding across batches with staggered expiries -
         // including, for a few items, one that has already expired.
         const batchCount = int(1, 3)
         let remaining = currentStock
@@ -277,7 +277,7 @@ export async function seedInventory(prisma: PrismaClient, ctx: DemoContext): Pro
             type: type as never,
             quantityDelta: type === 'CORRECTION' ? int(1, 10) : -int(1, 10),
             reason: type === 'DAMAGE'
-              ? 'Packaging damaged in transit — written off.'
+              ? 'Packaging damaged in transit - written off.'
               : type === 'EXPIRY'
                 ? 'Batch crossed expiry and was removed from usable stock.'
                 : type === 'ISSUE'
@@ -450,7 +450,7 @@ export async function seedInventory(prisma: PrismaClient, ctx: DemoContext): Pro
         paidAmount: invoiceStatus === 'PAID' ? totalAmount : 0,
         status: invoiceStatus as never,
         notes: invoiceStatus === 'DISPUTED'
-          ? 'Rate mismatch against the purchase order — under discussion with the vendor.'
+          ? 'Rate mismatch against the purchase order - under discussion with the vendor.'
           : null,
         createdAt: receivedAt,
       },
@@ -605,7 +605,7 @@ export async function seedInventory(prisma: PrismaClient, ctx: DemoContext): Pro
           amcStartDate: daysAgo(int(30, 360)),
           amcEndDate: daysFromNow(int(30, 400)),
           lastCalibrationDate: daysAgo(int(30, 300)),
-          // Some calibrations are overdue — the calibration-due view needs
+          // Some calibrations are overdue - the calibration-due view needs
           // both past-due and upcoming rows.
           nextCalibrationDate: daysFromNow(int(-40, 260)),
           assignedToDepartmentId: inUse ? departmentId : null,
@@ -663,7 +663,7 @@ export async function seedInventory(prisma: PrismaClient, ctx: DemoContext): Pro
             status: status === 'BREAKDOWN' ? 'SCHEDULED' : 'IN_PROGRESS',
             scheduledDate: daysFromNow(int(1, 10)),
             description: status === 'BREAKDOWN'
-              ? 'Device not powering on — vendor engineer visit requested.'
+              ? 'Device not powering on - vendor engineer visit requested.'
               : 'Display module replacement in progress.',
             vendorId: amcVendorId,
             createdAt: daysAgo(int(1, 10)),

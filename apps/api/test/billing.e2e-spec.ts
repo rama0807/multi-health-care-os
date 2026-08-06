@@ -208,7 +208,7 @@ describe('Billing (e2e)', () => {
     doctorId = doctorRes.body.data.id
 
     // All-hours schedule so a walk-in books deterministically regardless of
-    // real wall-clock time — same fixture pattern as appointments.e2e-spec.ts.
+    // real wall-clock time - same fixture pattern as appointments.e2e-spec.ts.
     await request(server)
       .post(`/api/v1/doctors/${doctorId}/schedule`)
       .set(authed())
@@ -230,7 +230,7 @@ describe('Billing (e2e)', () => {
     patientId = patientRes.body.data.id
 
     // A "Cashier"-like role with billing.read/create/update but NOT
-    // billing.manage — used to exercise the discount/refund approval
+    // billing.manage - used to exercise the discount/refund approval
     // workflow (their requests must land PENDING, not auto-applied).
     const cashierRole = await prisma.role.create({
       data: { name: 'E2E Cashier', systemRole: 'CASHIER', organizationId: org.id, description: 'Cashier role' },
@@ -471,7 +471,7 @@ describe('Billing (e2e)', () => {
         .set(authed())
         .send({ patientId, type: 'OPD', items: [], chargeIds: [(await createCharge()).id] })
         .expect(201)
-      // Remove the only path to zero items isn't exposed — instead assert the empty-items
+      // Remove the only path to zero items isn't exposed - instead assert the empty-items
       // guard directly via a would-be-empty creation attempt.
       await request(server)
         .post('/api/v1/billing/invoices')
@@ -507,7 +507,7 @@ describe('Billing (e2e)', () => {
     })
   })
 
-  describe('payments — split and partial', () => {
+  describe('payments - split and partial', () => {
     it('records a partial payment, then a second payment in a different mode to complete it', async () => {
       const invoice = await createDraftInvoice()
       await finalizeInvoice(invoice.id)
@@ -660,7 +660,7 @@ describe('Billing (e2e)', () => {
           .expect(200)
       }
 
-      // The listener runs asynchronously off the same event loop tick — poll briefly.
+      // The listener runs asynchronously off the same event loop tick - poll briefly.
       let invoice: { id: string; appointmentId: string; items: Array<{ itemName: string; unitPrice: string }> } | undefined
       for (let attempt = 0; attempt < 20 && !invoice; attempt++) {
         const res = await request(server)

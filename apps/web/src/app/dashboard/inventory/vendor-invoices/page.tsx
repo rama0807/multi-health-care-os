@@ -74,7 +74,7 @@ export default function VendorInvoicesPage() {
   return (
     <PageLayout
       title="Vendor Invoices"
-      description="The final step of the procurement chain — billed against a PO/GRN, recorded payments."
+      description="The final step of the procurement chain - billed against a PO/GRN, recorded payments."
       actions={
         canManage && (
           <Button onClick={() => setCreateOpen(true)}>

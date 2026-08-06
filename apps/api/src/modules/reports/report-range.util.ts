@@ -17,14 +17,14 @@ export const DEFAULT_RANGE_DAYS = 30
  * Hard ceiling on a report window. Every report buckets in JS over rows it
  * fetched (the same approach `BillingDashboardService.collectionTrend`
  * already uses), so an unbounded range is a real memory risk rather than
- * just a slow query — see TECH_DEBT TD-0054.
+ * just a slow query - see TECH_DEBT TD-0054.
  */
 export const MAX_RANGE_DAYS = 400
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
 /**
- * A resolved reporting window. `to` is **exclusive** — every query in this
+ * A resolved reporting window. `to` is **exclusive** - every query in this
  * module uses `{ gte: from, lt: to }` so a row timestamped at 23:59:59 on
  * the last requested day is counted exactly once and never twice.
  */
@@ -65,7 +65,7 @@ export function startOfMonth(date: Date): Date {
   return d
 }
 
-/** `YYYY-MM-DD` in local time — never `toISOString()`, which would shift the day in +05:30. */
+/** `YYYY-MM-DD` in local time - never `toISOString()`, which would shift the day in +05:30. */
 export function toDateKey(date: Date): string {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
@@ -88,7 +88,7 @@ function parseBoundary(value: string, label: string): Date {
 export function resolveRange(query: ReportFilterQuery = {}, now: Date = new Date()): ResolvedRange {
   const groupBy: ReportGroupBy = query.groupBy ?? 'day'
 
-  // `to` is exclusive, so the default end is the start of *tomorrow* —
+  // `to` is exclusive, so the default end is the start of *tomorrow* -
   // that is what makes "today" fully included.
   const to = query.to ? addDays(startOfDay(parseBoundary(query.to, 'to')), 1) : addDays(startOfDay(now), 1)
   const from = query.from ? startOfDay(parseBoundary(query.from, 'from')) : addDays(to, -DEFAULT_RANGE_DAYS)
@@ -115,7 +115,7 @@ export function resolveRange(query: ReportFilterQuery = {}, now: Date = new Date
 export function toPeriod(range: ResolvedRange): ReportPeriod {
   return {
     from: toDateKey(range.from),
-    // Echo the *inclusive* last day back to the caller — `to` is exclusive
+    // Echo the *inclusive* last day back to the caller - `to` is exclusive
     // internally, but "2026-08-05" is what the user asked for and expects.
     to: toDateKey(addDays(range.to, -1)),
     groupBy: range.groupBy,
@@ -131,7 +131,7 @@ export function bucketKeyFor(date: Date, groupBy: ReportGroupBy): string {
 }
 
 /**
- * Every bucket in the range, in order — including empty ones, so a chart
+ * Every bucket in the range, in order - including empty ones, so a chart
  * shows a real gap rather than silently closing over a day with no data.
  */
 export function bucketKeys(range: ResolvedRange): string[] {
@@ -193,7 +193,7 @@ export function amountSeries<T>(
 
 /**
  * Percentage change from `previous` to `current`, rounded to one decimal.
- * Null when `previous` is 0 — growth from nothing is undefined, and
+ * Null when `previous` is 0 - growth from nothing is undefined, and
  * reporting it as 0% or 100% would both be lies.
  */
 export function changePercent(current: number, previous: number): number | null {
@@ -268,7 +268,7 @@ export function minutesBetween(from: Date, to: Date): number {
   return Math.round(((to.getTime() - from.getTime()) / 60000) * 10) / 10
 }
 
-/** Age in whole years at `on` — the same calculation the patient module uses. */
+/** Age in whole years at `on` - the same calculation the patient module uses. */
 export function ageInYears(dateOfBirth: Date, on: Date): number {
   let age = on.getFullYear() - dateOfBirth.getFullYear()
   const monthDelta = on.getMonth() - dateOfBirth.getMonth()

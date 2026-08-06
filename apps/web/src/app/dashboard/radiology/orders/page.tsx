@@ -107,7 +107,7 @@ export default function RadiologyOrdersPage() {
             <SelectItem value="all">All doctors</SelectItem>
             {doctorsQuery.data?.data.map((d) => (
               <SelectItem key={d.id} value={d.id}>
-                Dr. {d.fullName} — {d.specialization}
+                Dr. {d.fullName} - {d.specialization}
               </SelectItem>
             ))}
           </SelectContent>
@@ -179,10 +179,10 @@ export default function RadiologyOrdersPage() {
                   </TableCell>
                   <TableCell>Dr. {order.doctor.fullName}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {order.modality} — {order.bodyPart}
+                    {order.modality} - {order.bodyPart}
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
-                    {order.scheduledAt ? new Date(order.scheduledAt).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                    {order.scheduledAt ? new Date(order.scheduledAt).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }) : '-'}
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">{formatEnumLabel(order.priority)}</Badge>

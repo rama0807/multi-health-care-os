@@ -7,7 +7,7 @@
 
 ## Context
 
-MediCore needs AI capabilities for medical report summarization, prescription OCR, voice transcription, and intelligent scheduling. AI providers evolve rapidly — models change, pricing changes, new capabilities emerge. We need an architecture that:
+MediCore needs AI capabilities for medical report summarization, prescription OCR, voice transcription, and intelligent scheduling. AI providers evolve rapidly - models change, pricing changes, new capabilities emerge. We need an architecture that:
 - Abstracts the AI provider behind a stable interface
 - Supports swapping providers without feature code changes
 - Handles async AI tasks without blocking requests
@@ -21,7 +21,7 @@ MediCore needs AI capabilities for medical report summarization, prescription OC
 ## Architecture
 
 ```typescript
-// Stable internal interface — never changes regardless of provider
+// Stable internal interface - never changes regardless of provider
 interface AIProvider {
   complete(params: CompletionParams): Promise<CompletionResult>
   transcribe(audio: Buffer, language?: string): Promise<TranscriptionResult>
@@ -56,13 +56,13 @@ class ReportSummarizerService {
 - **Input:** Lab report text (extracted from PDF) or radiology report text
 - **Output:** Structured summary with: key findings, abnormal values, doctor's attention items
 - **Model:** Claude claude-sonnet-4-6 or GPT-4o (low temperature, structured output)
-- **Processing:** Async — user uploads report → queued → result stored → notification sent
+- **Processing:** Async - user uploads report → queued → result stored → notification sent
 
 ### 2. Prescription OCR
 - **Input:** Image of handwritten prescription
 - **Output:** Structured prescription: medications, dosages, frequencies, instructions
 - **Model:** GPT-4o Vision or Claude Vision
-- **Processing:** Async — image uploaded → queued → extracted data for doctor review → confirmation
+- **Processing:** Async - image uploaded → queued → extracted data for doctor review → confirmation
 
 ### 3. Voice Transcription
 - **Input:** Audio recording of doctor-patient consultation
@@ -73,7 +73,7 @@ class ReportSummarizerService {
 ### 4. Appointment Chatbot
 - **Input:** Patient natural language query
 - **Output:** Booking intent + slot suggestions
-- **Model:** GPT-4o-mini or Claude Haiku (fast, cheap — high volume)
+- **Model:** GPT-4o-mini or Claude Haiku (fast, cheap - high volume)
 - **Processing:** Synchronous (streaming response)
 
 ### 5. Anomaly Detector (Future)

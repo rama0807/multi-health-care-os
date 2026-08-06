@@ -80,7 +80,7 @@ export class EncountersController {
 
   /**
    * For an `.own`-scoped reader, force the list to their own doctor profile
-   * — an explicit `doctorId` for someone else is rejected rather than
+   * - an explicit `doctorId` for someone else is rejected rather than
    * silently ignored (same pattern as `DoctorLeaveController`).
    */
   private async resolveOwnScopedDoctorId(

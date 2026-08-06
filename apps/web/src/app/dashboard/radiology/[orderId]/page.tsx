@@ -166,7 +166,7 @@ export default function RadiologyOrderDetailPage() {
               Dr. {order.doctor.fullName} ({order.doctor.specialization})
             </PageHeaderMeta>
             <PageHeaderMeta label="Study">
-              {order.modality} — {order.bodyPart}
+              {order.modality} - {order.bodyPart}
             </PageHeaderMeta>
             {order.encounterId && (
               <Link href={`/dashboard/medical-records/${order.encounterId}`} className="text-subtle-foreground hover:underline">
@@ -336,7 +336,7 @@ function SchedulingTab({
               <SelectItem value="__none__">Unassigned</SelectItem>
               {doctorsQuery.data?.data.map((d) => (
                 <SelectItem key={d.id} value={d.id}>
-                  Dr. {d.fullName} — {d.specialization}
+                  Dr. {d.fullName} - {d.specialization}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -477,7 +477,7 @@ function ReportTab({
           <ul className="space-y-1 text-sm text-muted-foreground">
             {order.reports.map((r) => (
               <li key={r.id}>
-                v{r.version} — {new Date(r.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                v{r.version} - {new Date(r.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
               </li>
             ))}
           </ul>
@@ -580,7 +580,7 @@ function AttachmentsTab({
 
           <div className="space-y-2 rounded-md border p-3">
             <h4 className="text-xs font-semibold text-muted-foreground">
-              External imaging / PACS reference (no file — DICOM placeholder, since no PACS integration exists yet)
+              External imaging / PACS reference (no file - DICOM placeholder, since no PACS integration exists yet)
             </h4>
             <div className="flex flex-wrap items-center gap-2">
               <Select value={externalType} onValueChange={(v) => setExternalType(v as typeof externalType)}>
@@ -632,7 +632,7 @@ function AttachmentsTab({
                     </a>
                   ) : (
                     <span className="text-xs text-muted-foreground">
-                      {a.metadata?.accessionNumber ? `Accession: ${String(a.metadata.accessionNumber)}` : 'No file — metadata only'}
+                      {a.metadata?.accessionNumber ? `Accession: ${String(a.metadata.accessionNumber)}` : 'No file - metadata only'}
                     </span>
                   )}
                 </div>

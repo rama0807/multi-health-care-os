@@ -12,7 +12,7 @@ import {
 
 /**
  * Email delivery reuses the existing `EmailService` (Resend driver, with its
- * console fallback) rather than standing up a second sender — appointment
+ * console fallback) rather than standing up a second sender - appointment
  * confirmations, password resets and onboarding mail already go through it,
  * and two senders would mean two `from` addresses and two failure modes.
  *
@@ -39,7 +39,7 @@ export class EmailChannelProvider implements NotificationChannelProvider {
   unconfiguredReason(): string | null {
     return this.isConfigured()
       ? null
-      : 'RESEND_API_KEY is not set — email is written to the application log instead of sent'
+      : 'RESEND_API_KEY is not set - email is written to the application log instead of sent'
   }
 
   async send(request: ChannelSendRequest): Promise<ChannelSendResult> {

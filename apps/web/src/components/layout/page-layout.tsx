@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils'
  * and on a laptop the main content deserves the width.
  */
 export interface PageLayoutProps extends PageHeaderProps {
-  /** Right-hand utility column — related records, activity, help. */
+  /** Right-hand utility column - related records, activity, help. */
   aside?: React.ReactNode
   /** Tabs or a filter bar bonded to the header. */
   toolbar?: React.ReactNode

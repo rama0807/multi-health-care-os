@@ -13,7 +13,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: 'MediCore — Hospital Management System',
+    default: 'MediCore - Hospital Management System',
     template: '%s | MediCore',
   },
   description:

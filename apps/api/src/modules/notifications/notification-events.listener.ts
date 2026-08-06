@@ -94,7 +94,7 @@ interface HospitalEvent extends BaseEvent {
  *
  * **Nothing here emits a new event.** Every trigger below is an event some
  * module was already publishing for the audit trail, so no clinical, billing
- * or inventory service was modified to add notifications — the same
+ * or inventory service was modified to add notifications - the same
  * "additional listener on an existing event" pattern
  * `AppointmentInvoiceListener` established for auto-invoicing.
  *
@@ -103,7 +103,7 @@ interface HospitalEvent extends BaseEvent {
  * 1. **Every handler swallows its own errors.** A notification failure must
  *    never roll back the clinical action that triggered it.
  * 2. **Recipients are resolved from the domain, not broadcast.** A lab result
- *    goes to the ordering doctor, not to everyone holding `laboratory.read` —
+ *    goes to the ordering doctor, not to everyone holding `laboratory.read` -
  *    a notification everyone receives is a notification everyone mutes.
  * 3. **Every send carries an `eventKey`**, so an event that fires twice (a
  *    retried transaction, a duplicated emit) produces one notification.
@@ -111,7 +111,7 @@ interface HospitalEvent extends BaseEvent {
  * Every handler also guards on the id it needs before touching the database.
  * These payloads are published by twelve modules that predate this listener
  * and are not typed at the emit site, so a field this listener expects can
- * legitimately be absent — `findUnique({ where: { id: undefined } })` throws
+ * legitimately be absent - `findUnique({ where: { id: undefined } })` throws
  * a Prisma validation error, which `safely` would swallow into log noise
  * rather than a clean no-op.
  */
@@ -290,7 +290,7 @@ export class NotificationEventsListener {
       if (!labTest?.doctor?.userId) return
 
       // A critical value must reach the clinician regardless of quiet hours or
-      // muted categories — that is exactly what CRITICAL priority is for. The
+      // muted categories - that is exactly what CRITICAL priority is for. The
       // flags are laboratory's own (`abnormalType`, computed at result entry);
       // nothing is recomputed here.
       const critical = labTest.items.some(
@@ -317,7 +317,7 @@ export class NotificationEventsListener {
           patientName: fullName(labTest.patient),
           labTestId: labTest.id,
           abnormalNote: critical
-            ? ' A critical value was flagged — review immediately.'
+            ? ' A critical value was flagged - review immediately.'
             : abnormal
               ? ' Abnormal values were flagged.'
               : '',
@@ -340,7 +340,7 @@ export class NotificationEventsListener {
         where: { id: payload.radiologyOrderId },
         select: {
           id: true,
-          // There is no `studyName` column — a study is identified by its
+          // There is no `studyName` column - a study is identified by its
           // modality and body part, which is what the order screen shows too.
           modality: true,
           bodyPart: true,
@@ -554,7 +554,7 @@ export class NotificationEventsListener {
   /**
    * `inventory_stock.changed` carries the stock row every movement touched.
    * It is the one event this milestone had to add (the inventory module
-   * emitted movements, never a stock-level change) — the threshold itself is
+   * emitted movements, never a stock-level change) - the threshold itself is
    * evaluated *here*, from the stock row, so no reorder policy is duplicated
    * into the notification layer.
    *
@@ -601,7 +601,7 @@ export class NotificationEventsListener {
         // Re-alerting on every movement while stock stays low would be noise.
         // Keying on the threshold means one alert per crossing; restocking
         // above it and dropping back below raises a genuinely new one only
-        // once the threshold value itself changes — a deliberate trade
+        // once the threshold value itself changes - a deliberate trade
         // recorded in TECH_DEBT.
         eventKey: `inventory.${type}:${stock.id}:${type === NotificationType.INVENTORY_LOW_STOCK ? stock.minStock : stock.reorderLevel}`,
       })
@@ -815,7 +815,7 @@ export class NotificationEventsListener {
       if (!organization) return
 
       await this.notifications.notify({
-        // Addressed to the *platform* tenant, not the new customer — this is
+        // Addressed to the *platform* tenant, not the new customer - this is
         // news for the platform owner, not for the organization being created.
         organizationId: platformOrg.id,
         type: NotificationType.ORGANIZATION_ONBOARDED,
@@ -930,7 +930,7 @@ function fullName(person: { firstName: string; lastName: string }): string {
   return `${person.firstName} ${person.lastName}`.trim()
 }
 
-/** `YYYY-MM-DD` in local time — never `toISOString()`, which shifts in +05:30. */
+/** `YYYY-MM-DD` in local time - never `toISOString()`, which shifts in +05:30. */
 function dateOnly(value: Date | string): string {
   const date = typeof value === 'string' ? new Date(value) : value
   const year = date.getFullYear()

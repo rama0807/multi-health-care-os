@@ -7,7 +7,7 @@ import { RedisService } from '../redis/redis.service'
  *
  * Counters live in Redis, not Postgres: incrementing a row on every single API
  * request would add a write to every read, which is a real cost this repo
- * hasn't paid anywhere else. The trade-off is disclosed rather than hidden —
+ * hasn't paid anywhere else. The trade-off is disclosed rather than hidden -
  * this is a **rolling 30-day window** (keys expire after 35 days) and the data
  * does not survive a Redis flush. It is genuine measured traffic, not an
  * estimate, but it is not a durable billing ledger. See TECH_DEBT TD-0046.
@@ -27,7 +27,7 @@ export class ApiUsageService {
   }
 
   /**
-   * Best-effort — a metering failure must never fail the request it is
+   * Best-effort - a metering failure must never fail the request it is
    * measuring, the same "don't fail the primary action" idiom as
    * `AppointmentInvoiceListener` (ADR-0015) and `DispenseService`.
    */

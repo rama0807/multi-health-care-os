@@ -13,7 +13,7 @@ import { DispensePartialDto } from './dto/dispense-partial.dto'
 import { PrepareDispenseItemsDto } from './dto/prepare-dispense-items.dto'
 
 /**
- * Dispensing workflow — see ADR-0014. `pharmacy.*` stays all-scope
+ * Dispensing workflow - see ADR-0014. `pharmacy.*` stays all-scope
  * (staff-facing), so no own-scope check is needed on these routes.
  */
 @ApiTags('pharmacy-dispense')

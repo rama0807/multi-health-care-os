@@ -46,7 +46,7 @@ export class EncounterVitalsController {
 
 /**
  * Separate from `EncounterVitalsController` because this one isn't scoped
- * to a single encounter — it's the full cross-encounter trend for a
+ * to a single encounter - it's the full cross-encounter trend for a
  * patient, which the frontend's vitals charts/comparison view needs.
  */
 @ApiTags('vitals')

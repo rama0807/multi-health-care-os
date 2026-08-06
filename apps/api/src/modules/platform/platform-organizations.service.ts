@@ -24,7 +24,7 @@ export interface PlatformHospitalQuery {
  *
  * Only reachable behind `PlatformGuard` + a `platform.*` permission. Audit
  * entries written here are stamped with the *target* organization's id, not
- * the platform tenant's — a suspension must appear in the affected customer's
+ * the platform tenant's - a suspension must appear in the affected customer's
  * own audit trail, which is where anyone investigating it will look.
  */
 @Injectable()
@@ -40,7 +40,7 @@ export class PlatformOrganizationsService {
     const limit = query.limit && query.limit > 0 ? Math.min(query.limit, 100) : 25
 
     const where: Prisma.OrganizationWhereInput = {
-      // The platform's own tenant is infrastructure, not a customer — it is
+      // The platform's own tenant is infrastructure, not a customer - it is
       // excluded unless explicitly requested.
       ...(query.includePlatform ? {} : { isPlatform: false }),
       ...(query.status ? { status: query.status } : {}),
@@ -292,7 +292,7 @@ export class PlatformOrganizationsService {
   }
 
   /**
-   * Enable/disable a tenant without recording a suspension — the operational
+   * Enable/disable a tenant without recording a suspension - the operational
    * kill switch, as opposed to the commercial one. `status` is left untouched
    * so a disabled-but-not-suspended tenant stays distinguishable from a
    * suspended one. Re-enabling a *suspended* organization is refused: lifting
@@ -304,7 +304,7 @@ export class PlatformOrganizationsService {
 
     if (enabled && org.status === OrganizationStatus.SUSPENDED) {
       throw new BadRequestException(
-        'This organization is suspended — reinstate it instead of re-enabling it',
+        'This organization is suspended - reinstate it instead of re-enabling it',
       )
     }
 
@@ -329,7 +329,7 @@ export class PlatformOrganizationsService {
   }
 
   /**
-   * The platform tenant must never be suspendable from its own console —
+   * The platform tenant must never be suspendable from its own console -
    * doing so would lock every platform owner out with no way back in.
    */
   private async requireCustomerOrganization(organizationId: string) {

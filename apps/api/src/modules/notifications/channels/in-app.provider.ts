@@ -13,7 +13,7 @@ import {
  * reads it directly.
  *
  * It is still modelled as a provider so the in-app channel appears in delivery
- * statistics and preference checks on exactly the same footing as the others —
+ * statistics and preference checks on exactly the same footing as the others -
  * "was it delivered in-app?" is then answered by the same table that answers
  * it for email and push, rather than by a special case.
  */

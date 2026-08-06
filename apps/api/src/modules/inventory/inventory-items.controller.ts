@@ -9,7 +9,7 @@ import { CreateInventoryItemDto } from './dto/create-inventory-item.dto'
 import { UpdateInventoryItemDto } from './dto/update-inventory-item.dto'
 import { InventoryItemsService } from './inventory-items.service'
 
-/** The item master entity — see ADR-0020. */
+/** The item master entity - see ADR-0020. */
 @ApiTags('inventory-items')
 @ApiBearerAuth()
 @Controller({ path: 'inventory/items', version: '1' })

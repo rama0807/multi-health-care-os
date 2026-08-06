@@ -131,7 +131,7 @@ describe('Platform & Multi-Tenant Administration (e2e)', () => {
       })
       .expect(201)
 
-    // Registration never mints a platform tenant — it must be promoted.
+    // Registration never mints a platform tenant - it must be promoted.
     expect(platformRes.body.data.user.isPlatform).toBe(false)
 
     const platformOrg = await prisma.organization.findUniqueOrThrow({
@@ -172,9 +172,9 @@ describe('Platform & Multi-Tenant Administration (e2e)', () => {
     await app.close()
   })
 
-  // ── Checkpoint 16.3 — Tenant resolution ──────────────────────────────
+  // ── Checkpoint 16.3 - Tenant resolution ──────────────────────────────
 
-  describe('Checkpoint 16.3 — tenant resolution', () => {
+  describe('Checkpoint 16.3 - tenant resolution', () => {
     it('resolves platform/organization on an authenticated request', async () => {
       const res = await request(server).get('/api/v1/auth/me').set(tenantAuth()).expect(200)
 
@@ -189,9 +189,9 @@ describe('Platform & Multi-Tenant Administration (e2e)', () => {
     })
   })
 
-  // ── Checkpoint 16.1 — Organization management ────────────────────────
+  // ── Checkpoint 16.1 - Organization management ────────────────────────
 
-  describe('Checkpoint 16.1 — organization management', () => {
+  describe('Checkpoint 16.1 - organization management', () => {
     it('returns the current organization and its statistics', async () => {
       const org = await request(server)
         .get('/api/v1/organizations/me')
@@ -306,9 +306,9 @@ describe('Platform & Multi-Tenant Administration (e2e)', () => {
     })
   })
 
-  // ── Checkpoint 16.4 — Organization settings ──────────────────────────
+  // ── Checkpoint 16.4 - Organization settings ──────────────────────────
 
-  describe('Checkpoint 16.4 — organization settings', () => {
+  describe('Checkpoint 16.4 - organization settings', () => {
     it('merges a settings patch instead of replacing the blob', async () => {
       const before = await request(server)
         .get('/api/v1/organizations/me/settings')
@@ -373,15 +373,15 @@ describe('Platform & Multi-Tenant Administration (e2e)', () => {
         .get('/api/v1/organizations/me/settings')
         .set(tenantAuth())
         .expect(200)
-      // Branding lives in its own column — settings are untouched.
+      // Branding lives in its own column - settings are untouched.
       expect(settings.body.data.uhidPrefix).toBeTruthy()
       expect(settings.body.data.primaryColor).toBeUndefined()
     })
   })
 
-  // ── Checkpoint 16.2 — Platform Owner console + isolation ─────────────
+  // ── Checkpoint 16.2 - Platform Owner console + isolation ─────────────
 
-  describe('Checkpoint 16.2 — platform console isolation', () => {
+  describe('Checkpoint 16.2 - platform console isolation', () => {
     it('refuses every platform route to a customer-tenant admin', async () => {
       for (const path of [
         '/api/v1/platform/stats',
@@ -477,7 +477,7 @@ describe('Platform & Multi-Tenant Administration (e2e)', () => {
     })
   })
 
-  describe('Checkpoint 16.2 — subscriptions', () => {
+  describe('Checkpoint 16.2 - subscriptions', () => {
     it('lets a tenant read but not write its own subscription', async () => {
       const res = await request(server)
         .get('/api/v1/organizations/me/subscription')
@@ -539,7 +539,7 @@ describe('Platform & Multi-Tenant Administration (e2e)', () => {
     })
   })
 
-  describe('Checkpoint 16.2 — tenant lifecycle', () => {
+  describe('Checkpoint 16.2 - tenant lifecycle', () => {
     it('suspends a tenant and blocks its users from logging in', async () => {
       await request(server)
         .post(`/api/v1/platform/organizations/${tenantOrgId}/suspend`)
@@ -551,7 +551,7 @@ describe('Platform & Multi-Tenant Administration (e2e)', () => {
       expect(org.status).toBe('SUSPENDED')
       expect(org.isActive).toBe(false)
 
-      // The pre-existing auth path enforces it — no second control needed.
+      // The pre-existing auth path enforces it - no second control needed.
       await request(server)
         .post('/api/v1/auth/login')
         .send({ email: tenantEmail, password: 'Passw0rd123' })
@@ -613,7 +613,7 @@ describe('Platform & Multi-Tenant Administration (e2e)', () => {
     })
   })
 
-  describe('Checkpoint 16.1 — audit log filtering', () => {
+  describe('Checkpoint 16.1 - audit log filtering', () => {
     it('paginates and filters by resource', async () => {
       const res = await request(server)
         .get('/api/v1/organizations/me/audit-logs')

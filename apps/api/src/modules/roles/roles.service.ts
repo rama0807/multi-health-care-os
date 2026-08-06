@@ -4,7 +4,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { PrismaService } from '../../prisma/prisma.service'
 
 /**
- * Permission resources prefixed with this are platform-tenant only — see
+ * Permission resources prefixed with this are platform-tenant only - see
  * `createDefaultOrgAdminRole` and `PlatformGuard`. Mirrors the same constant
  * in `packages/database/prisma/seed.ts`; kept as a literal here rather than
  * imported so the API doesn't take a build-time dependency on the seed script.
@@ -53,7 +53,7 @@ export class RolesService {
    *
    * Grants every permission **except** the `platform.*` family (Milestone 16 /
    * ADR-0025). Those govern cross-tenant administration and belong to the
-   * platform tenant alone — an organization admin's authority stops at their
+   * platform tenant alone - an organization admin's authority stops at their
    * own organization's boundary. Excluding them here is defence in depth
    * rather than the only control: `PlatformGuard` independently requires the
    * caller's organization to be flagged `isPlatform`.

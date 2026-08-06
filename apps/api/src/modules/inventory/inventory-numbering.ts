@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client'
 
 /**
  * Sequential document numbering shared by every inventory sub-workflow
- * (transfers, PR, PO, GRN, vendor returns, requisitions, audits) — same
+ * (transfers, PR, PO, GRN, vendor returns, requisitions, audits) - same
  * advisory-lock + year-counter idiom as `DispenseOrder`/`Appointment`/
  * `LabTest` numbering elsewhere in this codebase.
  */

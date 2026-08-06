@@ -92,7 +92,7 @@ export class UsersService {
     const token = await this.tokensService.issueEmailVerificationToken(user.id)
     const verifyUrl = `${process.env.FRONTEND_URL ?? 'http://localhost:3000'}/verify-email?token=${token}`
     const { subject, html } = verifyEmailTemplate(user.firstName, verifyUrl)
-    // Off the request path (Milestone 19.3) — the user row is committed, and
+    // Off the request path (Milestone 19.3) - the user row is committed, and
     // failing the whole creation because a mail provider blipped would leave
     // an administrator staring at a 500 for a user that exists.
     this.background.run('users.invite_email', () =>

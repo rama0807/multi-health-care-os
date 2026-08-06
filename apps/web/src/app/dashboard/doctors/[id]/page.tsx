@@ -215,7 +215,7 @@ export default function DoctorDetailPage() {
               ['Lab Tests', doctor.summary.labTests],
               ['Radiology Orders', doctor.summary.radiologyOrders],
             ]}
-            note="Full clinical detail is available once the Appointments module ships — these are live counts from this doctor's linked records."
+            note="Full clinical detail is available once the Appointments module ships - these are live counts from this doctor's linked records."
           />
         </TabsContent>
         <TabsContent value="schedule">
@@ -331,17 +331,17 @@ function ProfileTab({ doctor, canUpdate }: ProfileTabProps) {
     const rows: Array<[string, string]> = [
       ['Registration number', doctor.registrationNumber],
       ['Specialization', doctor.specialization],
-      ['Sub-specialization', doctor.subSpecialization ?? '—'],
+      ['Sub-specialization', doctor.subSpecialization ?? '-'],
       ['Qualification', doctor.qualification],
       ['Experience', `${doctor.experienceYears} years`],
-      ['Languages spoken', doctor.languagesSpoken.join(', ') || '—'],
+      ['Languages spoken', doctor.languagesSpoken.join(', ') || '-'],
       ['Consultation fee', `₹${doctor.consultationFee}`],
       ['Joining date', new Date(doctor.joiningDate).toLocaleDateString('en-IN', { dateStyle: 'medium' })],
-      ['Hospital', doctor.hospital?.name ?? '—'],
-      ['Department', doctor.department?.name ?? '—'],
+      ['Hospital', doctor.hospital?.name ?? '-'],
+      ['Department', doctor.department?.name ?? '-'],
       ['Email', doctor.email],
-      ['Phone', doctor.phone ?? '—'],
-      ['Biography', doctor.bio ?? '—'],
+      ['Phone', doctor.phone ?? '-'],
+      ['Biography', doctor.bio ?? '-'],
     ]
 
     return (
@@ -1440,7 +1440,7 @@ function DocumentsTab({ doctorId }: { doctorId: string }) {
             </Select>
           </div>
           <div className="flex-1 space-y-1.5">
-            <label className="text-sm font-medium">File (PDF, PNG, JPEG, WEBP — max 10MB)</label>
+            <label className="text-sm font-medium">File (PDF, PNG, JPEG, WEBP - max 10MB)</label>
             <Input
               type="file"
               accept="application/pdf,image/png,image/jpeg,image/webp"

@@ -35,7 +35,7 @@ const TOP_ITEM_LIMIT = 50
  *
  * Consumption is read from `InventoryStockAdjustment`, the append-only
  * movement ledger the inventory module already maintains as its single
- * source of truth for "why did this number change" — not recomputed from
+ * source of truth for "why did this number change" - not recomputed from
  * stock balances, which would only ever show the net result.
  *
  * Stock valuation uses `InventoryItem.unitCost`: this schema stores no
@@ -183,7 +183,7 @@ export class InventoryReportsService {
 
     for (const stock of stocks) {
       // Damaged/expired/lost stock is physically present but has no sale
-      // value — valuing it would overstate the balance sheet, so only the
+      // value - valuing it would overstate the balance sheet, so only the
       // saleable remainder is counted. This matches how `InventoryStock`
       // itself defines available stock.
       const saleable = Math.max(

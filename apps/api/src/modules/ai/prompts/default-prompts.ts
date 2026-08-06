@@ -23,7 +23,7 @@ const CLINICAL_GUARDRAILS = [
 /**
  * Bundled defaults are the source of truth and always work against an empty
  * database; an `AiPromptTemplate` row overrides one per organization
- * (ADR-0023). Placeholders are `{{name}}` and substituted literally — this is
+ * (ADR-0023). Placeholders are `{{name}}` and substituted literally - this is
  * deliberately not a template engine, so a prompt can never execute code.
  */
 export const DEFAULT_PROMPT_TEMPLATES: Record<AiFeature, PromptTemplateDefinition> = {
@@ -56,7 +56,7 @@ Produce a concise clinical summary suitable for handover to another clinician. L
     description: 'Explains a completed lab order’s results, highlighting values the system flagged abnormal.',
     systemPrompt: `${CLINICAL_GUARDRAILS}
 
-Summarise the laboratory results. Begin with the abnormal and critical results, quoting the measured value, unit and reference range for each, then note which results were within range. The abnormal/critical flags in the context were computed by the laboratory module — repeat them, do not recompute or overrule them. Close with a short "Suggested follow-up" section limited to what the results and existing documentation support.`,
+Summarise the laboratory results. Begin with the abnormal and critical results, quoting the measured value, unit and reference range for each, then note which results were within range. The abnormal/critical flags in the context were computed by the laboratory module - repeat them, do not recompute or overrule them. Close with a short "Suggested follow-up" section limited to what the results and existing documentation support.`,
     userPromptTemplate: `Summarise the following laboratory report.
 
 {{context}}
@@ -68,7 +68,7 @@ Summarise the laboratory results. Begin with the abnormal and critical results, 
     description: 'Condenses a released radiology report into findings, impression and recommendations.',
     systemPrompt: `${CLINICAL_GUARDRAILS}
 
-Summarise the radiology report under three headings: Key findings, Impression, and Recommended follow-up. The radiologist's impression is authoritative — restate it faithfully and never contradict, extend, or reinterpret it. You are summarising a written report, not interpreting images.`,
+Summarise the radiology report under three headings: Key findings, Impression, and Recommended follow-up. The radiologist's impression is authoritative - restate it faithfully and never contradict, extend, or reinterpret it. You are summarising a written report, not interpreting images.`,
     userPromptTemplate: `Summarise the following radiology report.
 
 {{context}}
@@ -80,7 +80,7 @@ Summarise the radiology report under three headings: Key findings, Impression, a
     description: 'Turns a prescription into patient-friendly instructions in plain language.',
     systemPrompt: `${CLINICAL_GUARDRAILS}
 
-Write patient-facing instructions in plain, non-technical language at roughly an 8th-grade reading level. For each prescribed medicine give: what it is for, how and when to take it, how long to take it for, and the most important precautions. Use exactly the dose, frequency and duration recorded — never adjust them. End with a short "When to seek help" section and a line telling the patient to contact their doctor or pharmacist with any questions.`,
+Write patient-facing instructions in plain, non-technical language at roughly an 8th-grade reading level. For each prescribed medicine give: what it is for, how and when to take it, how long to take it for, and the most important precautions. Use exactly the dose, frequency and duration recorded - never adjust them. End with a short "When to seek help" section and a line telling the patient to contact their doctor or pharmacist with any questions.`,
     userPromptTemplate: `Explain the following prescription to the patient.
 
 {{context}}
@@ -104,7 +104,7 @@ Draft a discharge summary with these headings: Reason for admission, Course in h
     description: 'Drafts a referral letter to a named specialty, grounded in the encounter record.',
     systemPrompt: `${CLINICAL_GUARDRAILS}
 
-Draft a professional referral letter from the treating doctor to the receiving clinician. Structure it as: salutation, reason for referral, relevant clinical history, current medications and allergies, relevant investigation results, and a closing request. Keep it factual and concise. Do not fabricate a referring or receiving doctor's name, address, or credentials — use only names supplied in the context.`,
+Draft a professional referral letter from the treating doctor to the receiving clinician. Structure it as: salutation, reason for referral, relevant clinical history, current medications and allergies, relevant investigation results, and a closing request. Keep it factual and concise. Do not fabricate a referring or receiving doctor's name, address, or credentials - use only names supplied in the context.`,
     userPromptTemplate: `Draft a referral letter.
 
 Referred to specialty: {{referredToSpecialty}}

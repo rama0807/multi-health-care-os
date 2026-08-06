@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-// ─── Enums (mirror the Prisma enums — see ADR-0023) ────────────────────────
+// ─── Enums (mirror the Prisma enums - see ADR-0023) ────────────────────────
 
 export const AI_FEATURES = [
   'SOAP_NOTE',
@@ -35,11 +35,11 @@ export const AI_FEATURE_LABELS: Record<AiFeature, string> = {
 
 /**
  * Attached to every generation result and rendered by the UI. AI output in a
- * clinical system is a *draft for clinician review* — nothing generated here
+ * clinical system is a *draft for clinician review* - nothing generated here
  * is written to a patient's record without an explicit human save action.
  */
 export const AI_CLINICAL_DISCLAIMER =
-  'AI-generated draft. Review and edit before use — this content has not been validated by a clinician and must not be relied on for clinical decisions on its own.'
+  'AI-generated draft. Review and edit before use - this content has not been validated by a clinician and must not be relied on for clinical decisions on its own.'
 
 // ─── Generation request ────────────────────────────────────────────────────
 
@@ -103,7 +103,7 @@ export interface AiTokenUsage {
   /**
    * `true` when the provider did not return metered usage and the counts come
    * from the documented `ceil(chars / 4)` heuristic instead. Never conflate
-   * the two — see ADR-0023.
+   * the two - see ADR-0023.
    */
   estimated: boolean
   /**
@@ -142,7 +142,7 @@ export interface AiFeatureStatus {
 
 /**
  * What the UI asks before offering an AI action. `configured` is false when no
- * credential is present for the selected provider — in that state every
+ * credential is present for the selected provider - in that state every
  * generation endpoint returns 503 rather than fabricating clinical text.
  */
 export interface AiStatus {

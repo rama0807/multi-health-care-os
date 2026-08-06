@@ -49,7 +49,7 @@ export class EncounterAttachmentsService {
     await this.encountersService.requireEncounter(organizationId, encounterId)
 
     if (!ALLOWED_ATTACHMENT_MIME_TYPES.has(file.mimeType)) {
-      throw new BadRequestException('Unsupported file type — allowed: PNG, JPEG, WEBP, PDF')
+      throw new BadRequestException('Unsupported file type - allowed: PNG, JPEG, WEBP, PDF')
     }
     if (file.size > MAX_ATTACHMENT_SIZE_BYTES) {
       throw new BadRequestException('File exceeds the 10MB upload limit')

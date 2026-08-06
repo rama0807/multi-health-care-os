@@ -216,7 +216,7 @@ describe('LabTestsService', () => {
     })
   })
 
-  describe('updateStatus (generic — CANCELLED only)', () => {
+  describe('updateStatus (generic - CANCELLED only)', () => {
     it('rejects a non-CANCELLED status via the generic endpoint', async () => {
       await expect(service.updateStatus('org_1', 'lab_1', { status: 'IN_PROGRESS' } as never)).rejects.toThrow(
         BadRequestException,

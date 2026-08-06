@@ -20,15 +20,15 @@ import { deriveRequestId } from './common/observability/request-context.middlewa
  *
  * It lives here rather than inline in `main.ts` for one reason: a security
  * header that only exists in `main.ts` is a security header no test can
- * assert. Everything that hardens the transport — the adapter options, helmet,
- * CORS, the global pipe/filter/interceptor chain — is therefore callable, and
+ * assert. Everything that hardens the transport - the adapter options, helmet,
+ * CORS, the global pipe/filter/interceptor chain - is therefore callable, and
  * `test/production-hardening.e2e-spec.ts` exercises exactly what ships.
  */
 
 /**
  * `TRUST_PROXY` is read from the environment rather than `ConfigService`
  * because the adapter is constructed before the DI container exists. It must
- * stay off unless a proxy we control sets `X-Forwarded-For` — trusting it
+ * stay off unless a proxy we control sets `X-Forwarded-For` - trusting it
  * while directly exposed lets any caller spoof `request.ip`, and with it
  * per-IP rate limiting and the address recorded on every audit row.
  */
@@ -38,7 +38,7 @@ export function createHttpAdapter(): FastifyAdapter {
     // Fastify assigns `request.id` before any middleware runs, and by default
     // mints its own `req-N` counter. Both settings hand that decision to
     // `deriveRequestId`, which is what makes a caller-supplied `x-request-id`
-    // actually win — and makes it validated first, since the id ends up in log
+    // actually win - and makes it validated first, since the id ends up in log
     // lines and in a response header.
     requestIdHeader: false,
     genReqId: (req: IncomingMessage) => deriveRequestId(req.headers),
@@ -65,7 +65,7 @@ export async function registerPlugins(app: NestFastifyApplication, config: Confi
    * belong with the thing that emits the response.
    *
    * The CSP is deliberately strict for an API that serves JSON and file
-   * downloads — `default-src 'none'` — and relaxed only when Swagger is
+   * downloads - `default-src 'none'` - and relaxed only when Swagger is
    * mounted, which is why disabling the docs in production removes the
    * exception rather than weakening it everywhere.
    */
@@ -106,7 +106,7 @@ export async function registerPlugins(app: NestFastifyApplication, config: Confi
     noSniff: true,
   })
 
-  // Only relevant when STORAGE_PROVIDER=local — serves uploaded patient
+  // Only relevant when STORAGE_PROVIDER=local - serves uploaded patient
   // documents back out. Under the s3/MinIO driver, uploads are served
   // directly from the object store via S3_PUBLIC_URL instead.
   if (config.get<string>('storage.provider') !== 's3') {
@@ -115,7 +115,7 @@ export async function registerPlugins(app: NestFastifyApplication, config: Confi
       prefix: '/uploads/',
       // A stored document is data, never a page in this origin.
       // `void` because @fastify/static hands back a FastifyReply here, which
-      // is thenable — the header is set synchronously, there is nothing to await.
+      // is thenable - the header is set synchronously, there is nothing to await.
       setHeaders: (res) => {
         void res.setHeader('Content-Disposition', 'attachment')
         void res.setHeader('X-Content-Type-Options', 'nosniff')
@@ -146,7 +146,7 @@ export function configureApp(app: NestFastifyApplication, config: ConfigService)
   app.setGlobalPrefix('api')
 
   // All request validation runs through Zod schemas shared with the frontend
-  // (@medicore/types) — see nestjs-zod's createZodDto(). Falls through
+  // (@medicore/types) - see nestjs-zod's createZodDto(). Falls through
   // untouched for handlers whose params aren't zod-dto typed.
   app.useGlobalPipes(new ZodValidationPipe())
 

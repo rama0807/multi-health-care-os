@@ -1,7 +1,7 @@
 /**
  * Minimal RFC 4180-style CSV parser (quoted fields, escaped quotes via "",
  * commas/newlines inside quotes, CRLF or LF line endings). Hand-rolled
- * rather than a new dependency — the grammar is small and bounded, and
+ * rather than a new dependency - the grammar is small and bounded, and
  * `PayrollService.toCsv` already writes CSV by hand elsewhere in this repo.
  */
 export function parseCsv(content: string): string[][] {

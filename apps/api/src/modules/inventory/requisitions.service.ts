@@ -132,7 +132,7 @@ export class RequisitionsService {
         if (!reqItem) throw new BadRequestException('One or more items do not belong to this requisition')
         const remaining = reqItem.quantityRequested - reqItem.quantityIssued
         if (line.quantityIssued > remaining) {
-          throw new BadRequestException(`Cannot issue ${line.quantityIssued} — only ${remaining} remain requested`)
+          throw new BadRequestException(`Cannot issue ${line.quantityIssued} - only ${remaining} remain requested`)
         }
         await this.stockService.issueStock(tx, organizationId, reqItem.itemId, req.fromStoreId, line.quantityIssued, line.batchId)
         await this.stockService.recordLedger(tx, organizationId, reqItem.itemId, req.fromStoreId, 'ISSUE', -line.quantityIssued, userId, {
@@ -173,7 +173,7 @@ export class RequisitionsService {
         if (!reqItem) throw new BadRequestException('One or more items do not belong to this requisition')
         const remaining = reqItem.quantityIssued - reqItem.quantityReceived
         if (line.quantityReceived > remaining) {
-          throw new BadRequestException(`Cannot receive ${line.quantityReceived} — only ${remaining} unit(s) are in transit`)
+          throw new BadRequestException(`Cannot receive ${line.quantityReceived} - only ${remaining} unit(s) are in transit`)
         }
         await this.stockService.receiveStock(tx, organizationId, reqItem.itemId, req.toStoreId, line.quantityReceived)
         await this.stockService.recordLedger(tx, organizationId, reqItem.itemId, req.toStoreId, 'TRANSFER', line.quantityReceived, userId, {

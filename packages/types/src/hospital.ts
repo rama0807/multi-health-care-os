@@ -56,7 +56,7 @@ export type UpdateHospitalDto = z.infer<typeof UpdateHospitalSchema>
 /**
  * Hospital onboarding wizard (Checkpoint 16.1). One transactional call that
  * creates the hospital, its initial departments, and optionally provisions a
- * login for its administrator — the last step reuses the existing generic
+ * login for its administrator - the last step reuses the existing generic
  * `StaffOnboardingService` rather than adding a second account-provisioning
  * path.
  */

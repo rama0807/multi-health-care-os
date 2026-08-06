@@ -1,4 +1,4 @@
-# CLAUDE.md — MediCore Project Constitution
+# CLAUDE.md - MediCore Project Constitution
 
 This file is the constitution for this repository. Every Claude Code session
 working in this repo must read and follow it before doing any work.
@@ -28,7 +28,7 @@ Never ask architectural questions already answered in DECISIONS.md.
 ## Mission
 
 This repository is a production-grade, AI-powered Hospital Management System
-(MediCore) — a multi-tenant SaaS platform for hospitals, clinics, and
+(MediCore) - a multi-tenant SaaS platform for hospitals, clinics, and
 diagnostic centers.
 
 Code quality, architecture, documentation, testing, and maintainability are
@@ -36,7 +36,7 @@ more important than development speed.
 
 - Never implement demo-quality code.
 - Never generate placeholder implementations unless explicitly requested.
-- Never fake or stub clinical, billing, or auth logic to "make it work" —
+- Never fake or stub clinical, billing, or auth logic to "make it work" -
   correctness matters more than a green checkmark in a domain where bugs
   affect patient care and money.
 
@@ -53,24 +53,24 @@ Before making ANY code changes in this repository, read, in order:
 5. `.ai/DECISIONS.md`
 6. `.ai/TECH_DEBT.md`
 
-Do NOT scan the entire repository unless absolutely necessary — these six
+Do NOT scan the entire repository unless absolutely necessary - these six
 files are the project's source of truth for "what is this, what's done, what's
 next, why did we decide that, and what's owed."
 
 ---
 
-## Project Memory — `.ai/`
+## Project Memory - `.ai/`
 
 Maintain the `.ai/` directory containing:
 
-- `PROJECT_CONTEXT.md` — what the system is, architecture, modules, stack
-- `PROGRESS.md` — what has been built, module by module
-- `NEXT.md` — the next logical task(s) to pick up
-- `DECISIONS.md` — architectural decision log (ADR-style)
-- `TECH_DEBT.md` — deferred work, known shortcuts, follow-ups
-- `SESSION_LOG.md` — a running handoff log, newest entry on top
-- `MODULE_STATUS.md` — per-module status and completion percentage
-- `CHANGELOG.md` — human-readable log of notable changes
+- `PROJECT_CONTEXT.md` - what the system is, architecture, modules, stack
+- `PROGRESS.md` - what has been built, module by module
+- `NEXT.md` - the next logical task(s) to pick up
+- `DECISIONS.md` - architectural decision log (ADR-style)
+- `TECH_DEBT.md` - deferred work, known shortcuts, follow-ups
+- `SESSION_LOG.md` - a running handoff log, newest entry on top
+- `MODULE_STATUS.md` - per-module status and completion percentage
+- `CHANGELOG.md` - human-readable log of notable changes
 
 These files must always remain synchronized with reality. If code and a
 `.ai/` file disagree, treat the code as ground truth and fix the file.
@@ -243,7 +243,7 @@ Then stop.
 Never re-ask an architecture question that has already been answered.
 
 Before asking the user to make an architectural choice, check
-`DECISIONS.md` first. If a decision already exists, follow it — do not ask
+`DECISIONS.md` first. If a decision already exists, follow it - do not ask
 again. Only raise it again if new information directly contradicts the
 recorded decision, and if so, propose updating `DECISIONS.md` rather than
 silently overriding it.
@@ -260,7 +260,7 @@ Whenever a user-facing milestone is completed (a working UI flow/feature):
 
 ---
 
-## Testing — Definition of Done
+## Testing - Definition of Done
 
 No task is considered complete until all of the following pass:
 
@@ -285,5 +285,5 @@ Maintain, at all times, in `MODULE_STATUS.md` and `PROJECT_CONTEXT.md`:
 - A completion percentage for every module
 - Each module's state: **Completed / In Progress / Blocked / Deferred / Planned**
 
-Never lose project state between sessions — if in doubt, over-document in
+Never lose project state between sessions - if in doubt, over-document in
 `.ai/` rather than relying on memory of a previous conversation.

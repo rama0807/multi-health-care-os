@@ -9,7 +9,7 @@ export const REFRESH_COOKIE_NAME = 'medicore_rt'
 // Deliberately "/", not "/api/v1/auth": in production, frontend and backend
 // sit behind one nginx origin (see infra/nginx/nginx.conf), and the
 // frontend's own middleware needs to see this cookie's presence on page
-// requests (/dashboard, /login, ...) to redirect appropriately — a
+// requests (/dashboard, /login, ...) to redirect appropriately - a
 // path-scoped cookie confined to the auth routes would never reach there.
 const COOKIE_PATH = '/'
 

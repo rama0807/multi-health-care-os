@@ -139,7 +139,7 @@ export class OrganizationsService {
   }
 
   /**
-   * Reuses the shared `StorageService` — the same upload path every document
+   * Reuses the shared `StorageService` - the same upload path every document
    * feature in this repo already uses. The previous logo is deleted only after
    * the new URL is committed, so a delete failure never leaves the
    * organization without a logo.
@@ -257,7 +257,7 @@ export class OrganizationsService {
   // ── Organization administrators (Checkpoint 16.1) ──────────────────────
 
   /**
-   * Administrators are not a new entity — they are the organization's users
+   * Administrators are not a new entity - they are the organization's users
    * holding a role whose `systemRole` is ORG_ADMIN (or the platform tenant's
    * SUPER_ADMIN). Reusing `UserRole` keeps one source of truth for who can do
    * what; a separate `OrganizationAdmin` table would immediately drift from it.
@@ -313,7 +313,7 @@ function daysAgo(days: number): Date {
   return d
 }
 
-/** The subset an audit entry needs — avoids copying the whole settings blob. */
+/** The subset an audit entry needs - avoids copying the whole settings blob. */
 function pickProfileFields(org: {
   name: string
   email: string

@@ -94,9 +94,9 @@ export class PreAuthorizationController {
     @Req() request: FastifyRequest,
   ) {
     const data = await request.file()
-    if (!data) throw new BadRequestException('No file uploaded — send multipart/form-data')
+    if (!data) throw new BadRequestException('No file uploaded - send multipart/form-data')
     if (!ALLOWED_ATTACHMENT_MIME_TYPES.has(data.mimetype)) {
-      throw new BadRequestException('Unsupported file type — allowed: PNG, JPEG, WEBP, PDF')
+      throw new BadRequestException('Unsupported file type - allowed: PNG, JPEG, WEBP, PDF')
     }
 
     const buffer = await data.toBuffer()

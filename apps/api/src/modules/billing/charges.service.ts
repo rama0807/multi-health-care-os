@@ -8,7 +8,7 @@ import { PrismaService } from '../../prisma/prisma.service'
 import { computeLineItemAmounts } from './billing-calculations'
 
 /**
- * The reusable Charge Engine — see ADR-0015. `create` is the single entry
+ * The reusable Charge Engine - see ADR-0015. `create` is the single entry
  * point any clinical module (or a manual cashier action) uses to bill a
  * patient for something; `sourceModule`/`sourceId` record provenance
  * without a hard FK into each module's own tables. Invoice generation
@@ -120,7 +120,7 @@ export class ChargesService {
     return this.toResponse(await this.requireCharge(organizationId, id))
   }
 
-  /** Voids a not-yet-invoiced charge — e.g. it was raised in error. */
+  /** Voids a not-yet-invoiced charge - e.g. it was raised in error. */
   async void(organizationId: string, id: string, actorUserId?: string): Promise<Charge> {
     const charge = await this.requireCharge(organizationId, id)
     if ((charge.status as unknown as ChargeStatus) !== ChargeStatus.PENDING) {

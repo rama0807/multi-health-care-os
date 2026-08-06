@@ -162,7 +162,7 @@ export default function PreAuthorizationQueuePage() {
                   </TableCell>
                   <TableCell className="text-sm">{p.patientInsurance.provider.name}</TableCell>
                   <TableCell align="right">₹{p.requestedAmount}</TableCell>
-                  <TableCell align="right">{p.approvedAmount ? `₹${p.approvedAmount}` : '—'}</TableCell>
+                  <TableCell align="right">{p.approvedAmount ? `₹${p.approvedAmount}` : '-'}</TableCell>
                   <TableCell>
                     <StatusBadge status={p.status} />
                   </TableCell>

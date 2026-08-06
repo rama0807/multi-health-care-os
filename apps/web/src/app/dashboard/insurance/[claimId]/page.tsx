@@ -241,13 +241,13 @@ export default function InsuranceClaimDetailPage() {
           </CardHeader>
           <CardContent className="space-y-2 pt-0">
             <Row label="Claimed amount" value={`₹${claim.claimedAmount}`} bold />
-            <Row label="Approved amount" value={claim.approvedAmount ? `₹${claim.approvedAmount}` : '—'} />
-            <Row label="Rejected amount" value={claim.rejectedAmount ? `₹${claim.rejectedAmount}` : '—'} />
-            <Row label="Insurance share" value={claim.insuranceShare ? `₹${claim.insuranceShare}` : '—'} />
-            <Row label="Patient share" value={claim.patientShare ? `₹${claim.patientShare}` : '—'} />
+            <Row label="Approved amount" value={claim.approvedAmount ? `₹${claim.approvedAmount}` : '-'} />
+            <Row label="Rejected amount" value={claim.rejectedAmount ? `₹${claim.rejectedAmount}` : '-'} />
+            <Row label="Insurance share" value={claim.insuranceShare ? `₹${claim.insuranceShare}` : '-'} />
+            <Row label="Patient share" value={claim.patientShare ? `₹${claim.patientShare}` : '-'} />
             <Row label="Adjustment" value={`₹${claim.adjustmentAmount}`} />
             <Row label="Write-off" value={`₹${claim.writeOffAmount}`} />
-            <Row label="Outstanding" value={claim.outstandingAmount ? `₹${claim.outstandingAmount}` : '—'} bold />
+            <Row label="Outstanding" value={claim.outstandingAmount ? `₹${claim.outstandingAmount}` : '-'} bold />
             <Row label="Payment status" value={formatEnumLabel(claim.paymentStatus)} />
             {claim.rejectionReason && <Row label="Rejection reason" value={claim.rejectionReason} />}
             <div className="border-t pt-2 text-xs text-muted-foreground">

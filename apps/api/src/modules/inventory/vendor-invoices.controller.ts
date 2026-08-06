@@ -10,7 +10,7 @@ import { RecordVendorInvoicePaymentDto } from './dto/record-vendor-invoice-payme
 import { UpdateVendorInvoiceStatusDto } from './dto/update-vendor-invoice-status.dto'
 import { VendorInvoicesService } from './vendor-invoices.service'
 
-/** Vendor invoices — the final step of the procurement chain. See ADR-0020. */
+/** Vendor invoices - the final step of the procurement chain. See ADR-0020. */
 @ApiTags('inventory-vendor-invoices')
 @ApiBearerAuth()
 @Controller({ path: 'inventory/vendor-invoices', version: '1' })

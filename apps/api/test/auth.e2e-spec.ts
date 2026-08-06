@@ -8,8 +8,8 @@ import { ZodValidationPipe } from 'nestjs-zod'
 import request, { Response } from 'supertest'
 
 // Env vars are read lazily (Nest's `registerAs` factories run when the DI
-// graph is built, not at import time) so setting them here — before the
-// testing module is created — is enough, even though imports are hoisted.
+// graph is built, not at import time) so setting them here - before the
+// testing module is created - is enough, even though imports are hoisted.
 process.env.DATABASE_URL ??= 'postgresql://medicore:medicore@localhost:5434/medicore_test?schema=public'
 process.env.REDIS_HOST ??= 'localhost'
 process.env.REDIS_PORT ??= '6381'
@@ -107,7 +107,7 @@ describe('Auth flow (e2e)', () => {
       .expect(200)
 
     // Note: we don't assert the access token differs from the pre-refresh one
-    // — JWT signing is deterministic given an identical payload, and issuing
+    // - JWT signing is deterministic given an identical payload, and issuing
     // both tokens within the same wall-clock second (same `iat`) can
     // legitimately produce byte-identical tokens. The refresh *token* cookie
     // rotating (asserted below) is the real guarantee this flow provides.
@@ -121,7 +121,7 @@ describe('Auth flow (e2e)', () => {
     expect(refreshCookieV2).toBeTruthy()
     expect(refreshCookieV2).not.toBe(refreshCookieV1)
 
-    // 4. Replaying the now-rotated (v1) refresh token is treated as theft —
+    // 4. Replaying the now-rotated (v1) refresh token is treated as theft -
     // and correctly kills the *whole* session, including the "legitimate"
     // v2 side, since we can't tell which side is the attacker.
     await request(server)
@@ -130,8 +130,8 @@ describe('Auth flow (e2e)', () => {
       .set('X-CSRF-Token', csrfTokenV1!)
       .expect(401)
 
-    // 5. Proof the whole session died: even the v2 access token — issued
-    // by the legitimate rotation just before the replay — is now rejected.
+    // 5. Proof the whole session died: even the v2 access token - issued
+    // by the legitimate rotation just before the replay - is now rejected.
     await request(server)
       .get('/api/v1/auth/me')
       .set('Authorization', `Bearer ${newAccessToken}`)
@@ -175,7 +175,7 @@ describe('Auth flow (e2e)', () => {
       .set('X-CSRF-Token', csrfToken!)
       .expect(200)
 
-    // The access token issued before logout is rejected immediately — logout
+    // The access token issued before logout is rejected immediately - logout
     // revokes the session rather than waiting for the JWT's own 15min expiry.
     await request(server)
       .get('/api/v1/auth/me')

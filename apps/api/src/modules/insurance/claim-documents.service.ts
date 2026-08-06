@@ -23,10 +23,10 @@ const ALLOWED_UPLOAD_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/web
 const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024
 
 /**
- * A claim's supporting documents — auto-attached at claim-creation time
+ * A claim's supporting documents - auto-attached at claim-creation time
  * from every clinical/billing module's existing (or, for the encounter
  * summary, purpose-built) PDF generator, plus manual uploads reusing the
- * existing `StorageService` — see ADR-0016. Auto-attach failures are
+ * existing `StorageService` - see ADR-0016. Auto-attach failures are
  * logged and skipped rather than failing claim creation: a missing report
  * shouldn't block filing the claim itself, and the claim's document list
  * always shows exactly what did attach.
@@ -95,7 +95,7 @@ export class ClaimDocumentsService {
     actorUserId: string,
   ): Promise<ClaimDocument> {
     if (!ALLOWED_UPLOAD_MIME_TYPES.has(file.mimeType)) {
-      throw new BadRequestException('Unsupported file type — allowed: PNG, JPEG, WEBP, PDF')
+      throw new BadRequestException('Unsupported file type - allowed: PNG, JPEG, WEBP, PDF')
     }
     if (file.size > MAX_UPLOAD_SIZE_BYTES) {
       throw new BadRequestException('File exceeds the 10MB upload limit')

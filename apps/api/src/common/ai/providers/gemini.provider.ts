@@ -67,7 +67,7 @@ export class GeminiProvider implements AiProviderAdapter {
     const response = await this.dispatch(request, true)
 
     // Gemini repeats cumulative usage on every SSE frame, so the last one seen
-    // is the total — emitted once the stream drains rather than per chunk.
+    // is the total - emitted once the stream drains rather than per chunk.
     let lastUsage: { promptTokens: number; completionTokens: number } | null = null
 
     for await (const line of readLines(response.body)) {

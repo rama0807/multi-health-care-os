@@ -10,7 +10,7 @@ import { Prisma, ServiceCatalogItem as PrismaServiceCatalogItem } from '@prisma/
 import { PrismaService } from '../../prisma/prisma.service'
 
 /**
- * Configurable service/pricing catalog — see ADR-0015. Not own-scoped: a
+ * Configurable service/pricing catalog - see ADR-0015. Not own-scoped: a
  * catalog item has no owning doctor, mirroring `LabTestCatalogItem`/
  * `RadiologyCatalogItem`'s catalog routes.
  */

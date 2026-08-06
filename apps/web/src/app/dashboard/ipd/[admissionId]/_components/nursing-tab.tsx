@@ -39,7 +39,7 @@ function formatEnumLabel(value: string): string {
 
 /**
  * A risk *level* reads the opposite way "LOW"/"HIGH" do as clinical lab
- * flags (where LOW/HIGH mean an abnormal value, i.e. danger) — so this is
+ * flags (where LOW/HIGH mean an abnormal value, i.e. danger) - so this is
  * exactly the sanctioned `tone` override case, not a shared-map fix.
  */
 const RISK_TONE: Record<string, StatusTone> = {
@@ -248,7 +248,7 @@ function NursingAssessmentsSection({ admissionId, canCreate }: { admissionId: st
   return (
     <div className="rounded-lg border bg-card p-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-foreground">Daily assessment — pain, fall risk, Braden, GCS</h3>
+        <h3 className="text-sm font-semibold text-foreground">Daily assessment - pain, fall risk, Braden, GCS</h3>
         {canCreate && (
           <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
             <Plus className="h-3.5 w-3.5" />

@@ -110,7 +110,7 @@ export class SessionsService {
 
   /**
    * Rotates a refresh token. Detects reuse of an already-rotated token via a
-   * short-lived tombstone left behind at the old key — see ADR-006.
+   * short-lived tombstone left behind at the old key - see ADR-006.
    */
   async rotateSession(
     presentedToken: string,

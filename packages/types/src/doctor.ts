@@ -44,7 +44,7 @@ export interface Doctor {
 }
 
 export const CreateDoctorSchema = z.object({
-  // Account fields — used to create (or link to) the doctor's login.
+  // Account fields - used to create (or link to) the doctor's login.
   email: z.string().email(),
   firstName: z.string().min(2).max(50),
   lastName: z.string().min(2).max(50),

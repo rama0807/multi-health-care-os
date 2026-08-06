@@ -126,7 +126,7 @@ export class DoctorsController {
   }
 
   /**
-   * Same own/all distinction as the scheduling controllers — `doctors.read`
+   * Same own/all distinction as the scheduling controllers - `doctors.read`
    * can be held at `.own` scope (a doctor viewing themself), which must be
    * restricted here to the caller's own linked profile.
    */

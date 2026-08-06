@@ -29,7 +29,7 @@ export class EmailService implements OnModuleInit {
       this.resend = new Resend(apiKey)
     } else {
       this.logger.warn(
-        'RESEND_API_KEY is not set — emails will be logged to the console instead of sent.',
+        'RESEND_API_KEY is not set - emails will be logged to the console instead of sent.',
       )
     }
   }

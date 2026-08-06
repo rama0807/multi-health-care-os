@@ -4,7 +4,7 @@ import { buildXlsx } from './xlsx.util'
 
 /**
  * Reads one entry back out of the ZIP the writer produced, walking the
- * central directory the same way a real reader would — so these tests fail if
+ * central directory the same way a real reader would - so these tests fail if
  * the container is malformed, not merely if the XML text is wrong.
  */
 function readZipEntry(zip: Buffer, name: string): string {
@@ -105,11 +105,11 @@ describe('buildXlsx', () => {
   it('falls back to text when a numeric column carries a non-numeric marker', () => {
     // An em dash means "not measured"; writing it as 0 would be a lie.
     const sheet = readZipEntry(
-      buildXlsx('Report', COLUMNS, [{ bucket: '2026-08-01', invoiced: '—', note: null }], NOW),
+      buildXlsx('Report', COLUMNS, [{ bucket: '2026-08-01', invoiced: '-', note: null }], NOW),
       'xl/worksheets/sheet1.xml',
     )
 
-    expect(sheet).toContain('<c r="B2" t="inlineStr"><is><t xml:space="preserve">—</t></is></c>')
+    expect(sheet).toContain('<c r="B2" t="inlineStr"><is><t xml:space="preserve">-</t></is></c>')
   })
 
   it('emits an empty cell for null rather than the string "null"', () => {

@@ -37,7 +37,7 @@ export type AiStreamYield = { type: 'delta'; text: string } | { type: 'outcome';
  * The only thing domain modules inject. Owns feature flags, retry/backoff,
  * timeouts, and token accounting; knows nothing about which vendor is behind
  * `AI_PROVIDER_ADAPTER` and nothing about the database (persistence of
- * conversations and usage rows belongs to `modules/ai` — ADR-0023).
+ * conversations and usage rows belongs to `modules/ai` - ADR-0023).
  */
 @Injectable()
 export class AiClientService {
@@ -195,7 +195,7 @@ export class AiClientService {
 
   /**
    * Exponential backoff over retryable failures only (rate limits, upstream
-   * 5xx, timeouts). A bad credential or malformed request fails immediately —
+   * 5xx, timeouts). A bad credential or malformed request fails immediately -
    * retrying it would just burn the caller's request budget.
    */
   private async withRetries(run: (attempt: number) => Promise<AiDispatchOutcome>): Promise<AiDispatchOutcome> {
@@ -239,7 +239,7 @@ export class AiClientService {
 }
 
 /**
- * Deliberately does not echo the provider's raw error text to the caller — it
+ * Deliberately does not echo the provider's raw error text to the caller - it
  * can contain request fragments, and a clinician can't act on it anyway.
  * The full detail is logged above.
  */

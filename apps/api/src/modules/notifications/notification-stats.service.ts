@@ -22,12 +22,12 @@ import { NotificationQueueService } from './notification-queue.service'
  * Delivery statistics (Checkpoint 18.6).
  *
  * Reuses Milestone 17's `report-range.util` for range resolution and
- * local-time day bucketing rather than re-deriving either — a notification
+ * local-time day bucketing rather than re-deriving either - a notification
  * volume chart and a report over the same period must agree on what "today"
  * means in +05:30, and ADR-0026 already settled that.
  *
  * Two rules carried over from Milestone 17 and held here: `to` is exclusive,
- * and a rate over zero attempts is **null**, not `0` — "nothing was sent" and
+ * and a rate over zero attempts is **null**, not `0` - "nothing was sent" and
  * "everything failed" are different facts.
  */
 @Injectable()
@@ -157,7 +157,7 @@ export class NotificationStatsService {
     const totalFailed = byChannel.reduce((sum, row) => sum + row.failed, 0)
     const attempted = totalSent + totalFailed
 
-    // Local-time day keys, never `toISOString()` — that shifts the day in
+    // Local-time day keys, never `toISOString()` - that shifts the day in
     // +05:30 and would file an 03:00 IST notification under the previous date.
     const buckets = new Map<string, { sent: number; failed: number }>()
     for (const row of dailyRows) {
@@ -205,7 +205,7 @@ function sumWhere(
     .reduce((sum, row) => sum + row._count._all, 0)
 }
 
-/** Null when the denominator is zero — never a misleading `0.00`. */
+/** Null when the denominator is zero - never a misleading `0.00`. */
 function rate(part: number, total: number): string | null {
   if (total === 0) return null
   return ((part / total) * 100).toFixed(2)

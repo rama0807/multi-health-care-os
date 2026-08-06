@@ -467,7 +467,7 @@ describe('Appointments (e2e)', () => {
 
       // A schedule covering the entire day, every day, so "now" (whatever
       // real wall-clock time this suite happens to run at) always falls
-      // within a bookable shift — deterministic without needing to mock
+      // within a bookable shift - deterministic without needing to mock
       // `Date` across a full Nest DI graph in an e2e context.
       const doctorRes = await request(server)
         .post('/api/v1/doctors')

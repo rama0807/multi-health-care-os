@@ -47,7 +47,7 @@ export class NotificationSchedulerService implements OnModuleInit, OnModuleDestr
 
   onModuleInit(): void {
     if (!this.config.get<boolean>('notifications.workerEnabled')) {
-      this.logger.log('Notification worker is disabled — queued deliveries will not be dispatched')
+      this.logger.log('Notification worker is disabled - queued deliveries will not be dispatched')
       return
     }
 
@@ -55,7 +55,7 @@ export class NotificationSchedulerService implements OnModuleInit, OnModuleDestr
     this.timer = setInterval(() => {
       void this.tick()
     }, interval)
-    // Never hold the process open for a tick — the API's lifecycle owns that.
+    // Never hold the process open for a tick - the API's lifecycle owns that.
     this.timer.unref?.()
     this.logger.log(`Notification worker started (every ${Math.round(interval / 1000)}s)`)
   }
@@ -74,7 +74,7 @@ export class NotificationSchedulerService implements OnModuleInit, OnModuleDestr
    */
   async tick(now = new Date()): Promise<{ released: number; dispatched: number }> {
     if (this.running) {
-      this.logger.debug('Skipping tick — the previous one is still running')
+      this.logger.debug('Skipping tick - the previous one is still running')
       return { released: 0, dispatched: 0 }
     }
     this.running = true
@@ -113,7 +113,7 @@ export class NotificationSchedulerService implements OnModuleInit, OnModuleDestr
    * Moves notifications whose `scheduleAt` has arrived from `SCHEDULED` to
    * `PENDING`. Their delivery rows were already enqueued with
    * `nextAttemptAt = scheduleAt`, so this only corrects the notification's own
-   * status — which is what keeps a future-dated message out of the recipient's
+   * status - which is what keeps a future-dated message out of the recipient's
    * centre until it is actually due.
    */
   private async releaseScheduled(now: Date): Promise<number> {

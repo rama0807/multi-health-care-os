@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils"
 
 export interface BreadcrumbItem {
   label: string
-  /** Omit on the final crumb — the current page is not a link to itself. */
+  /** Omit on the final crumb - the current page is not a link to itself. */
   href?: string
 }
 
@@ -17,7 +17,7 @@ export interface BreadcrumbItem {
  * `aria-current="page"` on the leaf, because this is the primary orientation
  * cue for a screen-reader user landing deep in a record.
  *
- * Long trails collapse in the middle rather than wrapping to a second line —
+ * Long trails collapse in the middle rather than wrapping to a second line -
  * a wrapping breadcrumb pushes the page title around as data loads.
  */
 export function Breadcrumb({

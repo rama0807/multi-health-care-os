@@ -6,7 +6,7 @@ import { currentRequestContext } from '../common/observability/request-context.s
 /**
  * How slow a statement has to be before it is logged, in milliseconds.
  * `DB_SLOW_QUERY_MS=0` turns the instrumentation off entirely, which is the
- * default under test — every statement would otherwise emit an event that no
+ * default under test - every statement would otherwise emit an event that no
  * assertion reads, on a database whose timings mean nothing.
  */
 const SLOW_QUERY_MS = Number.parseInt(
@@ -14,7 +14,7 @@ const SLOW_QUERY_MS = Number.parseInt(
   10,
 )
 
-/** Query text is truncated — a report's `IN (...)` list can run to kilobytes. */
+/** Query text is truncated - a report's `IN (...)` list can run to kilobytes. */
 const MAX_LOGGED_QUERY_LENGTH = 500
 
 @Injectable()
@@ -45,7 +45,7 @@ export class PrismaService
    * A 900ms statement is an interesting fact; a 900ms statement belonging to
    * `GET /api/v1/reports/billing` for a known request is a lead.
    *
-   * Only the parameterised SQL is logged, never `event.params` — the values
+   * Only the parameterised SQL is logged, never `event.params` - the values
    * bound into a MediCore query are patient identifiers, names and clinical
    * codes, and a log sink is not a place to put them.
    */

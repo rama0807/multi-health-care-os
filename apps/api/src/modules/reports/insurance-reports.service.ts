@@ -34,7 +34,7 @@ const PENDING_STATUSES = ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW'] as const
 /**
  * Insurance reporting (Checkpoint 17.1).
  *
- * Settlement ratio is measured against **decided** claims, not all claims —
+ * Settlement ratio is measured against **decided** claims, not all claims -
  * including still-pending claims in the denominator would make a healthy
  * payer look bad purely because a batch was submitted late in the window.
  */
@@ -100,7 +100,7 @@ export class InsuranceReportsService {
       claimedAmount: sumBy(claims, (c) => toNumber(c.claimedAmount)).toFixed(2),
       approvedAmount: sumBy(claims, (c) => toNumber(c.approvedAmount)).toFixed(2),
       // What the insurer actually pays is `insuranceShare` on a settled
-      // claim — `approvedAmount` is the adjudicated figure, which is not the
+      // claim - `approvedAmount` is the adjudicated figure, which is not the
       // same thing once co-pay and write-off are applied.
       settledAmount: sumBy(settled, (c) => toNumber(c.insuranceShare)).toFixed(2),
       byStatus: toBreakdown(statusGroups, (g) => g.status),
@@ -143,7 +143,7 @@ export class InsuranceReportsService {
 
     for (const claim of claims) {
       // Fall back to the denormalized `insuranceProvider` string the claim
-      // captured at creation time — ADR-0016 keeps it precisely so a claim
+      // captured at creation time - ADR-0016 keeps it precisely so a claim
       // still names its payer when the structured record is gone.
       const name = claim.provider?.name ?? claim.insuranceProvider
       const key = claim.providerId ?? `name:${name}`

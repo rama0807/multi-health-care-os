@@ -119,7 +119,7 @@ export class AttendanceController {
     return this.attendanceService.correct(orgId, id, dto, userId)
   }
 
-  /** `attendance.read` can be held at `.own` scope — force the list/calendar to the caller's own staff profile. */
+  /** `attendance.read` can be held at `.own` scope - force the list/calendar to the caller's own staff profile. */
   private async resolveOwnScopedStaffId(
     orgId: string,
     user: JwtPayload,
@@ -137,7 +137,7 @@ export class AttendanceController {
     return ownProfile.id
   }
 
-  /** Clock in/out: `.own` scope must resolve to the caller's own profile — no silent fallback like list/calendar. */
+  /** Clock in/out: `.own` scope must resolve to the caller's own profile - no silent fallback like list/calendar. */
   private async resolveActionableStaffId(
     orgId: string,
     user: JwtPayload,

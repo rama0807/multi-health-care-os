@@ -64,7 +64,7 @@ export async function uploadLabReportFile(id: string, file: File): Promise<LabTe
   const form = new FormData()
   form.append('file', file)
 
-  // Let the browser set its own multipart boundary — an explicit
+  // Let the browser set its own multipart boundary - an explicit
   // Content-Type here would ship without one and the server couldn't parse
   // the body.
   const { data } = await apiClient.post<{ data: LabTest }>(`/laboratory/${id}/report`, form, {

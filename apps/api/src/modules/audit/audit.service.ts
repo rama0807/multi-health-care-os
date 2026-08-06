@@ -61,7 +61,7 @@ export class AuditService {
   /**
    * Filtered, paginated audit trail (Checkpoint 16.1).
    *
-   * `organizationId` is a required positional argument on purpose — this is
+   * `organizationId` is a required positional argument on purpose - this is
    * the tenant-scoped reader. The Platform Owner console's cross-tenant
    * equivalent is `listGlobal`, and keeping them as two methods means an
    * organization-scoped caller cannot accidentally omit the tenant filter.
@@ -101,7 +101,7 @@ export class AuditService {
 
   /**
    * Cross-tenant audit trail for the Platform Owner console (Checkpoint 16.2).
-   * Only reachable behind `PlatformGuard` — there is no organization-scoped
+   * Only reachable behind `PlatformGuard` - there is no organization-scoped
    * route that calls this.
    */
   async listGlobal(query: AuditLogQuery = {}) {
@@ -140,7 +140,7 @@ export class AuditService {
   }
 
   /**
-   * Distinct action and resource values present in one organization's trail —
+   * Distinct action and resource values present in one organization's trail -
    * powers the audit-log filter dropdowns without hardcoding a list that would
    * drift as modules add new actions.
    */
@@ -171,7 +171,7 @@ export class AuditService {
   /**
    * Direct `Doctor` events use `resourceId = doctorId`, but schedule/leave/
    * document events use `resourceId = <their own id>` (scheduleId, leaveId,
-   * documentId) with the owning doctorId carried in `after` instead — see
+   * documentId) with the owning doctorId carried in `after` instead - see
    * `AuditListener`'s persist* helpers. This matches both shapes rather than
    * adding a second capture path.
    */
@@ -231,7 +231,7 @@ function buildPagination(page: number, limit: number, total: number) {
 
 /**
  * `scopedOrganizationId`, when supplied, always wins over
- * `query.organizationId` — a tenant-scoped caller cannot widen its own scope
+ * `query.organizationId` - a tenant-scoped caller cannot widen its own scope
  * by passing a different id in the query string.
  */
 function buildAuditWhere(

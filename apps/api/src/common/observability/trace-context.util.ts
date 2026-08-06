@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto'
 
 /**
- * W3C Trace Context (https://www.w3.org/TR/trace-context/) — the wire format
+ * W3C Trace Context (https://www.w3.org/TR/trace-context/) - the wire format
  * OpenTelemetry, Jaeger, Datadog, Honeycomb and every other tracing backend
  * agree on.
  *
@@ -9,8 +9,8 @@ import { randomBytes } from 'node:crypto'
  * (ADR-0029). Parsing an inbound `traceparent`, minting one when it is
  * absent, stamping `traceId`/`spanId` onto every log line and echoing the
  * header back is what makes MediCore's logs joinable with an upstream
- * gateway's traces. Installing the OpenTelemetry SDK — spans, exporters, a
- * collector — is a deployment decision, and is recorded as deferred work
+ * gateway's traces. Installing the OpenTelemetry SDK - spans, exporters, a
+ * collector - is a deployment decision, and is recorded as deferred work
  * (TD-0069) rather than half-built here.
  */
 
@@ -45,7 +45,7 @@ export function newSpanId(): string {
  * Derives this request's trace context from an inbound header.
  *
  * A malformed or all-zero `traceparent` starts a fresh trace rather than
- * being rejected — the spec requires exactly that, and a broken header from
+ * being rejected - the spec requires exactly that, and a broken header from
  * one caller must never turn into a failed request.
  */
 export function parseTraceparent(header: string | string[] | undefined): TraceContext {

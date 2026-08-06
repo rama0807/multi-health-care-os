@@ -8,7 +8,7 @@ import { TraceContext } from './trace-context.util'
  * The per-request correlation record (Milestone 19.4 / ADR-0029).
  *
  * `requestId` is what an operator quotes from a support ticket; `traceId` is
- * what a tracing backend joins on. They are kept separate on purpose — the
+ * what a tracing backend joins on. They are kept separate on purpose - the
  * request id survives even when nothing upstream speaks trace context.
  */
 export interface RequestContext {
@@ -28,8 +28,8 @@ const storage = new AsyncLocalStorage<RequestContext>()
  * without threading a context argument through thirty modules' method
  * signatures.
  *
- * `AsyncLocalStorage` is the right tool precisely because the alternative —
- * a request-scoped provider — would force every consumer up the injection
+ * `AsyncLocalStorage` is the right tool precisely because the alternative -
+ * a request-scoped provider - would force every consumer up the injection
  * chain to become request-scoped too, which in NestJS means rebuilding that
  * subtree on every request.
  *

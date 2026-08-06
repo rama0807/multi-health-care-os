@@ -37,7 +37,7 @@ type TaskWithAdmission = PrismaNursingTask & {
   }
 }
 
-/** Nursing to-do items — standalone or spawned from an `IpdOrder`. Backs the org-wide queue and per-admission list. */
+/** Nursing to-do items - standalone or spawned from an `IpdOrder`. Backs the org-wide queue and per-admission list. */
 @Injectable()
 export class NursingTasksService {
   constructor(

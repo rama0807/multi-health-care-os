@@ -51,7 +51,7 @@ export class ShiftsService {
       where: { shiftId: id, organizationId, date: { gte: startOfToday() } },
     })
     if (inUse) {
-      throw new ConflictException('This shift has upcoming roster assignments — reassign them before deactivating')
+      throw new ConflictException('This shift has upcoming roster assignments - reassign them before deactivating')
     }
 
     const shift = await this.prisma.shift.update({ where: { id }, data: { isActive: false } })

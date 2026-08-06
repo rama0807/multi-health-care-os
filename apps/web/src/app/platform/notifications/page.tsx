@@ -56,8 +56,8 @@ export default function PlatformNotificationsPage() {
       )}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-        <Stat label="Notifications" value={totals ? String(totals.total) : '—'} />
-        <Stat label="Read" value={totals ? String(totals.read) : '—'} />
+        <Stat label="Notifications" value={totals ? String(totals.total) : '-'} />
+        <Stat label="Read" value={totals ? String(totals.read) : '-'} />
         <Stat
           label="Success rate"
           value={totals?.successRate ? `${totals.successRate}%` : 'Not measured'}
@@ -68,8 +68,8 @@ export default function PlatformNotificationsPage() {
           value={totals?.failureRate ? `${totals.failureRate}%` : 'Not measured'}
           muted={!totals?.failureRate}
         />
-        <Stat label="Queued" value={queue ? String(queue.pending + queue.queued) : '—'} />
-        <Stat label="Failed" value={queue ? String(queue.failed) : '—'} />
+        <Stat label="Queued" value={queue ? String(queue.pending + queue.queued) : '-'} />
+        <Stat label="Failed" value={queue ? String(queue.failed) : '-'} />
       </div>
 
       <Card className="p-4">
@@ -170,7 +170,7 @@ function Row({ label, value }: { label: string; value?: number }) {
   return (
     <>
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className="text-right font-medium">{value ?? '—'}</dd>
+      <dd className="text-right font-medium">{value ?? '-'}</dd>
     </>
   )
 }

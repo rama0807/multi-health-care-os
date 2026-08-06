@@ -12,7 +12,7 @@ import { SubscriptionsService } from './subscriptions.service'
  * of the Platform Owner console's usage view (Checkpoint 16.1 / 16.2).
  *
  * Every figure here is a real query. AI usage reads the `AiUsageLog` rows
- * Checkpoint 15.1 already writes — the milestone brief called AI usage a
+ * Checkpoint 15.1 already writes - the milestone brief called AI usage a
  * placeholder, but genuine metered data exists, so reporting it is both more
  * useful and more honest than showing a stub. It simply reads zero until an
  * AI provider credential is configured (TD-0041).
@@ -76,7 +76,7 @@ export class OrganizationUsageService {
   }
 
   /**
-   * `estimatedCostUsd` is 0 whenever no per-token price is configured — that
+   * `estimatedCostUsd` is 0 whenever no per-token price is configured - that
    * means "no price configured", not "free" (see the schema comment on
    * `AiUsageLog`). It is surfaced verbatim rather than being inferred.
    */

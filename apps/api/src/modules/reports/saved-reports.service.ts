@@ -17,7 +17,7 @@ const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 100
 
 /**
- * Saved reports (Milestone 17 Checkpoint 17.3) — a named set of filters
+ * Saved reports (Milestone 17 Checkpoint 17.3) - a named set of filters
  * against one registry report. Nothing is cached: a saved report stores the
  * question, never the answer, so re-running it always reflects current data.
  *
@@ -95,7 +95,7 @@ export class SavedReportsService {
   }
 
   async create(organizationId: string, userId: string, dto: CreateSavedReportDto): Promise<SavedReport> {
-    // Validates the key against the registry before persisting — a saved
+    // Validates the key against the registry before persisting - a saved
     // report pointing at a report that does not exist is unrunnable, and
     // failing here names the problem instead of deferring it to run time.
     this.registry.getDefinition(dto.reportKey)
@@ -128,7 +128,7 @@ export class SavedReportsService {
     dto: UpdateSavedReportDto,
   ): Promise<SavedReport> {
     const existing = await this.prisma.savedReport.findFirst({ where: { id, organizationId } })
-    // A shared report someone else owns is not yours to edit — reported as
+    // A shared report someone else owns is not yours to edit - reported as
     // "not found" rather than "forbidden" so the response never confirms the
     // existence of another user's private report.
     if (!existing || existing.createdByUserId !== userId) {

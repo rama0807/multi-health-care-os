@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils"
 /**
  * Determinate progress / meter.
  *
- * Dependency-free on purpose (no `@radix-ui/react-progress`) — it is a div and
+ * Dependency-free on purpose (no `@radix-ui/react-progress`) - it is a div and
  * an ARIA role, and this repo already carries enough Radix surface.
  *
  * `tone` is explicit rather than derived from the percentage: 90% of a storage

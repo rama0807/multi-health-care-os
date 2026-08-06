@@ -10,7 +10,7 @@ import { LabCatalogService } from './lab-catalog.service'
 
 /**
  * Org-configurable catalog of orderable lab tests (ADR-0012). Not
- * own-scoped — a catalog item isn't tied to an ordering doctor, so only
+ * own-scoped - a catalog item isn't tied to an ordering doctor, so only
  * the plain `laboratory.*` permission (all-scope) gates these routes.
  */
 @ApiTags('laboratory-catalog')

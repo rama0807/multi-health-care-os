@@ -16,7 +16,7 @@ import { UpdateInventoryManufacturerDto } from './dto/update-inventory-manufactu
 import { UpdateInventoryUnitDto } from './dto/update-inventory-unit.dto'
 import { ItemMasterService } from './item-master.service'
 
-/** Item master lookups (categories, item groups, units, manufacturers, brands) — see ADR-0020. */
+/** Item master lookups (categories, item groups, units, manufacturers, brands) - see ADR-0020. */
 @ApiTags('inventory-item-master')
 @ApiBearerAuth()
 @Controller({ path: 'inventory', version: '1' })

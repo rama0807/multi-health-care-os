@@ -15,7 +15,7 @@ export interface AiCompletionRequest {
 
 /**
  * `estimated: false` means the provider returned metered counts. `true` means
- * they came from the `ceil(chars / 4)` fallback in `token-accounting.ts` —
+ * they came from the `ceil(chars / 4)` fallback in `token-accounting.ts` -
  * the two must never be conflated downstream (ADR-0023).
  */
 export interface AiProviderUsage {
@@ -40,12 +40,12 @@ export type AiProviderStreamEvent = { type: 'delta'; text: string } | { type: 'u
 /**
  * Every provider hides behind this. Domain code injects `AiClientService` and
  * never a concrete adapter, so switching vendors is a config change rather
- * than a code change — the same contract `StorageDriver` uses for disk vs S3.
+ * than a code change - the same contract `StorageDriver` uses for disk vs S3.
  */
 export interface AiProviderAdapter {
   readonly type: AiProviderType
   readonly supportsStreaming: boolean
-  /** Reserved for Checkpoint 15.2's OCR/document work — not exercised in 15.1. */
+  /** Reserved for Checkpoint 15.2's OCR/document work - not exercised in 15.1. */
   readonly supportsVision: boolean
 
   /** False when the credential (or, for Ollama, the base URL) is absent. */

@@ -338,7 +338,7 @@ export default function DispenseOrderDetailPage() {
             <ul className="divide-y">
               {order.returns.map((r) => (
                 <li key={r.id} className="p-3 text-sm">
-                  {order.items.find((i) => i.id === r.dispenseItemId)?.medicationName ?? 'Item'} — {r.quantityReturned} unit(s) returned:{' '}
+                  {order.items.find((i) => i.id === r.dispenseItemId)?.medicationName ?? 'Item'} - {r.quantityReturned} unit(s) returned:{' '}
                   {r.reason}
                   <div className="text-xs text-muted-foreground">{new Date(r.returnedAt).toLocaleString('en-IN')}</div>
                 </li>
@@ -380,7 +380,7 @@ export default function DispenseOrderDetailPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{reasonDialog === 'reject' ? 'Reject order' : 'Cancel order'}</DialogTitle>
-            <DialogDescription>Optionally record a reason — this is kept on the order for audit.</DialogDescription>
+            <DialogDescription>Optionally record a reason - this is kept on the order for audit.</DialogDescription>
           </DialogHeader>
           <Textarea placeholder="Reason (optional)" value={reason} onChange={(e) => setReason(e.target.value)} />
           <DialogFooter>

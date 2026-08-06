@@ -12,7 +12,7 @@ import { CreateAssetDto } from './dto/create-asset.dto'
 import { CreateMaintenanceRecordDto } from './dto/create-maintenance-record.dto'
 import { UpdateAssetDto } from './dto/update-asset.dto'
 
-/** Biomedical/equipment asset management — see ADR-0020. */
+/** Biomedical/equipment asset management - see ADR-0020. */
 @ApiTags('inventory-assets')
 @ApiBearerAuth()
 @Controller({ path: 'inventory/assets', version: '1' })

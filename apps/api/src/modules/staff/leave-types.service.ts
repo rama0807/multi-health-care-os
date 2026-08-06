@@ -39,7 +39,7 @@ export class LeaveTypesService {
     return this.toResponse(config)
   }
 
-  /** Internal — consumed by StaffLeaveService for balance computation. */
+  /** Internal - consumed by StaffLeaveService for balance computation. */
   async findAllActive(organizationId: string): Promise<PrismaLeaveTypeConfig[]> {
     return this.prisma.leaveTypeConfig.findMany({ where: { organizationId, isActive: true } })
   }

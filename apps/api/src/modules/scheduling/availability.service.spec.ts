@@ -62,7 +62,7 @@ describe('AvailabilityService', () => {
         scheduleRowWithMonday({ dayOfWeek: 'MONDAY', isWorkingDay: false, shifts: [] }),
       )
 
-      // 2026-08-04 is a Tuesday — no matching day in a schedule that only defines Monday.
+      // 2026-08-04 is a Tuesday - no matching day in a schedule that only defines Monday.
       const result = await service.getAvailableSlots('org_1', 'doctor_1', '2026-08-04')
 
       expect(result.isWorkingDay).toBe(false)

@@ -49,7 +49,7 @@ const EXPORT_FORMATS: Array<{ format: ReportExportFormat; label: string }> = [
  * The report builder (Milestone 17 Checkpoints 17.3/17.4).
  *
  * The report catalog, its filters and its columns all come from the API's
- * registry — this page hard-codes no report. Adding a report on the backend
+ * registry - this page hard-codes no report. Adding a report on the backend
  * makes it appear here with no frontend change.
  */
 export default function ReportBuilderPage() {
@@ -270,7 +270,7 @@ export default function ReportBuilderPage() {
                 <p className="mt-0.5 text-sm text-muted-foreground">{selected.description}</p>
                 {selected.filters.length === 0 && (
                   <Badge variant="outline" className="mt-2">
-                    Point-in-time report — date filters do not apply
+                    Point-in-time report - date filters do not apply
                   </Badge>
                 )}
               </Card>
@@ -337,7 +337,7 @@ export default function ReportBuilderPage() {
                                   className={column.type === 'string' || column.type === 'date' ? undefined : 'tabular-nums'}
                                 >
                                   {row[column.key] === null || row[column.key] === undefined
-                                    ? '—'
+                                    ? '-'
                                     : String(row[column.key])}
                                 </TableCell>
                               ))}
@@ -359,7 +359,7 @@ export default function ReportBuilderPage() {
           <DialogHeader>
             <DialogTitle>Save report</DialogTitle>
             <DialogDescription>
-              Saves the report and its current filters, not its results — re-running it always shows current data.
+              Saves the report and its current filters, not its results - re-running it always shows current data.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">

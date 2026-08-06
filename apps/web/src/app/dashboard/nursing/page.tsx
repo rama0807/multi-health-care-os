@@ -67,7 +67,7 @@ export default function NursingDashboardPage() {
                   <Link href={`/dashboard/ipd/${t.admission.id}`} className="text-primary hover:underline">
                     {t.admission.patientName}
                   </Link>{' '}
-                  — {t.title} ({t.admission.wardName})
+                  - {t.title} ({t.admission.wardName})
                 </li>
               ))}
             </ul>

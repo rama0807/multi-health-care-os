@@ -40,7 +40,7 @@ export class HospitalsController {
   }
 
   /**
-   * Onboarding wizard — creates the hospital, its departments and (optionally)
+   * Onboarding wizard - creates the hospital, its departments and (optionally)
    * its administrator in one transactional call. Declared before `:id` routes
    * so "onboard" is never captured as a hospital id.
    */

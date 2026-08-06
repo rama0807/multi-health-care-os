@@ -21,7 +21,7 @@ import { PrismaService } from '../../prisma/prisma.service'
 
 /**
  * The item master's five lookup tables (Category, Item Group, Unit,
- * Manufacturer, Brand) are structurally similar CRUD surfaces — grouped
+ * Manufacturer, Brand) are structurally similar CRUD surfaces - grouped
  * into one service rather than five near-duplicate files, mirroring how
  * `RESOURCE_ACTIONS` treats them as one `inventory.items` permission
  * surface (Milestone 13 / ADR-0020).

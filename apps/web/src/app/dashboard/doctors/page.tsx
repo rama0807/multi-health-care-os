@@ -398,8 +398,8 @@ export default function DoctorsListPage() {
                     </Link>
                   </TableCell>
                   <TableCell>{doctor.specialization}</TableCell>
-                  <TableCell>{doctor.department?.name ?? '—'}</TableCell>
-                  <TableCell>{doctor.hospital?.name ?? '—'}</TableCell>
+                  <TableCell>{doctor.department?.name ?? '-'}</TableCell>
+                  <TableCell>{doctor.hospital?.name ?? '-'}</TableCell>
                   <TableCell className="font-mono text-xs">{doctor.registrationNumber}</TableCell>
                   <TableCell>
                     <StatusBadge status={doctor.availabilityStatus} />
@@ -458,7 +458,7 @@ export default function DoctorsListPage() {
           <DialogHeader>
             <DialogTitle>Deactivate {selected.size} doctor{selected.size === 1 ? '' : 's'}?</DialogTitle>
             <DialogDescription>
-              This deactivates the selected doctor profiles — they can be restored later from the Deactivated
+              This deactivates the selected doctor profiles - they can be restored later from the Deactivated
               filter.
             </DialogDescription>
           </DialogHeader>

@@ -53,7 +53,7 @@ export default function RoomsPage() {
     <PageLayout
       breadcrumbs={[{ label: 'IPD', href: '/dashboard/ipd' }, { label: 'Rooms' }]}
       title="Rooms"
-      description="Room inventory — capacity, per-day charges, and bed occupancy."
+      description="Room inventory - capacity, per-day charges, and bed occupancy."
       actions={
         canCreate && (
           <Button onClick={() => setDialogOpen(true)}>

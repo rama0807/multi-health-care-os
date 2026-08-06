@@ -20,7 +20,7 @@ import { ReportRegistryService } from './report-registry.service'
  * missing half.
  *
  * It lives in `modules/reports/` rather than in the notification module
- * because running and exporting a report is reports' business — the only
+ * because running and exporting a report is reports' business - the only
  * thing borrowed from Milestone 18 is the **clock**: the notification
  * scheduler emits `notifications.tick`, and this listens. That keeps
  * `NotificationsModule` free of a dependency on `ReportsModule` and vice
@@ -112,7 +112,7 @@ export class ScheduledReportsDispatcher {
 
     const recipients = report.scheduleRecipients.filter((address) => address.includes('@'))
     if (recipients.length === 0) {
-      this.logger.warn(`Scheduled report "${report.name}" has no valid recipient address — nothing emailed`)
+      this.logger.warn(`Scheduled report "${report.name}" has no valid recipient address - nothing emailed`)
     }
 
     const frontendUrl = this.config.get<string>('notifications.frontendUrl') ?? ''
@@ -138,7 +138,7 @@ export class ScheduledReportsDispatcher {
         rowCount: result.rows.length,
         savedReportId: report.id,
       },
-      // One notification per run, not per report — `lastRunAt` is already the
+      // One notification per run, not per report - `lastRunAt` is already the
       // run's identity, so it makes the key unique without a second column.
       eventKey: `report.scheduled_run:${report.id}:${now.toISOString()}`,
     })
@@ -154,7 +154,7 @@ export class ScheduledReportsDispatcher {
    * `EmailService.send` takes `{ to, subject, html }` and has no attachment
    * parameter; widening it would change a signature four other modules already
    * depend on, for one caller. The mail therefore links back to the report,
-   * which re-runs against live data — arguably the better artefact anyway.
+   * which re-runs against live data - arguably the better artefact anyway.
    * Recorded honestly in TECH_DEBT rather than described as an attachment.
    */
   private renderEmail(

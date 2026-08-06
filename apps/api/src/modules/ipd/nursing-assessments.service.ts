@@ -35,7 +35,7 @@ function deriveBradenRiskLevel(score?: number): PressureUlcerRiskLevel | undefin
   return PressureUlcerRiskLevel.LOW
 }
 
-/** Pain / fall risk / Braden / GCS / daily assessment — one consolidated row per charting event. */
+/** Pain / fall risk / Braden / GCS / daily assessment - one consolidated row per charting event. */
 @Injectable()
 export class NursingAssessmentsService {
   constructor(

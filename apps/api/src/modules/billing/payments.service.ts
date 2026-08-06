@@ -16,10 +16,10 @@ const PAYMENT_WITH_INVOICE_INCLUDE = {
 } satisfies Prisma.PaymentInclude
 
 /**
- * Payment collection — see ADR-0015. Cash/card/UPI/bank transfer (NEFT/
+ * Payment collection - see ADR-0015. Cash/card/UPI/bank transfer (NEFT/
  * RTGS)/cheque all share one `PaymentMode` enum and one endpoint; calling
  * it more than once against the same invoice (different modes and/or
- * partial amounts) is how both split and partial payments work — there is
+ * partial amounts) is how both split and partial payments work - there is
  * deliberately no separate "split payment" endpoint.
  */
 @Injectable()
@@ -72,7 +72,7 @@ export class PaymentsService {
     return this.toResponse(await this.requirePaymentWithInvoice(organizationId, id))
   }
 
-  /** Records one payment against an invoice — see this class's doc comment for split/partial semantics. */
+  /** Records one payment against an invoice - see this class's doc comment for split/partial semantics. */
   async create(organizationId: string, invoiceId: string, dto: CreatePaymentDto, actorUserId?: string): Promise<Payment> {
     const invoice = await this.prisma.invoice.findFirst({ where: { id: invoiceId, organizationId } })
     if (!invoice) throw new NotFoundException('Invoice not found')

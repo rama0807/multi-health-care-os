@@ -1,5 +1,5 @@
 /**
- * Pure billing math shared by charge creation and invoice totals — see
+ * Pure billing math shared by charge creation and invoice totals - see
  * ADR-0015. Every money value is rounded to 2 decimal places at each step so
  * repeated addition across many line items can't drift by fractions of a
  * paisa.
@@ -49,7 +49,7 @@ export interface InvoiceTotals {
 
 /**
  * Aggregates every line item, then applies an optional invoice-level
- * discount (only ever passed in when it's `APPROVED` — see
+ * discount (only ever passed in when it's `APPROVED` - see
  * `InvoicesService`) on top of the post-item-discount subtotal, before tax
  * has already been computed per item.
  */

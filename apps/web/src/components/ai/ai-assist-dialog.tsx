@@ -25,7 +25,7 @@ interface AiAssistDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   feature: AiFeature
-  /** Everything except `feature` and `additionalContext` — the record refs. */
+  /** Everything except `feature` and `additionalContext` - the record refs. */
   contextRefs: Omit<GenerateAiContentDto, 'feature' | 'additionalContext'>
   /** Offered when the caller can do something with the draft (e.g. paste it into a form). */
   onAccept?: (content: string) => void
@@ -34,7 +34,7 @@ interface AiAssistDialogProps {
 
 /**
  * Streams one generation and shows it as an editable draft. Nothing here ever
- * writes to a patient record — `onAccept` hands the text back to the caller,
+ * writes to a patient record - `onAccept` hands the text back to the caller,
  * which is the only path by which AI output can reach the chart.
  */
 export function AiAssistDialog({
@@ -140,7 +140,7 @@ export function AiAssistDialog({
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>AI is unavailable</AlertTitle>
             <AlertDescription>
-              {unavailableReason} No content has been generated — this system does not produce placeholder clinical
+              {unavailableReason} No content has been generated - this system does not produce placeholder clinical
               text.
             </AlertDescription>
           </Alert>

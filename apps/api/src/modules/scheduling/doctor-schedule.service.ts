@@ -110,7 +110,7 @@ export class DoctorScheduleService {
     return this.toResponse(updated)
   }
 
-  /** Internal — consumed by AvailabilityService, not exposed directly over HTTP. */
+  /** Internal - consumed by AvailabilityService, not exposed directly over HTTP. */
   async findEffectiveRow(
     organizationId: string,
     doctorId: string,

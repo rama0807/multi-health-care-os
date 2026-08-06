@@ -10,7 +10,7 @@ import { countSeries, percentOf, resolveRange, toPeriod } from './report-range.u
  * Doctor workload reporting (Checkpoint 17.1).
  *
  * OPD vs IPD load is split on `EncounterType.IPD` for the outpatient side and
- * on `Admission.attendingDoctorId` for the inpatient side — an admission is
+ * on `Admission.attendingDoctorId` for the inpatient side - an admission is
  * the real unit of IPD work, and counting its auto-created IPD encounter
  * instead would just re-count the same stay through a different table.
  */
@@ -106,7 +106,7 @@ export class DoctorReportsService {
         }
       })
       // Doctors with no activity in the window are dropped rather than shown
-      // as a wall of zero rows — the report is about workload, not headcount
+      // as a wall of zero rows - the report is about workload, not headcount
       // (department strength lives in the staff report).
       .filter((row) => row.consultations > 0 || row.ipdLoad > 0)
       .sort((a, b) => b.consultations + b.ipdLoad - (a.consultations + a.ipdLoad))

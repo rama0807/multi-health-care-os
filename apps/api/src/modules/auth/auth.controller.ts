@@ -27,8 +27,8 @@ import { VerifyEmailDto } from './dto/verify-email.dto'
  * (`refresh`, `logout`, `me`, `sessions`) stay on the default tier, because a
  * dashboard with several tabs open legitimately hits those far more often.
  *
- * This is the coarse, per-IP line of defence. The precise one — a lock after
- * five failed attempts on a *specific account* — lives in `AuthService` and is
+ * This is the coarse, per-IP line of defence. The precise one - a lock after
+ * five failed attempts on a *specific account* - lives in `AuthService` and is
  * unaffected by the shared NAT address a hospital LAN presents.
  */
 @ApiTags('auth')

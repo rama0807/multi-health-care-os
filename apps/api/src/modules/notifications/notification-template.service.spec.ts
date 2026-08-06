@@ -90,7 +90,7 @@ describe('NotificationTemplateService.render', () => {
       abnormalNote: '',
     })
 
-    expect(rendered.subject).toBe('Lab report ready — CBC')
+    expect(rendered.subject).toBe('Lab report ready - CBC')
     expect(rendered.body).toContain('Asha Rao')
     expect(rendered.deepLink).toBe('/dashboard/laboratory/orders/lab-1')
     expect(rendered.category).toBe(DEFAULT_NOTIFICATION_TEMPLATES[NotificationType.LAB_RESULT_READY].category)
@@ -152,7 +152,7 @@ describe('DEFAULT_NOTIFICATION_TEMPLATES', () => {
     for (const template of Object.values(DEFAULT_NOTIFICATION_TEMPLATES)) {
       const used = extractVariables(template.subject, template.body, template.deepLink)
       // An undeclared variable still renders, but the admin editor's help text
-      // would silently omit it — so the two must stay in step.
+      // would silently omit it - so the two must stay in step.
       expect(template.variables.slice().sort()).toEqual(used.slice().sort())
     }
   })

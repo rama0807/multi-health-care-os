@@ -6,8 +6,8 @@ import { resolveTenantContext } from './tenant.util'
 
 /**
  * Resolves the platform / organization / hospital tenant triple for the
- * current request. Mirrors `@CurrentUser()`'s shape exactly — it reads the
- * same `request.user` payload that `JwtAuthGuard` already put there — and adds
+ * current request. Mirrors `@CurrentUser()`'s shape exactly - it reads the
+ * same `request.user` payload that `JwtAuthGuard` already put there - and adds
  * no second authentication path.
  */
 export const Tenant = createParamDecorator(

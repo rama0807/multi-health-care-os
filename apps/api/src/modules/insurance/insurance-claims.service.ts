@@ -49,7 +49,7 @@ type ClaimWithRelations = Prisma.InsuranceClaimGetPayload<{ include: typeof CLAI
 /**
  * Claim lifecycle ("Draft → Submitted → Under Review → Approved/Partially
  * Approved/Rejected → Settled/Partially Settled → Closed") plus settlement
- * — see ADR-0016. Not own-scoped: a cashier/billing clerk files and tracks
+ * - see ADR-0016. Not own-scoped: a cashier/billing clerk files and tracks
  * claims across every doctor's patients.
  */
 @Injectable()

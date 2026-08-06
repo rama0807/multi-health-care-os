@@ -127,7 +127,7 @@ export function promptTextOf(request: AiCompletionRequest): string {
 
 /**
  * Provider error bodies are quoted back (truncated) because "OpenAI returned
- * 400" alone is not actionable — but they can be long, and they reach logs.
+ * 400" alone is not actionable - but they can be long, and they reach logs.
  */
 export async function describeFailure(response: Response, providerName: string): Promise<string> {
   let detail = ''

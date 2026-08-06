@@ -32,10 +32,10 @@ import { configureApp, createHttpAdapter, registerPlugins } from '../src/bootstr
 import { HealthService } from '../src/modules/health/health.service'
 
 /**
- * Milestone 19 — the hardening that only exists at the HTTP layer.
+ * Milestone 19 - the hardening that only exists at the HTTP layer.
  *
  * Unlike every other e2e suite here, this one boots the app through
- * `src/bootstrap.ts` — the same `createHttpAdapter` / `registerPlugins` /
+ * `src/bootstrap.ts` - the same `createHttpAdapter` / `registerPlugins` /
  * `configureApp` the real process calls. That is the point: a security header
  * or a probe asserted against a hand-rolled test app proves nothing about what
  * ships. Anything asserted below is genuinely in `main.ts`'s path.
@@ -62,7 +62,7 @@ describe('Production hardening (e2e)', () => {
     await app?.close()
   })
 
-  describe('19.1 — security headers', () => {
+  describe('19.1 - security headers', () => {
     it('sends a strict CSP, frame denial and nosniff on an API response', async () => {
       const response = await request(server).get('/api/health').expect(200)
 
@@ -87,7 +87,7 @@ describe('Production hardening (e2e)', () => {
     })
   })
 
-  describe('19.1 — CORS', () => {
+  describe('19.1 - CORS', () => {
     it('allows the configured front end with credentials', async () => {
       const response = await request(server)
         .options('/api/v1/auth/login')
@@ -117,7 +117,7 @@ describe('Production hardening (e2e)', () => {
     })
   })
 
-  describe('19.4 — correlation and trace propagation', () => {
+  describe('19.4 - correlation and trace propagation', () => {
     it('mints a request id and echoes it on every response', async () => {
       const response = await request(server).get('/api/health').expect(200)
 
@@ -172,7 +172,7 @@ describe('Production hardening (e2e)', () => {
     })
   })
 
-  describe('19.4 — health probes', () => {
+  describe('19.4 - health probes', () => {
     it('serves the detailed check at both the versioned and version-neutral paths', async () => {
       const neutral = await request(server).get('/api/health').expect(200)
       const versioned = await request(server).get('/api/v1/health').expect(200)
@@ -202,7 +202,7 @@ describe('Production hardening (e2e)', () => {
 
       try {
         await request(server).get('/api/health/ready').expect(503)
-        // Liveness must stay green — an orchestrator would otherwise kill an
+        // Liveness must stay green - an orchestrator would otherwise kill an
         // instance that is deliberately finishing its in-flight work.
         await request(server).get('/api/health/live').expect(200)
       } finally {
@@ -211,13 +211,13 @@ describe('Production hardening (e2e)', () => {
       }
     })
 
-    it('leaves the probes public — an unauthenticated orchestrator must reach them', async () => {
+    it('leaves the probes public - an unauthenticated orchestrator must reach them', async () => {
       await request(server).get('/api/health/live').expect(200)
       await request(server).get('/api/health/ready').expect(200)
     })
   })
 
-  describe('19.4 — Prometheus metrics', () => {
+  describe('19.4 - Prometheus metrics', () => {
     it('refuses a scrape with no token', async () => {
       await request(server).get('/api/metrics').expect(403)
     })
@@ -237,7 +237,7 @@ describe('Production hardening (e2e)', () => {
       expect(response.text).toContain('medicore_dependency_up')
     })
 
-    it('labels requests by route pattern, never by URL — no id cardinality', async () => {
+    it('labels requests by route pattern, never by URL - no id cardinality', async () => {
       await request(server).get('/api/v1/patients/some-patient-id').expect(401)
 
       const response = await request(server)
@@ -249,7 +249,7 @@ describe('Production hardening (e2e)', () => {
     })
   })
 
-  describe('19.1 — throttling', () => {
+  describe('19.1 - throttling', () => {
     it('gives credential endpoints a much smaller budget than ordinary reads', async () => {
       const login = await request(server)
         .post('/api/v1/auth/login')

@@ -87,7 +87,7 @@ export interface PlatformStats {
   patients: number
   storageBytes: number
   subscriptionsByPlan: Array<{ plan: SubscriptionTier; count: number }>
-  /** Rolling window backed by Redis counters — see `ApiUsageService`. */
+  /** Rolling window backed by Redis counters - see `ApiUsageService`. */
   api: { windowDays: number; totalRequests: number; daily: Array<{ date: string; requests: number }> }
   ai: { totalRequests: number; totalTokens: number; estimatedCost: number }
   signupsLast30Days: number
@@ -139,7 +139,7 @@ export const PlatformOrganizationQuerySchema = z.object({
   search: z.string().trim().min(1).optional(),
   status: z.nativeEnum(OrganizationStatus).optional(),
   plan: z.nativeEnum(SubscriptionTier).optional(),
-  /** The platform's own tenant is excluded by default — it is not a customer. */
+  /** The platform's own tenant is excluded by default - it is not a customer. */
   includePlatform: z.coerce.boolean().optional(),
 })
 

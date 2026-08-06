@@ -96,7 +96,7 @@ export default function PharmacyCatalogPage() {
     <PageLayout
       breadcrumbs={[{ label: 'Pharmacy', href: '/dashboard/pharmacy' }, { label: 'Catalog' }]}
       title="Drug Catalog"
-      description="One row per batch — restocking a drug adds a new batch row."
+      description="One row per batch - restocking a drug adds a new batch row."
     >
       {canManage && (
         <Card>
@@ -142,7 +142,7 @@ export default function PharmacyCatalogPage() {
                     <span className="font-medium">{drug.genericName}</span>{' '}
                     {drug.brandName && <span className="text-muted-foreground">({drug.brandName})</span>}
                     <div className="text-xs text-muted-foreground">
-                      {drug.strength ?? '—'} · {drug.dosageForm} · Batch {drug.batchNumber} · ₹{drug.price} + {drug.taxPercent}% tax
+                      {drug.strength ?? '-'} · {drug.dosageForm} · Batch {drug.batchNumber} · ₹{drug.price} + {drug.taxPercent}% tax
                     </div>
                     <div className="text-xs text-muted-foreground">
                       Stock: {drug.currentStock} (reserved {drug.reservedStock}, available {drug.availableStock})

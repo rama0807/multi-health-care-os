@@ -141,7 +141,7 @@ describe('NotificationDispatcherService.dispatchOne', () => {
     expect(queue.recordAttempt).toHaveBeenCalled()
   })
 
-  it('SKIPs — never FAILs — a channel the user’s preferences suppress', async () => {
+  it('SKIPs - never FAILs - a channel the user’s preferences suppress', async () => {
     const send = jest.fn()
     const { service, queue, preferences } = makeHarness({
       providers: [makeProvider(NotificationChannel.EMAIL, send)],
@@ -216,7 +216,7 @@ describe('NotificationDispatcherService.dispatchMany', () => {
 
     await service.dispatchMany([asDelivery(), asDelivery()], NOW)
 
-    // Both deliveries were attempted — one throwing must not wedge the queue.
+    // Both deliveries were attempted - one throwing must not wedge the queue.
     expect(queue.recordAttempt).toHaveBeenCalledTimes(2)
     expect(queue.recordAttempt.mock.calls[0][1]).toMatchObject({
       ok: false,

@@ -179,7 +179,7 @@ export default function PurchaseRequestDetailPage() {
                     {item.item.name} <span className="font-mono text-xs text-muted-foreground">({item.item.code})</span>
                   </TableCell>
                   <TableCell align="right">{item.quantity}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{item.notes ?? '—'}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{item.notes ?? '-'}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

@@ -5,7 +5,7 @@ import { PrismaService } from '../../prisma/prisma.service'
 
 /**
  * Shared doctor lookup for every scheduling service, used instead of a
- * dependency on DoctorsModule — keeps the module graph one-directional
+ * dependency on DoctorsModule - keeps the module graph one-directional
  * (DoctorsModule -> SchedulingModule, for dashboard stats) and avoids a
  * circular import.
  */

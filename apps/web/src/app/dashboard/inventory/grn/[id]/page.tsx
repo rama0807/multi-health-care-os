@@ -39,7 +39,7 @@ export default function GrnDetailPage() {
   const completeMutation = useMutation({
     mutationFn: () => completeGoodsReceiptNote(params.id),
     onSuccess: () => {
-      toast({ title: 'GRN completed — stock updated' })
+      toast({ title: 'GRN completed - stock updated' })
       invalidate()
     },
     onError: (error) => toast({ variant: 'destructive', title: 'Could not complete', description: getErrorMessage(error) }),
@@ -104,7 +104,7 @@ export default function GrnDetailPage() {
             </Button>
             <Button size="sm" onClick={() => completeMutation.mutate()} disabled={completeMutation.isPending}>
               {completeMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              Complete — update stock
+              Complete - update stock
             </Button>
           </>
         )
@@ -132,9 +132,9 @@ export default function GrnDetailPage() {
                     {item.item.name} <span className="font-mono text-xs text-muted-foreground">({item.item.code})</span>
                   </TableCell>
                   <TableCell align="right">{item.quantityReceived}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{item.batchNumber ?? '—'}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{item.batchNumber ?? '-'}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">
-                    {item.expiryDate ? new Date(item.expiryDate).toLocaleDateString('en-IN') : '—'}
+                    {item.expiryDate ? new Date(item.expiryDate).toLocaleDateString('en-IN') : '-'}
                   </TableCell>
                   <TableCell align="right" className="text-xs">₹{item.unitPrice}</TableCell>
                 </TableRow>

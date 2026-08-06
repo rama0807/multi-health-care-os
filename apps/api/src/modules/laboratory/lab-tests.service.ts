@@ -47,7 +47,7 @@ const MAX_REPORT_SIZE_BYTES = 10 * 1024 * 1024
  * `ORDERED` is the only entry state. Sample collection, result entry, and
  * report upload are each dedicated actions (not this generic map) because
  * they carry required side effects (`sampleCollectedBy/At`, per-item
- * results, `reportFileUrl`/`reportedAt`) beyond a bare status flip — this
+ * results, `reportFileUrl`/`reportedAt`) beyond a bare status flip - this
  * map is consulted by those actions internally, and is exposed directly on
  * the generic `PATCH .../status` route only for `CANCELLED`, which has no
  * side effects of its own and is reachable from any non-terminal state.
@@ -189,11 +189,11 @@ export class LabTestsService {
    * Structured, per-item result entry. Only reachable once a sample has
    * been collected. Numeric results are always auto-flagged (ignoring any
    * client-supplied `isAbnormalOverride`); a non-numeric ("qualitative")
-   * result is never auto-flagged and instead uses the caller's override —
+   * result is never auto-flagged and instead uses the caller's override -
    * see `abnormal-flagging.ts`. The order transitions to IN_PROGRESS while
    * some items still lack a result, or COMPLETED once every item has one.
    * Once COMPLETED, results can no longer be re-entered here (a corrected
-   * report would need a new order) — a deliberate finality guard, not an
+   * report would need a new order) - a deliberate finality guard, not an
    * oversight.
    */
   async enterResults(
@@ -206,7 +206,7 @@ export class LabTestsService {
     const currentStatus = labTest.status as unknown as LabTestStatus
     if (currentStatus !== LabTestStatus.SAMPLE_COLLECTED && currentStatus !== LabTestStatus.IN_PROGRESS) {
       throw new BadRequestException(
-        `Cannot enter results while the order is ${currentStatus} — collect a sample first`,
+        `Cannot enter results while the order is ${currentStatus} - collect a sample first`,
       )
     }
 
@@ -292,7 +292,7 @@ export class LabTestsService {
 
   /**
    * External report file upload (e.g. a scanned report from an outside
-   * lab) — distinct from `generateReportPdf`'s structured, system-generated
+   * lab) - distinct from `generateReportPdf`'s structured, system-generated
    * PDF. Requires results to already be complete (`COMPLETED`); marks the
    * order `REPORTED`.
    */
@@ -307,7 +307,7 @@ export class LabTestsService {
     this.assertTransition(currentStatus, LabTestStatus.REPORTED)
 
     if (!ALLOWED_REPORT_MIME_TYPES.has(file.mimeType)) {
-      throw new BadRequestException('Unsupported file type — allowed: PDF, PNG, JPEG, WEBP')
+      throw new BadRequestException('Unsupported file type - allowed: PDF, PNG, JPEG, WEBP')
     }
     if (file.size > MAX_REPORT_SIZE_BYTES) {
       throw new BadRequestException('File exceeds the 10MB upload limit')
@@ -327,7 +327,7 @@ export class LabTestsService {
 
   /**
    * Structured, system-generated PDF built from the order's own
-   * `LabTestItem` rows — independent of whether an external report file
+   * `LabTestItem` rows - independent of whether an external report file
    * was ever uploaded via `uploadReportFile`.
    */
   async generateReportPdf(organizationId: string, id: string): Promise<{ buffer: Buffer; fileName: string }> {
@@ -374,7 +374,7 @@ export class LabTestsService {
 
   /**
    * `laboratory.*` can be held at `.own` scope (a doctor managing only lab
-   * orders they placed) — same idiom as `PrescriptionsService`/
+   * orders they placed) - same idiom as `PrescriptionsService`/
    * `EncountersService.assertOwnScopeOk`. See ADR-0012 for why this is
    * `.own` for the Doctor role but `.all` for Lab Technician/Nurse (they
    * process/view every order regardless of the ordering doctor).

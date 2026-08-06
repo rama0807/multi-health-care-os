@@ -29,8 +29,8 @@ const EXPORT_FORMATS: readonly string[] = ['csv', 'xlsx', 'pdf']
  * The report builder (Milestone 17 Checkpoint 17.3).
  *
  * `reports.read` runs and views; `reports.export` is required to download a
- * file. They are separate because an export leaves the system — it can be
- * mailed on — and it is the action worth being able to withhold. Both actions
+ * file. They are separate because an export leaves the system - it can be
+ * mailed on - and it is the action worth being able to withhold. Both actions
  * already existed in the seed permission catalog before this milestone.
  */
 @ApiTags('reports-builder')
@@ -51,7 +51,7 @@ export class ReportBuilderController {
 
   // ─── Saved reports ────────────────────────────────────────────────────────
   //
-  // Declared before `run/:key` so the literal segment is matched first — a
+  // Declared before `run/:key` so the literal segment is matched first - a
   // route named "saved" must never be resolved as a report key.
 
   @Get('saved')

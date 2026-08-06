@@ -18,12 +18,12 @@ interface AppointmentStatusChangedPayload {
 }
 
 /**
- * "Auto-invoice generation from appointment" — see ADR-0015. Listens on the
+ * "Auto-invoice generation from appointment" - see ADR-0015. Listens on the
  * same `appointment.status_changed` event `audit.listener.ts` already
  * listens to (multiple listeners on one event is the existing pattern, not
- * new — mirrors how both `AuditListener` and this class independently react
+ * new - mirrors how both `AuditListener` and this class independently react
  * to `dispense_order.status_changed`-style events elsewhere). Failures are
- * logged and swallowed rather than thrown — an invoicing hiccup must never
+ * logged and swallowed rather than thrown - an invoicing hiccup must never
  * block the appointment status transition that triggered it.
  */
 @Injectable()
@@ -69,7 +69,7 @@ export class AppointmentInvoiceListener {
           sourceModule: ChargeSourceModule.CONSULTATION,
           quantity: 1,
           discountPercent: 0,
-          description: `Consultation — Dr. ${doctor.user.firstName} ${doctor.user.lastName}`,
+          description: `Consultation - Dr. ${doctor.user.firstName} ${doctor.user.lastName}`,
           unitPrice: Number(doctor.consultationFee),
           taxPercent: gstRate,
         },

@@ -55,7 +55,7 @@ const DISPENSE_ORDER_WITH_RELATIONS_INCLUDE = {
 } satisfies Prisma.DispenseOrderInclude
 
 /**
- * Dispensing workflow — see ADR-0014. `pharmacy.*` stays all-scope (staff-
+ * Dispensing workflow - see ADR-0014. `pharmacy.*` stays all-scope (staff-
  * facing, no doctor own-scope check needed, unlike laboratory/radiology).
  */
 @Injectable()
@@ -116,7 +116,7 @@ export class DispenseService {
     const [pending, ready, dispensedToday, lowStock, expiringSoon] = await Promise.all([
       this.prisma.dispenseOrder.count({ where: { organizationId, status: PrismaDispenseStatus.PENDING } }),
       this.prisma.dispenseOrder.count({ where: { organizationId, status: PrismaDispenseStatus.READY } }),
-      // `dispensedAt` is set once, when the order first reaches DISPENSED —
+      // `dispensedAt` is set once, when the order first reaches DISPENSED -
       // a later return moves status to RETURNED but doesn't clear
       // `dispensedAt`, so this still counts it as dispensed today.
       this.prisma.dispenseOrder.count({
@@ -133,7 +133,7 @@ export class DispenseService {
     return { pending, ready, dispensedToday, lowStock, expiringSoon }
   }
 
-  /** "Dispense prescription" — creates the one-per-prescription order, items mirroring `PrescriptionItem` 1:1. */
+  /** "Dispense prescription" - creates the one-per-prescription order, items mirroring `PrescriptionItem` 1:1. */
   async createFromPrescription(
     organizationId: string,
     dto: CreateDispenseOrderDto,
@@ -181,7 +181,7 @@ export class DispenseService {
     return this.toPlainResponse(order)
   }
 
-  /** "Batch selection" — resolves items to catalog `Drug` batches and reserves stock. Repeatable while PENDING/PREPARING. */
+  /** "Batch selection" - resolves items to catalog `Drug` batches and reserves stock. Repeatable while PENDING/PREPARING. */
   async prepareItems(
     organizationId: string,
     id: string,
@@ -214,7 +214,7 @@ export class DispenseService {
           const available = drug.currentStock - drug.reservedStock
           if (available < remaining) {
             throw new BadRequestException(
-              `${drug.genericName} (batch ${drug.batchNumber}) has only ${available} unit(s) available — ${remaining} required`,
+              `${drug.genericName} (batch ${drug.batchNumber}) has only ${available} unit(s) available - ${remaining} required`,
             )
           }
           await tx.drug.update({ where: { id: drug.id }, data: { reservedStock: { increment: remaining } } })
@@ -256,7 +256,7 @@ export class DispenseService {
     return this.toPlainResponse(updated)
   }
 
-  /** "Partial dispense" — fills the specified quantities; the order stays `READY` until every item is fully filled. */
+  /** "Partial dispense" - fills the specified quantities; the order stays `READY` until every item is fully filled. */
   async dispensePartial(
     organizationId: string,
     id: string,
@@ -276,7 +276,7 @@ export class DispenseService {
 
         const remaining = item.quantityRequested - item.quantityDispensed
         if (line.quantity > remaining) {
-          throw new BadRequestException(`Cannot dispense ${line.quantity} of ${item.medicationName} — only ${remaining} remaining`)
+          throw new BadRequestException(`Cannot dispense ${line.quantity} of ${item.medicationName} - only ${remaining} remaining`)
         }
 
         await tx.drug.update({
@@ -299,7 +299,7 @@ export class DispenseService {
     return this.getById(organizationId, id)
   }
 
-  /** "Complete dispense" — fills every item's remaining quantity and moves the order to `DISPENSED`. */
+  /** "Complete dispense" - fills every item's remaining quantity and moves the order to `DISPENSED`. */
   async dispenseComplete(organizationId: string, id: string, actorUserId?: string): Promise<DispenseOrderWithDetails> {
     const order = await this.requireOrderWithRelations(organizationId, id)
     const currentStatus = order.status as unknown as DispenseStatus
@@ -338,12 +338,12 @@ export class DispenseService {
     return this.getById(organizationId, id)
   }
 
-  /** Pharmacist declines an unprocessed order (e.g. drug unavailable, invalid prescription) — see ADR-0014 point 5. */
+  /** Pharmacist declines an unprocessed order (e.g. drug unavailable, invalid prescription) - see ADR-0014 point 5. */
   async reject(organizationId: string, id: string, dto: CancelDispenseOrderDto, actorUserId?: string): Promise<DispenseOrder> {
     return this.cancelOrReject(organizationId, id, dto, actorUserId, true)
   }
 
-  /** Cancels an unprocessed/in-progress order — see ADR-0014 point 5. */
+  /** Cancels an unprocessed/in-progress order - see ADR-0014 point 5. */
   async cancel(organizationId: string, id: string, dto: CancelDispenseOrderDto, actorUserId?: string): Promise<DispenseOrder> {
     return this.cancelOrReject(organizationId, id, dto, actorUserId, false)
   }
@@ -381,7 +381,7 @@ export class DispenseService {
 
   // ─── Returns ────────────────────────────────────────────────────────────
 
-  /** Medicine return against an already-dispensed item — restocks and audits (roadmap's "Adjust stock"). */
+  /** Medicine return against an already-dispensed item - restocks and audits (roadmap's "Adjust stock"). */
   async createReturn(
     organizationId: string,
     id: string,

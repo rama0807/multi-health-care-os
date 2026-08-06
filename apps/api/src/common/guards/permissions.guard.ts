@@ -10,7 +10,7 @@ import { PERMISSIONS_KEY } from '../decorators/permissions.decorator'
  * Pure DB-driven authorization: the caller's permission set was resolved from
  * Role -> RolePermission -> Permission at login/refresh time and embedded in
  * the JWT as "resource.action.scope" strings. There is no hardcoded
- * role-based bypass here (including for SUPER_ADMIN) — a SUPER_ADMIN account
+ * role-based bypass here (including for SUPER_ADMIN) - a SUPER_ADMIN account
  * only has access because its seeded role holds every permission row.
  */
 @Injectable()

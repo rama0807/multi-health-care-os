@@ -65,7 +65,7 @@ describe('CacheService', () => {
       expect(redis.set).toHaveBeenCalledWith('k', expect.any(String), 120)
     })
 
-    it('falls back to the loader when Redis is down — a cache must not fail a request', async () => {
+    it('falls back to the loader when Redis is down - a cache must not fail a request', async () => {
       redis.get.mockRejectedValue(new Error('ECONNREFUSED'))
       redis.set.mockRejectedValue(new Error('ECONNREFUSED'))
 

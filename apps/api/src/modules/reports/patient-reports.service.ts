@@ -6,7 +6,7 @@ import { PrismaService } from '../../prisma/prisma.service'
 import { ageInYears, comparison, countSeries, resolveRange, toPeriod, ResolvedRange } from './report-range.util'
 
 /**
- * Age bands are a reporting convention, not a clinical classification —
+ * Age bands are a reporting convention, not a clinical classification -
  * the infant/paediatric split at the bottom matches how OPD load is usually
  * read, and the top band stays open-ended.
  */
@@ -22,7 +22,7 @@ const AGE_BANDS: Array<{ label: string; minAge: number; maxAge: number | null }>
 ]
 
 /**
- * Patient reporting (Milestone 17 Checkpoint 17.1) — a read-only aggregation
+ * Patient reporting (Milestone 17 Checkpoint 17.1) - a read-only aggregation
  * over `Patient` plus the three tables that evidence a patient was actually
  * seen (`Appointment`/`Encounter`/`Admission`). Honours `from`/`to`/`groupBy`
  * only: `Patient` carries no hospital, department or doctor column, so
@@ -75,7 +75,7 @@ export class PatientReportsService {
 
   /**
    * Distinct patients with clinical activity in the range. Deliberately three
-   * separate cheap `select: { patientId: true }` queries rather than a join —
+   * separate cheap `select: { patientId: true }` queries rather than a join -
    * "seen" spans three unrelated tables and the union is done in memory,
    * matching how `PatientsService` builds its cross-module timeline.
    */
@@ -107,8 +107,8 @@ export class PatientReportsService {
   }
 
   /**
-   * Demographics are reported over the *period cohort* — everyone registered
-   * in the period plus everyone seen in it — rather than the whole patient
+   * Demographics are reported over the *period cohort* - everyone registered
+   * in the period plus everyone seen in it - rather than the whole patient
    * panel, so a date filter actually changes the distribution it labels.
    */
   private async describeCohort(

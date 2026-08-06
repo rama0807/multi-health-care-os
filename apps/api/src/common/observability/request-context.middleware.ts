@@ -33,7 +33,7 @@ export function deriveRequestId(headers: IncomingMessage['headers']): string {
  * Seeds the per-request correlation context (Milestone 19.4 / ADR-0029).
  *
  * Runs ahead of every guard, so an id exists even for a request that is about
- * to be rejected — a 401 with no correlation id is exactly the log line an
+ * to be rejected - a 401 with no correlation id is exactly the log line an
  * operator most needs to find.
  *
  * The inbound id is honoured when a caller supplies one (`x-request-id`, or
@@ -55,7 +55,7 @@ export class RequestContextMiddleware implements NestMiddleware {
 
     const trace = parseTraceparent(req.headers[TRACEPARENT_HEADER])
 
-    // Echoed back on every response — success or failure — so a client can
+    // Echoed back on every response - success or failure - so a client can
     // quote the id from a failed call without reading the server's logs.
     res.setHeader(REQUEST_ID_HEADER, requestId)
     res.setHeader(TRACEPARENT_HEADER, formatTraceparent(trace))

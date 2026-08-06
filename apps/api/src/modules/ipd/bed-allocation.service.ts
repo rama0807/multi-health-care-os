@@ -18,9 +18,9 @@ import { BedsService } from './beds.service'
 
 /**
  * Allocate/reserve/vacate/transfer workflow against a bed already tied to an
- * admission — separate from `BedsService`'s CRUD of the bed record itself
+ * admission - separate from `BedsService`'s CRUD of the bed record itself
  * (ADR-0018, RBAC resource `ipd.transfer`). A vacated/transferred-from bed
- * lands in `CLEANING`, not directly back in `AVAILABLE` — a real ward
+ * lands in `CLEANING`, not directly back in `AVAILABLE` - a real ward
  * workflow, and `BedsService.update` already lets staff move it on to
  * `AVAILABLE` once actually cleaned.
  */
@@ -42,7 +42,7 @@ export class BedAllocationService {
     const bed = await this.bedsService.requireBed(organizationId, dto.bedId)
 
     if (admission.bedId && admission.bedId !== bed.id) {
-      throw new ConflictException('This admission already holds a bed — use transfer to move it')
+      throw new ConflictException('This admission already holds a bed - use transfer to move it')
     }
     if (bed.status !== 'AVAILABLE' && bed.status !== 'RESERVED') {
       throw new ConflictException(`Bed is currently ${bed.status.toLowerCase()} and cannot be allocated`)

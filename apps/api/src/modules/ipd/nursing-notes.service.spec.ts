@@ -51,7 +51,7 @@ describe('NursingNotesService', () => {
       organizationId: 'org_1',
       type: 'INCIDENT',
       shift: null,
-      content: 'Patient fell — required assistance',
+      content: 'Patient fell - required assistance',
       isEscalated: true,
       escalationReason: 'Fall',
       createdByUserId: 'nurse_1',

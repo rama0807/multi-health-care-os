@@ -74,7 +74,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     return scoped.length > 0 ? scoped : all
   }, [query.data, user?.hospitalIds])
 
-  // Restore the stored selection only if it is still one the user may access —
+  // Restore the stored selection only if it is still one the user may access -
   // membership can be revoked between sessions.
   useEffect(() => {
     if (!isAuthenticated) {

@@ -54,7 +54,7 @@ import { UserDeviceService } from './user-device.service'
     NotificationEventsListener,
 
     // Channel adapters. Every one is instantiated and the dispatcher selects
-    // by `channel` — mirroring how `StorageModule` and `AiCommonModule` build
+    // by `channel` - mirroring how `StorageModule` and `AiCommonModule` build
     // their driver sets, so adding a real SMS vendor is one class plus one
     // entry in the array below.
     InAppProvider,

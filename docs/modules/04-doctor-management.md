@@ -3,13 +3,13 @@
 > Scope note: the original roadmap's Milestone 4 ("Appointments & Scheduling")
 > was split. Checkpoint 4.1 (this document) covers the doctor's own
 > professional profile and directory. Checkpoint 4.2 covers doctor
-> scheduling (weekly availability, leave, documents, audit timeline) — see
+> scheduling (weekly availability, leave, documents, audit timeline) - see
 > `.ai/NEXT.md`. Appointment booking itself remains a later milestone.
 
 ## Purpose
 
 Directory and professional-profile management for doctors. A `Doctor` is a
-professional profile attached to a `User` account — it is the record every
+professional profile attached to a `User` account - it is the record every
 other clinical module (appointments, prescriptions, lab/radiology orders)
 references via `doctorId`.
 
@@ -19,7 +19,7 @@ references via `doctorId`.
 - Professional profile fields (registration number, specialization,
   sub-specialization, qualification, experience, languages, bio,
   consultation fee, availability status, joining date)
-- Linked user onboarding — creates (or reuses) the doctor's login account and
+- Linked user onboarding - creates (or reuses) the doctor's login account and
   grants the `DOCTOR` system role, via the shared `StaffOnboardingService`
 - Search (name, specialization, registration number) and filters (hospital,
   department, language, availability status, active/inactive)
@@ -28,11 +28,11 @@ references via `doctorId`.
 
 ## Database Entities
 
-- `Doctor` — professional profile (`packages/database/prisma/schema.prisma`)
-- `User` — the linked login account (one-to-one via `Doctor.userId`)
+- `Doctor` - professional profile (`packages/database/prisma/schema.prisma`)
+- `User` - the linked login account (one-to-one via `Doctor.userId`)
 
 `Doctor.availabilitySlots` (JSON) and `DoctorAvailabilityStatus` exist in the
-schema already but only `availabilityStatus` is used by this checkpoint —
+schema already but only `availabilityStatus` is used by this checkpoint -
 weekly-schedule structure and leave records are Checkpoint 4.2 scope.
 
 ## REST Endpoints
@@ -55,7 +55,7 @@ All under `/api/v1/doctors`, guarded by `PermissionsGuard` with
 
 `DoctorsService.create` runs inside a single Prisma transaction:
 
-1. `StaffOnboardingService.onboardUserInTransaction` — creates a new `User`
+1. `StaffOnboardingService.onboardUserInTransaction` - creates a new `User`
    with a random temporary password (or, if the email already belongs to a
    user in the same organization, grants that user the `DOCTOR` role instead
    of creating a duplicate account).
@@ -63,12 +63,12 @@ All under `/api/v1/doctors`, guarded by `PermissionsGuard` with
 3. Creates the `Doctor` row.
 
 The onboarding email (new-account credentials, or "role granted" notice) is
-sent **after** the transaction commits — never inside it — so a rollback can
+sent **after** the transaction commits - never inside it - so a rollback can
 never leave a user holding an email that promised access that doesn't exist.
 
 `StaffOnboardingService` (`apps/api/src/common/onboarding/`) is deliberately
 generic: it knows nothing about `Doctor` specifically and is reused as-is for
-Nurse, Pharmacist, Lab Technician, Receptionist, and future staff modules —
+Nurse, Pharmacist, Lab Technician, Receptionist, and future staff modules -
 each calls it from inside its own transaction before creating its own
 profile row.
 
@@ -82,18 +82,18 @@ case-insensitive), `specialization`, `departmentId`, `hospitalId`,
 
 ## Frontend
 
-- `/dashboard/doctors` — list with search, filters, sortable columns, bulk
+- `/dashboard/doctors` - list with search, filters, sortable columns, bulk
   deactivate, dashboard stat cards
-- `/dashboard/doctors/new` — multi-step registration form (account →
+- `/dashboard/doctors/new` - multi-step registration form (account →
   professional info → review), with debounced localStorage draft recovery
-- `/dashboard/doctors/[id]` — profile tabs (editable professional profile;
+- `/dashboard/doctors/[id]` - profile tabs (editable professional profile;
   live statistics: appointments/patients/prescriptions/lab tests/radiology
   orders), deactivate/restore
 
 ## Dependencies
 
-- `StaffOnboardingService`, `EmailService` — account creation + notification
-- `HospitalsService`, `DepartmentsService` — validates `hospitalId`, and that
+- `StaffOnboardingService`, `EmailService` - account creation + notification
+- `HospitalsService`, `DepartmentsService` - validates `hospitalId`, and that
   `departmentId` (if given) belongs to that hospital
 
 ## Events Published
@@ -105,9 +105,9 @@ case-insensitive), `specialization`, `departmentId`, `hospitalId`,
 
 ## Tests
 
-- `apps/api/src/modules/doctors/doctors.service.spec.ts` — unit tests
-- `apps/api/src/common/onboarding/staff-onboarding.service.spec.ts` — unit tests
-- `apps/api/test/doctors.e2e-spec.ts` — full create → list → search → filter
+- `apps/api/src/modules/doctors/doctors.service.spec.ts` - unit tests
+- `apps/api/src/common/onboarding/staff-onboarding.service.spec.ts` - unit tests
+- `apps/api/test/doctors.e2e-spec.ts` - full create → list → search → filter
   → update → deactivate → restore flow, permission checks, conflict handling
 
 ## Deferred to Checkpoint 4.2

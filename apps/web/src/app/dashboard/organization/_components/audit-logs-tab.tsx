@@ -148,7 +148,7 @@ export function AuditLogsTab() {
                   </TableCell>
                   <TableCell>{row.userName ?? row.userEmail ?? 'System'}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">
-                    {row.ipAddress ?? '—'}
+                    {row.ipAddress ?? '-'}
                   </TableCell>
                 </TableRow>
               ))}
@@ -162,7 +162,7 @@ export function AuditLogsTab() {
       )}
 
       <p className="text-xs text-muted-foreground">
-        Audit entries are append-only and scoped to this organization — no other tenant&apos;s
+        Audit entries are append-only and scoped to this organization - no other tenant&apos;s
         activity is visible here.
       </p>
     </div>

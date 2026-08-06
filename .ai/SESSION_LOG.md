@@ -6,14 +6,14 @@
 
 ---
 
-## Session — 2026-08-06 — Design System V2, Phase 2: every feature page migrated
+## Session - 2026-08-06 - Design System V2, Phase 2: every feature page migrated
 
 ### What was completed
 
 Phase 2 of the same-day redesign instruction: migrated **all 18 frontend
 modules** (Dashboard home, Patients, Doctors, Appointments, Medical Records,
 Laboratory, Radiology, Pharmacy, Billing, Insurance, IPD, Nursing, Inventory,
-Staff, Organization, Reports, Notifications, AI — ~90 files) onto the Phase 1
+Staff, Organization, Reports, Notifications, AI - ~90 files) onto the Phase 1
 primitives (`PageLayout`, `StatusBadge`, `Card`/`CardHeader`/`CardContent`/
 `CardFooter`, `TableContainer`+`Table`, `EmptyState`, `StatCard`/
 `StatCardGrid`, `FilterBar`/`SearchInput`, real `recharts` charts). Full detail
@@ -30,14 +30,14 @@ header/table/badges/empty-states onto the primitives, then run
 moving to the next module. All 18 passed clean before the full-repo
 verification at the end.
 
-**Centralizing `StatusBadge` surfaced real, pre-existing colour bugs** — not
+**Centralizing `StatusBadge` surfaced real, pre-existing colour bugs** - not
 introduced by this work, but only visible once every module's independent
 status-colour guess was replaced by one shared map. See `CHANGELOG.md` for the
 full list (Cancelled rendering red in two modules, In Consultation rendering
 green, pharmacy low-stock rendering red instead of amber, an IPD bed-grid
 contrast-pairing bug). Five additive entries were added to the shared
 `STATUS_TONES` map (`UNDER_RENOVATION`, `ADMINISTERED`, `TRIALING`,
-`PAST_DUE`, `SUCCEEDED`) — nothing existing was changed. One genuine semantic
+`PAST_DUE`, `SUCCEEDED`) - nothing existing was changed. One genuine semantic
 ambiguity (nursing risk levels vs. lab abnormal flags both using `LOW`/`HIGH`
 with opposite meaning) was handled via `StatusBadge`'s sanctioned `tone`
 override, documented inline, rather than by corrupting the shared map.
@@ -52,21 +52,21 @@ and this session's `.ai/` doc updates (`PROGRESS.md`, `CHANGELOG.md`,
 
 ### Architectural decisions made
 
-None new — this executed the migration ADR-0031 already specified for Phase
+None new - this executed the migration ADR-0031 already specified for Phase
 2. The bug fixes above are corrections against ADR-0031's own stated status
 vocabulary, not new decisions.
 
 ### Known issues
 
 - **TD-0077 is now resolved.**
-- **TD-0074 — branding still reaches only `organizations.read` holders.**
+- **TD-0074 - branding still reaches only `organizations.read` holders.**
   Unchanged; needs a backend change, correctly out of scope for this pass.
-- **TD-0075 — the hospital selector still filters nothing.** Unchanged for
+- **TD-0075 - the hospital selector still filters nothing.** Unchanged for
   the same reason; its `.ai/TECH_DEBT.md` entry now says explicitly that Phase
   2 did not close it, rather than leaving that implied.
-- **Not browser-verified. No screenshots** — both by the same explicit
+- **Not browser-verified. No screenshots** - both by the same explicit
   instruction that started this phase.
-- **`pnpm test:e2e` could not be run** — pre-existing, documented local-infra
+- **`pnpm test:e2e` could not be run** - pre-existing, documented local-infra
   gap (TD-0004: `medicore_test`/`medicore_dev` need a running, migrated
   Postgres + Redis this session's environment did not have). Confirmed
   unrelated: `git status` on `apps/api`/`packages/database` shows zero change
@@ -74,11 +74,11 @@ vocabulary, not new decisions.
 
 ### Verification
 
-`pnpm lint`, `pnpm typecheck`, `pnpm build` — clean across all 5 packages.
-`pnpm test` — **785 API unit tests across 96 suites** and **49 web unit tests
-across 3 suites**, zero failures (both unchanged from Phase 1 — this work
+`pnpm lint`, `pnpm typecheck`, `pnpm build` - clean across all 5 packages.
+`pnpm test` - **785 API unit tests across 96 suites** and **49 web unit tests
+across 3 suites**, zero failures (both unchanged from Phase 1 - this work
 added no new tests, by design, since it changed no behaviour to test).
-`pnpm test:e2e` — could not run; see above.
+`pnpm test:e2e` - could not run; see above.
 
 ### Recommended next task
 
@@ -86,23 +86,23 @@ Nothing is queued automatically. The two realistic options, neither to be
 started without a fresh instruction: (1) close **TD-0074** (include
 `branding` in the login/refresh payload so every role sees tenant branding,
 not just `organizations.read` holders) and **TD-0075** (wire
-`activeHospitalId` into each module's queries) — both small, backend-touching
+`activeHospitalId` into each module's queries) - both small, backend-touching
 fixes; or (2) resume the explicitly-paused AI roadmap (Checkpoints 15.2–15.5).
 
 ### Estimated project completion
 
 Unchanged in feature terms. Frontend presentation layer: **Design System V2
-complete — both phases (100%)**. TD-0077 closed; TD-0074/TD-0075 remain open
+complete - both phases (100%)**. TD-0077 closed; TD-0074/TD-0075 remain open
 and are backend-touching, not presentation work.
 
 ---
 
-## Session — 2026-08-06 — Design System V2, Phase 1: the reusable UI foundation
+## Session - 2026-08-06 - Design System V2, Phase 1: the reusable UI foundation
 
 ### What was completed
 
 A complete design system for the web app, under an explicit instruction that
-this is **Phase 1 — the design language only**: no page redesign, no dashboard
+this is **Phase 1 - the design language only**: no page redesign, no dashboard
 redesign, no API change, no business-logic change, no test removal. See
 **ADR-0031** for the full decision record.
 
@@ -115,8 +115,8 @@ shadcn/ui with minor edits. Three findings shaped everything after:
 2. The four clinical status colours were **hardcoded hex** in
    `tailwind.config.ts`, so they could not participate in theming at all, and
    each of ~90 pages chose its own status colours independently.
-3. `packages/ui` — which `PROJECT_CONTEXT.md` and `MODULE_STATUS.md` both
-   describe as the shared component library — **does not exist**. The real
+3. `packages/ui` - which `PROJECT_CONTEXT.md` and `MODULE_STATUS.md` both
+   describe as the shared component library - **does not exist**. The real
    component surface is `apps/web/src/components/ui/`. Per `CLAUDE.md`, code is
    ground truth: the documentation was corrected, and Tailwind's now-dead
    content glob for it was removed.
@@ -129,40 +129,40 @@ reusable primitives. Full detail in `CHANGELOG.md`.
 **The branding colour engine is the part worth knowing about.** It never trusts
 a configured colour: it derives seven roles per theme and moves each until it
 clears WCAG AA against the surface it actually sits on. Writing its 43 unit
-tests surfaced a genuine defect — a mid-grey brand colour (`#808080`) admits
+tests surfaced a genuine defect - a mid-grey brand colour (`#808080`) admits
 **no** readable foreground, since neither white nor black clears 4.5:1 on a
-50%-lightness fill — which the derivation now handles by pushing the fill off
+50%-lightness fill - which the derivation now handles by pushing the fill off
 the midpoint.
 
 ### Files modified
 
 **Tokens and config**
-- `apps/web/src/app/globals.css` — rewritten as the token layer
-- `apps/web/tailwind.config.ts` — rewritten; contains no colour values
+- `apps/web/src/app/globals.css` - rewritten as the token layer
+- `apps/web/tailwind.config.ts` - rewritten; contains no colour values
 
 **Branding (new)**
 - `apps/web/src/lib/branding/color.ts` + `color.test.ts` (43 tests)
 - `apps/web/src/lib/branding/theme.ts`
 - `apps/web/src/providers/branding-provider.tsx`
 - `apps/web/src/providers/workspace-provider.tsx`
-- `apps/web/src/providers/index.tsx` — both providers mounted inside `AuthProvider`
+- `apps/web/src/providers/index.tsx` - both providers mounted inside `AuthProvider`
 - `apps/web/src/lib/charts/palette.ts`
 
-**Primitives — new**
+**Primitives - new**
 - `components/ui/`: `skeleton`, `status-badge`, `empty-state`, `stat-card`,
   `breadcrumb`, `page-header`, `toolbar`, `entity-cell`, `timeline`,
   `progress` (also exports `Kbd`), `sheet`
 
-**Primitives — refined onto tokens (all pre-V2 exports preserved)**
+**Primitives - refined onto tokens (all pre-V2 exports preserved)**
 - `components/ui/`: `button`, `badge`, `card`, `table`, `input`, `select`,
   `tabs`, `dialog`, `dropdown-menu`, `tooltip`, `toast`
 
 **Layout**
-- `components/layout/nav-config.ts` (new — navigation extracted from the sidebar)
+- `components/layout/nav-config.ts` (new - navigation extracted from the sidebar)
 - `components/layout/page-layout.tsx` (new)
 - `components/layout/hospital-selector.tsx` (new)
-- `components/layout/sidebar.tsx`, `header.tsx`, `command-palette.tsx` — rebuilt
-- `app/dashboard/layout.tsx` — shell scroll/padding
+- `components/layout/sidebar.tsx`, `header.tsx`, `command-palette.tsx` - rebuilt
+- `app/dashboard/layout.tsx` - shell scroll/padding
 
 **Docs**
 - `docs/design-system.md` (new), `.ai/DECISIONS.md` (ADR-0031),
@@ -182,16 +182,16 @@ customisation; and every pre-V2 export was preserved so no page needed editing.
 
 ### Known issues
 
-- **TD-0074 — branding reaches only `organizations.read` holders.** The endpoint
+- **TD-0074 - branding reaches only `organizations.read` holders.** The endpoint
   is gated that way and Phase 1 could not change APIs. Most clinical users
   therefore see the default palette. The fix is to include `branding` in the
   login/refresh payload (preferred) or add an ungated public read endpoint.
-- **TD-0075 — the hospital selector remembers a choice but filters nothing yet.**
+- **TD-0075 - the hospital selector remembers a choice but filters nothing yet.**
   Said on screen rather than implied.
-- **TD-0076 — `/dashboard/settings` is a 404** and always has been; the sidebar
+- **TD-0076 - `/dashboard/settings` is a 404** and always has been; the sidebar
   and profile menu both link to it. Left behaving exactly as before rather than
   silently re-pointed mid-redesign.
-- **TD-0077 — feature pages still use pre-V2 call shapes.** They work and
+- **TD-0077 - feature pages still use pre-V2 call shapes.** They work and
   inherit the new tokens, density, typography, focus treatment and branding
   automatically; they do not yet use `PageLayout`, `StatusBadge`, the new table
   affordances, `EmptyState` or `StatCard`. This is Phase 2 by instruction.
@@ -200,33 +200,33 @@ customisation; and every pre-V2 export was preserved so no page needed editing.
 
 ### Verification
 
-`pnpm lint`, `pnpm typecheck`, `pnpm build` — clean across all 5 packages.
-`pnpm test` — **785 API unit tests across 96 suites** and **49 web unit tests
-across 3 suites** (up from 6 — the 43 new branding tests), zero failures.
-e2e — **431 tests across 22 suites**, zero failures, run against
+`pnpm lint`, `pnpm typecheck`, `pnpm build` - clean across all 5 packages.
+`pnpm test` - **785 API unit tests across 96 suites** and **49 web unit tests
+across 3 suites** (up from 6 - the 43 new branding tests), zero failures.
+e2e - **431 tests across 22 suites**, zero failures, run against
 `medicore_postgres` (5432) / `medicore_redis` (6379).
 
 ### Recommended next task
 
-**Phase 2 — migrate feature pages onto the primitives, module by module.** Start
+**Phase 2 - migrate feature pages onto the primitives, module by module.** Start
 with `StatusBadge`: it removes the largest source of cross-module inconsistency
 for the least code and touches no layout. Then the list pages (Patients,
 Appointments, Laboratory) onto `PageLayout` + the table affordances, since they
 are where density and sticky headers pay off most.
 
-**Before or alongside that, close TD-0074** — a design system whose branding
+**Before or alongside that, close TD-0074** - a design system whose branding
 reaches one role in six is not finished. It is a small backend change now that
 the frontend consumes it.
 
 ### Estimated project completion
 
-Unchanged in feature terms — this milestone added no HMS functionality. Frontend
+Unchanged in feature terms - this milestone added no HMS functionality. Frontend
 foundation moves from "stock shadcn, unaudited" to **Design System V2 complete
 (Phase 1 of 2)**; feature-page adoption is 0% and is Phase 2.
 
 ---
 
-## Session — 2026-08-06 — Milestone 19: Production Hardening & Enterprise Readiness (all 7 checkpoints)
+## Session - 2026-08-06 - Milestone 19: Production Hardening & Enterprise Readiness (all 7 checkpoints)
 
 ### What was completed
 
@@ -245,19 +245,19 @@ performance side, the two shapes most likely to be N+1s
 already batch with `{ in: [...] }`, and the 205 existing indexes cover the hot
 filters. **No schema change was made and no migration was added.**
 
-What was genuinely missing is what got built — plus three real defects found
+What was genuinely missing is what got built - plus three real defects found
 while reading:
 
 1. The container `HEALTHCHECK` polled `/api/health`, which **did not exist**
    (health was mounted at `/api/v1/health` only), so every deployment reported
    unhealthy.
 2. `docker-compose.prod.yml` declared `depends_on: [postgres, redis]` against
-   services **it never defined** — the production stack could not start.
+   services **it never defined** - the production stack could not start.
 3. nginx published 443 and mounted certificates, but **nothing listened on it**.
 
 ### Checkpoints
 
-- **19.1 Security** — `@fastify/helmet` (CSP `default-src 'none'`, relaxed for
+- **19.1 Security** - `@fastify/helmet` (CSP `default-src 'none'`, relaxed for
   inline script/style *only when Swagger is mounted*, so `SWAGGER_ENABLED=false`
   tightens rather than hides); `CORS_ORIGINS` list that refuses `*`; **startup
   environment validation that aborts the boot** on the shipped default cookie
@@ -266,22 +266,22 @@ while reading:
   container-local document storage, or AI against a third-party provider
   (TD-0042); per-endpoint throttling on the seven credential routes;
   `TRUST_PROXY` off by default; constant-time CSRF comparison.
-- **19.2 Performance** — `CacheService` (tenant-scoped keys, `SCAN` not `KEYS`,
+- **19.2 Performance** - `CacheService` (tenant-scoped keys, `SCAN` not `KEYS`,
   Redis-down is a miss not an error) applied to notification template
   resolution; Prisma slow-query logging above `DB_SLOW_QUERY_MS` carrying the
   causing request id, parameterised SQL only.
-- **19.3 Background processing** — `BackgroundTaskService`, deliberately not a
+- **19.3 Background processing** - `BackgroundTaskService`, deliberately not a
   second queue; six blocking outbound emails moved off the request path.
-- **19.4 Observability** — `AsyncLocalStorage` request context; one request-id
+- **19.4 Observability** - `AsyncLocalStorage` request context; one request-id
   derivation rule shared by Fastify/pino/middleware; W3C `traceparent`;
   credential redaction; liveness + readiness + detailed health at version-neutral
   *and* `/v1` paths; bearer-authenticated Prometheus `/api/metrics`.
-- **19.5 Deployment** — graceful shutdown (readiness 503 → drain → close);
+- **19.5 Deployment** - graceful shutdown (readiness 503 → drain → close);
   a working `docker-compose.prod.yml`; a hardened nginx with a real HTTPS block;
   an unprivileged API image.
-- **19.6 CI** — `build` gated on the test jobs; one `CI` job to require in branch
+- **19.6 CI** - `build` gated on the test jobs; one `CI` job to require in branch
   protection.
-- **19.7 Docs** — `docs/operations/{deployment,operations,monitoring,disaster-recovery,runbook,production-checklist}.md`
+- **19.7 Docs** - `docs/operations/{deployment,operations,monitoring,disaster-recovery,runbook,production-checklist}.md`
   plus `production.env.example`.
 
 ### Files modified
@@ -297,7 +297,7 @@ while reading:
 `src/modules/health/metrics.controller.ts`,
 `test/production-hardening.e2e-spec.ts`.
 
-**Changed (API):** `main.ts` (now thin — adapter/plugins/CORS moved to
+**Changed (API):** `main.ts` (now thin - adapter/plugins/CORS moved to
 `bootstrap.ts` so they are testable), `app.module.ts`, `prisma/prisma.service.ts`,
 `common/filters/http-exception.filter.ts`, `common/guards/csrf.guard.ts`,
 `common/redis/redis.module.ts`, `common/onboarding/staff-onboarding.service.ts`,
@@ -311,27 +311,27 @@ and five specs updated for new constructor arguments.
 `apps/api/Dockerfile`, `.github/workflows/ci.yml`, `apps/api/package.json`
 (+`@fastify/helmet`, `prom-client`).
 
-**New (docs):** `docs/operations/` — six guides + `production.env.example`.
+**New (docs):** `docs/operations/` - six guides + `production.env.example`.
 
 **Updated (`.ai/`):** all eight files.
 
 ### Architectural decisions made
 
-- **ADR-0028** — fail the boot on an unsafe environment; helmet at the
+- **ADR-0028** - fail the boot on an unsafe environment; helmet at the
   application, not only at the proxy; one throttler tier overridden per route
   (because every configured throttler runs on every route); auth limit of 20/min
   rather than 5, since the throttler keys on IP and a hospital LAN is NAT'd.
-- **ADR-0029** — `AsyncLocalStorage` over a request-scoped provider; W3C trace
+- **ADR-0029** - `AsyncLocalStorage` over a request-scoped provider; W3C trace
   propagation *without* an OpenTelemetry SDK; metrics labelled by route pattern
   only, never by URL or tenant; liveness deliberately checks nothing external.
-- **ADR-0030** — fire-and-forget work is a service, not a bare `void`;
+- **ADR-0030** - fire-and-forget work is a service, not a bare `void`;
   `notification_deliveries` stays the only durable queue; caching is
   read-through, tenant-scoped and confined to configuration data;
   `JwtStrategy`'s lookup is deliberately *not* cached.
 
 ### Known issues / deferred
 
-- **TD-0070 (High) — there is no backup automation.** The DR procedure is fully
+- **TD-0070 (High) - there is no backup automation.** The DR procedure is fully
   specified and entirely unimplemented, because backup scheduling belongs to the
   target infrastructure and the instruction was not to invent deployment
   infrastructure. **A deployment following the deployment guide exactly has no
@@ -341,8 +341,8 @@ and five specs updated for new constructor arguments.
   TD-0068 every instance runs the notification worker (wasteful, not incorrect);
   TD-0069 trace context propagates but no OTel SDK exports spans;
   TD-0071 a second instance may serve a stale notification template for ≤300s;
-  TD-0072 `pnpm format` has never worked — its Prettier plugins are not
-  installed — which is why `format:check` was **not** added to CI.
+  TD-0072 `pnpm format` has never worked - its Prettier plugins are not
+  installed - which is why `format:check` was **not** added to CI.
 - No browser verification and no screenshots (per instruction; no new UI).
 
 ### Verification
@@ -382,26 +382,26 @@ storage, required before running more than one API instance).
 
 ---
 
-## Session — 2026-08-06 — Milestone 18: Communication & Notification Platform (all 7 checkpoints)
+## Session - 2026-08-06 - Milestone 18: Communication & Notification Platform (all 7 checkpoints)
 
 ### What was completed
 
 Milestone 18 in full, under an explicit instruction to audit first, treat
 the repository as the source of truth, reuse existing services, not rebuild
-existing functionality, and **integrate no paid providers** — abstractions
+existing functionality, and **integrate no paid providers** - abstractions
 and local implementations only. AI development (Milestone 15) remained
 paused and untouched.
 
 The audit materially changed the plan:
 
-1. `apps/api/src/modules/notifications/` **existed but was an empty stub** —
+1. `apps/api/src/modules/notifications/` **existed but was an empty stub** -
    a service with an unused constructor, a controller with no routes.
    Nothing in the repo had ever written to the `Notification` table, so the
    model could be reshaped without a data migration.
 2. `common/email/` was already the working sender; the email channel wraps
    it rather than standing up a second one.
 3. `EventEmitter2` was already wired with 125 emitted events across every
-   module. Event integration added **listeners**, not emitters — with four
+   module. Event integration added **listeners**, not emitters - with four
    one-line exceptions where an event genuinely did not exist.
 4. `bullmq` was a dependency used nowhere, and stayed that way on purpose.
 
@@ -416,8 +416,8 @@ The audit materially changed the plan:
 - **Suppressed ≠ failed.** A muted category or quiet hours produces
   `SKIPPED`, which is excluded from every success rate.
 - **Preferences are evaluated at dispatch time**, not creation time.
-- **`CRITICAL` overrides every preference** — quiet hours, muted
-  categories, disabled channels — and the preferences page says so.
+- **`CRITICAL` overrides every preference** - quiet hours, muted
+  categories, disabled channels - and the preferences page says so.
 - **One `setInterval`**, non-overlapping, off under `NODE_ENV=test`; each
   tick emits `notifications.tick`, which is how the scheduled-report
   dispatcher borrows the clock without a module dependency.
@@ -444,7 +444,7 @@ and **four one-line `emit` additions** in `stock.service.ts`,
 ### Verification
 
 `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`, `pnpm build`
-— all pass. **727 API unit tests** (+64), **6 web unit tests**,
+- all pass. **727 API unit tests** (+64), **6 web unit tests**,
 **408 e2e tests across 21 suites** (+30). The full e2e suite was run to
 green **twice** after the two fixes below. `pnpm db:seed` re-run so the new
 `notifications.*` and `platform.notifications.*` permissions exist locally.
@@ -459,7 +459,7 @@ full 21-suite run:
    read `payload.staffLeaveId`. That made
    `findUnique({ where: { id: undefined } })` throw a Prisma validation
    error on every leave approval. `safely()` caught it, so nothing broke
-   visibly — it just logged. Fixed, and **every handler now guards on the id
+   visibly - it just logged. Fixed, and **every handler now guards on the id
    it needs before touching the database**: these payloads come from twelve
    modules that predate the listener and are not typed at the emit site, so
    an absent field must be a clean no-op rather than log noise.
@@ -468,7 +468,7 @@ full 21-suite run:
    `claimDue` drains oldest-first *across every tenant*, bounded by
    `NOTIFICATIONS_WORKER_BATCH` (50). That is correct in production, but a
    shared e2e database had accumulated 67 `PENDING` deliveries from earlier
-   runs — more than one batch — so the suite's own rows were never reached
+   runs - more than one batch - so the suite's own rows were never reached
    and four tests failed. Fixed on the **test** side (a bounded `drainQueue`
    helper that ticks until the queue reports no work, with a generous
    timeout on the first drain); the worker's behaviour was left alone
@@ -476,7 +476,7 @@ full 21-suite run:
 
 ### Known issues
 
-- **Not browser-verified** — no Playwright, no screenshots, by explicit
+- **Not browser-verified** - no Playwright, no screenshots, by explicit
   instruction (TD-0066).
 - **Browser push cannot obtain an FCM token in this deployment** (TD-0058).
   Everything else about push is real and tested; the missing piece is the
@@ -488,7 +488,7 @@ full 21-suite run:
 
 ### Recommended next task
 
-**Milestone 19 — Production Hardening.** See `NEXT.md`, replaced
+**Milestone 19 - Production Hardening.** See `NEXT.md`, replaced
 accordingly. AI Checkpoints 15.2–15.5 remain explicitly paused.
 
 ### Completion
@@ -502,7 +502,7 @@ accordingly. AI Checkpoints 15.2–15.5 remain explicitly paused.
 
 ---
 
-## Session — 2026-08-05 — Milestone 17: Reports & Analytics (all 5 checkpoints)
+## Session - 2026-08-05 - Milestone 17: Reports & Analytics (all 5 checkpoints)
 
 ### What was completed
 
@@ -514,14 +514,14 @@ The session opened with an audit, which materially changed the plan:
 
 1. `reports: ['read', 'export']` was **already in the seed permission
    catalog** and `/dashboard/reports` was **already a dormant
-   `reports.read`-gated sidebar link** — the route just had nothing behind
+   `reports.read`-gated sidebar link** - the route just had nothing behind
    it. No new permission, no new nav entry.
 2. `recharts` was **already** a dependency, so no chart library was added.
 3. Five dashboard-shaped aggregation services already existed; their
    idioms were followed rather than replaced.
 4. Three roadmap metrics are **not derivable** from this schema. Each
    shipped as the closest honest measure with the limitation stated in the
-   API doc comment, the UI, and TECH_DEBT — none was faked.
+   API doc comment, the UI, and TECH_DEBT - none was faked.
 
 ### Architecture (ADR-0026)
 
@@ -536,14 +536,14 @@ The session opened with an audit, which materially changed the plan:
   exported file cannot show different numbers from the page it came from.
 - **`to` is exclusive everywhere**; bucket keys are local-time, never
   `toISOString()` (which shifts the day in +05:30).
-- **Null means "not measured"** — never 0. Carried through CSV, XLSX and
+- **Null means "not measured"** - never 0. Carried through CSV, XLSX and
   PDF. `changePercent` is null when the previous period was zero.
 - **A dependency-free XLSX writer** emits a real OOXML package; tests walk
   the ZIP central directory, not just the XML text.
 
 ### Files added
 
-`apps/api/src/modules/reports/` — `report-range.util.ts`, eleven
+`apps/api/src/modules/reports/` - `report-range.util.ts`, eleven
 `*-reports.service.ts`, `dashboards.service.ts`, `report-registry.service.ts`,
 `report-export.service.ts`, `xlsx.util.ts`, `report-pdf.ts`,
 `saved-reports.service.ts`, three controllers, `dto/saved-report.dto.ts`,
@@ -562,13 +562,13 @@ back-relation) and its migration `20260805162846_reports_and_analytics`;
 ### Verification
 
 `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`, `pnpm build`
-— all pass. **663 API unit tests** (+48) and **378 e2e tests across 20
+- all pass. **663 API unit tests** (+48) and **378 e2e tests across 20
 suites** (+43). Web build emits `/dashboard/reports`,
 `/dashboard/reports/builder`, `/dashboard/reports/operational`.
 
 ### Known issues
 
-- **Not browser-verified** — no screenshots taken, per the explicit
+- **Not browser-verified** - no screenshots taken, per the explicit
   "Do NOT use browser verification" instruction.
 - **One non-reproducing e2e flake.** In the first full e2e run, one
   platform-suite test failed; it passed in three subsequent full runs and
@@ -579,21 +579,21 @@ suites** (+43). Web build emits `/dashboard/reports`,
 
 ### Recommended next task
 
-**Milestone 18 — Notifications & Communication.** See `NEXT.md`, which has
+**Milestone 18 - Notifications & Communication.** See `NEXT.md`, which has
 been replaced accordingly. Note TD-0053: the scheduled-report dispatcher is
 a natural first deliverable for that milestone, since `SavedReport` already
 persists a validated cron and recipient list with nothing reading it.
 
 ### Completion
 
-- Overall: methodology unchanged (see `MODULE_STATUS.md`) — Milestone 17 is
+- Overall: methodology unchanged (see `MODULE_STATUS.md`) - Milestone 17 is
   closed; Milestones 18 and 19 remain, plus AI Checkpoints 15.2–15.5.
 - `reports` module: **100% for Milestone 17**.
 - Frontend reports pages: **100% for Milestone 17**.
 
 ---
 
-## Session — 2026-08-05 — Milestone 16: Platform & Multi-Tenant Administration (all 5 checkpoints)
+## Session - 2026-08-05 - Milestone 16: Platform & Multi-Tenant Administration (all 5 checkpoints)
 
 ### What was completed
 
@@ -607,18 +607,18 @@ and per-request `orgId` filtering **already existed**, so tenant isolation
 was never the gap. The real gaps were cross-tenant operation, tenant
 lifecycle, subscriptions, usage metering, and audit filtering.
 
-- **16.1 Organization Management** — profile/settings/branding/logo,
+- **16.1 Organization Management** - profile/settings/branding/logo,
   administrators, hospital onboarding wizard, hospital activation,
   statistics, org-scoped filtered audit logs, and an 8-tab dashboard.
-- **16.2 Platform Owner Console** — new `platform` module + isolated
+- **16.2 Platform Owner Console** - new `platform` module + isolated
   `/platform` route group: cross-tenant orgs/hospitals, suspend/reinstate/
   enable/disable, subscriptions, usage, global audit, global search,
   analytics.
-- **16.3 Tenant Resolution** — extended the existing JWT rather than adding
+- **16.3 Tenant Resolution** - extended the existing JWT rather than adding
   a mechanism; the only new claim is `isPlatform`, which fails closed.
-- **16.4 Organization Settings** — full settings surface; holidays reuse
+- **16.4 Organization Settings** - full settings surface; holidays reuse
   Milestone 14's `Holiday` model rather than a second calendar.
-- **16.5 Verification** — lint, typecheck, test, test:e2e, build all green.
+- **16.5 Verification** - lint, typecheck, test, test:e2e, build all green.
 
 ### Files modified (~66)
 
@@ -653,12 +653,12 @@ fixtures; `test/platform.e2e-spec.ts` (new, 36 tests);
    `isPlatform` against the DB every request. An e2e test proves a tenant
    admin holding every `platform.*` permission still gets 403.
 3. Suspension reuses the pre-existing `Organization.isActive` that auth
-   already enforces — **no auth-code change was needed**.
+   already enforces - **no auth-code change was needed**.
 4. `Subscription`: one row per org, no history table (audit already stores
    before/after), legacy tier columns kept in sync, limits nullable =
    unlimited.
 5. API metering in **Redis** (rolling 30-day window) rather than a DB write
-   per request — disclosed, not hidden.
+   per request - disclosed, not hidden.
 6. AI usage reported **for real** from `AiUsageLog`, not as the placeholder
    the brief allowed.
 7. Branding in its own column so it can never clobber `settings`, which
@@ -667,7 +667,7 @@ fixtures; `test/platform.e2e-spec.ts` (new, 36 tests);
 ### Known issues
 
 - **TD-0044** no browser verification (by instruction; mirrors TD-0035/0036).
-- **TD-0045** no platform organization *detail* page — its endpoints exist
+- **TD-0045** no platform organization *detail* page - its endpoints exist
   and are tested; only the page is missing.
 - **TD-0046** API metering is a rolling Redis window, not a durable billing
   ledger. Stated in the UI.
@@ -680,7 +680,7 @@ fixtures; `test/platform.e2e-spec.ts` (new, 36 tests);
 
 Two bugs found and fixed en route:
 - `doctor-documents.e2e-spec.ts` upserted `doctors.read.all` but granted its
-  Doctor role `doctors.read.own` — it passed only against a pre-seeded DB.
+  Doctor role `doctors.read.own` - it passed only against a pre-seeded DB.
 - `.ai/NEXT.md` documented the test containers as ports 5434/6381; they are
   `medicore_postgres`:5432 and `medicore_redis`:6379.
 
@@ -690,7 +690,7 @@ Two bugs found and fixed en route:
 (49 new) · e2e ✅ **335 across 19 suites** (36 new) · `pnpm build` ✅
 (68 static pages).
 
-Run e2e with explicit ports — the specs' `??=` defaults are wrong for this
+Run e2e with explicit ports - the specs' `??=` defaults are wrong for this
 machine:
 ```
 cd apps/api && DATABASE_URL="postgresql://medicore:medicore@localhost:5432/medicore_test?schema=public" \
@@ -717,7 +717,7 @@ high-value follow-ups.
 
 ---
 
-## Session: 2026-08-05 (Milestone 3 — Patient Management, complete; AI development paused)
+## Session: 2026-08-05 (Milestone 3 - Patient Management, complete; AI development paused)
 
 ### What was completed
 Explicit instruction: treat Checkpoint 15.1 (AI) as complete for now,
@@ -727,7 +727,7 @@ unfinished **non-AI** HMS milestone. Per the instruction, read only
 first. `NEXT.md` pointed only at AI checkpoints, so determined the next
 non-AI milestone from `docs/roadmap.md` + `MODULE_STATUS.md`:
 `patients` was the only pre-Milestone-15 module still listed
-"In Progress / Unaudited" — Milestone 3 (Patient Management) had every
+"In Progress / Unaudited" - Milestone 3 (Patient Management) had every
 roadmap checkbox unchecked despite being in daily use by every later
 milestone. Read `patients.service.ts`/`.controller.ts`/
 `.service.spec.ts` end to end before designing anything: confirmed CRUD,
@@ -738,23 +738,23 @@ CSV import. Implemented all three. See **ADR-0024** for full reasoning.
 
 - **Schema** (migration `20260805095836_patient_family_and_merge`,
   applied to both `medicore_dev`/`medicore_test`): `Patient` gained
-  `headOfFamilyId` (self-relation, one level deep by design — enforced
+  `headOfFamilyId` (self-relation, one level deep by design - enforced
   in the service layer, not the DB) and `mergedIntoId` (self-relation,
   provenance pointer to the merge survivor), both indexed.
 - **Backend** (`apps/api/src/modules/patients/`): `linkFamilyMember`/
   `unlinkFamilyMember`/`listFamilyMembers`; `mergePatients` (reassigns
-  `patientId` across all 16 linked models —
-  `PATIENT_LINKED_MODELS` in `patients.service.ts` — plus family
+  `patientId` across all 16 linked models -
+  `PATIENT_LINKED_MODELS` in `patients.service.ts` - plus family
   dependents, inside one transaction, then soft-deletes the source
   with `mergedIntoId` set; `restore()` now refuses a merged record);
   `importFromCsv` (new `csv-parser.util.ts`, a hand-rolled RFC 4180
-  parser — no new dependency — sequential per-row reuse of `create()`,
+  parser - no new dependency - sequential per-row reuse of `create()`,
   500-row cap, per-row success/failure report, no fabricated rows on a
   bad file). New DTOs and shared types in `packages/types/src/patient.ts`
   (`LinkFamilyMemberSchema`, `MergePatientsSchema`, `FamilyGroup`,
   `PatientMergeResult`, `CsvImportResult`).
 - **RBAC**: new `patients.manage` permission (seed.ts) gates `POST
-  /patients/merge` and `POST /patients/import` — admin-only by default
+  /patients/merge` and `POST /patients/import` - admin-only by default
   (mirrors `billing.manage`'s precedent), not granted to Receptionist
   alongside their existing create/update. Family link/unlink reuse
   `patients.update`. Reseeded both `medicore_dev` (`pnpm db:seed`) and
@@ -764,12 +764,12 @@ CSV import. Implemented all three. See **ADR-0024** for full reasoning.
   `family_unlinked`/`merged`/`import_completed` handlers;
   `PatientEventPayload` gained an optional `metadata` field so these
   new events don't need bespoke per-field plumbing.
-- **Tests**: 20 new unit tests (`patients.service.spec.ts` — family
+- **Tests**: 20 new unit tests (`patients.service.spec.ts` - family
   linkage guard rails, merge transaction reassignment, CSV row-level
-  success/failure/cap; new `csv-parser.util.spec.ts`) — 578 API unit
-  total. 4 new e2e tests (`patients.e2e-spec.ts` — family link/list/
+  success/failure/cap; new `csv-parser.util.spec.ts`) - 578 API unit
+  total. 4 new e2e tests (`patients.e2e-spec.ts` - family link/list/
   unlink, merge with a real reassigned document, CSV import with a
-  real created + a real rejected row) — 299 e2e total across 18
+  real created + a real rejected row) - 299 e2e total across 18
   suites, zero failures.
 - **Frontend**: `lib/api/patients.ts` extended. Patient detail page
   (`apps/web/src/app/dashboard/patients/[id]/page.tsx`) gained a
@@ -780,7 +780,7 @@ CSV import. Implemented all three. See **ADR-0024** for full reasoning.
   list page gained an "Import CSV" dialog (`patients.manage`-gated,
   per-row result list) next to the existing disabled "Export" button.
 - **Full verification, all green**: `pnpm lint` ✅ (fixed one
-  irregular-whitespace issue from a literal BOM character in a regex —
+  irregular-whitespace issue from a literal BOM character in a regex -
   switched to `﻿`), `pnpm typecheck` ✅, `pnpm test` ✅ (578 API +
   6 web unit, up from 558), `pnpm build` ✅ (all 6 packages, Next.js
   build included the new `/dashboard/patients/[id]` bundle). E2E run
@@ -788,8 +788,8 @@ CSV import. Implemented all three. See **ADR-0024** for full reasoning.
   `cd apps/api && DATABASE_URL="postgresql://medicore:medicore@localhost:5434/medicore_test?schema=public" REDIS_PORT=6381 npx jest --config jest-e2e.config.ts --runInBand`
   → **18 suites / 299 tests, all passing, zero failures** (the
   previously-noted pre-existing `doctor-documents` flake from the prior
-  session's log did not reproduce this run). Not browser-verified — no
-  Playwright, no screenshots — per this session's explicit instruction.
+  session's log did not reproduce this run). Not browser-verified - no
+  Playwright, no screenshots - per this session's explicit instruction.
 
 ### Files modified/created
 - Schema: `packages/database/prisma/schema.prisma`,
@@ -803,15 +803,15 @@ CSV import. Implemented all three. See **ADR-0024** for full reasoning.
   `apps/api/src/modules/audit/audit.listener.ts` (extended);
   `apps/api/test/patients.e2e-spec.ts` (extended).
 - Frontend: `apps/web/src/lib/api/patients.ts` (extended),
-  `apps/web/src/app/dashboard/patients/[id]/page.tsx` (extended —
+  `apps/web/src/app/dashboard/patients/[id]/page.tsx` (extended -
   Family tab, Merge dialog, `PatientSearchPicker`), `apps/web/src/app/
-  dashboard/patients/page.tsx` (extended — Import CSV dialog).
+  dashboard/patients/page.tsx` (extended - Import CSV dialog).
 - Docs: `.ai/PROJECT_CONTEXT.md`, `.ai/PROGRESS.md`,
   `.ai/MODULE_STATUS.md`, `.ai/CHANGELOG.md`, `.ai/DECISIONS.md`
   (ADR-0024), `.ai/TECH_DEBT.md` (TD-0043), `.ai/NEXT.md` (replaced).
 
 ### Architectural decisions made
-See **ADR-0024** — full reasoning: family linkage kept one level deep
+See **ADR-0024** - full reasoning: family linkage kept one level deep
 by application-layer validation rather than a variable-depth graph;
 merge reuses the existing soft-delete lifecycle plus a new
 `mergedIntoId` pointer rather than a third patient state; CSV import
@@ -825,15 +825,15 @@ a new admin-only permission separate from ordinary create/update.
   maintained with no automated check that it stays in sync with the
   schema. A future module adding a `patientId` column and forgetting
   to add itself to this list would have its records silently orphaned
-  on a merge — no error, easy to miss in review.
-- No browser walkthrough, no screenshots — explicit instruction this
+  on a merge - no error, easy to miss in review.
+- No browser walkthrough, no screenshots - explicit instruction this
   session (mirrors TD-0035/TD-0036).
-- AI Milestone 15 remains at Checkpoint 15.1 only, by instruction —
+- AI Milestone 15 remains at Checkpoint 15.1 only, by instruction -
   15.2–15.5 untouched, still fully scoped in `NEXT.md` for whenever AI
   work resumes.
 
 ### Recommended next task
-**Milestone 16 — Reports & Analytics** (`docs/roadmap.md`) — the next
+**Milestone 16 - Reports & Analytics** (`docs/roadmap.md`) - the next
 unfinished non-AI milestone now that Milestones 1–14 are all complete.
 Full scope and process reminders are in `NEXT.md`. Per this session's
 own instruction, the following milestone was **not** started.
@@ -842,15 +842,15 @@ own instruction, the following milestone was **not** started.
 Overall: **16 of ~18 pre-AI-completion roadmap milestones/checkpoints
 now fully complete end-to-end** (Patients, Doctors/Scheduling,
 Appointments, Clinical/EMR, Laboratory, Radiology, Pharmacy, Billing,
-Insurance, IPD — both checkpoints — General Inventory, Staff &
-Attendance — plus foundational auth/RBAC/multi-tenancy scaffolding).
+Insurance, IPD - both checkpoints - General Inventory, Staff &
+Attendance - plus foundational auth/RBAC/multi-tenancy scaffolding).
 Milestone 15 (AI) remains at 1 of 5 checkpoints, paused by instruction.
 **Patients module: 100% for Milestone 3.** No other module's
 percentage changed.
 
 ---
 
-## Session: 2026-08-05 (Milestone 15, Checkpoint 15.1 — AI Clinical Assistant, complete)
+## Session: 2026-08-05 (Milestone 15, Checkpoint 15.1 - AI Clinical Assistant, complete)
 
 ### What was completed
 Read `CLAUDE.md`/`NEXT.md`/`PROJECT_CONTEXT.md`/`SESSION_LOG.md` first
@@ -870,7 +870,7 @@ was a 29-line no-op scaffold and that no AI schema/enum existed.
   POST), `ClinicalContextService` (read-only reuse of EMR/Laboratory/
   Radiology/Prescriptions/IPD), bundled-default + org-override prompt
   templates, conversation/usage/audit persistence.
-- **Schema**: migration `20260804231008_ai_clinical_assistant` —
+- **Schema**: migration `20260804231008_ai_clinical_assistant` -
   `AiConversation`, `AiMessage`, `AiUsageLog`, `AiPromptTemplate` +
   `AiProviderType`/`AiFeature`/`AiMessageRole`/`AiRequestStatus`.
   Applied to both `medicore_dev` and `medicore_test`.
@@ -899,7 +899,7 @@ page, the IPD discharge tab, and all `.ai/` docs.
 Deleted: `apps/api/src/modules/ai/ai.service.ts` (the no-op scaffold).
 
 ### Architectural decisions made
-**ADR-0023** — the five-checkpoint split; provider abstraction in
+**ADR-0023** - the five-checkpoint split; provider abstraction in
 `common/ai` not `modules/ai`; real HTTP adapters rather than stubs;
 bundled-default + DB-override prompt templates (not a nullable-org
 unique index); honest token accounting with a `tokensEstimated` flag
@@ -915,7 +915,7 @@ discriminated union rather than seven controllers.
   and no clinical text is produced. The e2e suite asserts that contract
   rather than asserting generated output.
 - **TD-0042 (new, High):** clinical context goes to a third-party
-  provider with no BAA by default. Two built mitigations —
+  provider with no BAA by default. Two built mitigations -
   `AI_INCLUDE_PATIENT_IDENTIFIERS=false` (pseudonymisation, *not* Safe
   Harbor) and `AI_PROVIDER=OLLAMA` (nothing leaves the deployment).
 - **Pre-existing, not mine:** `doctor-documents.e2e-spec.ts` → "lets a
@@ -927,28 +927,28 @@ discriminated union rather than seven controllers.
   compose containers are `medicore_postgres` (5432) and `medicore_redis`
   (6379). E2E specs default to 5434/6381 via `??=`, so run them as:
   `cd apps/api && DATABASE_URL="postgresql://medicore:medicore@localhost:5432/medicore_test?schema=public" REDIS_PORT=6379 npx jest --config jest-e2e.config.ts --runInBand`.
-  **`pnpm test:e2e` does not work for this** — turbo strips the env
+  **`pnpm test:e2e` does not work for this** - turbo strips the env
   vars, so every suite targets the non-existent 5434 and all 18 fail.
   Use `--runInBand`; the parallel default also causes spurious failures.
 
 ### Verification
 `pnpm lint` ✅, `pnpm typecheck` ✅, `pnpm test` ✅ (558 unit, 75 suites
-— 45 new), `pnpm build` ✅. E2E run serially with the env above:
+- 45 new), `pnpm build` ✅. E2E run serially with the env above:
 **295 passed / 296**, the single failure being the pre-existing
 `doctor-documents` one confirmed against a clean HEAD worktree. All 18
-new AI e2e tests pass. Not browser-verified and no screenshots — by
+new AI e2e tests pass. Not browser-verified and no screenshots - by
 explicit instruction this session (mirrors TD-0035/TD-0036).
 
 ### Recommended next task
-**Checkpoint 15.2 — AI Document Intelligence** (scope in `NEXT.md`).
+**Checkpoint 15.2 - AI Document Intelligence** (scope in `NEXT.md`).
 It must reuse `common/ai` rather than adding a second provider path.
 If a real API key becomes available first, the higher-value move is to
 extend `apps/api/test/ai.e2e-spec.ts` with the generation-path
-assertions TD-0041 currently blocks — that validates 15.1's whole
+assertions TD-0041 currently blocks - that validates 15.1's whole
 pipeline before 15.2 builds on it.
 
 ### Completion percentage
-Overall: unchanged in structure — Milestone 15 is now 1 of 5
+Overall: unchanged in structure - Milestone 15 is now 1 of 5
 checkpoints complete (~20% of the milestone). `ai` module: **100% for
 Checkpoint 15.1**. No other module's percentage changed; the EMR,
 Laboratory, Radiology, Prescriptions and IPD modules were read from,
@@ -956,7 +956,7 @@ never modified.
 
 ---
 
-## Session: 2026-08-05 (Bugfix — doctors dashboard-stats 500)
+## Session: 2026-08-05 (Bugfix - doctors dashboard-stats 500)
 
 ### What was completed
 Single-issue bugfix session, driven by a user screenshot of the
@@ -986,30 +986,30 @@ Prisma, nor the 513-test suite could see the drift.
 **How it was diagnosed** (worth reusing): the API's `HttpExceptionFilter`
 returns a generic `"An unexpected error occurred"` and logs the stack
 only to the dev server's stdout, which wasn't readable. Ran a second
-API instance off the existing build — `PORT=4001 node dist/main.js >
-api.log` — reproduced against it, and read the real stack from the
+API instance off the existing build - `PORT=4001 node dist/main.js >
+api.log` - reproduced against it, and read the real stack from the
 captured log. Confirmed first that every underlying Prisma query
 succeeded (standalone `tsx` script), which correctly ruled out the DB
 layer and pointed at the JS mapping.
 
 ### Files modified
-- `packages/database/prisma/demo/foundation.ts` — shifts literal now
+- `packages/database/prisma/demo/foundation.ts` - shifts literal now
   uses `startTime`/`endTime` and is parsed through
   `ScheduleShiftSchema.array().parse(...)` before the
   `InputJsonValue` cast, so a future shape drift fails the seed loudly
   instead of silently poisoning the database.
-- `packages/database/package.json` — added `@medicore/types`
+- `packages/database/package.json` - added `@medicore/types`
   (`workspace:*`) as a **devDependency** so the seed can import the
   canonical schema. No cycle (`@medicore/types` depends only on zod);
   devDep, so `apps/api` is unaffected. Ran `pnpm install`.
 - `.ai/CHANGELOG.md`, `.ai/TECH_DEBT.md` (TD-0040), `.ai/SESSION_LOG.md`.
 
-Data repaired by re-running `pnpm db:seed:demo` (idempotent —
+Data repaired by re-running `pnpm db:seed:demo` (idempotent -
 `resetDemoData` deletes `doctorScheduleDay`/`doctorSchedule` first).
 **Any other developer's already-seeded database needs the same re-run.**
 
 ### Architectural decisions made
-None — no ADR. This was a contract-conformance bug, not a design
+None - no ADR. This was a contract-conformance bug, not a design
 change; the canonical shape in `packages/types` was already correct
 and was treated as ground truth.
 
@@ -1018,22 +1018,22 @@ and was treated as ground truth.
   seed-written `Json` columns match the Zod contract the services read
   by. `availability.service.spec.ts` mocks `doctorSchedule.findMany`
   with fixtures already in the correct shape, so it validated the
-  reader against an assumed contract while the writer violated it —
+  reader against an assumed contract while the writer violated it -
   all 513 tests passed against a database no service could read. The
   fix above closes the one site; the general gap is open.
 - Other `Json` columns (`Doctor.languagesSpoken`,
   `Organization.settings`) have not been audited for the same drift.
-- No regression test was added for this specific bug — the meaningful
+- No regression test was added for this specific bug - the meaningful
   test is the seed-vs-schema integration test described in TD-0040,
   not another mock-based unit test, which by construction could not
   have caught it.
 
 ### Verification
 `pnpm lint`, `pnpm typecheck`, `pnpm test` (513 passed, 68 suites),
-`pnpm build` — all green. Endpoint verified live against the running
+`pnpm build` - all green. Endpoint verified live against the running
 dev server on :4000: `HTTP 200`, `{totalDoctors: 8, activeDoctors: 8,
 availableToday: 8, onLeaveToday: 0, offDutyToday: 8, upcomingLeave:
-[1 entry]}` (`offDutyToday: 8` is correct — checked at 04:49, outside
+[1 entry]}` (`offDutyToday: 8` is correct - checked at 04:49, outside
 both the 09:00–13:00 and 17:00–20:00 shifts). Also re-verified the
 endpoints the same bad data was silently breaking:
 `/doctors/:id/schedule` 200, `/doctors/:id/availability/today` 200
@@ -1042,20 +1042,20 @@ endpoints the same bad data was silently breaking:
 15-minute slots. Not browser-verified (no screenshot captured).
 
 ### Recommended next task
-`NEXT.md` is unchanged by this session — resume the milestone work it
-points to. If picking up the debt instead, TD-0040's option (1) — a
-seed-output-vs-Zod integration test against `medicore_test` — is the
+`NEXT.md` is unchanged by this session - resume the milestone work it
+points to. If picking up the debt instead, TD-0040's option (1) - a
+seed-output-vs-Zod integration test against `medicore_test` - is the
 highest-value follow-up, since it generalises to every `Json` column.
 
 ### Completion percentage
-Unchanged — this was a defect fix against already-delivered
+Unchanged - this was a defect fix against already-delivered
 functionality, not new scope. Milestone 4.2 (Doctor Scheduling &
 Availability) was previously marked complete but was in practice
 non-functional against seeded data; it is now genuinely working.
 
 ---
 
-## Session: 2026-08-05 (Milestone 14 — Staff & Attendance, complete)
+## Session: 2026-08-05 (Milestone 14 - Staff & Attendance, complete)
 
 ### What was completed
 Continued directly from Milestone 13 per an explicit instruction
@@ -1064,7 +1064,7 @@ Attendance/Leave Management/Shift Scheduling/Payroll Preparation/
 Dashboard/RBAC). Read `CLAUDE.md`/`NEXT.md`/`PROJECT_CONTEXT.md`/
 `SESSION_LOG.md` first per the session's own instruction, then
 inspected the existing `Staff` model (schema.prisma) and the 3-line
-no-op `staff` module scaffold before designing anything — confirmed
+no-op `staff` module scaffold before designing anything - confirmed
 both were unaudited pre-existing scaffolding, the same category as
 `Medication`/`MedicalRecord`/`Ward`-`Bed`-`Admission` before their own
 milestones. Also read `DoctorSchedule`/`DoctorLeave`/`AvailabilityService`
@@ -1073,7 +1073,7 @@ milestones. Also read `DoctorSchedule`/`DoctorLeave`/`AvailabilityService`
 helper) before deciding Milestone 14's scope boundary. Recorded the
 full design as **ADR-0022**: this milestone covers the **non-doctor**
 employee population only (Nurse/Receptionist/Lab Technician/Radiology
-Technician/Pharmacist/Cashier/HR/Inventory Manager) — Doctors keep
+Technician/Pharmacist/Cashier/HR/Inventory Manager) - Doctors keep
 their existing Checkpoint-4.2 scheduling/leave system unmerged and
 un-duplicated (recorded as TD-0039, not left ambiguous). Per the
 reading policy, work touched Staff (new), Departments/Hospitals
@@ -1085,23 +1085,23 @@ shared types. Did not re-scan Inventory/IPD/Billing/Insurance.
 - **Schema** (migration `20260804210705_staff_attendance_management`,
   applied to both `medicore_dev`/`medicore_test`): `Staff` extended
   with `hospitalId` (was missing), `employmentType`/`employmentStatus`
-  enums (replacing the scaffold's `isActive`/`shiftType` — mirrors the
+  enums (replacing the scaffold's `isActive`/`shiftType` - mirrors the
   `Ward`/`Room`/`Bed` "dedicated Status enum" precedent, ADR-0018),
   `reportsToId` self-relation, `dateOfLeaving`, `monthlySalary`. New
   models: `StaffDocument` (mirrors `DoctorDocument`), `Shift`
-  (org-scoped catalog — `HH:mm` start/end, break/grace-period minutes,
+  (org-scoped catalog - `HH:mm` start/end, break/grace-period minutes,
   night-shift flag), `ShiftRoster` (one row per staff per date,
   `@@unique([staffId, date])`), `Attendance` (one row per staff per
   date, `AttendanceStatus` enum), `Holiday`, `LeaveTypeConfig`
   (per-org annual-day quota per the existing `LeaveType` enum),
   `StaffLeave` (mirrors `DoctorLeave`). The scaffold's `ShiftType`
   enum itself was kept (still used by `NursingNote.shift` from
-  Milestone 12, unrelated to this milestone) — only `Staff`'s use of
+  Milestone 12, unrelated to this milestone) - only `Staff`'s use of
   it was dropped.
 - **RBAC** (`packages/database/prisma/seed.ts`): `staff`/`staff.
   documents` (mirrors `doctors`/`doctors.documents`), new `attendance`
   (`read`/`create`/`update`/`manage`), `leave` (`read`/`approve`/
-  `manage` — deliberately matches `doctors.leave`'s action set),
+  `manage` - deliberately matches `doctors.leave`'s action set),
   `shifts`/`shifts.roster` namespaces. Every non-doctor role
   (Nurse/Receptionist/Lab Technician/Radiology Technician/Pharmacist/
   Cashier/Inventory Manager) granted `.own`-scoped self-service
@@ -1113,35 +1113,35 @@ shared types. Did not re-scan Inventory/IPD/Billing/Insurance.
   `StaffService` (onboarding via the existing generic
   `StaffOnboardingService`, list/get/create/update/employment-status),
   `StaffDocumentsService`+`.controller.ts` (mirrors
-  `DoctorDocumentService` exactly — same upload/list/delete shape,
+  `DoctorDocumentService` exactly - same upload/list/delete shape,
   reuses `StorageService`), `ShiftsService` (catalog CRUD +
-  `standardMinutes` — a static helper shared with attendance/payroll
+  `standardMinutes` - a static helper shared with attendance/payroll
   for shift-length calculation, crossing midnight for a night shift),
   `ShiftRosterService` (assign/bulk-assign/list, feeds
   `AttendanceService`'s lateness/half-day derivation), `AttendanceService`
-  (`clockIn`/`clockOut` — server-derives Present/Late/Half-Day/Week-Off
+  (`clockIn`/`clockOut` - server-derives Present/Late/Half-Day/Week-Off
   from the day's roster entry's shift grace-period/standard-minutes;
-  `mark()` — HR backdated override; `correct()` — recomputes
+  `mark()` - HR backdated override; `correct()` - recomputes
   `workedMinutes`, flags `isCorrected`; monthly `calendar()`;
   `getDashboardStats()`), `HolidaysService`, `LeaveTypesService`
   (lists every `LeaveType` even if unconfigured, defaulting to 0
-  days), `StaffLeaveService` (mirrors `DoctorLeaveService` — apply/
+  days), `StaffLeaveService` (mirrors `DoctorLeaveService` - apply/
   approve/reject/cancel with an overlap conflict check; `getBalance()`
   computes annualDays-minus-approved-day-spans rather than storing a
   mutable counter, mirroring `Vital.bmi`/`IntakeOutputRecord`'s
   computed-field precedent), `StaffDashboardService` (headcount,
   today's attendance breakdown, pending leave approvals, by-department,
-  shift coverage), `PayrollService` (`getSummary()` — present/late/
+  shift coverage), `PayrollService` (`getSummary()` - present/late/
   half-day/absent days, paid/unpaid leave days split by
   `LeaveTypeConfig.isPaid`, overtime minutes/amount using a disclosed
   `monthlySalary / 30` per-day-rate convention, a leave-deduction
-  amount, net payable days; `toCsv()` — hand-built CSV string, no new
+  amount, net payable days; `toCsv()` - hand-built CSV string, no new
   dependency).
 - **Audit integration**: `audit.listener.ts` gained 13 new `@OnEvent`
   handlers (staff created/updated/employment-status-changed,
   document uploaded/deleted, attendance clocked-in/clocked-out/marked/
   corrected, leave requested/approved/rejected/cancelled).
-- **Tests**: 8 new unit spec files (49 tests — `StaffService`'s
+- **Tests**: 8 new unit spec files (49 tests - `StaffService`'s
   onboarding-conflict paths, `ShiftsService`'s `standardMinutes` calc
   including a night-shift midnight-crossing case, `AttendanceService`'s
   full clock-in/out status-derivation matrix using
@@ -1149,7 +1149,7 @@ shared types. Did not re-scan Inventory/IPD/Billing/Insurance.
   lateness, `StaffLeaveService`'s overlap + balance computation,
   `PayrollService`'s overtime/deduction math and CSV shape,
   `HolidaysService`/`ShiftRosterService`'s conflict/bulk-assign paths)
-  + `apps/api/test/staff.e2e-spec.ts` (14 e2e tests — the full golden
+  + `apps/api/test/staff.e2e-spec.ts` (14 e2e tests - the full golden
   path against a real registered org: staff creation with a genuinely
   provisioned login account, a full-day shift + roster assignment
   chosen specifically to avoid wall-clock-time flakiness in lateness
@@ -1159,48 +1159,48 @@ shared types. Did not re-scan Inventory/IPD/Billing/Insurance.
   CRUD, both dashboards, a payroll summary + a real downloaded CSV
   confirmed to contain the header row and the staff member's data, and
   an employment-status transition). All passing (513 API unit / 278
-  e2e total across the whole API, zero failures — up from 471/264
+  e2e total across the whole API, zero failures - up from 471/264
   after Milestone 13).
 - **Frontend** (`apps/web/src/lib/api/{staff,shifts,attendance,leave,
-  payroll}.ts` — 5 new files; `apps/web/src/app/dashboard/staff/**` —
-  7 new routes): Dashboard (`page.tsx` — stat tiles, a self clock-in/
+  payroll}.ts` - 5 new files; `apps/web/src/app/dashboard/staff/**` -
+  7 new routes): Dashboard (`page.tsx` - stat tiles, a self clock-in/
   out widget gated on having a linked `Staff` profile, department/
-  shift-coverage breakdowns), Directory (`directory/page.tsx` —
+  shift-coverage breakdowns), Directory (`directory/page.tsx` -
   search/filter/paginate + an add-staff dialog with real
   `listHospitals`/`listDepartments` pickers and a non-doctor
-  `systemRole` select), Profile (`[staffId]/page.tsx` — Overview/
+  `systemRole` select), Profile (`[staffId]/page.tsx` - Overview/
   Documents/Attendance-calendar/Leave-with-balance tabs, inline in one
-  file rather than split into `_components/*` — a deliberate scope-
+  file rather than split into `_components/*` - a deliberate scope-
   saving deviation from the IPD-admission-detail-page precedent, not
-  tech debt), Shifts (`shifts/page.tsx` — catalog CRUD with a
-  night-shift checkbox), Roster (`roster/page.tsx` — a real
+  tech debt), Shifts (`shifts/page.tsx` - catalog CRUD with a
+  night-shift checkbox), Roster (`roster/page.tsx` - a real
   week-navigable staff-by-date grid + an assign dialog using a real
-  staff-picker `Select` — the first one in this repo's frontend, now
+  staff-picker `Select` - the first one in this repo's frontend, now
   that a real staff directory exists, replacing the free-text-ID
   precedent from Milestone 13/TD-0028 for this specific use case),
-  Attendance (`attendance/page.tsx` — org-wide list with status/date
-  filters + a correction dialog), Leave (`leave/page.tsx` — three tabs:
+  Attendance (`attendance/page.tsx` - org-wide list with status/date
+  filters + a correction dialog), Leave (`leave/page.tsx` - three tabs:
   Requests with approve/reject, Leave Types with inline quota editing,
-  Holidays with an add dialog), Payroll (`payroll/page.tsx` — a month
+  Holidays with an add dialog), Payroll (`payroll/page.tsx` - a month
   picker, a summary table, and a CSV export button reusing the
   `downloadBlob` pattern from `lib/api/billing.ts`). Reused the
   pre-existing dormant sidebar "Staff" nav item (`/dashboard/staff`,
-  `staff.read`-gated) completely unchanged — no sidebar edit needed.
+  `staff.read`-gated) completely unchanged - no sidebar edit needed.
 - **Full verification, all green**: `pnpm lint` / `pnpm typecheck` /
-  `pnpm build` clean across all 6 packages; `pnpm test` — 513 API unit
-  + 6 web, all passing; `pnpm test:e2e` — 278/278 passing. Both
+  `pnpm build` clean across all 6 packages; `pnpm test` - 513 API unit
+  + 6 web, all passing; `pnpm test:e2e` - 278/278 passing. Both
   `medicore_dev`/`medicore_test` databases migrated and reseeded
   (permission catalog grew from ~171 to 191 rows) using the
   already-running, correctly-mapped `medicore-postgres`/
-  `medicore-redis` containers (dash-named, ports 5434/6381) — no
+  `medicore-redis` containers (dash-named, ports 5434/6381) - no
   container-naming gotcha hit this session, unlike Milestone 13's.
-- **No browser walkthrough, no screenshots** — this session's own
+- **No browser walkthrough, no screenshots** - this session's own
   verification instructions explicitly said not to (Playwright, a
   browser, screenshots, and manual walkthroughs were all named as
   "Do NOT"), mirroring Milestone 13's TD-0035 under the exact same
   kind of explicit instruction. Disclosed as **TD-0036** rather than
   claimed as browser-verified.
-- Replaced `.ai/NEXT.md` with **Milestone 15 — AI Features**.
+- Replaced `.ai/NEXT.md` with **Milestone 15 - AI Features**.
 
 ### Files modified/created
 - Schema: `packages/database/prisma/schema.prisma`,
@@ -1234,7 +1234,7 @@ shared types. Did not re-scan Inventory/IPD/Billing/Insurance.
   `.ai/NEXT.md` (replaced).
 
 ### Architectural decisions made
-See **ADR-0022** in `DECISIONS.md` for the full reasoning — summary:
+See **ADR-0022** in `DECISIONS.md` for the full reasoning - summary:
 Milestone 14 covers non-doctor staff only (Doctors keep their existing
 Checkpoint-4.2 system, deliberately not merged); `Staff` extended
 in-place rather than replaced; `ShiftRoster` is a per-day assignment
@@ -1246,23 +1246,23 @@ namespacing mirrors `doctors.*`/`ipd.*`'s established sub-resource
 pattern.
 
 ### Known issues
-- TD-0036: No browser-verified screenshots for Milestone 14 — this
+- TD-0036: No browser-verified screenshots for Milestone 14 - this
   session was explicitly told not to attempt it (mirrors TD-0035).
 - TD-0037: Payroll Prep's per-day/per-hour rate (`monthlySalary / 30`)
   is a disclosed convention, not a configurable per-org pay policy.
-- TD-0038: Attendance corrections apply immediately — no HR approval
+- TD-0038: Attendance corrections apply immediately - no HR approval
   gate like `StaffLeave`'s apply→approve/reject workflow (low risk
   today since no self-service role is seeded with `attendance.update`).
-- TD-0039: No doctor-duty-roster integration (by design — doctors keep
+- TD-0039: No doctor-duty-roster integration (by design - doctors keep
   their existing system) and no biometric attendance-hardware
   integration exists anywhere in this repo (same category as the
   SMS/AI-provider/payment-gateway/PACS credential-blocked gaps).
 
 ### Recommended next task
-**Milestone 15 — AI Features**, per `docs/roadmap.md` and the
+**Milestone 15 - AI Features**, per `docs/roadmap.md` and the
 now-replaced `.ai/NEXT.md`. Do not re-implement or re-verify anything
 from Milestone 14. Likely credential-blocked in this environment (no
-real `OPENAI_API_KEY`/`ANTHROPIC_API_KEY`) — read `TECH_DEBT.md`'s
+real `OPENAI_API_KEY`/`ANTHROPIC_API_KEY`) - read `TECH_DEBT.md`'s
 prior credential-blocked disclosures (TD-0015/TD-0018/TD-0019) before
 starting, and raise the question with the user rather than fabricating
 provider responses.
@@ -1270,8 +1270,8 @@ provider responses.
 ### Estimated project completion
 **Overall: ~15 of 18 roadmap milestones/checkpoints fully complete
 end-to-end** (Doctors/Scheduling, Appointments, Clinical/EMR,
-Laboratory, Radiology, Pharmacy, Billing, Insurance, IPD — both
-checkpoints — General Inventory, Staff & Attendance — plus
+Laboratory, Radiology, Pharmacy, Billing, Insurance, IPD - both
+checkpoints - General Inventory, Staff & Attendance - plus
 foundational auth/RBAC/multi-tenancy scaffolding). **Staff module:
 100% for Milestone 14** (backend + frontend both complete; TD-0036–
 TD-0039 tracked, not blocking). Everything else's percentage remains
@@ -1279,12 +1279,12 @@ provisional per `MODULE_STATUS.md`.
 
 ---
 
-## Session: 2026-08-05 (Milestone 13 — General Inventory, complete)
+## Session: 2026-08-05 (Milestone 13 - General Inventory, complete)
 
 ### What was completed
 Continued directly from Frontend Checkpoint 1 (below) per an explicit
 resume instruction stating the backend, dashboard, Item Master,
-Lookups, API client, and sidebar fix were already done — did not
+Lookups, API client, and sidebar fix were already done - did not
 re-implement or re-verify any of it. Read every controller/service
 under `apps/api/src/modules/inventory/` and the shared
 `packages/types/src/inventory.ts`/`procurement.ts` types before
@@ -1292,7 +1292,7 @@ writing any frontend code, then built the ten remaining pages per
 `NEXT.md`'s scope list: Stores, Stock + Transfers, Vendors, Purchase
 Requests, Purchase Orders, Goods Receipt, Vendor Invoices, Store
 Requisitions, Stock Audits, Assets + Maintenance. Recorded
-**ADR-0020** (the Milestone 13 backend's own design, retroactively —
+**ADR-0020** (the Milestone 13 backend's own design, retroactively -
 the backend's code comments already said "see ADR-0020" but it had
 never been written) and **ADR-0021** (this session's frontend
 decisions). Per the reading policy, work touched only Inventory
@@ -1311,7 +1311,7 @@ pharmacy-dispense-detail pages once each as UI-pattern references, per
   `[id]/page.tsx`, `audits/page.tsx`+`[id]/page.tsx`, `assets/
   page.tsx`+`[id]/page.tsx`. `lib/api/inventory.ts` extended (Stores/
   Stock/Transfers/Vendors); new `lib/api/procurement.ts` (everything
-  else) — split per `NEXT.md`'s own suggestion once `inventory.ts`
+  else) - split per `NEXT.md`'s own suggestion once `inventory.ts`
   would have gotten unwieldy. Inventory Dashboard's button row
   extended with a permission-gated link to each of the 10 new pages.
 - **Judgment calls made, recorded in ADR-0021**: `?fromPr=`/`?fromPo=`
@@ -1328,33 +1328,33 @@ pharmacy-dispense-detail pages once each as UI-pattern references, per
 - **One real bug fixed in passing** (not a feature change): four
   backend spec files (`assets`/`purchase-orders`/`requisitions`/
   `stock.service.spec.ts`) failed `pnpm lint`'s `@typescript-eslint/
-  require-await` rule — `jest.fn(async (cb) => cb(prisma))` wrapped a
+  require-await` rule - `jest.fn(async (cb) => cb(prisma))` wrapped a
   callback in an unneeded `async` with no `await` inside. Removed the
   `async`; `cb(prisma)` already returns whatever `cb` returns (a
   promise, for every real `$transaction` caller), so no test behavior
   changed. Confirmed by re-running the full unit suite after the fix.
 - **Full verification, all green**: `pnpm lint` / `pnpm typecheck` /
-  `pnpm build` clean across all 6 packages; `pnpm test` — 471 API unit
-  + 6 web unit, all passing (no new test files needed — pure frontend
+  `pnpm build` clean across all 6 packages; `pnpm test` - 471 API unit
+  + 6 web unit, all passing (no new test files needed - pure frontend
   wiring against an already-tested API, no backend logic changed);
-  `pnpm test:e2e` — 264/264 passing. Getting e2e running required
+  `pnpm test:e2e` - 264/264 passing. Getting e2e running required
   starting Docker Desktop (`open -a Docker`, not running at session
   start) and then discovering `docker compose up postgres redis`
   creates containers (`medicore_postgres`/`medicore_redis`, no host
   port mapping matching `.env`'s expected 5434/6381, and conflicting
-  with an unrelated project's container already on host port 5432) —
+  with an unrelated project's container already on host port 5432) -
   stopped those and started the pre-existing, correctly-mapped
   `medicore-postgres`/`medicore-redis` containers (dash-named, ports
   5434/6381) instead, confirmed the `medicore_test` DB's migrations
   were current (they were), then all 264 e2e tests passed cleanly.
-- **No browser walkthrough, no screenshots** — this session's own
+- **No browser walkthrough, no screenshots** - this session's own
   verification instructions explicitly said not to (Playwright, a
   browser, screenshots, and manual walkthroughs were all named as
   "Do NOT"), which overrides the standing Screenshot policy for this
   session only. Disclosed as TD-0035 per the Verification Policy
-  rather than claimed as browser-verified — the only milestone in this
+  rather than claimed as browser-verified - the only milestone in this
   repo without one.
-- Replaced `.ai/NEXT.md` with **Milestone 14 — Staff & Attendance**.
+- Replaced `.ai/NEXT.md` with **Milestone 14 - Staff & Attendance**.
 
 ### Files modified/created
 - Frontend: `apps/web/src/lib/api/inventory.ts` (extended),
@@ -1364,7 +1364,7 @@ pharmacy-dispense-detail pages once each as UI-pattern references, per
   purchase-requests,purchase-orders,grn,vendor-invoices,requisitions,
   audits,assets}/page.tsx` (new, 10 files) and `.../{purchase-requests,
   purchase-orders,grn,requisitions,audits,assets}/[id]/page.tsx` (new,
-  6 files) — 16 new route files total (20 routes counting the 4
+  6 files) - 16 new route files total (20 routes counting the 4
   already-existing dashboard/items/lookups pages from Checkpoint 1).
 - Backend (mechanical lint fix only, no logic change):
   `apps/api/src/modules/inventory/{assets,purchase-orders,
@@ -1375,11 +1375,11 @@ pharmacy-dispense-detail pages once each as UI-pattern references, per
   (replaced).
 
 ### Architectural decisions made
-See **ADR-0020** (backend design, recorded retroactively — Item
+See **ADR-0020** (backend design, recorded retroactively - Item
 Master's lookup grouping, the per-store/per-batch stock ledger with
 shared `receiveStock`/`issueStock` mutation primitives, the four-entity
 procurement chain, namespaced RBAC, sequential numbering) and
-**ADR-0021** (this session's frontend decisions — deep-link query-
+**ADR-0021** (this session's frontend decisions - deep-link query-
 param prefill between procurement stages, free-text ID inputs where no
 picker exists, Vendor Returns UI deferred, no browser walkthrough this
 session by explicit instruction).
@@ -1387,18 +1387,18 @@ session by explicit instruction).
 ### Known issues
 - TD-0034: Vendor Returns has a working, tested backend but no
   frontend yet.
-- TD-0035: No browser-verified screenshots for Milestone 13 — every
+- TD-0035: No browser-verified screenshots for Milestone 13 - every
   other milestone in this repo has one; this session was explicitly
   told not to attempt it.
 - Store-manager and asset-user assignment both take a free-text
-  internal user ID — no staff/user picker exists anywhere in this
+  internal user ID - no staff/user picker exists anywhere in this
   repo's frontend yet (same shape as the pre-existing TD-0028).
 
 ### Recommended next task
-**Milestone 14 — Staff & Attendance**, per `docs/roadmap.md` and the
+**Milestone 14 - Staff & Attendance**, per `docs/roadmap.md` and the
 now-replaced `.ai/NEXT.md`. A `Staff` model and a `staff` module
 scaffold already exist unaudited (same category as `Medication`/
-`MedicalRecord`/`Ward`-`Bed`-`Admission` before their milestones) —
+`MedicalRecord`/`Ward`-`Bed`-`Admission` before their milestones) -
 read them first, don't assume a clean slate. Decide explicitly whether
 shift/leave/duty-roster reuse or extend the existing doctor-specific
 `scheduling` module (Checkpoint 4.2) rather than silently duplicating
@@ -1407,8 +1407,8 @@ or silently merging.
 ### Estimated project completion
 **Overall: ~14 of 18 roadmap milestones/checkpoints fully complete
 end-to-end** (Doctors/Scheduling, Appointments, Clinical/EMR,
-Laboratory, Radiology, Pharmacy, Billing, Insurance, IPD — both
-checkpoints — General Inventory — plus foundational auth/RBAC/multi-
+Laboratory, Radiology, Pharmacy, Billing, Insurance, IPD - both
+checkpoints - General Inventory - plus foundational auth/RBAC/multi-
 tenancy scaffolding). **Inventory module: 100% for Milestone 13**
 (backend + frontend both complete; TD-0034/TD-0035 tracked, not
 blocking). Everything else's percentage remains provisional per
@@ -1416,12 +1416,12 @@ blocking). Everything else's percentage remains provisional per
 
 ---
 
-## Session: 2026-08-05 (Milestone 13, Frontend Checkpoint 1 — Inventory Dashboard, Item Master & Lookups)
+## Session: 2026-08-05 (Milestone 13, Frontend Checkpoint 1 - Inventory Dashboard, Item Master & Lookups)
 
 ### What was completed
 Resumed via an explicit resume-point instruction stating Milestone 13's
 backend/database/APIs/RBAC/tests were already done and only frontend
-remained — confirmed against the repo: commit `e7f4abb` had landed the
+remained - confirmed against the repo: commit `e7f4abb` had landed the
 full General Inventory backend (Item Master, Stores, Stock, Vendors,
 Purchase Requests/Orders, Goods Receipt, Store Requisitions, Stock
 Audits, Vendor Invoices, Assets + Maintenance) with unit/e2e tests, even
@@ -1441,25 +1441,25 @@ full detail on what each page does.
   string: `inventory.read` → `inventory.items.read`)
 
 ### Architectural decisions made
-None new — followed the existing pharmacy/IPD frontend patterns
+None new - followed the existing pharmacy/IPD frontend patterns
 (TanStack Query + the shared `Table`/`Dialog`/`Select`/`Pagination` UI
 components) rather than inventing a new one. The five item-master
 lookups were kept on one tabbed page rather than five separate routes,
 mirroring the backend's own `ItemMasterService` grouping decision.
 
 ### Known issues
-- Not browser-verified — no browser tool available this session.
+- Not browser-verified - no browser tool available this session.
   `pnpm --filter @medicore/web lint|typecheck|build|test` all pass, but
   the golden path (create an item, create a lookup, filter/paginate)
   has not been clicked through in a real browser. Flagging per the
   Verification Policy rather than claiming it works.
 - The Milestone 13 backend (commit `e7f4abb`) itself remains unaudited
-  by any session that has actually read through it end to end — treated
+  by any session that has actually read through it end to end - treated
   as ground truth per the resume instruction, consistent with how prior
   milestones' pre-existing scaffolding was handled, but worth a real
   audit pass before calling Milestone 13 complete.
 - No screenshots captured yet (blocked on the same missing browser
-  tool) — `docs/screens/inventory-*.png` still owed once verified.
+  tool) - `docs/screens/inventory-*.png` still owed once verified.
 
 ### Recommended next task
 Continue Milestone 13 frontend: Stores page, Stock page (levels/adjust/
@@ -1468,27 +1468,27 @@ Receipt procurement flow, Store Requisitions, Stock Audits, Vendor
 Invoices, and Assets + Maintenance. See `NEXT.md`.
 
 ### Estimated project completion
-Overall: unaudited (see TD-0001) — no change to the overall estimate
+Overall: unaudited (see TD-0001) - no change to the overall estimate
 methodology this session. Inventory module: backend ~100% for Milestone
 13 (unaudited in depth), frontend ~15% (3 of an estimated 10+ pages).
 ## Session: 2026-08-05 (Local environment brought up + demo-data seed added)
 
 ### What was completed
-Environment/tooling session — **no milestone work, and Milestone 13 was
+Environment/tooling session - **no milestone work, and Milestone 13 was
 not started.** `NEXT.md` is unchanged and still describes Milestone 13
 (General Inventory) as the next task.
 
-1. **Docker stack running.** `docker compose --profile dev up -d` —
+1. **Docker stack running.** `docker compose --profile dev up -d` -
    postgres, redis, mailhog, minio, redis-commander all healthy.
-2. **Environment files created** (they were absent — only `.env.example`
+2. **Environment files created** (they were absent - only `.env.example`
    files are checked in): `apps/api/.env` (from the example, with a
    freshly generated RS256 JWT keypair via `pnpm --filter @medicore/api
    keys:generate` and a random 32-byte `COOKIE_SECRET`), `apps/web/.env`,
    and `packages/database/.env` with `DATABASE_URL`/`DATABASE_URL_TEST`.
-3. **Schema applied** — all 18 migrations deployed to **both**
+3. **Schema applied** - all 18 migrations deployed to **both**
    `medicore_dev` and `medicore_test` (97 tables), per TD-0004.
-4. **Base seed run** (`pnpm db:seed`) — 161 permissions, 11 staff users.
-5. **New demo-data seed** (`pnpm db:seed:demo`) — see CHANGELOG. Adds a
+4. **Base seed run** (`pnpm db:seed`) - 161 permissions, 11 staff users.
+5. **New demo-data seed** (`pnpm db:seed:demo`) - see CHANGELOG. Adds a
    realistic dataset across every completed module so the UI is not
    empty on a fresh database.
 
@@ -1504,7 +1504,7 @@ not started.** `NEXT.md` is unchanged and still describes Milestone 13
 - The demo seed is a **separate, additive script**, not a change to
   `prisma/seed.ts`. The base seed's "no fake patients" stance is
   deliberate and correct for a real deployment; demo data belongs behind
-  its own opt-in command. No ADR raised — this is tooling, not
+  its own opt-in command. No ADR raised - this is tooling, not
   architecture.
 - Demo randomness is **deterministic** (fixed-seed LCG) so screenshots,
   manual walkthroughs and any future e2e expectations stay stable.
@@ -1527,7 +1527,7 @@ not started.** `NEXT.md` is unchanged and still describes Milestone 13
   the patient now pays only their share and the insurer pays the rest.
 
 ### Verification performed
-- `pnpm db:seed:demo` run three times — succeeds and is idempotent
+- `pnpm db:seed:demo` run three times - succeeds and is idempotent
   (identical counts each run).
 - `tsc --noEmit --strict` clean over `prisma/seed-demo.ts` and its
   imports.
@@ -1543,7 +1543,7 @@ not started.** `NEXT.md` is unchanged and still describes Milestone 13
   `@medicore/database` package defines no lint/typecheck scripts, so
   turbo would not cover these files. A future session touching app code
   should run the full suite as usual.
-- **No browser walkthrough performed** and no screenshots captured —
+- **No browser walkthrough performed** and no screenshots captured -
   not requested, and per the Verification Policy automated verification
   is the default.
 
@@ -1562,14 +1562,14 @@ not started.** `NEXT.md` is unchanged and still describes Milestone 13
   --force-recreate postgres redis` fixed it. Worth checking
   `docker ps --format '{{.Ports}}'` before debugging connection errors.
 - **A stale `node` process was still listening on port 3000** from an
-  earlier session (the TD-0004 addendum hazard). It was left running —
+  earlier session (the TD-0004 addendum hazard). It was left running -
   kill it before starting `pnpm dev`.
 
 ### Recommended next task
-Unchanged: **Milestone 13 — General Inventory**, exactly as `NEXT.md`
+Unchanged: **Milestone 13 - General Inventory**, exactly as `NEXT.md`
 describes. Note that the demo seed now populates the Milestone 13
 tables, so when auditing what already exists there, read the schema and
-the `inventory` module code as `NEXT.md` instructs — do not infer
+the `inventory` module code as `NEXT.md` instructs - do not infer
 completeness from the presence of seeded rows.
 
 ### Estimated completion
@@ -1577,14 +1577,14 @@ Unchanged by this session (no product code was written).
 
 ---
 
-## Session: 2026-08-04 (Milestone 12, Checkpoint 12.2 — Nursing, Medication Administration & Discharge, complete)
+## Session: 2026-08-04 (Milestone 12, Checkpoint 12.2 - Nursing, Medication Administration & Discharge, complete)
 
 ### What was completed
 Continued directly from Checkpoint 12.1 without re-implementing or
 re-verifying it. Resolved `NEXT.md`'s four framed judgment calls and
 recorded the full reasoning as **ADR-0019**: nursing notes/
 assessments/I-O charting/orders/tasks are new admission-scoped models
-(nurse-authored, higher-frequency, tied to the stay — not
+(nurse-authored, higher-frequency, tied to the stay - not
 `ClinicalNote` reuse); IPD vitals charting reuses the existing
 encounter-scoped `Vital` model completely unchanged; MAR reuses
 `Prescription`/`PrescriptionItem` with a `MedicationAdministration`
@@ -1595,13 +1595,13 @@ room `Charge` at finalize. Per the reading policy, work touched IPD
 (this session's own module, extending Checkpoint 12.1), Medical
 Records (`Vital` reuse decision; `EncountersService.updateStatus`
 reuse to close the encounter at discharge), Billing (`ChargesService.
-create` reuse — added a new `ChargeSourceModule.IPD` enum member),
+create` reuse - added a new `ChargeSourceModule.IPD` enum member),
 Prescriptions (`PrescriptionItem` reuse for MAR), Prisma schema, and
 shared types.
 
 - **Schema** (migrations `20260804220000_nursing_mar_discharge` and
   `20260804221000_ipd_charge_source_module`, applied to both
-  `medicore_dev`/`medicore_test`): 8 new models — `NursingNote`
+  `medicore_dev`/`medicore_test`): 8 new models - `NursingNote`
   (type/shift/content/`isEscalated`+reason), `NursingAssessment` (one
   consolidated row per event: pain score, fall risk score + server-
   derived level, Braden score + server-derived level, GCS eye/verbal/
@@ -1612,7 +1612,7 @@ shared types.
   (type/scheduledAt/administeredAt/status/doseGiven/route/
   barcodeVerified+scannedCode/nurseSignature), `DischargeChecklistItem`
   (8-key enum, `@@unique([admissionId, itemKey])`), `DischargeSummary`
-  (one row per admission, not versioned — final diagnosis/course/
+  (one row per admission, not versioned - final diagnosis/course/
   procedures/condition/med-reconciliation/follow-up+doctor+
   prescription link). `Admission` gained `dischargeApprovedAt`/
   `dischargeApprovedByUserId`. `ChargeSourceModule` gained `IPD`
@@ -1622,10 +1622,10 @@ shared types.
   I-O, all-scope read/create), `ipd.orders`/`ipd.tasks`/`ipd.mar`
   (all-scope read/create/update), `ipd.discharge` split into `create`
   (doctor approval)/`update` (nursing checklist+summary)/`manage`
-  (finalize — mirrors `billing.manage`'s requester/approver
+  (finalize - mirrors `billing.manage`'s requester/approver
   separation). All-scope throughout, mirroring `ipd.beds`/
   `ipd.transfer`'s precedent rather than `ipd.admissions`' own-scope
-  carve-out — disclosed as **TD-0032**, not silently accepted. Doctor
+  carve-out - disclosed as **TD-0032**, not silently accepted. Doctor
   role granted orders read/create/update + discharge read/create/
   manage + nursing/tasks/mar read-only; Nurse granted nursing/tasks/mar
   full read-write + discharge read/update (not create/manage);
@@ -1641,15 +1641,15 @@ shared types.
   admission), `NursingTasksService` (admission-scoped list + an
   org-wide queue joined to patient/ward for display, optionally
   spawned from an `IpdOrder`), `MedicationAdministrationService`
-  (`generateScheduled` — times-of-day × days, `createAdHoc` — PRN/STAT,
-  `administer`/`recordException` — missed/refused/held/delayed, every
+  (`generateScheduled` - times-of-day × days, `createAdHoc` - PRN/STAT,
+  `administer`/`recordException` - missed/refused/held/delayed, every
   action requiring a nurse signature; validates the prescription item
-  belongs to the admission's patient), `DischargeService` (`approve` —
+  belongs to the admission's patient), `DischargeService` (`approve` -
   idempotently seeds all 8 checklist items via `createMany` +
-  `skipDuplicates`, `updateChecklistItem`, `upsertSummary` — validates
-  `followUpDoctorId`/`dischargePrescriptionId`, `generateSummaryPdf` —
+  `skipDuplicates`, `updateChecklistItem`, `upsertSummary` - validates
+  `followUpDoctorId`/`dischargePrescriptionId`, `generateSummaryPdf` -
   a new `discharge-summary-pdf.ts` generator mirroring `insurance`'s
-  encounter-summary-pdf pattern, `complete` — validates approval + every
+  encounter-summary-pdf pattern, `complete` - validates approval + every
   checklist item complete + a summary with a final diagnosis, then
   vacates the bed via the existing `BedAllocationService.vacate`,
   computes `days-stayed = ceil(elapsed-ms / 24h), min 1` and raises a
@@ -1666,7 +1666,7 @@ shared types.
 - **Tests**: 7 new unit spec files (35 tests, including a full
   `discharge.service.spec.ts` covering approve/checklist/complete
   guard rails) + a new `apps/api/test/nursing-mar-discharge.e2e-
-  spec.ts` (15 e2e tests — full lifecycle from admission through
+  spec.ts` (15 e2e tests - full lifecycle from admission through
   nursing docs, orders/tasks, MAR schedule+administer+missed, discharge
   approve→checklist→summary→complete, a real downloaded PDF). All
   passing (441 unit / 241 e2e total across the whole API, zero
@@ -1679,10 +1679,10 @@ shared types.
   `mar-tab.tsx`, `discharge-tab.tsx`) wrapped in a `Tabs` component
   around the existing Overview content. New pages:
   `/dashboard/ipd/discharges` (pending/discharged queue),
-  `/dashboard/nursing` (dashboard — census/occupancy/pending-tasks/
+  `/dashboard/nursing` (dashboard - census/occupancy/pending-tasks/
   pending-discharge tiles + a STAT-task alert panel),
   `/dashboard/nursing/tasks` (org-wide queue, status/priority filters),
-  `/dashboard/nursing/patients` (patient census — no per-nurse
+  `/dashboard/nursing/patients` (patient census - no per-nurse
   ward-assignment model exists in this repo, disclosed on-page rather
   than fabricated). Sidebar gained a "Nursing" nav item under
   Clinical. IPD dashboard page gained 4 new stat tiles and
@@ -1699,7 +1699,7 @@ shared types.
   One scripting gotcha hit: `waitForURL` with a loose regex
   (`/\/dashboard\/ipd\/[a-z0-9]+$/`) false-matched the static
   `/dashboard/ipd/admissions` list route (since "admissions" is itself
-  all lowercase letters) — fixed by waiting for a real page-specific
+  all lowercase letters) - fixed by waiting for a real page-specific
   element instead of a URL pattern. Logged in as `admin@medicore.demo`,
   admitted a real patient (Ramesh Gupta) into ICU Ward Bed 34, recorded
   a nursing note + an assessment with a real derived "Fall risk: High"/
@@ -1710,14 +1710,14 @@ shared types.
   and scheduled/administered a real MAR dose with a genuine nurse
   signature ("Nurse Anjali Verma") plus recorded a missed-dose
   exception, then walked discharge through approve → all 8 checklist
-  items → summary → finalize — confirmed the bed correctly landed in
+  items → summary → finalize - confirmed the bed correctly landed in
   "Cleaning" (not directly "Available"), the encounter flipped to
   "Completed", a real room `Charge` was created, and a genuine
-  discharge-summary PDF downloaded — and confirmed the Discharges
+  discharge-summary PDF downloaded - and confirmed the Discharges
   queue, Nursing Dashboard, Nursing Tasks queue, and IPD dashboard all
   reflect the real resulting state. 30 screenshots under
   `docs/screens/`.
-- Replaced `.ai/NEXT.md` with **Milestone 13 — General Inventory**.
+- Replaced `.ai/NEXT.md` with **Milestone 13 - General Inventory**.
 
 ### Files modified/created
 - Schema: `packages/database/prisma/schema.prisma`,
@@ -1734,11 +1734,11 @@ shared types.
   `nursing-assessments.*`, `intake-output.*`, `ipd-orders.*`,
   `nursing-tasks.*`, `medication-administration.*`,
   `discharge.service.ts`(+spec)+`.controller.ts`,
-  `discharge-summary-pdf.ts`, `dto/*` — each with `.service.ts`+
+  `discharge-summary-pdf.ts`, `dto/*` - each with `.service.ts`+
   `.spec.ts`+`.controller.ts`), `admissions.service.ts`/`.controller.ts`
   (extended), `ipd-dashboard.service.ts`(+spec, extended),
   `ipd.module.ts` (extended), `apps/api/src/modules/billing/` (no code
-  change — `ChargesService` reused as-is), `apps/api/src/modules/
+  change - `ChargesService` reused as-is), `apps/api/src/modules/
   audit/audit.listener.ts` (extended), `apps/api/test/
   nursing-mar-discharge.e2e-spec.ts` (new).
 - Frontend: `apps/web/src/lib/api/nursing.ts`/`mar.ts`/`discharge.ts`
@@ -1753,7 +1753,7 @@ shared types.
   `.ai/MODULE_STATUS.md`, `.ai/CHANGELOG.md`, `.ai/DECISIONS.md`
   (ADR-0019), `.ai/TECH_DEBT.md` (TD-0030 resolved, TD-0032/TD-0033
   opened), `.ai/NEXT.md` (replaced).
-- Screenshots: `docs/screens/` — 30 new (`nursing-*.png`, `mar-*.png`,
+- Screenshots: `docs/screens/` - 30 new (`nursing-*.png`, `mar-*.png`,
   `discharge-*.png`, `admit-wizard-step1-patient.png`,
   `admit-wizard-step3-bed.png`, `admit-wizard-review.png`,
   `admission-created-bed-assigned.png`, `vitals-form-filled.png`,
@@ -1762,7 +1762,7 @@ shared types.
   `ipd-dashboard-with-nursing-stats.png`).
 
 ### Architectural decisions made
-See **ADR-0019** in `DECISIONS.md` for the full reasoning — summary:
+See **ADR-0019** in `DECISIONS.md` for the full reasoning - summary:
 nursing docs are new admission-scoped models, not `ClinicalNote`
 reuse; vitals charting reuses `Vital` unchanged; MAR reuses
 `Prescription`/`PrescriptionItem` with an admin-log child table; all
@@ -1776,7 +1776,7 @@ thresholds (not a clinically-validated scoring service).
 - TD-0030 (resolved this session): IPD billing integration and
   discharge are now genuinely reachable.
 - TD-0032: nursing/MAR/discharge RBAC is all-scope, including for the
-  Doctor role — a doctor can approve/finalize discharge for any
+  Doctor role - a doctor can approve/finalize discharge for any
   admission, not only their own attended ones.
 - TD-0033 (tracking only, disclosed): MAR's barcode fields have no
   real scanner hardware integration.
@@ -1784,26 +1784,26 @@ thresholds (not a clinically-validated scoring service).
   check for occupied beds inside it.
 
 ### Recommended next task
-**Milestone 13 — General Inventory**, per `docs/roadmap.md` (ADR-0017's
+**Milestone 13 - General Inventory**, per `docs/roadmap.md` (ADR-0017's
 renumbering) and the now-replaced `.ai/NEXT.md`. Do not re-implement or
 re-verify anything from Milestone 12 (either checkpoint).
 
 ### Estimated project completion
 **Overall: ~13 of 18 roadmap milestones/checkpoints fully complete
 end-to-end** (Doctors/Scheduling, Appointments, Clinical/EMR,
-Laboratory, Radiology, Pharmacy, Billing, Insurance, IPD — both
-Checkpoint 12.1 and 12.2 — plus foundational auth/RBAC/multi-tenancy
-scaffolding). **IPD module: 100% for Milestone 12 (both checkpoints) —
+Laboratory, Radiology, Pharmacy, Billing, Insurance, IPD - both
+Checkpoint 12.1 and 12.2 - plus foundational auth/RBAC/multi-tenancy
+scaffolding). **IPD module: 100% for Milestone 12 (both checkpoints) -
 Milestone 12 is now fully complete.** Everything else's percentage
 remains provisional per `MODULE_STATUS.md`.
 
 ---
 
-## Session: 2026-08-04 (Milestone 12, Checkpoint 12.1 — IPD Admission, Wards & Bed Management, complete)
+## Session: 2026-08-04 (Milestone 12, Checkpoint 12.1 - IPD Admission, Wards & Bed Management, complete)
 
 ### What was completed
 Ran in Auto Mode. `NEXT.md` framed this as a clean schema slate for
-`Ward`/`Bed`/`Admission` (per ADR-0017) — that was wrong: all three
+`Ward`/`Bed`/`Admission` (per ADR-0017) - that was wrong: all three
 models, plus `BedType`/`BedStatus`/`AdmissionStatus` enums, existed
 unaudited since the very first scaffolding migration
 (`20260730185306_auth_org_rbac`), the same category of unused scaffold
@@ -1812,7 +1812,7 @@ Confirmed via `git show 56857d3:.../schema.prisma`. Audited, extended
 (not replaced), and recorded the full schema/RBAC design as
 **ADR-0018**. Per the reading policy, work touched IPD (new module),
 Patients (`patients.service.ts`'s `getTimeline`/`getSummaryCounts`
-already queried `prisma.admission` — verified field-name compatibility
+already queried `prisma.admission` - verified field-name compatibility
 before touching anything), Encounters (`EncountersService` reuse for
 auto-create-or-reuse-existing IPD encounter), Doctors
 (`DoctorRefService` reuse), Insurance (`PatientInsurance` reuse for
@@ -1821,7 +1821,7 @@ auto-create-or-reuse-existing IPD encounter), Doctors
 - **Schema** (migration `20260804120000_ipd_bed_management`, applied
   to both `medicore_dev`/`medicore_test`): new `Room`, `BedAllocation`,
   `BedTransfer` models. `Ward` gained `floor`/`block`/`type`/`status`
-  (dropped the scaffold's `isActive`/`totalBeds` — bed counts are
+  (dropped the scaffold's `isActive`/`totalBeds` - bed counts are
   computed by query, matching every other dashboard stat in this
   repo). `Bed`'s unique constraint moved `[bedNumber, wardId]` →
   `[bedNumber, roomId]` (a room, not a ward, is the natural uniqueness
@@ -1832,13 +1832,13 @@ auto-create-or-reuse-existing IPD encounter), Doctors
   `createdByUserId`; `wardId` became required. New enums: `WardType`,
   `WardStatus`, `RoomStatus`, `AdmissionType`, `BedAllocationAction`;
   `BedType`/`BedStatus`/`AdmissionStatus` redefined to the checkpoint's
-  spec'd value sets (dropped `AdmissionStatus.TRANSFERRED` — a
+  spec'd value sets (dropped `AdmissionStatus.TRANSFERRED` - a
   mid-stay transfer is a `BedTransfer` event, not an admission-status
   change); `EncounterType` gained `IPD`. The scaffolded field names
   read by `patients.service.ts` (`admissionNumber`/`admissionReason`/
   `admittedAt`/`status`/`patientId`) were kept unchanged.
 - **RBAC**: new `ipd.wards`/`ipd.rooms`/`ipd.beds` (inventory CRUD,
-  all-scope), `ipd.admissions` (admit/cancel, own-scope-capable —
+  all-scope), `ipd.admissions` (admit/cancel, own-scope-capable -
   Doctor role granted `.own`, mirroring `medical_records`/
   `prescriptions`), `ipd.transfer` (allocate/reserve/vacate/transfer
   workflow, all-scope, kept separate from `ipd.beds` since it's an
@@ -1846,18 +1846,18 @@ auto-create-or-reuse-existing IPD encounter), Doctors
   operational read + `ipd.beds.update` + `ipd.transfer.*`;
   Receptionist granted admission read/create + inventory read.
 - **Backend** (`apps/api/src/modules/ipd/`, new module):
-  `WardsService`/`RoomsService`/`BedsService` (CRUD, soft-deactivate —
+  `WardsService`/`RoomsService`/`BedsService` (CRUD, soft-deactivate -
   `BedsService` blocks deactivating an `OCCUPIED` bed; the ward/room
   equivalents don't yet, see TD-0031), `AdmissionsService` (one code
   path handles all four `AdmissionType`s; auto-creates a fresh `IPD`
   encounter or reuses a passed-in one when the patient/encounter match;
   cancel releases any held bed), `BedAllocationService`
-  (allocate/reserve/cancel-reservation/vacate/transfer — a
+  (allocate/reserve/cancel-reservation/vacate/transfer - a
   vacated/transferred-from bed lands in `CLEANING`, not directly
   `AVAILABLE`, mirroring a real ward cleaning workflow),
   `IpdDashboardService` (all real queries; discharges-today is a real
   query that always reads 0 this checkpoint since nothing sets
-  `DISCHARGED` yet — a placeholder by construction, not faked).
+  `DISCHARGED` yet - a placeholder by construction, not faked).
   Sequential `ADM-<prefix>-<year>-<seq>` numbering (advisory-locked,
   mirrors `LAB-`/`RAD-` precedent).
 - **Audit integration**: `audit.listener.ts` gained 8 new `@OnEvent`
@@ -1865,21 +1865,21 @@ auto-create-or-reuse-existing IPD encounter), Doctors
   `ipd.bed_allocated/reserved/reservation_cancelled/vacated/
   transferred`).
 - **Tests**: 6 new unit spec files (47 tests) + `apps/api/test/
-  ipd.e2e-spec.ts` (16 e2e tests — ward/room/bed CRUD with duplicate-
+  ipd.e2e-spec.ts` (16 e2e tests - ward/room/bed CRUD with duplicate-
   code/number conflicts, admitting directly into a bed vs. ward-only,
   rejecting an already-occupied bed, transfer with real history,
   vacate landing in `CLEANING`, the dashboard's real counts, cancel
   releasing a re-allocated bed, 401 without a token). All passing
-  (406 unit / 226 e2e total across the whole API — zero failures). One
+  (406 unit / 226 e2e total across the whole API - zero failures). One
   e2e setup gotcha hit and fixed: a register()-created test org has no
   `SystemRole.DOCTOR` role row (unlike the seeded demo org), which
-  `StaffOnboardingService` requires — same gotcha `prescriptions.
+  `StaffOnboardingService` requires - same gotcha `prescriptions.
   e2e-spec.ts` already worked around, mirrored here.
 - **Frontend**: `apps/web/src/lib/api/ipd.ts` (new) + 6 new pages
-  (`/dashboard/ipd` dashboard, `/wards`, `/rooms`, `/beds` — a
+  (`/dashboard/ipd` dashboard, `/wards`, `/rooms`, `/beds` - a
   color-coded Bed Grid grouped by ward/room, `?wardId=`/`?roomId=`
-  deep-linkable — `/admissions` — queue + a 5-step Admit Patient
-  wizard, `/[admissionId]` — allocate/reserve/cancel-reservation/
+  deep-linkable - `/admissions` - queue + a 5-step Admit Patient
+  wizard, `/[admissionId]` - allocate/reserve/cancel-reservation/
   vacate/transfer actions plus a merged bed-allocation-+-transfer
   history timeline). Sidebar's dormant "Wards & Beds" nav item
   (`departments.read`-gated, pointing at `/dashboard/wards`, unbuilt
@@ -1891,10 +1891,10 @@ auto-create-or-reuse-existing IPD encounter), Doctors
   + 6 web), `pnpm test:e2e` (226/226), `pnpm build` (all 6 packages).
 - **Browser-verified end to end**: a stale `node dist/main.js` process
   was squatting port 4000 from an earlier manual API smoke-test this
-  session — killed and restarted via `pnpm dev` before the browser
+  session - killed and restarted via `pnpm dev` before the browser
   walkthrough, per the standing TD-0004-addendum guidance. Playwright
   installed ad hoc into the session scratch directory again (TD-0010,
-  still open) — hit a real Radix Tabs gotcha along the way: `el.click()`
+  still open) - hit a real Radix Tabs gotcha along the way: `el.click()`
   (native DOM click) doesn't trigger Radix Tabs' tab-switch (it listens
   on `mousedown`, not `click`), so patient-page tab navigation needed a
   real Playwright `.click()` instead; and the Admit Patient wizard's
@@ -1903,21 +1903,21 @@ auto-create-or-reuse-existing IPD encounter), Doctors
   scoping to hit the right one. Logged in as `admin@medicore.demo`,
   created an ICU ward + a General ward, rooms, and beds, then ran the
   full 5-step Admit Patient wizard for a real patient (Rohan Mehta)
-  into a real bed with a real doctor (Priya Sharma) — produced
-  `ADM-MED-2026-000002` with a genuine auto-created IPD encounter —
+  into a real bed with a real doctor (Priya Sharma) - produced
+  `ADM-MED-2026-000002` with a genuine auto-created IPD encounter -
   then transferred the patient to a second bed (old bed correctly
   landed in "Cleaning"), vacated it, and confirmed the Bed Grid,
   dashboard, and the patient's new Admissions tab all reflected the
   real state. 19 screenshots under `docs/screens/` (`ipd-*.png`).
 - Updated `.ai/NEXT.md`: replaced entirely with **Milestone 12,
-  Checkpoint 12.2 — Nursing, Medication Administration & Discharge**.
+  Checkpoint 12.2 - Nursing, Medication Administration & Discharge**.
 
 ### Files modified/created
 - Schema: `packages/database/prisma/schema.prisma`,
   `packages/database/prisma/migrations/20260804120000_ipd_bed_management/`.
 - RBAC: `packages/database/prisma/seed.ts`.
 - Shared types: `packages/types/src/enums.ts` (7 new enums + `IPD` added
-  to `EncounterType`), `packages/types/src/ipd.ts` (new — full
+  to `EncounterType`), `packages/types/src/ipd.ts` (new - full
   interface/zod-schema set), `packages/types/src/index.ts`.
 - Backend: `apps/api/src/modules/ipd/*` (new: `wards.service.ts`
   (+spec)+`.controller.ts`, `rooms.service.ts`(+spec)+`.controller.ts`,
@@ -1942,7 +1942,7 @@ auto-create-or-reuse-existing IPD encounter), Doctors
 - Screenshots: `docs/screens/ipd-*.png` (19 new).
 
 ### Architectural decisions made
-See **ADR-0018** in `DECISIONS.md` for the full reasoning — summary:
+See **ADR-0018** in `DECISIONS.md` for the full reasoning - summary:
 `Ward → Room → Bed` hierarchy with `Bed`/`Admission` denormalizing
 `wardId` alongside the room-level FK; dedicated `Status` enums for
 Ward/Room/Bed rather than this repo's usual `isActive` boolean (the
@@ -1952,7 +1952,7 @@ at creation (ward-only admission, bed allocated later, is a real
 intake pattern); `Admission.encounterId` reused-if-passed /
 auto-created-otherwise, handling all four admission types through one
 path; `Admission.patientInsuranceId` is the entire "Insurance
-Admission" implementation (no new pre-auth/claim workflow — the
+Admission" implementation (no new pre-auth/claim workflow - the
 existing Insurance module UI does that once billing exists to claim
 against); `AdmissionStatus.DISCHARGED`/`ABSCONDED` kept as
 not-yet-reachable enum values (mirrors `InvoiceStatus.OVERDUE`,
@@ -1962,14 +1962,14 @@ transfers from allocation pairs.
 
 ### Known issues
 - TD-0030 (tracking only): IPD billing integration and discharge are
-  Checkpoint 12.2, not built this session — `AdmissionStatus.
+  Checkpoint 12.2, not built this session - `AdmissionStatus.
   DISCHARGED`/`ABSCONDED` exist but nothing sets them yet.
 - TD-0031: deactivating a Ward or Room doesn't check for occupied beds
   inside it, unlike `BedsService.deactivate` which already blocks on
-  `OCCUPIED` — a missing prevention check, not a data-loss bug.
+  `OCCUPIED` - a missing prevention check, not a data-loss bug.
 
 ### Recommended next task
-**Milestone 12, Checkpoint 12.2 — Nursing, Medication Administration &
+**Milestone 12, Checkpoint 12.2 - Nursing, Medication Administration &
 Discharge**, per `docs/roadmap.md` and the now-replaced `.ai/NEXT.md`.
 Do not re-implement or re-verify anything from Checkpoint 12.1.
 
@@ -1977,27 +1977,27 @@ Do not re-implement or re-verify anything from Checkpoint 12.1.
 **Overall: ~12 of 18 roadmap milestones/checkpoints fully complete
 end-to-end** (Doctors/Scheduling, Appointments, Clinical/EMR,
 Laboratory, Radiology, Pharmacy, Billing, Insurance, IPD Checkpoint
-12.1 — plus foundational auth/RBAC/multi-tenancy scaffolding). **IPD
-module: 100% for Checkpoint 12.1** (Checkpoint 12.2 — Nursing/MAR/
-Discharge — still ahead). Everything else's percentage remains
+12.1 - plus foundational auth/RBAC/multi-tenancy scaffolding). **IPD
+module: 100% for Checkpoint 12.1** (Checkpoint 12.2 - Nursing/MAR/
+Discharge - still ahead). Everything else's percentage remains
 provisional per `MODULE_STATUS.md`.
 
 ---
 
-## Session: 2026-08-04 (Milestone 11 — Insurance Management, complete)
+## Session: 2026-08-04 (Milestone 11 - Insurance Management, complete)
 
 ### What was completed
 Ran in Auto Mode. The instruction gave the full Milestone 11 deliverable
 list directly (Providers/Plans, Patient Coverage, Pre-Authorization,
 Claims + Settlement, auto-attached Claim Documents, RBAC, 6 frontend
-routes + 2 tabs, tests, docs) — materially larger than `NEXT.md`'s
+routes + 2 tabs, tests, docs) - materially larger than `NEXT.md`'s
 prior framing, which had only scoped a claim workflow reusing
 `InsuranceClaim`'s existing denormalized fields. Recorded as
 **ADR-0016**. This session picked up mid-flight: the insurance module
 already had `InsuranceProvider`/`InsurancePlan` scaffolding, the
 schema migration, and the RBAC seed changes in place from an
 interrupted prior pass (one file was left as a stray `.tmp.<pid>.
-<hash>` write) — verified and completed rather than redone. Per the
+<hash>` write) - verified and completed rather than redone. Per the
 reading policy, work touched Insurance, Billing (`InvoicesService`/
 `PaymentsService` reuse), Patients, Encounters, Laboratory, Radiology,
 Prescriptions, Prisma schema, and shared types.
@@ -2014,7 +2014,7 @@ Prescriptions, Prisma schema, and shared types.
   resource split into `insurance.providers`/`plans`/`claims`/`preauth`/
   `settlement` (the last `.manage`-gated, admin-only); `Cashier` gets
   read/create/update on providers/plans/claims/preauth plus
-  `settlement.read` only — mirrors `billing.manage`'s approver
+  `settlement.read` only - mirrors `billing.manage`'s approver
   separation.
 - **Backend** (`apps/api/src/modules/insurance/`): `InsuranceProviders
   Service`/`Controller`, `InsurancePlansService`/`Controller`,
@@ -2034,13 +2034,13 @@ Prescriptions, Prisma schema, and shared types.
 - **Audit integration**: `audit.listener.ts` gained 12 new `@OnEvent`
   handlers for pre-auth/claim lifecycle events.
 - **Tests**: 7 new unit spec files (46 tests) + `apps/api/test/
-  insurance.e2e-spec.ts` (11 e2e tests — provider/plan CRUD, the
+  insurance.e2e-spec.ts` (11 e2e tests - provider/plan CRUD, the
   one-active-coverage conflict, the full pre-auth workflow, claim
   creation with real auto-attached documents, the duplicate-invoice-
   claim conflict, the full claim workflow through a genuine settlement
   payment, an out-of-order-transition rejection, and the cashier-
   can't-settle RBAC split). All passing (359 unit / 210 e2e total
-  across the whole API — zero failures).
+  across the whole API - zero failures).
 - **Frontend**: `apps/web/src/lib/api/insurance.ts` + 6 new pages
   (`/dashboard/insurance` dashboard, `/providers`, `/plans`,
   `/preauth`, `/claims`, `/[claimId]`) + a real Patient Insurance tab
@@ -2051,7 +2051,7 @@ Prescriptions, Prisma schema, and shared types.
   db:generate`, `pnpm lint`, `pnpm typecheck`, `pnpm test` (359 api unit
   + 6 web), `pnpm test:e2e` (210/210), `pnpm build` (all 6 packages).
 - **Browser-verified end to end**: port 3000 was occupied by an
-  unrelated project's dev server (`onehaul-front-app`) this session —
+  unrelated project's dev server (`onehaul-front-app`) this session -
   rather than killing another project's process without asking, the
   user was asked and chose to run MediCore's web app on port 3100
   instead (with `FRONTEND_URL` adjusted on the API side to match, since
@@ -2066,9 +2066,9 @@ Prescriptions, Prisma schema, and shared types.
   provider" dialog sent empty strings instead of `undefined` for
   unfilled optional fields, which broke `email`'s Zod `.email()`
   format validation on every provider-creation attempt that left email
-  blank — fixed in `apps/web/src/app/dashboard/insurance/providers/
+  blank - fixed in `apps/web/src/app/dashboard/insurance/providers/
   page.tsx`.
-- Updated `.ai/NEXT.md`: replaced entirely with **Milestone 12 — IPD &
+- Updated `.ai/NEXT.md`: replaced entirely with **Milestone 12 - IPD &
   Bed Management**.
 
 ### Files modified/created
@@ -2076,7 +2076,7 @@ Prescriptions, Prisma schema, and shared types.
   `packages/database/prisma/migrations/20260802224429_insurance_management/`.
 - RBAC: `packages/database/prisma/seed.ts`.
 - Shared types: `packages/types/src/enums.ts` (7 new enums),
-  `packages/types/src/insurance.ts` (new — full interface/zod-schema
+  `packages/types/src/insurance.ts` (new - full interface/zod-schema
   set), `packages/types/src/index.ts`.
 - Backend: `apps/api/src/modules/insurance/*` (new: `insurance-
   providers.service.ts`(+spec)+`.controller.ts`, `insurance-plans.
@@ -2104,7 +2104,7 @@ Prescriptions, Prisma schema, and shared types.
 - Screenshots: `docs/screens/insurance-*.png` (12 new).
 
 ### Architectural decisions made
-See **ADR-0016** in `DECISIONS.md` for the full reasoning — summary:
+See **ADR-0016** in `DECISIONS.md` for the full reasoning - summary:
 separate `InsuranceProvider`/`InsurancePlan`/`PatientInsurance` models
 rather than extending `InsuranceClaim`'s denormalized fields; one
 active coverage per type enforced in application code, not a DB
@@ -2126,30 +2126,30 @@ scope-creeped into Billing/Audit changes this session.
   claim's own lifecycle timestamp columns, not a real per-resource
   audit-trail feed (the audit rows exist; no endpoint filters them by
   `resourceId` for a single claim yet).
-- Discharge Summary auto-attach is explicitly out of scope — no
+- Discharge Summary auto-attach is explicitly out of scope - no
   `Admission`/discharge model exists until Milestone 12 (IPD).
 
 ### Recommended next task
-**Milestone 12 — IPD & Bed Management**, per `docs/roadmap.md` and the
+**Milestone 12 - IPD & Bed Management**, per `docs/roadmap.md` and the
 now-replaced `.ai/NEXT.md`. Do not re-implement or re-verify anything
 from Milestone 11.
 
 ### Estimated project completion
 **Overall: ~11 of 17 roadmap milestones fully complete end-to-end**
 (Doctors/Scheduling, Appointments, Clinical/EMR, Laboratory, Radiology,
-Pharmacy, Billing, Insurance — plus foundational auth/RBAC/multi-tenancy
+Pharmacy, Billing, Insurance - plus foundational auth/RBAC/multi-tenancy
 scaffolding). **Insurance module: 100% for Milestone 11.** Everything
 else's percentage remains provisional per `MODULE_STATUS.md`.
 
 ---
 
-## Session: 2026-08-03 (Milestone 10 — Billing, complete)
+## Session: 2026-08-03 (Milestone 10 - Billing, complete)
 
 ### What was completed
 Ran in Auto Mode. Explicit instruction narrowed Milestone 10 to Billing
 only ("Insurance is NOT part of this milestone"), giving the full
 deliverable list (Charge Engine, Invoice, Payments, Discounts, Taxes,
-Receipts, Refunds, APIs, frontend, dashboard). Recorded as **ADR-0015** —
+Receipts, Refunds, APIs, frontend, dashboard). Recorded as **ADR-0015** -
 `docs/roadmap.md`'s Milestone 10 is now "Billing" alone; a new Milestone
 11 ("Insurance Management") carries the TPA/cashless-claim deliverables
 that used to sit under the old "Billing & Insurance" bundle, and every
@@ -2167,7 +2167,7 @@ Prisma schema, and shared types.
   field set + `finalizedAt`/`cancelledAt`/`cancelReason`. New enums:
   `ChargeSourceModule`, `ChargeStatus`, `DiscountType`,
   `DiscountApprovalStatus`, `RefundStatus`. Recorded **ADR-0015**.
-- **RBAC**: no `seed.ts` changes needed — `billing.manage` was already
+- **RBAC**: no `seed.ts` changes needed - `billing.manage` was already
   seeded and already excluded from `Cashier` (only `Hospital Admin`'s
   wildcard includes it), so the discount/refund approval workflow's
   "separate requester from approver" need was already satisfied.
@@ -2175,7 +2175,7 @@ Prisma schema, and shared types.
   `ServiceCatalogService`/`Controller`, `ChargesService`/`Controller`,
   `InvoicesService`/`Controller` (create/add-item/discount workflow/
   finalize/cancel/PDF), `PaymentsService`/`Controller` (record payment +
-  receipt PDF — repeat calls cover split/partial payment),
+  receipt PDF - repeat calls cover split/partial payment),
   `RefundsService`/`Controller` (request/approve/reject),
   `BillingDashboardService`, `AppointmentInvoiceListener` (auto-invoice
   from a completed appointment, priced from `Doctor.consultationFee` +
@@ -2188,7 +2188,7 @@ Prisma schema, and shared types.
   total across the whole API, zero failures).
 - **Frontend**: `apps/web/src/lib/api/billing.ts` + 4 new pages
   (`/dashboard/billing` dashboard, `/invoices` list+create,
-  `/invoices/[invoiceId]` detail, `/payments`, `/refunds`) — the
+  `/invoices/[invoiceId]` detail, `/payments`, `/refunds`) - the
   sidebar's pre-existing "Billing" link needed no changes.
 - **Full verification, all green**: `pnpm --filter @medicore/database
   db:generate`, `pnpm lint`, `pnpm typecheck`, `pnpm test` (313 api unit
@@ -2205,8 +2205,8 @@ Prisma schema, and shared types.
   the New-invoice dialog never navigated to the created invoice (missing
   `router.push`), and the dashboard's 7-day collection-trend bars never
   rendered any height (a CSS percentage-height-without-a-definite-parent
-  bug — fixed by giving each day column an explicit `h-32`).
-- Updated `.ai/NEXT.md`: replaced entirely with **Milestone 11 —
+  bug - fixed by giving each day column an explicit `h-32`).
+- Updated `.ai/NEXT.md`: replaced entirely with **Milestone 11 -
   Insurance Management**.
 
 ### Files modified/created
@@ -2214,7 +2214,7 @@ Prisma schema, and shared types.
   `packages/database/prisma/migrations/20260802202302_billing_management/`.
 - Shared types: `packages/types/src/enums.ts` (5 new enums, plus
   previously-missing `InvoiceType`/`PaymentStatus`),
-  `packages/types/src/billing.ts` (rewritten — full interface/zod-schema
+  `packages/types/src/billing.ts` (rewritten - full interface/zod-schema
   set for catalog/charges/invoices/payments/refunds/dashboard).
 - Backend: `apps/api/src/modules/billing/*` (new: `billing-calculations
   .ts`(+spec), `billing-invoice-pdf.ts`, `billing-receipt-pdf.ts`,
@@ -2238,7 +2238,7 @@ Prisma schema, and shared types.
   12–17), `docs/screens/billing-*.png` (17 new), all `.ai/*` files.
 
 ### Architectural decisions
-See **ADR-0015** in `DECISIONS.md` for the full reasoning — Charge Engine
+See **ADR-0015** in `DECISIONS.md` for the full reasoning - Charge Engine
 design, invoice discount/refund approval workflow, `Invoice.encounterId`,
 split/partial payments needing no schema change, the QR-placeholder
 decision, and the Milestone 10/11 roadmap split.
@@ -2252,12 +2252,12 @@ decision, and the Milestone 10/11 roadmap split.
 - TD-0026: `InvoiceStatus.OVERDUE` is never automatically set (no cron
   infra in this repo).
 - TD-0027 (tracking only): invoice/receipt QR is a disclosed placeholder,
-  not a real payment gateway — credential-blocked, not faked.
+  not a real payment gateway - credential-blocked, not faked.
 
 ### Recommended next task
-**Milestone 11 — Insurance Management** (see `.ai/NEXT.md`): insurance
+**Milestone 11 - Insurance Management** (see `.ai/NEXT.md`): insurance
 policy management, TPA/cashless claim workflow, claim status tracking,
-frontend claim management — building on the pre-existing
+frontend claim management - building on the pre-existing
 `InsuranceClaim` model and `Invoice.insuranceClaim` relation (both
 unused since the original scaffolding commit, confirmed again this
 session).
@@ -2270,13 +2270,13 @@ explicitly excluded, tracked as its own milestone).
 
 ---
 
-## Session: 2026-08-03 (Milestone 9 — Pharmacy Management, complete)
+## Session: 2026-08-03 (Milestone 9 - Pharmacy Management, complete)
 
 ### What was completed
 Ran in Auto Mode. Explicit instruction reordered the roadmap ahead of
 `.ai/NEXT.md`'s plan: build Pharmacy Management now (not Billing &
 Insurance), labeled "Milestone 9," with Billing/Insurance and general
-(non-drug) inventory explicitly out of scope. Recorded as **ADR-0014** —
+(non-drug) inventory explicitly out of scope. Recorded as **ADR-0014** -
 a reorder-and-split of `docs/roadmap.md` (see Architectural decisions
 below) rather than silently overriding `NEXT.md`. Per the reading policy,
 work touched Pharmacy, Prescriptions, Encounters, Patients, the Prisma
@@ -2287,18 +2287,18 @@ schema, and shared pharmacy types.
   scaffolding commit) were completely unused.
 - **Schema** (migration `20260802183901_pharmacy_management`, applied to
   both `medicore_dev`/`medicore_test`): `Medication` renamed/extended
-  into `Drug` (one row = one batch — batch number/expiry are catalog
+  into `Drug` (one row = one batch - batch number/expiry are catalog
   fields, not a separate table); new `DispenseStatus` enum; new
   `DispenseOrder` (one per prescription), `DispenseItem` (mirrors a
   `PrescriptionItem` 1:1), `DrugReturn` models. Recorded **ADR-0014**.
 - **RBAC**: `pharmacy.*` stays all-scope for every role (staff-facing,
-  like billing/insurance — no doctor own-scope). Pharmacist role gained
+  like billing/insurance - no doctor own-scope). Pharmacist role gained
   `prescriptions.update` so completing a dispense can complete the source
   prescription. Re-ran `pnpm db:seed`; `syncRolePermissions` synced it
   with zero manual intervention.
 - **Backend** (`apps/api/src/modules/pharmacy/`, rebuilt from scratch):
   `DrugCatalogService`/`Controller` (CRUD, stock adjustment, low-stock/
-  expiring filters) and `DispenseService`/`Controller` — create from a
+  expiring filters) and `DispenseService`/`Controller` - create from a
   prescription, batch selection (reserves stock), mark ready, partial/
   complete dispense (converts reserved → deducted, completes the
   prescription), reject/cancel (releases reservations), medicine returns
@@ -2308,7 +2308,7 @@ schema, and shared pharmacy types.
   `partially_dispensed`, `drug_return.created`).
 - **Tests**: 25 new unit tests + 20 new e2e tests
   (`apps/api/test/pharmacy.e2e-spec.ts`). All passing (267 unit / 170
-  e2e total, zero failures — no pre-existing flakes hit this run).
+  e2e total, zero failures - no pre-existing flakes hit this run).
 - **Frontend**: `apps/web/src/lib/api/pharmacy.ts` + 5 new pages
   (`/dashboard/pharmacy` dashboard, `/catalog`, `/dispense` queue,
   `/stock`, `/[dispenseId]` detail) + a "Dispense" button on the
@@ -2326,8 +2326,8 @@ schema, and shared pharmacy types.
   (order moved to "Returned"), and rejected a second order with a reason.
   19 screenshots under `docs/screens/`. Fixed one real bug found during
   this pass: "Dispensed today" excluded orders that had since moved to
-  `RETURNED` — now counts by `dispensedAt` regardless of current status.
-- Updated `.ai/NEXT.md`: replaced entirely with **Milestone 10 — Billing
+  `RETURNED` - now counts by `dispensedAt` regardless of current status.
+- Updated `.ai/NEXT.md`: replaced entirely with **Milestone 10 - Billing
   & Insurance**.
 
 ### Files modified/created
@@ -2367,45 +2367,45 @@ application-level stock reservation, and all-scope `pharmacy.*` RBAC.
 
 ### Known issues
 - **TD-0021** (Medium): drug stock reservation/deduction has no DB-level
-  concurrency protection — same class of gap as TD-0012 (appointment
+  concurrency protection - same class of gap as TD-0012 (appointment
   booking), not new. Low probability, worth fixing before multi-
   pharmacist concurrent production use.
 - **TD-0022** (Low): `lowStockOnly` catalog filter runs in application
   code (paginates in JS) rather than as a DB-level query, since it
   compares two columns on the same row.
 - **TD-0023** (tracking only): completing a dispense best-effort-
-  completes the source prescription via a swallowed cross-module call —
+  completes the source prescription via a swallowed cross-module call -
   same pattern already used elsewhere in this codebase, not a new gap.
 - No new bugs discovered this session beyond the "Dispensed today" stat
   bug caught and fixed during browser verification (see above).
 
 ### Recommended next task
-**Milestone 10 — Billing & Insurance**, per `.ai/NEXT.md` — a larger
+**Milestone 10 - Billing & Insurance**, per `.ai/NEXT.md` - a larger
 milestone bundling two sub-domains (service catalog/invoicing/payments/
 GST and insurance claims/TPA workflow); check whether a checkpoint split
 is warranted once the actual shape of the work is clearer, per the
-precedent in ADR-0005/0006/0009/0011 (but don't split preemptively —
+precedent in ADR-0005/0006/0009/0011 (but don't split preemptively -
 Laboratory, Radiology, and now Pharmacy were each completed in one
 session despite looking similarly sized on paper).
 
 ### Estimated completion
 - **Overall project**: ~60% (9 of 16 roadmap milestones fully complete:
   Doctors, Scheduling, Appointments, Medical Records/EMR, Prescriptions,
-  Laboratory, Radiology, and now Pharmacy — all backend+frontend+tests+
+  Laboratory, Radiology, and now Pharmacy - all backend+frontend+tests+
   docs; everything else still provisional/unaudited). Roadmap grew from
   15 to 16 milestones this session (General Inventory split out as its
-  own Milestone 11 — see ADR-0014).
+  own Milestone 11 - see ADR-0014).
 - **Pharmacy module**: 100% for Milestone 9's scope (general inventory
   and pharmacy↔billing integration are explicitly out of scope, deferred
   to Milestones 11 and 10 respectively).
 
 ---
 
-## Session: 2026-08-02 (Milestone 8 — Radiology Management, complete)
+## Session: 2026-08-02 (Milestone 8 - Radiology Management, complete)
 
 ### What was completed
 Ran in Auto Mode with an explicit, detailed instruction for Milestone 8
-that asked for a full Radiology Information System — materially more
+that asked for a full Radiology Information System - materially more
 than `.ai/NEXT.md`'s narrower framing (no catalog, no versioned reports).
 Per `CLAUDE.md`'s guidance on new information contradicting a settled
 decision, this was recorded as a scope-expansion ADR (ADR-0013) rather
@@ -2417,7 +2417,7 @@ touched.
 - Confirmed `apps/api/src/modules/radiology/` was still the 3-line no-op
   scaffold, and that `RadiologyOrder`/`RadiologyStatus`/`Priority`
   already existed in `schema.prisma` from the original scaffolding
-  commit with no `encounterId` and no catalog concept — matching what
+  commit with no `encounterId` and no catalog concept - matching what
   `NEXT.md` flagged.
 - **Schema** (migration `20260801202731_radiology_management`, applied
   to both `medicore_dev`/`medicore_test`): new `RadiologyCatalogItem`
@@ -2436,7 +2436,7 @@ touched.
   `syncRolePermissions` synced everything with zero manual intervention.
 - **Backend** (`apps/api/src/modules/radiology/`, rebuilt from scratch):
   `RadiologyCatalogService`/`Controller` and `RadiologyOrdersService`/
-  `Controller` — order CRUD, scheduling (dedicated action, supports
+  `Controller` - order CRUD, scheduling (dedicated action, supports
   reschedule), start/complete study, versioned report authoring
   (`COMPLETED`-only) with a sequential verify → release workflow
   (release requires verification), external report-file upload, a
@@ -2449,9 +2449,9 @@ touched.
   `RadiologyOrder`.
 - **Tests**: 34 new unit tests (`radiology-catalog.service.spec.ts`,
   `radiology-orders.service.spec.ts`) + 29 new e2e tests
-  (`apps/api/test/radiology.e2e-spec.ts` — full lifecycle, catalog CRUD,
+  (`apps/api/test/radiology.e2e-spec.ts` - full lifecycle, catalog CRUD,
   external report-file path, rejection/cancellation, dashboard stats,
-  own-scope enforcement). All passing (242 unit / 150 e2e total — the
+  own-scope enforcement). All passing (242 unit / 150 e2e total - the
   one other failure, `appointments.e2e-spec.ts`'s walk-in test, is the
   pre-existing unrelated TD-0017 midnight flake, confirmed by re-running
   it in isolation outside the ~23:30–23:59 window).
@@ -2480,7 +2480,7 @@ touched.
   attachment, and confirmed both the org-wide queue and the patient-
   timeline "Recent imaging" panel render correctly. 19 screenshots saved
   under `docs/screens/`.
-- Updated `.ai/NEXT.md`: replaced entirely with **Milestone 9 — Billing
+- Updated `.ai/NEXT.md`: replaced entirely with **Milestone 9 - Billing
   & Insurance**.
 
 ### Files modified/created
@@ -2520,45 +2520,45 @@ activated Radiology Technician role.
 
 ### Known issues
 - **TD-0019** (tracking only): AI image interpretation and real
-  PACS/DICOM integration are explicitly out of scope by instruction —
+  PACS/DICOM integration are explicitly out of scope by instruction -
   not a defect.
-- **TD-0020** (Low): no technician-picker UI (raw user ID field only) —
+- **TD-0020** (Low): no technician-picker UI (raw user ID field only) -
   no staff-directory endpoint exists yet for any module to build one on.
 - No new bugs discovered this session. TD-0017 (appointment walk-in
   midnight flake) remains open and unrelated to this module.
 
 ### Recommended next task
-**Milestone 9 — Billing & Insurance**, per `.ai/NEXT.md` — a larger
+**Milestone 9 - Billing & Insurance**, per `.ai/NEXT.md` - a larger
 milestone bundling two sub-domains (service catalog/invoicing/payments/
 GST and insurance claims/TPA workflow); check whether a checkpoint split
 is warranted once the actual shape of the work is clearer, per the
-precedent in ADR-0005/0006/0009/0011 (but don't split preemptively —
+precedent in ADR-0005/0006/0009/0011 (but don't split preemptively -
 Laboratory and Radiology were each completed in one session despite
 looking similarly sized on paper).
 
 ### Estimated completion
 - **Overall project**: ~53% (8 of 15 roadmap milestones fully complete:
   Doctors, Scheduling, Appointments, Medical Records/EMR, Prescriptions,
-  Laboratory, and now Radiology — all backend+frontend+tests+docs;
+  Laboratory, and now Radiology - all backend+frontend+tests+docs;
   everything else still provisional/unaudited).
 - **Radiology module**: 100% for Milestone 8's scope (AI interpretation/
   PACS explicitly and only excluded by instruction, tracked in TD-0019).
-- **Billing/Insurance modules**: 0% — not started, next up.
+- **Billing/Insurance modules**: 0% - not started, next up.
 
 ---
 
-## Session: 2026-08-02 (Milestone 7 — Laboratory Management, complete)
+## Session: 2026-08-02 (Milestone 7 - Laboratory Management, complete)
 
 ### What was completed
 Picked up `.ai/NEXT.md` exactly as left by the prior session (explicit
 user go-ahead to resume). Completed **all** of Milestone 7 (Laboratory
-Management) in one session — no checkpoint split was needed. Per the
+Management) in one session - no checkpoint split was needed. Per the
 reading policy, scope stayed to Laboratory, Encounter (consultation-order
 link), Patients, and shared types; Radiology (`apps/api/src/modules/radiology/`,
 any `Radiology*` Prisma model, radiology frontend) was not touched, per
 the explicit exclusion in `NEXT.md`/ADR-0011.
 
-- Audited `apps/api/src/modules/laboratory/` first — confirmed it was
+- Audited `apps/api/src/modules/laboratory/` first - confirmed it was
   still the 3-line no-op scaffold (same pattern hit before every prior
   milestone's module), and that `LabTest`/`LabTestItem` already existed
   in `schema.prisma` from the original scaffolding commit but had no
@@ -2575,7 +2575,7 @@ the explicit exclusion in `NEXT.md`/ADR-0011.
   from all-scope to own-scope for the Doctor role in `seed.ts`
   (`OWN_SCOPE_PERMISSIONS` + `ROLE_SPECS`), mirroring `prescriptions.*`
   exactly. Lab Technician/Nurse deliberately left all-scope (unchanged)
-  — they need to see every order in the queue, not just ones a specific
+  - they need to see every order in the queue, not just ones a specific
   doctor placed. Re-ran `pnpm db:seed` against `medicore_dev`; `
   syncRolePermissions` (TD-0011's fix) topped up the role correctly with
   zero manual intervention, same as every session since it landed.
@@ -2594,7 +2594,7 @@ the explicit exclusion in `NEXT.md`/ADR-0011.
   (`audit.service.spec.ts` updated to match).
 - **Tests**: 33 new unit tests (`abnormal-flagging.spec.ts`,
   `lab-catalog.service.spec.ts`, `lab-tests.service.spec.ts`) + 19 new
-  e2e tests (`apps/api/test/laboratory.e2e-spec.ts`) — full order
+  e2e tests (`apps/api/test/laboratory.e2e-spec.ts`) - full order
   lifecycle, catalog CRUD, own-scope enforcement, abnormal-value cases
   (normal/HIGH/LOW/CRITICAL_HIGH/CRITICAL_LOW/non-numeric), invalid
   status transitions. All passing (208 unit / 121 e2e total, no flakes).
@@ -2603,7 +2603,7 @@ the explicit exclusion in `NEXT.md`/ADR-0011.
   patient timeline + a new `/dashboard/laboratory` org-wide queue page
   with a catalog-management dialog.
 - **AI-powered lab report summarization: explicitly deferred**
-  (**TD-0018**, credential-blocked) — verified no code anywhere reads
+  (**TD-0018**, credential-blocked) - verified no code anywhere reads
   `OPENAI_API_KEY`/`ANTHROPIC_API_KEY`/`AI_PROVIDER` despite those names
   existing as unset placeholders in `.env.example`; `apps/api/src/modules/ai/`
   is still a 3-file no-op scaffold. Not faked, per `CLAUDE.md`.
@@ -2612,7 +2612,7 @@ the explicit exclusion in `NEXT.md`/ADR-0011.
   6 web), `pnpm test:e2e` (121/121 across 9 suites), `pnpm build` (all 6
   packages, `turbo run build --force`).
 - **Browser-verified end to end**: two stale `pnpm dev` processes were
-  running from before this session's build (TD-0004 addendum) — killed
+  running from before this session's build (TD-0004 addendum) - killed
   the port-4000/3000 listeners and restarted `pnpm dev` fresh before
   driving the browser check. `chromium-cli` is not available in this
   environment (checked, per TD-0010); installed `playwright@1.62.1` ad
@@ -2624,7 +2624,7 @@ the explicit exclusion in `NEXT.md`/ADR-0011.
   70–110 range) and confirmed a "Critical high" badge rendered correctly,
   downloaded a genuine PDF report. 9 screenshots under `docs/screens/`
   (`lab-*.png`).
-- Updated `.ai/NEXT.md`: replaced entirely with **Milestone 8 —
+- Updated `.ai/NEXT.md`: replaced entirely with **Milestone 8 -
   Radiology Management**.
 
 ### Files modified/created
@@ -2664,9 +2664,9 @@ Doctor role (Lab Technician/Nurse stay all-scope).
   midnight flake) remains open and unrelated to this module.
 
 ### Recommended next task
-**Milestone 8 — Radiology Management**, per `.ai/NEXT.md` (radiology
+**Milestone 8 - Radiology Management**, per `.ai/NEXT.md` (radiology
 order creation from consultation, report upload/viewing, frontend order
-queue) — a smaller milestone than Laboratory, likely completable in one
+queue) - a smaller milestone than Laboratory, likely completable in one
 session by reusing the Laboratory module's exact patterns
 (`RadiologyOrder` already exists in `schema.prisma` from the original
 scaffolding commit, alongside `RadiologyStatus`/`Priority`).
@@ -2674,11 +2674,11 @@ scaffolding commit, alongside `RadiologyStatus`/`Priority`).
 ### Estimated completion
 - **Overall project**: ~46% (7 of 15 roadmap milestones fully complete:
   Doctors, Scheduling, Appointments, Medical Records/EMR, Prescriptions,
-  and now Laboratory — all backend+frontend+tests+docs; everything else
+  and now Laboratory - all backend+frontend+tests+docs; everything else
   still provisional/unaudited).
 - **Laboratory module**: 100% for Milestone 7's scope (AI summarization
   explicitly and only excluded, tracked in TD-0018).
-- **Radiology module**: 0% — not started, explicitly out of scope this
+- **Radiology module**: 0% - not started, explicitly out of scope this
   session.
 
 ---
@@ -2690,26 +2690,26 @@ Immediately after Checkpoint 6.2 (below) was marked complete and the
 autonomous loop had scheduled its next wakeup to auto-continue into
 Milestone 7, the user explicitly instructed: **stop after Milestone 6,
 do not automatically begin Milestone 7.** The scheduled loop wakeup was
-cancelled (`ScheduleWakeup stop:true`) — no further milestones will be
+cancelled (`ScheduleWakeup stop:true`) - no further milestones will be
 started without explicit user instruction to resume.
 
-The user also asked for `NEXT.md` to point to "Milestone 7 — Laboratory
-Management" — since `docs/roadmap.md`'s existing Milestone 7 was titled
+The user also asked for `NEXT.md` to point to "Milestone 7 - Laboratory
+Management" - since `docs/roadmap.md`'s existing Milestone 7 was titled
 "Laboratory & Radiology" (bundling both sub-domains), this was flagged
 back to the user rather than guessed at (title-only rename vs. an actual
 scope split). The user chose to **narrow scope**: Laboratory and
 Radiology are now separate milestones.
 
 - Recorded **ADR-0011**: `docs/roadmap.md`'s Milestone 7 split into
-  **Milestone 7 — Laboratory Management** (Week 8: lab catalog, orders
+  **Milestone 7 - Laboratory Management** (Week 8: lab catalog, orders
   from consultation, sample tracking, result entry + PDF, abnormal-value
   flagging, AI summarization, frontend order list/result form) and a new
-  **Milestone 8 — Radiology Management** (Week 9: radiology order
+  **Milestone 8 - Radiology Management** (Week 9: radiology order
   creation, report upload/viewing, frontend order queue). Milestones 8–14
   (Billing & Insurance through Production Hardening) renumbered to 9–15,
-  Week labels bumped by one each — the same insert-and-renumber pattern
+  Week labels bumped by one each - the same insert-and-renumber pattern
   ADR-0006 used when Appointment Management was inserted as Milestone 5.
-- Rewrote `.ai/NEXT.md`: now describes **Milestone 7 — Laboratory
+- Rewrote `.ai/NEXT.md`: now describes **Milestone 7 - Laboratory
   Management only**, explicitly excludes Radiology deliverables/module/
   Prisma models from this task's scope, and carries a standing-override
   note that the autonomous loop is paused pending explicit user
@@ -2717,7 +2717,7 @@ Radiology are now separate milestones.
 - Updated `.ai/PROJECT_CONTEXT.md`'s Milestone 6 section to reference the
   new Milestone 7/8 split and the paused loop, instead of the old
   "Laboratory & Radiology" single-milestone reference.
-- **No application code changed in this step** — this was purely a
+- **No application code changed in this step** - this was purely a
   roadmap/documentation reconciliation plus stopping the autonomous loop.
 
 ### Files modified/created
@@ -2731,43 +2731,43 @@ None new. See the Checkpoint 6.2 entry below for TD-0016/TD-0017.
 
 ### Recommended next task
 **Do not start automatically.** When the user gives explicit go-ahead,
-pick up **Milestone 7 — Laboratory Management** per `.ai/NEXT.md`.
+pick up **Milestone 7 - Laboratory Management** per `.ai/NEXT.md`.
 
 ### Estimated completion
-Unchanged from the Checkpoint 6.2 entry below — Milestone 6 fully
+Unchanged from the Checkpoint 6.2 entry below - Milestone 6 fully
 complete; Milestone 7 (now Laboratory-only) and Milestone 8 (new,
 Radiology) both at 0%, not started.
 
 ---
 
-## Session: 2026-08-01 (Milestone 6, Checkpoint 6.2 — Orders & Prescriptions, completed; Milestone 6 fully complete; autonomous loop iteration)
+## Session: 2026-08-01 (Milestone 6, Checkpoint 6.2 - Orders & Prescriptions, completed; Milestone 6 fully complete; autonomous loop iteration)
 
 ### What was completed
 This is the `/loop`'s next automatic iteration (dynamic self-pacing, woken
 by the standing autonomous-continuation instruction), continuing directly
 from the Checkpoint 6.1 session below with no user interaction in between.
 Per `CLAUDE.md`'s reading policy, only the Prescription model (+its FK to
-Encounter), Patient, and shared types were inspected — no Laboratory/
+Encounter), Patient, and shared types were inspected - no Laboratory/
 Pharmacy/Billing/Radiology/AI modules were touched.
 
 - Recorded **ADR-0010**: reuse the pre-existing `Prescription`/
   `PrescriptionItem` Prisma models from the original scaffolding commit
   (confirmed zero rows before changing anything) rather than redesigning
-  — their shape already matched the requirement. `Prescription.status`
+  - their shape already matched the requirement. `Prescription.status`
   converted from a plain `String @default("ACTIVE")` to a proper
   `PrescriptionStatus` enum (migration
   `20260801175600_prescription_status_enum`), matching the
   `EncounterStatus`/`AppointmentStatus` convention.
 - **Self-caught bug** (found while designing own-scope enforcement, before
   writing any tests): `seed.ts`'s `Doctor` role was never granted
-  `medical_records.update` or `prescriptions.update` at `own` scope — a
+  `medical_records.update` or `prescriptions.update` at `own` scope - a
   real `doctor@medicore.demo` login could not transition their own
   encounter's or prescription's status, despite the Checkpoint 6.1 API
   correctly supporting it. e2e tests didn't catch this because they grant
   permissions directly rather than through `seed.ts`. Fixed in `seed.ts`
   and verified the fix synced correctly via a real `pnpm db:seed` run.
 - **Backend** (`apps/api/src/modules/prescriptions/`, rebuilt from a
-  3-line no-op scaffold): `PrescriptionsService`/`Controller` — create
+  3-line no-op scaffold): `PrescriptionsService`/`Controller` - create
   (derives patient/doctor from the encounter, generates
   `RX-<orgPrefix>-<year>-NNNNNN` via the same advisory-lock pattern as
   `Appointment.appointmentNumber`), paginated/filterable list, get-by-id,
@@ -2779,7 +2779,7 @@ Pharmacy/Billing/Radiology/AI modules were touched.
   well-known interaction pairs, matched case-insensitively across a new
   prescription's items and the patient's other active prescriptions.
   Non-blocking, explicitly labeled "basic, non-exhaustive" in the API
-  response and UI — no real terminology service exists in this repo
+  response and UI - no real terminology service exists in this repo
   (documented as TD-0016).
 - **Tests:** 19 new unit tests (`drug-interactions.spec.ts` +
   `prescriptions.service.spec.ts`) + 14 new e2e tests
@@ -2787,7 +2787,7 @@ Pharmacy/Billing/Radiology/AI modules were touched.
   rejection, list, get-by-id, PDF headers, status transitions, own-scope
   enforcement, 401). 175 unit + 102 e2e total; all passing except one
   **pre-existing, unrelated** time-of-day flake in the appointments
-  walk-in e2e test (documented as TD-0017 — its all-hours schedule
+  walk-in e2e test (documented as TD-0017 - its all-hours schedule
   fixture caps at 23:45, so no slot remains when the suite runs between
   ~23:30–23:59 local time; out of this checkpoint's scope to fix).
 - **Frontend:** `apps/web/src/lib/api/prescriptions.ts` (incl. a
@@ -2808,11 +2808,11 @@ Pharmacy/Billing/Radiology/AI modules were touched.
   originating encounter. 6 screenshots under `docs/screens/`.
 - **Hit the same TD-0004-pattern stale-dev-server issue a third time**:
   restarted both `pnpm dev` processes after the verification build,
-  before the browser walkthrough — by now a well-understood, quick fix.
+  before the browser walkthrough - by now a well-understood, quick fix.
 - Checkpoint 6.2 is genuinely complete per every item in `CLAUDE.md`'s
   Milestone Completion Checklist. Since Checkpoint 6.1 was already
   complete, **Milestone 6 (Clinical: Medical Records) is now fully
-  complete.** `NEXT.md` replaced with **Milestone 7 — Laboratory &
+  complete.** `NEXT.md` replaced with **Milestone 7 - Laboratory &
   Radiology**.
 
 ### Files modified/created
@@ -2836,18 +2836,18 @@ Pharmacy/Billing/Radiology/AI modules were touched.
   ("Recent prescriptions" panel), `.ai/*`.
 - Database: applied migration `20260801175600_prescription_status_enum` to
   both `medicore_dev`/`medicore_test`. Created 2 real prescriptions via the
-  browser walkthrough (Aspirin+Warfarin — Active; Cetirizine —
-  Discontinued) against the existing demo patient/encounter — left in
+  browser walkthrough (Aspirin+Warfarin - Active; Cetirizine -
+  Discontinued) against the existing demo patient/encounter - left in
   place as demo data.
 
 ### Known issues (not blocking, out of scope for this checkpoint)
 - TD-0016: drug-interaction check is a small bundled list, not a real
-  terminology service — disclosed, non-blocking.
+  terminology service - disclosed, non-blocking.
 - TD-0017: appointments walk-in e2e test flakes in a narrow ~30-minute
-  window near midnight — pre-existing, unrelated to this checkpoint.
+  window near midnight - pre-existing, unrelated to this checkpoint.
 
 ### Recommended next task
-**Milestone 7 — Laboratory & Radiology**, per `.ai/NEXT.md`.
+**Milestone 7 - Laboratory & Radiology**, per `.ai/NEXT.md`.
 
 ### Estimated completion
 Overall project: still provisional outside audited modules (see
@@ -2859,12 +2859,12 @@ checkpoints. Prescriptions module: 100% for Checkpoint 6.2. Milestone 6:
 
 ---
 
-## Session: 2026-08-01 (Milestone 6, Checkpoint 6.1 — Electronic Medical Records / EMR Foundation, completed)
+## Session: 2026-08-01 (Milestone 6, Checkpoint 6.1 - Electronic Medical Records / EMR Foundation, completed)
 
 ### What was completed
 Explicit, detailed instruction scoped this session to the EMR foundation
 only: Encounter, Clinical Notes (versioned), Vitals, Diagnosis, Procedures,
-Attachments — explicitly excluding Laboratory/Pharmacy/Billing/Radiology/AI,
+Attachments - explicitly excluding Laboratory/Pharmacy/Billing/Radiology/AI,
 and, within Clinical itself, deferring Prescriptions/Orders to Checkpoint
 6.2. Per the reading-policy restriction, only the Patient/Doctor/Appointment
 modules, the Prisma schema, and shared types were inspected.
@@ -2872,7 +2872,7 @@ modules, the Prisma schema, and shared types were inspected.
 - Recorded **ADR-0008**: replaced the flat `MedicalRecord` scaffold with
   `Encounter` as the central EMR entity, with every clinical facet as its
   own child table (`ClinicalNote`, `Vital`, `Diagnosis`, `Procedure`,
-  `EncounterAttachment`) rather than flat columns/JSON blobs — the old
+  `EncounterAttachment`) rather than flat columns/JSON blobs - the old
   model's shape genuinely couldn't represent versioned notes or
   multiple-diagnoses-per-encounter, unlike `Appointment` in Milestone 5
   which was reusable as-is. `ClinicalNote` is append-only by construction
@@ -2880,12 +2880,12 @@ modules, the Prisma schema, and shared types were inspected.
   overwrite historical notes." ICD-10 is an explicit placeholder field, not
   a validated lookup (no terminology service configured in this repo).
 - Recorded **ADR-0009**: Milestone 6 split into Checkpoint 6.1 (this
-  session) / 6.2 (Orders & Prescriptions, next) — same pattern as
+  session) / 6.2 (Orders & Prescriptions, next) - same pattern as
   Milestone 4 (ADR-0005) and Milestone 5 (ADR-0006).
 - New migration `20260801171211_emr_foundation`, applied to both
   `medicore_dev`/`medicore_test`. Renamed `Prescription.medicalRecordId` →
   `encounterId` and the `Patient`/`Doctor`/`Organization` back-relations
-  (`medicalRecords` → `encounters`) — confirmed via grep the blast radius
+  (`medicalRecords` → `encounters`) - confirmed via grep the blast radius
   was contained to one `patients.service.ts` summary-count query plus its
   test mock before making the change.
 - **Backend** (`apps/api/src/modules/medical-records/`, rebuilt from a
@@ -2893,7 +2893,7 @@ modules, the Prisma schema, and shared types were inspected.
   paginated/filterable list, get-by-id, status transitions via a fixed
   `ALLOWED_TRANSITIONS` map), `ClinicalNotesService`/`Controller`
   (append-only versioning), `VitalsService`/`Controller` (server-computed
-  BMI, cross-encounter trend query via the `encounter` relation — `Vital`
+  BMI, cross-encounter trend query via the `encounter` relation - `Vital`
   has no direct `organizationId`/`patientId` column), `DiagnosesService`/
   `ProceduresService`/`Controller`s (typed CRUD), `EncounterAttachmentsService`/
   `Controller` (mirrors the existing `DoctorDocument` pattern exactly,
@@ -2903,7 +2903,7 @@ modules, the Prisma schema, and shared types were inspected.
   audit + pagination/filtering.
 - **Self-caught security fix** (found while writing the e2e test, not
   reported by anyone): `EncountersController.getById` initially had zero
-  own-scope enforcement — any `.own`-scoped doctor could read any
+  own-scope enforcement - any `.own`-scoped doctor could read any
   encounter by ID regardless of whose patient it was. Fixed with the same
   `assertOwnScopeOk` check already used elsewhere in the module.
 - **Tests:** 30 new unit tests (6 service spec files) + 21 new e2e tests
@@ -2913,13 +2913,13 @@ modules, the Prisma schema, and shared types were inspected.
   delete, valid/invalid status transitions, own-scope 403s, and 401
   without a token. 156 unit + 88 e2e total, all passing.
 - **Frontend:** new `apps/web/src/lib/api/medical-records.ts` client, and
-  two pages — `/dashboard/medical-records` (patient timeline: filters,
+  two pages - `/dashboard/medical-records` (patient timeline: filters,
   weight-trend chart, new-encounter dialog) and
   `/dashboard/medical-records/[encounterId]` (SOAP-style tabs: Subjective
-  — clinical notes with 2s-debounced autosave + version history dialog;
-  Objective — vitals form + live BMI preview + BMI trend chart +
-  attachments; Assessment — diagnoses; Plan — procedures + read-only
-  encounter notes — plus a header status-transition action). No debounce
+  - clinical notes with 2s-debounced autosave + version history dialog;
+  Objective - vitals form + live BMI preview + BMI trend chart +
+  attachments; Assessment - diagnoses; Plan - procedures + read-only
+  encounter notes - plus a header status-transition action). No debounce
   hook existed in the codebase; used inline `useEffect`/`setTimeout`
   rather than introducing one for a single call site.
 - **Full verification, all green:** `pnpm lint`, `pnpm typecheck`, `pnpm
@@ -2935,7 +2935,7 @@ modules, the Prisma schema, and shared types were inspected.
 - **Hit and resolved a TD-0004-pattern issue twice in the same session**:
   running the full-monorepo `turbo run build --force` while `pnpm dev` was
   still running clobbered both the running `apps/web` (`next dev`) and
-  `apps/api` (`nest start --watch`) processes' compiled output in place —
+  `apps/api` (`nest start --watch`) processes' compiled output in place -
   the frontend served mismatched dev/prod chunks and the API 404'd on
   every brand-new `/encounters` route until both dev servers were killed
   and restarted. No code changes were needed; documented as a TD-0004
@@ -2943,7 +2943,7 @@ modules, the Prisma schema, and shared types were inspected.
 - Checkpoint 6.1 is genuinely complete per every item in `CLAUDE.md`'s
   Milestone Completion Checklist (backend, frontend, tests, lint,
   typecheck, build, docs, screenshots). `NEXT.md` replaced with
-  **Checkpoint 6.2 — Orders & Prescriptions**.
+  **Checkpoint 6.2 - Orders & Prescriptions**.
 
 ### Files modified/created
 - New: `packages/database/prisma/migrations/20260801171211_emr_foundation/`,
@@ -2969,21 +2969,21 @@ modules, the Prisma schema, and shared types were inspected.
   → `encounter` in the summary-count query), `.ai/*`.
 - Database: applied migration `20260801171211_emr_foundation` to both
   `medicore_dev`/`medicore_test`. Created one real encounter (patient
-  Anita Desai / Dr. Ravi Kumar) via the browser walkthrough — left in
+  Anita Desai / Dr. Ravi Kumar) via the browser walkthrough - left in
   place as demo data, now `Completed` with a full note/vitals/diagnosis/
   procedure/attachment trail.
 
 ### Known issues (not blocking, out of scope for this checkpoint)
 - A background `POST /api/v1/auth/refresh` fires on initial page load and
   403s with `Invalid or missing CSRF token`; login still succeeds
-  immediately after. Not investigated — auth module is out of scope per
+  immediately after. Not investigated - auth module is out of scope per
   this session's reading-policy restriction. See TECH_DEBT TD-0004
   addendum.
-- ICD-10 is free-text (placeholder field), no terminology lookup — by
+- ICD-10 is free-text (placeholder field), no terminology lookup - by
   design per ADR-0008, future scope noted there.
 
 ### Recommended next task
-**Checkpoint 6.2 — Orders & Prescriptions**, per `.ai/NEXT.md`.
+**Checkpoint 6.2 - Orders & Prescriptions**, per `.ai/NEXT.md`.
 
 ### Estimated completion
 Overall project: still provisional outside audited modules (see
@@ -2993,7 +2993,7 @@ Foundation are 100% complete for their checkpoints. Medical-records module:
 
 ---
 
-## Session: 2026-08-01 (Milestone 5, Checkpoint 5.2 — Queue & Recurring, completed; Milestone 5 fully complete; autonomous loop iteration)
+## Session: 2026-08-01 (Milestone 5, Checkpoint 5.2 - Queue & Recurring, completed; Milestone 5 fully complete; autonomous loop iteration)
 
 ### What was completed
 This is the `/loop`'s second automatic iteration (dynamic self-pacing,
@@ -3002,7 +3002,7 @@ woken by its own `ScheduleWakeup`), continuing directly from the Checkpoint
 
 - Recorded **ADR-0007**: `Appointment.isWalkIn: Boolean` (not a new
   `AppointmentType`) + `Appointment.recurrenceGroupId: String?` (independent
-  rows per occurrence, no rule-expansion table) — a real design choice this
+  rows per occurrence, no rule-expansion table) - a real design choice this
   checkpoint needed, resolved with reasonable defaults rather than stopping
   to ask, per the loop's instructions.
 - New migration `20260731195629_appointment_walkin_recurrence`
@@ -3023,18 +3023,18 @@ woken by its own `ScheduleWakeup`), continuing directly from the Checkpoint
   existing booking dialog + Walk-in/Recurring badges in the queue table.
 - Full verification green (lint/typecheck/test/test:e2e/build) and
   browser-verified: booked a walk-in for a demo all-hours doctor (correctly
-  auto-slotted relative to real wall-clock time — this session ran at
+  auto-slotted relative to real wall-clock time - this session ran at
   01:39 AM IST on a Saturday, so a real schedule wouldn't have had any
   availability; created a throwaway demo doctor with a 00:00–23:45/7-day
   schedule specifically so the walkthrough would succeed regardless of
   when it ran) and booked a 4-occurrence weekly recurring series (all 4
   succeeded). 5 new screenshots under `docs/screens/`.
-- **SMS confirmations were not attempted** — no SMS provider configured
+- **SMS confirmations were not attempted** - no SMS provider configured
   anywhere in this repo, called out as credential-blocked per the loop's
   own instructions (CLAUDE.md prohibits faking clinical/billing/auth logic
   to "make it work," and a fake SMS send would be exactly that). Recorded
   as TD-0015 (tracking only, not a defect) rather than silently dropped.
-- Also recorded TD-0014 (recurring series can't be bulk-edited/cancelled —
+- Also recorded TD-0014 (recurring series can't be bulk-edited/cancelled -
   a real but low-severity usability gap, `recurrenceGroupId` already
   supports building this later).
 - **Confirmed TD-0011's fix holds up**: `pnpm db:seed` for this checkpoint
@@ -3042,14 +3042,14 @@ woken by its own `ScheduleWakeup`), continuing directly from the Checkpoint
   came up.
 - **Reconciled `docs/roadmap.md`'s milestone-numbering mismatch**, flagged
   in `NEXT.md` twice across the last two sessions without being acted on:
-  inserted "Milestone 5 — Appointment Management" as the roadmap's actual
+  inserted "Milestone 5 - Appointment Management" as the roadmap's actual
   Milestone 5 (with Checkpoint 5.1/5.2 status filled in), and renumbered
   the old Milestones 5–13 to 6–14 (bumping their Week labels by one each).
   `NEXT.md` and `docs/roadmap.md` no longer disagree.
 - Since Checkpoint 5.2's non-blocked scope is genuinely complete and
   verified, and SMS is explicitly documented as deferred rather than
   silently dropped, **Milestone 5 as a whole is now marked complete.**
-  `NEXT.md` replaced with **Milestone 6 — Clinical: Medical Records**.
+  `NEXT.md` replaced with **Milestone 6 - Clinical: Medical Records**.
 
 ### Files modified/created
 - New: `packages/database/prisma/migrations/20260731195629_appointment_walkin_recurrence/`,
@@ -3071,20 +3071,20 @@ woken by its own `ScheduleWakeup`), continuing directly from the Checkpoint
   inserted, 5–13 renumbered to 6–14), `.ai/*`.
 - Database: applied migration `20260731195629_appointment_walkin_recurrence`
   to both `medicore_dev`/`medicore_test`. Created one demo doctor ("Ravi
-  Kumar", all-hours schedule) via the API for browser verification — left
+  Kumar", all-hours schedule) via the API for browser verification - left
   in place as demo data.
 
 ### Architectural decisions
-- ADR-0007 (see above) — the only new one this iteration.
+- ADR-0007 (see above) - the only new one this iteration.
 
 ### Known issues
 - TD-0014 (recurring series bulk edit/cancel not supported, Low) and
   TD-0015 (SMS deferred, tracking-only) are new.
 - All previously open TDs remain open except TD-0011 (confirmed fixed,
-  again, this session) — see `TECH_DEBT.md` for the full list.
+  again, this session) - see `TECH_DEBT.md` for the full list.
 
 ### Recommended next task
-See `.ai/NEXT.md`: **Milestone 6 — Clinical: Medical Records** (SOAP notes,
+See `.ai/NEXT.md`: **Milestone 6 - Clinical: Medical Records** (SOAP notes,
 vitals, diagnosis/ICD-10, prescriptions). The autonomous loop remains
 active and will continue into it automatically absent a genuine blocker.
 
@@ -3094,12 +3094,12 @@ active and will continue into it automatically absent a genuine blocker.
 - **Milestone 4 (Doctor Management & Scheduling): 100% complete.**
 - **Milestone 5 (Appointment Management): 100% complete** (SMS explicitly
   deferred/credential-blocked, not counted against completion per the same
-  standard applied elsewhere — a feature requiring external credentials
+  standard applied elsewhere - a feature requiring external credentials
   the user hasn't supplied is out of scope, not "incomplete work").
 
 ---
 
-## Session: 2026-08-01 (Milestone 5, Checkpoint 5.1 — Appointment Core Booking, completed; autonomous milestone loop)
+## Session: 2026-08-01 (Milestone 5, Checkpoint 5.1 - Appointment Core Booking, completed; autonomous milestone loop)
 
 ### What was completed
 This session began with an explicit instruction to continue implementing
@@ -3109,7 +3109,7 @@ stopping between milestones. Set up via the `/loop` skill in dynamic
 (self-pacing) mode.
 
 - Recorded **ADR-0006**: appointment booking reuses `AvailabilityService`
-  directly (no changes to its public shape — confirming the design intent
+  directly (no changes to its public shape - confirming the design intent
   its own comment anticipated back in Checkpoint 4.2); Milestone 5 split
   into Checkpoint 5.1 (this session) and 5.2 (deferred: walk-in queue
   reorg, recurring appointments, SMS). This also resolved TD-0009's
@@ -3117,11 +3117,11 @@ stopping between milestones. Set up via the `/loop` skill in dynamic
 - Discovered the `appointments` module was a 3-line no-op scaffold, but
   the `Appointment` Prisma model, `AppointmentType`/`AppointmentStatus`
   enums, and most of `packages/types/src/appointment.ts` already existed
-  unused from the original scaffolding commit — reused them as-is per
+  unused from the original scaffolding commit - reused them as-is per
   CLAUDE.md's "code is ground truth" rule rather than redesigning.
 - Implemented full backend: conflict-aware booking, a validated status
   state machine, available-slots endpoint, email confirmation (reusing
-  `EmailService`'s existing console-fallback behavior — not
+  `EmailService`'s existing console-fallback behavior - not
   credential-blocked), own-scope permission for doctors, and audit
   integration (both capture and the existing per-doctor audit-timeline
   query). See `PROGRESS.md` 2026-08-01 for full file-level detail.
@@ -3131,7 +3131,7 @@ stopping between milestones. Set up via the `/loop` skill in dynamic
   selection) at `apps/web/src/app/dashboard/appointments/page.tsx`.
 - Full verification green: lint, typecheck, test, test:e2e, build.
   Browser-verified end to end (Playwright, reusing the scratch-dir setup
-  from the previous session) — booked a real appointment, watched slots
+  from the previous session) - booked a real appointment, watched slots
   update live, walked the status machine through 3 transitions. 5 new
   screenshots under `docs/screens/`.
 - **Actually fixed TD-0011** (previously just worked around): added
@@ -3139,15 +3139,15 @@ stopping between milestones. Set up via the `/loop` skill in dynamic
   Verified the fix by reproducing the exact original bug (deleted a
   `RolePermission` row, confirmed a normal `pnpm db:seed` run restored it)
   rather than only asserting it in the abstract. This was a real,
-  independently-valuable fix, not scope creep — TD-0011 had already bitten
+  independently-valuable fix, not scope creep - TD-0011 had already bitten
   twice (this session and the previous one) and would keep costing every
   future session that needs local browser verification.
 - Recorded two new tech-debt items found during verification: **TD-0012**
   (appointment booking has no DB-level protection against a concurrent
-  double-booking race — app-level check only, same limitation class as
+  double-booking race - app-level check only, same limitation class as
   the pre-existing `DoctorLeaveService` overlap check) and **TD-0013** (the
   local `pnpm dev` API server's log file didn't show request-completed or
-  email-fallback lines the way e2e test runs do — an observability gap in
+  email-fallback lines the way e2e test runs do - an observability gap in
   ad hoc verification, not a product defect; not investigated further).
 - Updated `.ai/NEXT.md`: replaced with Checkpoint 5.2.
 
@@ -3173,25 +3173,25 @@ stopping between milestones. Set up via the `/loop` skill in dynamic
   Re-ran `pnpm db:seed` against `medicore_dev` (picked up the new
   permission row and, after the TD-0011 fix, correctly synced it onto the
   `Doctor` role without any manual follow-up script this time). Created
-  one demo patient (`Anita Desai`) via the API for browser verification —
+  one demo patient (`Anita Desai`) via the API for browser verification -
   left in place as demo data, consistent with prior sessions' doctor demo
   data.
 
 ### Architectural decisions
-- ADR-0006 (see above) — the only new one. No other architecture questions
+- ADR-0006 (see above) - the only new one. No other architecture questions
   came up; existing decisions (permission own/all-scope pattern,
   one-checkpoint-per-session discipline) covered everything else.
 
 ### Known issues
 - TD-0012 (booking race condition, Medium) and TD-0013 (dev-server log
   visibility gap, Low) are new and open.
-- TD-0009 (dangling ADR-0006 reference) is now Resolved — this session's
+- TD-0009 (dangling ADR-0006 reference) is now Resolved - this session's
   ADR-0006 gave it something real to point to.
 - TD-0001, TD-0002, TD-0004, TD-0008, TD-0010, TD-0012, TD-0013 remain open.
 
 ### Recommended next task
 See `.ai/NEXT.md`: Checkpoint 5.2 (walk-in queue flow, recurring
-appointments — SMS remains credential-blocked). The autonomous loop is
+appointments - SMS remains credential-blocked). The autonomous loop is
 still active (self-pacing `/loop`, no fixed interval) and will continue
 into it automatically absent a genuine blocker.
 
@@ -3199,38 +3199,38 @@ into it automatically absent a genuine blocker.
 - Overall: still unaudited outside Doctors/Scheduling/Appointments
   (TD-0001 unresolved for every other module).
 - **Milestone 4 (Doctor Management & Scheduling): 100% complete.**
-- **Milestone 5 (Appointment Management): Checkpoint 5.1 — 100% complete.**
-  Checkpoint 5.2 — 0% (not started).
+- **Milestone 5 (Appointment Management): Checkpoint 5.1 - 100% complete.**
+  Checkpoint 5.2 - 0% (not started).
 
 ---
 
-## Session: 2026-07-31 (Checkpoint 4.2 — Doctor Scheduling, completed)
+## Session: 2026-07-31 (Checkpoint 4.2 - Doctor Scheduling, completed)
 
 ### What was completed
-Continuation of the same-day audit session (below) — implemented the 3
+Continuation of the same-day audit session (below) - implemented the 3
 missing deliverables it found, then fully verified. **Milestone 4 is now
 complete; `NEXT.md` has been replaced with Milestone 5.**
 
 - Backend: `DoctorDocument` model/migration/service/controller (mirrors
   `PatientDocument`+`StorageService`), `AuditService.listForDoctor()` +
   `GET /doctors/:id/audit-timeline` (reuses existing `AuditLog`, no
-  duplicated capture logic — 2 new `@OnEvent` handlers added to
+  duplicated capture logic - 2 new `@OnEvent` handlers added to
   `audit.listener.ts` for document events), new `doctors.documents`
   permission resource in `seed.ts`.
 - Tests: `doctor-document.service.spec.ts` (9), `audit.service.spec.ts` (3,
-  new file), `apps/api/test/doctor-documents.e2e-spec.ts` (12) — all
+  new file), `apps/api/test/doctor-documents.e2e-spec.ts` (12) - all
   passing, on top of the already-passing scheduling suite.
 - Frontend: 5 new tabs (Schedule, Leave, Availability, Documents, Audit) on
   `apps/web/src/app/dashboard/doctors/[id]/page.tsx`, new
   `apps/web/src/lib/api/scheduling.ts` client. No new frontend test files
-  (the `patients` module reuse-template has none either) — stated
+  (the `patients` module reuse-template has none either) - stated
   explicitly per `CLAUDE.md` rather than silently skipped.
 - Full verification: `pnpm lint`, `pnpm typecheck`, `pnpm test` (110 api + 6
-  web), `pnpm test:e2e` (50/50, 5 suites), `pnpm build` (all 6 packages) —
+  web), `pnpm test:e2e` (50/50, 5 suites), `pnpm build` (all 6 packages) -
   all green.
 - Manual browser verification: installed Playwright + Chromium into the
   session scratch dir (not a project dependency), ran both dev servers,
-  logged in as `admin@medicore.demo`, and drove the real golden path —
+  logged in as `admin@medicore.demo`, and drove the real golden path -
   created a schedule version, applied+approved a leave, checked
   availability, uploaded a document, confirmed all 3 event types in the
   audit timeline. 9 screenshots saved to `docs/screens/` (also closing out
@@ -3239,11 +3239,11 @@ complete; `NEXT.md` has been replaced with Milestone 5.**
   `medicore_dev` `Hospital Admin`/`Doctor` roles predated several
   permission resources and were never backfilled, because `seed.ts`'s
   `role.upsert` no-ops for a role that already exists. Recorded as
-  **TD-0011 (High)** — a genuine `seed.ts` defect, not fixed this session
+  **TD-0011 (High)** - a genuine `seed.ts` defect, not fixed this session
   (out of scope; only local dev data was patched to unblock verification).
 - Also hit and documented (TD-0004 addendum): a long-running `nest
   start --watch` process served a stale route table, 404ing the brand-new
-  audit-timeline endpoint until the dev server was restarted — not a code
+  audit-timeline endpoint until the dev server was restarted - not a code
   bug.
 - Resolved TD-0003, TD-0005, TD-0006, TD-0007 (all marked Resolved in
   `TECH_DEBT.md`). Added TD-0010 (no committed browser-verification
@@ -3279,25 +3279,25 @@ complete; `NEXT.md` has been replaced with Milestone 5.**
 - Database: applied migration `20260731152146_doctor_documents` to both
   `medicore_dev` and `medicore_test`; manually granted missing
   `RolePermission` rows to `medicore_dev`'s `Hospital Admin`/`Doctor` roles
-  (see TD-0011 — a data fix, not a schema/migration change).
+  (see TD-0011 - a data fix, not a schema/migration change).
 
 ### Architectural decisions
 - None new. The audit-timeline endpoint was deliberately placed on the
   existing `DoctorsController` (not a new controller/resource) and gated
   behind the existing `doctors.read` permission rather than inventing a new
-  one — a routine implementation choice, not an ADR-worthy decision.
+  one - a routine implementation choice, not an ADR-worthy decision.
 
 ### Known issues
 - TD-0009 (dangling `ADR-0006` reference in `availability.service.ts`'s
-  comments) remains open — untouched, as planned.
+  comments) remains open - untouched, as planned.
 - TD-0010 (no committed browser-verification tooling) and TD-0011 (seed.ts
-  permission-sync bug, High severity) are new and open — see
+  permission-sync bug, High severity) are new and open - see
   `TECH_DEBT.md`.
 - TD-0001, TD-0002, TD-0004, TD-0008 (from prior sessions) remain open and
   unrelated to this session's scope.
 
 ### Recommended next task
-See `.ai/NEXT.md`: **Milestone 5 — Appointment Management** (patient-facing
+See `.ai/NEXT.md`: **Milestone 5 - Appointment Management** (patient-facing
 appointment booking, deferred since ADR-0005). Before starting, a future
 session should ideally fix TD-0011 (`seed.ts` permission sync) since it will
 keep causing confusing 403s on any local dev database.
@@ -3305,12 +3305,12 @@ keep causing confusing 403s on any local dev database.
 ### Estimated project completion percentage
 - Overall: still unaudited outside Doctors/Scheduling (TD-0001 unresolved
   for every other module).
-- **Milestone 4 (Doctor Management & Scheduling): 100% complete** — both
+- **Milestone 4 (Doctor Management & Scheduling): 100% complete** - both
   checkpoints done, verified, documented, and screenshotted.
 
 ---
 
-## Session: 2026-07-31 (Checkpoint 4.2 — Doctor Scheduling, audit)
+## Session: 2026-07-31 (Checkpoint 4.2 - Doctor Scheduling, audit)
 
 ### What was completed
 - Per user instruction, audited (did not implement) Checkpoint 4.2 work
@@ -3326,7 +3326,7 @@ keep causing confusing 403s on any local dev database.
   diff, and the cross-module wiring (`app.module.ts`, `doctors.module.ts`,
   `doctors.service.ts`, `audit.listener.ts`, `seed.ts` permissions).
 - Ran the full Definition of Done suite: `pnpm lint` (failed cold with 1029
-  errors from a never-generated Prisma client — fixed by running
+  errors from a never-generated Prisma client - fixed by running
   `pnpm --filter @medicore/database db:generate`, then clean),
   `pnpm typecheck` (clean), `pnpm test` (101 api + 6 web passing),
   `pnpm test:e2e` (38/38 across 4 suites, including the new 20-test
@@ -3338,7 +3338,7 @@ keep causing confusing 403s on any local dev database.
   documents, a queryable per-doctor audit timeline, and the entire
   frontend are not started.
 - Updated `.ai/NEXT.md` to list only the 3 remaining deliverables (not
-  Milestone 5 — the checkpoint isn't done).
+  Milestone 5 - the checkpoint isn't done).
 - Added TD-0005 (doctor documents missing), TD-0006 (audit timeline has no
   query surface), TD-0007 (no frontend for 4.2), TD-0008 (Prisma-client
   generation trap), TD-0009 (dangling ADR-0006 reference in code comment)
@@ -3348,7 +3348,7 @@ keep causing confusing 403s on any local dev database.
   and `PROJECT_CONTEXT.md` (Checkpoint 4.2 status line).
 
 ### Files modified/created
-- Modified (`.ai/` only — no application code changed this session):
+- Modified (`.ai/` only - no application code changed this session):
   `NEXT.md`, `PROGRESS.md`, `CHANGELOG.md`, `MODULE_STATUS.md`,
   `TECH_DEBT.md`, `PROJECT_CONTEXT.md`, `SESSION_LOG.md` (this file).
 - Database: no schema change; applied no new migrations (both scheduling
@@ -3356,7 +3356,7 @@ keep causing confusing 403s on any local dev database.
   found in the 4.1 session).
 
 ### Architectural decisions
-- None made this session — audit and documentation only. Flagged (did not
+- None made this session - audit and documentation only. Flagged (did not
   resolve) a dangling reference to a not-yet-written "ADR-0006" inside
   `availability.service.ts`'s comments (TD-0009).
 
@@ -3365,7 +3365,7 @@ keep causing confusing 403s on any local dev database.
 - TD-0006: audit event capture exists but has no per-doctor query/view.
 - TD-0007: zero frontend UI for any of Checkpoint 4.2.
 - TD-0008: a stale/never-generated Prisma client makes `pnpm lint` fail
-  with ~1000 unrelated errors — regenerate with
+  with ~1000 unrelated errors - regenerate with
   `pnpm --filter @medicore/database db:generate` before trusting a lint
   failure count.
 - TD-0009: `availability.service.ts` references a nonexistent ADR-0006.
@@ -3373,7 +3373,7 @@ keep causing confusing 403s on any local dev database.
   to this session's scope.
 
 ### Recommended next task
-See `.ai/NEXT.md`: finish Checkpoint 4.2 — doctor documents (reuse the
+See `.ai/NEXT.md`: finish Checkpoint 4.2 - doctor documents (reuse the
 `patients`/`PatientDocument`/`StorageService` pattern), an audit-timeline
 query endpoint, and the full frontend for schedule/leave/availability
 /documents, plus their tests and a screenshot. Only then mark 4.2 complete
@@ -3382,13 +3382,13 @@ and move on to Milestone 5.
 ### Estimated project completion percentage
 - Overall: still unaudited outside Doctors/Scheduling (TD-0001 unresolved
   for every other module).
-- Milestone 4 / Doctor Scheduling (Checkpoint 4.2): **~60% —** backend
+- Milestone 4 / Doctor Scheduling (Checkpoint 4.2): **~60% -** backend
   engine complete and verified; documents, audit-timeline view, and
   frontend remain.
 
 ---
 
-## Session: 2026-07-31 (Checkpoint 4.1 — Doctor Management)
+## Session: 2026-07-31 (Checkpoint 4.1 - Doctor Management)
 
 ### What was completed
 - Discovered, at session start, that `.ai/` contained no record of any work
@@ -3404,7 +3404,7 @@ and move on to Milestone 5.
 - Ran full verification and fixed every real issue it surfaced:
   - Fixed 2 lint violations (import order in `doctors.controller.ts`;
     unescaped apostrophe in the doctor detail page).
-  - `typecheck` and unit `test` (api + web) were already clean — 76 tests
+  - `typecheck` and unit `test` (api + web) were already clean - 76 tests
     passing.
   - Set up local e2e environment for the first time this session
     (`apps/api/.env`, JWT keypair via `keys:generate`, pointed at the
@@ -3412,9 +3412,9 @@ and move on to Milestone 5.
     ports 5434/6381). Found and fixed two real bugs during e2e: the
     `medicore_test` database was missing a migration (applied it), and one
     e2e assertion expected the wrong HTTP status from `/auth/login` (fixed
-    the test, not the endpoint — the endpoint's `200` is correct REST
+    the test, not the endpoint - the endpoint's `200` is correct REST
     practice for login). All 14 e2e tests pass afterward.
-  - `pnpm build` — clean across all packages.
+  - `pnpm build` - clean across all packages.
 - Wrote `docs/modules/04-doctor-management.md`.
 - Updated `docs/roadmap.md` to split Milestone 4 into Checkpoint 4.1 (done)
   / 4.2 (next); moved original appointment-booking deliverables to a
@@ -3435,7 +3435,7 @@ and move on to Milestone 5.
   `.ai/TECH_DEBT.md`, `.ai/SESSION_LOG.md`, `.ai/NEXT.md`
 - Local-only, not committed: `apps/api/.env` (generated from
   `.env.example`, with RS256 keys and adjusted DB/Redis ports for this
-  machine's containers) — required for anyone else to run `test:e2e`
+  machine's containers) - required for anyone else to run `test:e2e`
   locally; see TD-0004.
 - Database: applied the pending `20260730220227_doctor_professional_profile`
   migration to the `medicore_test` database (was already applied to
@@ -3449,28 +3449,28 @@ and move on to Milestone 5.
   staff-profile modules.
 
 ### Known issues
-- TD-0003: no screenshot exists for this milestone — no browser/UI access
+- TD-0003: no screenshot exists for this milestone - no browser/UI access
   in this session.
 - TD-0004: local e2e setup (`.env`, JWT keys, keeping `medicore_dev` and
   `medicore_test` migrations in sync) is manual and undocumented outside
   this session log; a schema change applied to one DB and not the other
   will misleadingly look like an application bug.
 - Everything outside the `doctors` module and `common/onboarding/` remains
-  unaudited (TD-0001) — this session deliberately did not expand scope
+  unaudited (TD-0001) - this session deliberately did not expand scope
   beyond Checkpoint 4.1, per `CLAUDE.md` cost-optimization rules and the
   user's explicit instruction to stop after this checkpoint.
 
 ### Recommended next task
-See `.ai/NEXT.md`: Checkpoint 4.2 (Doctor Scheduling) — weekly schedules,
+See `.ai/NEXT.md`: Checkpoint 4.2 (Doctor Scheduling) - weekly schedules,
 leave management, availability, dashboard availability stats, doctor
 documents, audit timeline, remaining tests. Do not start it in the same
-session as this one (already used) — start fresh.
+session as this one (already used) - start fresh.
 
 ### Estimated project completion percentage
 - Overall: still unaudited outside of Doctors (TD-0001 unresolved for every
   other module).
-- Milestone 4 / Doctor Management module: **Checkpoint 4.1 — 100%
-  complete.** Checkpoint 4.2 — 0% (not started).
+- Milestone 4 / Doctor Management module: **Checkpoint 4.1 - 100%
+  complete.** Checkpoint 4.2 - 0% (not started).
 
 ---
 
@@ -3509,11 +3509,11 @@ session as this one (already used) — start fresh.
   monorepo, NestJS module-per-domain, and permissions-over-roles decisions
   retroactively from existing code, plus formally adopting the `.ai/` +
   `CLAUDE.md` governance system itself (ADR-0004).
-- No code behavior was changed in this session — governance/documentation
+- No code behavior was changed in this session - governance/documentation
   only.
 
 ### Known issues
-- Module implementation depth is unaudited (TD-0001) — every backend module
+- Module implementation depth is unaudited (TD-0001) - every backend module
   is marked "In Progress / Unaudited" in `MODULE_STATUS.md` pending a real
   review.
 - CI has not been verified to actually pass lint/typecheck/test/build
@@ -3521,7 +3521,7 @@ session as this one (already used) — start fresh.
 - Note: there is a large pre-existing set of staged/uncommitted changes in
   git status (many new modules: auth, audit, email, permissions, redis,
   etc., plus deleted `roles.guard.ts`/`roles.decorator.ts`) that predate this
-  session and were not created by it — a future session should confirm
+  session and were not created by it - a future session should confirm
   whether these are intended to be committed and whether `MODULE_STATUS.md`
   needs a refresh once they land.
 
@@ -3531,7 +3531,7 @@ See `.ai/NEXT.md`: audit real module completeness under
 and `PROJECT_CONTEXT.md` with verified (not estimated) completion state.
 
 ### Estimated project completion percentage
-- Overall: **unaudited** — do not trust a number until `MODULE_STATUS.md`
+- Overall: **unaudited** - do not trust a number until `MODULE_STATUS.md`
   is populated from a real per-module review (see TD-0001).
 - Governance/documentation layer (`CLAUDE.md` + `.ai/`): **100% for this
   session's scope** (files created and populated; will need periodic upkeep).

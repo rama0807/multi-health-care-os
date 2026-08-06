@@ -13,7 +13,7 @@ import { StatCard } from '@/components/ui/stat-card'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { listDoctors } from '@/lib/api/doctors'
 
-/** Sentinel for "no filter" — Radix Select cannot hold an empty-string value. */
+/** Sentinel for "no filter" - Radix Select cannot hold an empty-string value. */
 const ANY = '__any__'
 
 const PRESETS: Array<{ label: string; days: number }> = [
@@ -40,7 +40,7 @@ export function defaultFilters(days = 30): ReportFilterQuery {
 export interface ReportFiltersProps {
   value: ReportFilterQuery
   onChange: (next: ReportFilterQuery) => void
-  /** Which controls to show — mirrors the report's declared `filters`. */
+  /** Which controls to show - mirrors the report's declared `filters`. */
   show?: Array<'groupBy' | 'doctorId' | 'departmentId'>
   children?: React.ReactNode
 }
@@ -48,7 +48,7 @@ export interface ReportFiltersProps {
 /**
  * The shared filter bar for every report and dashboard (Checkpoint 17.4).
  *
- * Only the controls a given report actually honours are rendered — showing a
+ * Only the controls a given report actually honours are rendered - showing a
  * doctor picker on a report that ignores it would silently produce unfiltered
  * numbers under a filtered heading.
  */
@@ -144,14 +144,14 @@ export function ReportFilters({ value, onChange, show = ['groupBy'], children }:
 }
 
 /**
- * A KPI tile. A change of null renders as a neutral dash — the API returns
+ * A KPI tile. A change of null renders as a neutral dash - the API returns
  * null when the previous period was zero, where any percentage would be a
  * fabrication.
  */
 export function KpiTile({ kpi }: { kpi: DashboardKpi }) {
   const value =
-    kpi.value === '—'
-      ? '—'
+    kpi.value === '-'
+      ? '-'
       : kpi.format === 'currency'
         ? `₹${Number(kpi.value).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
         : kpi.format === 'percent'
@@ -171,7 +171,7 @@ export function KpiTile({ kpi }: { kpi: DashboardKpi }) {
       value={value}
       hint={kpi.hint}
       trend={{
-        value: change === null ? '—' : `${change > 0 ? '+' : ''}${change}%`,
+        value: change === null ? '-' : `${change > 0 ? '+' : ''}${change}%`,
         direction: change === null ? 'flat' : change >= 0 ? 'up' : 'down',
         intent: improving === null ? 'neutral' : improving ? 'positive' : 'negative',
         label: 'vs previous',
@@ -180,7 +180,7 @@ export function KpiTile({ kpi }: { kpi: DashboardKpi }) {
   )
 }
 
-/** Renders a `DashboardTable` verbatim — the API owns the columns and order. */
+/** Renders a `DashboardTable` verbatim - the API owns the columns and order. */
 export function DashboardDataTable({ table }: { table: DashboardTable }) {
   return (
     <Card>
@@ -214,7 +214,7 @@ export function DashboardDataTable({ table }: { table: DashboardTable }) {
                       className={column.align === 'right' ? 'tabular-nums' : undefined}
                     >
                       {/* An absent measurement prints as a dash, never as 0. */}
-                      {row[column.key] === null || row[column.key] === undefined ? '—' : String(row[column.key])}
+                      {row[column.key] === null || row[column.key] === undefined ? '-' : String(row[column.key])}
                     </TableCell>
                   ))}
                 </TableRow>

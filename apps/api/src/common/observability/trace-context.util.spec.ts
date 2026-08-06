@@ -13,7 +13,7 @@ describe('parseTraceparent', () => {
       sampled: true,
       continued: true,
     })
-    // This service gets its own span — it never reuses the caller's.
+    // This service gets its own span - it never reuses the caller's.
     expect(context.spanId).not.toBe(PARENT_SPAN_ID)
     expect(context.spanId).toMatch(/^[0-9a-f]{16}$/)
   })

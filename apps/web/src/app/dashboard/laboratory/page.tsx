@@ -148,7 +148,7 @@ export default function LaboratoryPage() {
             <SelectItem value="all">All doctors</SelectItem>
             {doctorsQuery.data?.data.map((d) => (
               <SelectItem key={d.id} value={d.id}>
-                Dr. {d.fullName} — {d.specialization}
+                Dr. {d.fullName} - {d.specialization}
               </SelectItem>
             ))}
           </SelectContent>
@@ -415,7 +415,7 @@ function CatalogDialog({
               />
             </div>
             <Input
-              placeholder="Text reference range (e.g. Non-reactive) — for qualitative tests"
+              placeholder="Text reference range (e.g. Non-reactive) - for qualitative tests"
               value={referenceRangeText}
               onChange={(e) => setReferenceRangeText(e.target.value)}
             />
@@ -434,7 +434,7 @@ function CatalogDialog({
                 <span className="font-mono text-xs text-muted-foreground">({item.testCode})</span>
                 <div className="text-xs text-muted-foreground">
                   {item.category} ·{' '}
-                  {item.referenceRangeText ?? `${item.referenceRangeLow ?? '—'}–${item.referenceRangeHigh ?? '—'} ${item.unit ?? ''}`}
+                  {item.referenceRangeText ?? `${item.referenceRangeLow ?? '-'}–${item.referenceRangeHigh ?? '-'} ${item.unit ?? ''}`}
                 </div>
               </div>
               <div className="flex items-center gap-2">

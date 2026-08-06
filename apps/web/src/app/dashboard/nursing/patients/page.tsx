@@ -24,7 +24,7 @@ function formatDateTime(value: string | Date): string {
 }
 
 /**
- * "Assigned patients" — this repo has no per-nurse ward-assignment model, so
+ * "Assigned patients" - this repo has no per-nurse ward-assignment model, so
  * this is the full current patient census (every `ADMITTED` admission), the
  * same all-scope surface a nurse already sees on the bed grid. Search
  * narrows it to a specific patient/ward while on shift.
@@ -40,7 +40,7 @@ export default function AssignedPatientsPage() {
 
   return (
     <PageLayout
-      title="Assigned Patients — Patient Census"
+      title="Assigned Patients - Patient Census"
       description="Every currently admitted patient, across all wards."
     >
       <Input placeholder="Search by admission number…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-72" />
@@ -75,7 +75,7 @@ export default function AssignedPatientsPage() {
                   </TableCell>
                   <TableCell className="text-sm">{a.attendingDoctor.fullName}</TableCell>
                   <TableCell className="text-sm">{formatDateTime(a.admittedAt)}</TableCell>
-                  <TableCell className="text-sm">{a.diagnosis ?? '—'}</TableCell>
+                  <TableCell className="text-sm">{a.diagnosis ?? '-'}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

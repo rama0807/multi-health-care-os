@@ -128,7 +128,7 @@ export class DoctorLeaveController {
 
   /**
    * For an `.own`-scoped reader, force the query to their own doctor
-   * profile — an explicit `doctorId` for someone else is rejected rather
+   * profile - an explicit `doctorId` for someone else is rejected rather
    * than silently ignored, since silently ignoring it could read as "that
    * filter just didn't match anything" instead of a permission boundary.
    */
@@ -142,7 +142,7 @@ export class DoctorLeaveController {
     if (scope !== 'own') return requestedDoctorId
 
     const ownProfile = await this.doctorRef.findDoctorProfileForUser(orgId, user.sub)
-    // No linked doctor profile — force a doctorId that can never match a
+    // No linked doctor profile - force a doctorId that can never match a
     // real row rather than falling through to an unscoped (all-doctors) list.
     if (!ownProfile) return 'no-linked-doctor-profile'
     if (requestedDoctorId && requestedDoctorId !== ownProfile.id) {

@@ -130,7 +130,7 @@ export class AppointmentsController {
 
   /**
    * `appointments.update` can be held at `.own` scope (a doctor managing
-   * only their own appointments) — the guard only proves the permission
+   * only their own appointments) - the guard only proves the permission
    * exists at some scope, so this re-checks the specific appointment's
    * doctorId matches the caller's linked profile when scoped to `.own`.
    */

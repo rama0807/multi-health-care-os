@@ -25,7 +25,7 @@ export class HospitalsService {
   /**
    * `tenant` is optional so every pre-existing caller keeps working unchanged.
    * When supplied, a user whose role assignments are hospital-scoped sees only
-   * those hospitals — the org-wide behaviour (empty `hospitalIds`) is
+   * those hospitals - the org-wide behaviour (empty `hospitalIds`) is
    * unchanged, per Checkpoint 16.3.
    */
   async list(organizationId: string, tenant?: TenantContext, includeInactive = true) {
@@ -133,7 +133,7 @@ export class HospitalsService {
     })
 
     if (result.onboarded && admin) {
-      // Outside the transaction on purpose — a rollback must never leave a
+      // Outside the transaction on purpose - a rollback must never leave a
       // user holding an email promising access that doesn't exist.
       this.onboardingService.sendOnboardingEmail({
         user: result.onboarded.user,
@@ -209,7 +209,7 @@ export class HospitalsService {
   }
 
   /**
-   * Deactivation is a soft switch — it hides the hospital from pickers and
+   * Deactivation is a soft switch - it hides the hospital from pickers and
    * blocks new activity, but deliberately does **not** cascade to its
    * departments, staff, or in-flight admissions. Cascading would silently
    * detach live clinical records; the same conservative choice already applies

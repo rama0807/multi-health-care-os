@@ -141,7 +141,7 @@ describe('Insurance (e2e)', () => {
     return res.body.data
   }
 
-  /** A fresh patient + provider + plan + coverage + encounter + invoice — every claim/pre-auth test gets its own patient so the "one active primary" rule never collides across tests. */
+  /** A fresh patient + provider + plan + coverage + encounter + invoice - every claim/pre-auth test gets its own patient so the "one active primary" rule never collides across tests. */
   async function createClaimFixture(token = adminToken) {
     const forPatientId = await createPatient()
     const provider = await createProvider()
@@ -283,7 +283,7 @@ describe('Insurance (e2e)', () => {
       .expect(201)
 
     // A cashier-like role with claims/preauth read+create+update and
-    // settlement READ only (not manage) — mirrors the demo seed's Cashier
+    // settlement READ only (not manage) - mirrors the demo seed's Cashier
     // exactly, exercising the "requester can't approve settlement" split.
     const cashierRole = await prisma.role.create({
       data: { name: 'E2E Insurance Cashier', systemRole: 'CASHIER', organizationId: org.id, description: 'Cashier role' },
@@ -454,7 +454,7 @@ describe('Insurance (e2e)', () => {
       expect(decideRes.body.data.status).toBe('APPROVED')
 
       // A payment (including the insurance-recorded settlement payment) can
-      // only be posted against a finalized invoice — see PaymentsService.
+      // only be posted against a finalized invoice - see PaymentsService.
       await request(server).patch(`/api/v1/billing/invoices/${claim.invoiceId}/finalize`).set(authed()).expect(200)
 
       const settleRes = await request(server)

@@ -10,7 +10,7 @@ import { toFilter } from './reports.controller'
 
 /**
  * Executive dashboards (Milestone 17 Checkpoint 17.2). One parameterised
- * route rather than five near-identical handlers — the dashboards differ in
+ * route rather than five near-identical handlers - the dashboards differ in
  * composition, not in transport, so a new dashboard should only require a
  * case in `DashboardsService`.
  */

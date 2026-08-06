@@ -20,7 +20,7 @@ describe('AiPromptTemplatesService', () => {
     service = new AiPromptTemplatesService(prisma as never)
   })
 
-  it('falls back to the bundled default when the org has no override — an empty table still works', async () => {
+  it('falls back to the bundled default when the org has no override - an empty table still works', async () => {
     const resolved = await service.resolve('org_1', 'SOAP_NOTE')
 
     expect(resolved.isBuiltIn).toBe(true)

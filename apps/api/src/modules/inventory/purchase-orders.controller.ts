@@ -9,7 +9,7 @@ import { CancelPurchaseOrderDto } from './dto/cancel-purchase-order.dto'
 import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto'
 import { PurchaseOrdersService } from './purchase-orders.service'
 
-/** Purchase Order — see ADR-0020. */
+/** Purchase Order - see ADR-0020. */
 @ApiTags('inventory-purchase-orders')
 @ApiBearerAuth()
 @Controller({ path: 'inventory/purchase-orders', version: '1' })

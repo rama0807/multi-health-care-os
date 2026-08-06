@@ -46,12 +46,12 @@ EXPOSE 4000
 
 # Liveness, not the dependency check: a Postgres blip must not make Docker
 # restart a healthy API container. The previous path (`/api/health`) did not
-# exist — health was mounted at `/api/v1/health` only — so this healthcheck
+# exist - health was mounted at `/api/v1/health` only - so this healthcheck
 # reported unhealthy on every deployment until Milestone 19.4 made the probes
 # version-neutral.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD wget -qO- http://127.0.0.1:4000/api/health/live || exit 1
 
-# Exec form, so node is PID 1 and receives SIGTERM directly — that is what
+# Exec form, so node is PID 1 and receives SIGTERM directly - that is what
 # starts the graceful drain in `main.ts`.
 CMD ["node", "dist/main"]

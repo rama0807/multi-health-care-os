@@ -3,7 +3,7 @@ import { registerAs } from '@nestjs/config'
 
 /**
  * Default model per provider, used when `AI_MODEL` is unset. Deliberately not
- * a per-feature routing table — that is Checkpoint 15.5's job (ADR-0023).
+ * a per-feature routing table - that is Checkpoint 15.5's job (ADR-0023).
  */
 const DEFAULT_MODELS: Record<AiProviderType, string> = {
   OPENAI: 'gpt-4o-mini',
@@ -15,7 +15,7 @@ const DEFAULT_MODELS: Record<AiProviderType, string> = {
 /**
  * `apps/api/.env` ships placeholder credentials (`sk-xxxxxxxxxxxx`,
  * `sk-ant-xxxxxxxxxxxx`). Treating those as "configured" would send real
- * requests that fail with a provider 401 — an error that looks like an outage
+ * requests that fail with a provider 401 - an error that looks like an outage
  * rather than what it is: no credential. So a run of 6+ `x`s reads as absent,
  * and the API reports an honest "not configured" instead (ADR-0023 / TD-0041).
  */
@@ -43,7 +43,7 @@ function toFloat(value: string | undefined, fallback: number): number {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback
 }
 
-/** `AI_DISABLED_FEATURES=SOAP_NOTE,REFERRAL_LETTER` — unknown names are ignored. */
+/** `AI_DISABLED_FEATURES=SOAP_NOTE,REFERRAL_LETTER` - unknown names are ignored. */
 function toDisabledFeatures(value: string | undefined): AiFeature[] {
   const names = (value ?? '')
     .split(',')
@@ -68,7 +68,7 @@ export default registerAs('ai', () => {
     maxRetries: toInt(process.env.AI_MAX_RETRIES, 2),
     retryBaseDelayMs: toInt(process.env.AI_RETRY_BASE_DELAY_MS, 500),
     /**
-     * Per-1000-token prices in USD. Default 0 — a recorded cost of 0 means
+     * Per-1000-token prices in USD. Default 0 - a recorded cost of 0 means
      * "no price configured," not "free." Kept in config rather than a
      * hardcoded table so it can never go stale in the codebase (ADR-0023).
      */
@@ -90,11 +90,11 @@ export default registerAs('ai', () => {
     /**
      * When false, clinical context is sent with patient name/UHID/phone
      * replaced by a placeholder. Default true because a referral letter or
-     * discharge summary is unusable without the name — but a deployment
+     * discharge summary is unusable without the name - but a deployment
      * without a signed BAA with its provider can turn it off (TD-0042).
      */
     includePatientIdentifiers: process.env.AI_INCLUDE_PATIENT_IDENTIFIERS !== 'false',
-    /** Ollama is self-hosted — reachability, not a key, is what makes it configured. */
+    /** Ollama is self-hosted - reachability, not a key, is what makes it configured. */
     ollama: {
       baseUrl: process.env.OLLAMA_BASE_URL?.trim() || 'http://localhost:11434',
     },

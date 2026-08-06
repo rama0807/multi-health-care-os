@@ -9,7 +9,7 @@ import { InsuranceProvider as PrismaInsuranceProvider, Prisma } from '@prisma/cl
 
 import { PrismaService } from '../../prisma/prisma.service'
 
-/** Insurance Company / TPA / Corporate Plan issuer — see ADR-0016. Not own-scoped: no owning doctor. */
+/** Insurance Company / TPA / Corporate Plan issuer - see ADR-0016. Not own-scoped: no owning doctor. */
 @Injectable()
 export class InsuranceProvidersService {
   constructor(private readonly prisma: PrismaService) {}

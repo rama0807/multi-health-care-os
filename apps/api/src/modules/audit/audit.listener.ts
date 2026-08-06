@@ -1446,7 +1446,7 @@ export class AuditListener {
   private async persist(payload: AuthEventPayload, action: string, resource: string) {
     const organizationId = payload.orgId ?? (await this.resolveOrgId(payload.userId))
     if (!organizationId) {
-      this.logger.warn(`Skipped audit log for "${action}" — no organization context available`)
+      this.logger.warn(`Skipped audit log for "${action}" - no organization context available`)
       return
     }
 

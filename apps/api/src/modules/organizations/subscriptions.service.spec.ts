@@ -88,7 +88,7 @@ describe('SubscriptionsService.getSummary', () => {
 
     expect(summary.plan).toBe(SubscriptionTier.STARTER)
     expect(summary.status).toBe(SubscriptionStatus.ACTIVE)
-    // No row means no negotiated limits — reported as unlimited, not as zero.
+    // No row means no negotiated limits - reported as unlimited, not as zero.
     expect(summary.maxUsers).toBeNull()
     expect(summary.storageQuotaMb).toBeNull()
   })

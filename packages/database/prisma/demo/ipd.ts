@@ -86,7 +86,7 @@ export async function seedIpd(prisma: PrismaClient, ctx: DemoContext): Promise<v
         organizationId,
         type: 'IPD',
         status: isCurrent ? 'IN_PROGRESS' : 'COMPLETED',
-        notes: `Inpatient admission — ${complaint.diagnosis}.`,
+        notes: `Inpatient admission - ${complaint.diagnosis}.`,
         encounterDate: admittedAt,
         createdAt: admittedAt,
       },
@@ -169,7 +169,7 @@ export async function seedIpd(prisma: PrismaClient, ctx: DemoContext): Promise<v
               'Slept well overnight. No episodes of vomiting or breathlessness reported.',
             ]),
           isEscalated: escalated,
-          escalationReason: escalated ? 'Uncontrolled pain — physician review requested.' : null,
+          escalationReason: escalated ? 'Uncontrolled pain - physician review requested.' : null,
           createdByUserId: users.nurse ?? users.admin,
           createdAt: chartedAt,
         },
@@ -223,7 +223,7 @@ export async function seedIpd(prisma: PrismaClient, ctx: DemoContext): Promise<v
     // ── Doctor's IPD orders, and the nursing tasks they spawn ─────────────
     const orderSpecs: Array<{ category: string; instructions: string }> = [
       { category: 'DIET', instructions: pick(['Soft diet, low salt.', 'Diabetic diet, 1800 kcal per day.', 'Nil by mouth until further review.', 'Normal diet as tolerated.']) },
-      { category: 'FLUID', instructions: 'IV fluids — Normal Saline 500 mL over 8 hours, review daily.' },
+      { category: 'FLUID', instructions: 'IV fluids - Normal Saline 500 mL over 8 hours, review daily.' },
       { category: 'ACTIVITY', instructions: pick(['Complete bed rest.', 'Ambulate with support twice daily.', 'Bed rest with bathroom privileges.']) },
     ]
     if (bed.type === 'ICU' || chance(0.3)) {
@@ -258,7 +258,7 @@ export async function seedIpd(prisma: PrismaClient, ctx: DemoContext): Promise<v
           admissionId: admission.id,
           organizationId,
           sourceOrderId: order.id,
-          title: `${label} order — ${patient.name}`,
+          title: `${label} order - ${patient.name}`,
           description: spec.instructions,
           priority: (spec.category === 'OXYGEN' ? 'STAT' : chance(0.2) ? 'URGENT' : 'ROUTINE') as never,
           dueAt,
@@ -335,11 +335,11 @@ export async function seedIpd(prisma: PrismaClient, ctx: DemoContext): Promise<v
             doseGiven: administered ? item.dosage : null,
             route: item.route,
             notes: marStatus === 'REFUSED'
-              ? 'Patient refused the dose — duty doctor informed.'
+              ? 'Patient refused the dose - duty doctor informed.'
               : marStatus === 'HELD'
                 ? 'Held on the doctor’s instruction, pending review.'
                 : marStatus === 'MISSED'
-                  ? 'Dose missed — patient was away for an investigation.'
+                  ? 'Dose missed - patient was away for an investigation.'
                   : null,
             barcodeVerified: verified,
             scannedCode: verified ? `MED-${item.id.slice(-8).toUpperCase()}` : null,
@@ -444,7 +444,7 @@ export async function seedIpd(prisma: PrismaClient, ctx: DemoContext): Promise<v
             sourceModule: 'IPD',
             sourceId: admission.id,
             catalogItemId: service.id,
-            description: `${service.name} — ${lengthOfStay} day(s), bed ${bed.bedNumber}`,
+            description: `${service.name} - ${lengthOfStay} day(s), bed ${bed.bedNumber}`,
             quantity: lengthOfStay,
             unitPrice: service.price,
             taxPercent: service.taxPercent,

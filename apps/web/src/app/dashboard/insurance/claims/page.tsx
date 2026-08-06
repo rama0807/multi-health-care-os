@@ -102,8 +102,8 @@ export default function InsuranceClaimsQueuePage() {
                   </TableCell>
                   <TableCell className="text-sm">{c.insuranceProvider}</TableCell>
                   <TableCell align="right">₹{c.claimedAmount}</TableCell>
-                  <TableCell align="right">{c.approvedAmount ? `₹${c.approvedAmount}` : '—'}</TableCell>
-                  <TableCell align="right">{c.outstandingAmount ? `₹${c.outstandingAmount}` : '—'}</TableCell>
+                  <TableCell align="right">{c.approvedAmount ? `₹${c.approvedAmount}` : '-'}</TableCell>
+                  <TableCell align="right">{c.outstandingAmount ? `₹${c.outstandingAmount}` : '-'}</TableCell>
                   <TableCell>
                     <StatusBadge status={c.status} />
                   </TableCell>

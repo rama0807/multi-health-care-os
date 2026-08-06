@@ -16,7 +16,7 @@ import { NotificationTemplateService, TemplateVariables } from './notification-t
 
 /**
  * Default channel set per priority. Every notification is written to the
- * in-app centre — that is the durable record — and the louder transports are
+ * in-app centre - that is the durable record - and the louder transports are
  * added as priority rises. A caller may override this per send, but the
  * default deliberately does not email at `NORMAL`: an inbox that fills with
  * routine operational traffic gets muted wholesale, which loses the critical
@@ -63,7 +63,7 @@ export interface NotifyInput {
   /** Overrides the template's rendered deep link. */
   deepLink?: string | null
   imageUrl?: string | null
-  /** Overrides the rendered title/body — used by the admin broadcast path. */
+  /** Overrides the rendered title/body - used by the admin broadcast path. */
   title?: string
   body?: string
 }
@@ -81,7 +81,7 @@ export interface NotifyResult {
  *
  * Callers describe *what happened and to whom*; this service resolves
  * recipients, renders the template, writes the notification, and enqueues one
- * delivery per channel. Nothing is sent inline — dispatch is always the
+ * delivery per channel. Nothing is sent inline - dispatch is always the
  * worker's job, so an event listener can never be slowed down (or made to
  * fail) by a provider outage.
  */
@@ -97,7 +97,7 @@ export class NotificationsService {
 
   /**
    * Fans one event out to every resolved recipient. Never throws on a
-   * per-recipient problem — a notification failure must not roll back the
+   * per-recipient problem - a notification failure must not roll back the
    * clinical or billing action that triggered it.
    */
   async notify(input: NotifyInput): Promise<NotifyResult> {
@@ -157,7 +157,7 @@ export class NotificationsService {
 
   /**
    * The human-composed broadcast path (Checkpoint 18.6). Unlike `notify`, this
-   * one *does* throw — an admin who addressed nobody deserves an error rather
+   * one *does* throw - an admin who addressed nobody deserves an error rather
    * than a silent success.
    */
   async send(
@@ -190,7 +190,7 @@ export class NotificationsService {
 
     if (result.created === 0) {
       throw new BadRequestException(
-        'No recipients matched — check the selected users and roles belong to this organization',
+        'No recipients matched - check the selected users and roles belong to this organization',
       )
     }
 
@@ -248,7 +248,7 @@ export class NotificationsService {
       scheduleAt,
       deliveryStatus: scheduleAt ? NotificationStatus.SCHEDULED : NotificationStatus.PENDING,
       // `eventKey` is unique per recipient. Only set it when a recipient
-      // exists — a null recipient would make every patient-addressed
+      // exists - a null recipient would make every patient-addressed
       // notification for the same event collide.
       eventKey: recipientId && input.eventKey ? input.eventKey : null,
     }
@@ -261,7 +261,7 @@ export class NotificationsService {
         error.code === 'P2002' &&
         input.eventKey
       ) {
-        // Exactly what the idempotency key is for — the event fired twice.
+        // Exactly what the idempotency key is for - the event fired twice.
         return null
       }
       throw error
@@ -294,7 +294,7 @@ export class NotificationsService {
 
     if (input.roles?.length) {
       const wanted = input.roles.map((role) => role.trim()).filter(Boolean)
-      // Only genuine `SystemRole` members may reach the enum filter — an
+      // Only genuine `SystemRole` members may reach the enum filter - an
       // arbitrary string there is a Prisma validation error, not a no-match.
       const systemRoles = wanted.filter((role): role is SystemRole => role.toUpperCase() in SystemRole)
       const userRoles = await this.prisma.userRole.findMany({

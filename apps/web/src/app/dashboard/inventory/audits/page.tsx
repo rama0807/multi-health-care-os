@@ -122,7 +122,7 @@ export default function StockAuditsPage() {
                     <StatusBadge status={a.status} />
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
-                    {a.scheduledDate ? new Date(a.scheduledDate).toLocaleDateString('en-IN') : '—'}
+                    {a.scheduledDate ? new Date(a.scheduledDate).toLocaleDateString('en-IN') : '-'}
                   </TableCell>
                 </TableRow>
               ))}
@@ -159,7 +159,7 @@ function CreateAuditDialog({ open, onOpenChange }: { open: boolean; onOpenChange
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['inventory', 'audits'] })
-      toast({ title: 'Stock audit created — snapshotted current system stock' })
+      toast({ title: 'Stock audit created - snapshotted current system stock' })
       onOpenChange(false)
     },
     onError: (error) => toast({ variant: 'destructive', title: 'Could not create audit', description: getErrorMessage(error) }),

@@ -43,7 +43,7 @@ export function toInboxQuery(query: Record<string, string | undefined>): Notific
  * 18.3 and 18.5).
  *
  * **Deliberately carries no `@RequirePermissions`.** Every one of these routes
- * acts on the caller's own notifications, resolved from the JWT — the same
+ * acts on the caller's own notifications, resolved from the JWT - the same
  * reasoning that leaves `/auth/me` ungated. Requiring a permission would mean
  * a role could be created that cannot read its own inbox, which is never the
  * intent, and the org-wide surfaces live on
@@ -64,7 +64,7 @@ export class NotificationsController {
     return this.history.listForUser(userId, toInboxQuery(query))
   }
 
-  /** Bell state — unread/critical/pinned counts plus a per-category breakdown. */
+  /** Bell state - unread/critical/pinned counts plus a per-category breakdown. */
   @Get('summary')
   summary(@CurrentUser('sub') userId: string) {
     return this.history.summary(userId)

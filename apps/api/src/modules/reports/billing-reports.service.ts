@@ -16,7 +16,7 @@ import {
 /** Invoice statuses that still owe money. */
 const OUTSTANDING_STATUSES = ['ISSUED', 'PARTIALLY_PAID', 'OVERDUE'] as const
 
-/** Statuses that count as real, billable revenue — a DRAFT is not revenue yet. */
+/** Statuses that count as real, billable revenue - a DRAFT is not revenue yet. */
 const BILLED_STATUSES = ['ISSUED', 'PARTIALLY_PAID', 'PAID', 'OVERDUE', 'REFUNDED'] as const
 
 const AGEING_BUCKETS: Array<{ label: string; minDays: number; maxDays: number | null }> = [
@@ -34,7 +34,7 @@ const AGEING_BUCKETS: Array<{ label: string; minDays: number; maxDays: number | 
  * (`Invoice.totalAmount` for invoices raised in the period) and collections
  * is what was actually received (`Payment.amount` paid in the period). They
  * diverge whenever an invoice is paid in a later period, and collapsing them
- * into one "revenue" figure — as a naive report would — would misstate both.
+ * into one "revenue" figure - as a naive report would - would misstate both.
  *
  * The GST summary is built from `InvoiceItem` rows rather than
  * `Invoice.taxAmount` so it can be broken down per tax slab, which is what a
@@ -165,7 +165,7 @@ export class BillingReportsService {
 
   /**
    * Ages an unpaid invoice from its due date where one exists, falling back
-   * to its creation date — an invoice with explicit terms should not be
+   * to its creation date - an invoice with explicit terms should not be
    * reported as overdue before those terms lapse.
    */
   private buildAgeing(
@@ -192,7 +192,7 @@ export class BillingReportsService {
   /**
    * Per-slab GST. `InvoiceItem.totalPrice` is tax-inclusive, so the taxable
    * value is backed out of the stored line total at that line's own rate
-   * rather than recomputed from unit price x quantity — that keeps the report
+   * rather than recomputed from unit price x quantity - that keeps the report
    * consistent with the invoice the patient was actually handed, including
    * any line discount already baked into it.
    */

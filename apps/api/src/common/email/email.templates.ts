@@ -46,7 +46,7 @@ export function roleGrantedTemplate(firstName: string, roleName: string, loginUr
       'New role granted',
       `<p>Hi ${firstName},</p>
        <p>Your existing MediCore account has been granted the <strong>${roleName}</strong> role.</p>
-       <p><a href="${loginUrl}" style="color:#2563eb;">Sign in</a> to access it — your existing password still works.</p>`,
+       <p><a href="${loginUrl}" style="color:#2563eb;">Sign in</a> to access it - your existing password still works.</p>`,
     ),
   }
 }
@@ -63,7 +63,7 @@ export function appointmentConfirmedTemplate(
     timeZone: 'Asia/Kolkata',
   })
   return {
-    subject: `Appointment confirmed — ${appointmentNumber}`,
+    subject: `Appointment confirmed - ${appointmentNumber}`,
     html: wrapper(
       'Appointment confirmed',
       `<p>Hi ${patientFirstName},</p>

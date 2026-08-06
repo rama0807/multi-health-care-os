@@ -84,7 +84,7 @@ function setupSwagger(app: NestFastifyApplication): void {
  * Graceful shutdown (Milestone 19.5 / ADR-0028).
  *
  * The sequence exists because stopping the server the instant `SIGTERM`
- * arrives drops requests that are already in flight, and — worse — keeps
+ * arrives drops requests that are already in flight, and - worse - keeps
  * receiving new ones for the seconds it takes a load balancer to notice the
  * instance is gone. So:
  *
@@ -92,7 +92,7 @@ function setupSwagger(app: NestFastifyApplication): void {
  *    orchestrator and reverse proxy actually watches.
  * 2. The process keeps serving for `SHUTDOWN_DRAIN_MS`, long enough for that
  *    signal to be observed and for in-flight work to finish.
- * 3. `app.close()` then runs every module's `onModuleDestroy` — the Prisma
+ * 3. `app.close()` then runs every module's `onModuleDestroy` - the Prisma
  *    disconnect, the Redis `quit`, the notification worker's `clearInterval`.
  *
  * A second signal skips the wait: an operator pressing Ctrl-C twice means it.
@@ -103,13 +103,13 @@ function registerGracefulShutdown(app: NestFastifyApplication, logger: Logger): 
 
   const shutdown = (signal: NodeJS.Signals) => {
     if (shuttingDown) {
-      logger.warn(`Received ${signal} again — exiting immediately`)
+      logger.warn(`Received ${signal} again - exiting immediately`)
       process.exit(1)
     }
     shuttingDown = true
 
     void (async () => {
-      logger.log(`Received ${signal} — draining for ${drainMs}ms before shutdown`)
+      logger.log(`Received ${signal} - draining for ${drainMs}ms before shutdown`)
       app.get(HealthService).beginShutdown()
 
       if (drainMs > 0) {

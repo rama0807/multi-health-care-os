@@ -93,7 +93,7 @@ export function DischargeTab({
   const approveMutation = useMutation({
     mutationFn: () => approveDischarge(admissionId, { dischargeCondition: dischargeCondition || undefined }),
     onSuccess: () => {
-      toast({ title: 'Discharge approved — nursing checklist created' })
+      toast({ title: 'Discharge approved - nursing checklist created' })
       invalidateAll()
     },
     onError: (error) => toast({ variant: 'destructive', title: 'Could not approve discharge', description: getErrorMessage(error) }),
@@ -125,7 +125,7 @@ export function DischargeTab({
   const completeMutation = useMutation({
     mutationFn: () => completeDischarge(admissionId, { dischargeNotes: dischargeNotes || undefined }),
     onSuccess: () => {
-      toast({ title: 'Patient discharged — bed vacated' })
+      toast({ title: 'Patient discharged - bed vacated' })
       invalidateAll()
       onDischarged()
     },
@@ -214,7 +214,7 @@ export function DischargeTab({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-semibold text-foreground">Discharge summary</h3>
           {/* Drafts the narrative into "Course in hospital" for the clinician to
-              edit — it is never saved without an explicit Save action below. */}
+              edit - it is never saved without an explicit Save action below. */}
           <AiAssistButton
             feature="DISCHARGE_SUMMARY"
             contextRefs={{ admissionId }}

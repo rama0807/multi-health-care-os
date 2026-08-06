@@ -41,7 +41,7 @@ const STOCK_INCLUDE = {
 } satisfies Prisma.InventoryStockInclude
 
 /**
- * Core stock ledger — also exposes `receiveStock`/`issueStock`/
+ * Core stock ledger - also exposes `receiveStock`/`issueStock`/
  * `ensureStockRow` for other inventory services (GRN, transfers,
  * requisitions) to call from within their own transactions, so every
  * stock-affecting workflow shares one mutation path rather than each
@@ -60,7 +60,7 @@ export class StockService {
    * The only reason this exists is that reorder/low-stock alerting needs to
    * know *when a level changed*, and this module previously emitted movement
    * documents (adjustments, GRNs, requisitions) rather than level changes. The
-   * threshold comparison deliberately stays out of here — reorder policy is
+   * threshold comparison deliberately stays out of here - reorder policy is
    * inventory's, alerting is the notification platform's.
    */
   private emitStockChanged(organizationId: string, inventoryStockId: string, userId?: string): void {
@@ -80,7 +80,7 @@ export class StockService {
       where.batches = { some: { expiryDate: { lte: cutoff }, status: 'AVAILABLE' } }
     }
 
-    // `lowStockOnly` compares two columns on the same row — filtered in
+    // `lowStockOnly` compares two columns on the same row - filtered in
     // application code, same pragmatic simplification as `Drug` (TD-0022).
     if (query.lowStockOnly) {
       const all = await this.prisma.inventoryStock.findMany({ where, include: STOCK_INCLUDE })
@@ -292,7 +292,7 @@ export class StockService {
     })
   }
 
-  /** Adds physical stock (GRN completion, transfer receipt) — creates/increments a batch when the item tracks one. */
+  /** Adds physical stock (GRN completion, transfer receipt) - creates/increments a batch when the item tracks one. */
   async receiveStock(
     tx: Tx,
     organizationId: string,
@@ -323,7 +323,7 @@ export class StockService {
     }
   }
 
-  /** Removes physical stock (transfer dispatch, requisition issue) — guards against issuing more than is available. */
+  /** Removes physical stock (transfer dispatch, requisition issue) - guards against issuing more than is available. */
   async issueStock(
     tx: Tx,
     organizationId: string,

@@ -10,12 +10,12 @@ import { cn } from "@/lib/utils"
 /**
  * Side drawer.
  *
- * Built on the same Radix Dialog primitive the modal uses — no new dependency,
+ * Built on the same Radix Dialog primitive the modal uses - no new dependency,
  * and the focus trap, scroll lock and Escape handling are the ones already
  * proven in this app.
  *
  * When to reach for this instead of `<Dialog>`: a drawer keeps the underlying
- * list *visible*, so it fits "inspect this row, then the next" — a lab result,
+ * list *visible*, so it fits "inspect this row, then the next" - a lab result,
  * a notification, an audit entry. A dialog is for a decision that should block
  * everything else, like confirming a discharge or approving a refund.
  *

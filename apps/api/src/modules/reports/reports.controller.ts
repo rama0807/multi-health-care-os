@@ -22,7 +22,7 @@ const GROUP_BY_VALUES: readonly string[] = ['day', 'week', 'month']
 /**
  * Narrows raw query strings to the shared filter shape. An unrecognised
  * `groupBy` is dropped rather than rejected so a stale bookmark still
- * renders (falling back to the daily default) — the date bounds, where a
+ * renders (falling back to the daily default) - the date bounds, where a
  * wrong value would silently change the answer, are validated in
  * `resolveRange` and do throw.
  */
@@ -41,7 +41,7 @@ export function toFilter(query: Record<string, string | undefined>): ReportFilte
  * Operational reports (Milestone 17 Checkpoint 17.1).
  *
  * Every endpoint is a read-only aggregation gated by the single `reports.read`
- * permission that already existed in the seed catalog — reporting is one
+ * permission that already existed in the seed catalog - reporting is one
  * capability, not eleven, and splitting it per module would let an
  * organization grant "billing reports" to someone who cannot open billing.
  * Each service applies its own org scoping from the JWT; no handler accepts

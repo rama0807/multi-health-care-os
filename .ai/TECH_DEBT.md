@@ -35,7 +35,7 @@ validation, docs) per module.
 until this audit happens; risk of assuming a module is done when it's a
 stub.
 
-**Resolution plan:** See `.ai/NEXT.md` — audit each module, update
+**Resolution plan:** See `.ai/NEXT.md` - audit each module, update
 `MODULE_STATUS.md` with verified state.
 
 ---
@@ -69,10 +69,10 @@ for every completed user-facing milestone. Checkpoint 4.1 (Doctor
 Management) is functionally complete and e2e-verified at the API level, but
 this and all prior sessions have had no browser/UI access to capture one.
 
-**Impact:** Documentation completeness gap only — no functional risk.
+**Impact:** Documentation completeness gap only - no functional risk.
 
 **Resolution:** A later session in this same day obtained browser access
-(Playwright + Chromium, installed to a scratch dir — see TD-0010) and
+(Playwright + Chromium, installed to a scratch dir - see TD-0010) and
 captured `docs/screens/doctors-list.png` and
 `docs/screens/doctors-registration-form.png`, linked from
 `PROJECT_CONTEXT.md`.
@@ -90,7 +90,7 @@ Severity: Low
 keypair (`pnpm --filter @medicore/api keys:generate`), and both the
 `medicore_dev` and `medicore_test` Postgres databases to have all
 migrations applied (`prisma migrate deploy` against each
-`DATABASE_URL`) — the two databases can drift independently, as
+`DATABASE_URL`) - the two databases can drift independently, as
 `medicore_test` had (see PROGRESS.md 2026-07-31: it was missing the
 `20260730220227_doctor_professional_profile` migration, causing every
 doctor-related e2e test to fail with a Prisma "column does not exist"
@@ -106,7 +106,7 @@ runs `prisma migrate deploy` against `medicore_test`, and document the full
 one-time local setup (or automate it) in a root-level dev-setup doc.
 
 **Addendum (2026-07-31):** a long-running `nest start --watch` process left
-over from earlier in a session can serve a route from a stale compile —
+over from earlier in a session can serve a route from a stale compile -
 one new endpoint (`GET /doctors/:id/audit-timeline`) 404'd (at the Fastify
 router level, before auth) against an old `pnpm dev` process despite being
 correctly implemented and passing all tests; killing port 4000 and
@@ -117,7 +117,7 @@ restart the dev server before assuming it's a real bug.
 **Addendum (2026-08-01):** running a full `turbo run build --force` (both
 `nest build` and `next build`) while a `pnpm dev` instance is still running
 for that same app clobbers the running dev process's compiled output in
-place — `apps/web`'s `next dev` started serving mismatched dev/production
+place - `apps/web`'s `next dev` started serving mismatched dev/production
 chunks (RSC payload version-mismatch console errors, 404s on
 `_next/static/*`) until its process was killed and restarted with a fresh
 `.next`; `apps/api`'s running dev process kept serving its pre-build route
@@ -126,9 +126,9 @@ way. Order of operations that avoids this: run the verification build
 *before* starting (or after stopping) any dev server used for the
 browser walkthrough, or simply restart both dev servers immediately after
 a full build and before driving the browser check. Also observed in this
-session (not investigated, out of scope for Checkpoint 6.1 — auth module):
+session (not investigated, out of scope for Checkpoint 6.1 - auth module):
 the browser makes a background `POST /api/v1/auth/refresh` on initial page
-load that 403s with `FORBIDDEN — Invalid or missing CSRF token`; login
+load that 403s with `FORBIDDEN - Invalid or missing CSRF token`; login
 still succeeds immediately after, so it isn't blocking, but it's worth a
 look next time the auth module is in scope.
 
@@ -142,7 +142,7 @@ Severity: Medium
 
 **Description:** Checkpoint 4.2 (ADR-0005) requires upload/list/delete for a
 doctor's own documents (certificates, ID proofs). No `DoctorDocument`
-model, migration, service, or controller exists — confirmed by grepping the
+model, migration, service, or controller exists - confirmed by grepping the
 `scheduling`/`doctors` modules and `schema.prisma` for any doctor-document
 reference.
 
@@ -170,7 +170,7 @@ Severity: Low
 **Description:** `audit.listener.ts` captures and persists all
 schedule/leave lifecycle events, but `AuditController`
 (`apps/api/src/modules/audit/audit.controller.ts`) only exposes
-`GET /audit-logs?limit=` — an org-wide recent list with no `doctorId` or
+`GET /audit-logs?limit=` - an org-wide recent list with no `doctorId` or
 `resource` filter. There is no way to actually view "a per-doctor timeline
 of audit events" as ADR-0005 requires, even though the data exists.
 
@@ -178,7 +178,7 @@ of audit events" as ADR-0005 requires, even though the data exists.
 user-facing.
 
 **Resolution:** Added `AuditService.listForDoctor(organizationId, doctorId,
-limit)` — reuses the existing `AuditLog` table with an `OR` filter (direct
+limit)` - reuses the existing `AuditLog` table with an `OR` filter (direct
 `Doctor` events by `resourceId`, plus `DoctorSchedule`/`DoctorLeave`/
 `DoctorDocument` events by a `doctorId` field inside their `after` JSON
 payload) and maps to a humanized `{id, title, action, resource,
@@ -186,7 +186,7 @@ occurredAt}` shape. Exposed as `GET /doctors/:id/audit-timeline` on the
 existing `DoctorsController`, gated behind `doctors.read` with the same
 own/all-scope enforcement as the scheduling controllers. `audit.listener.ts`
 gained 2 more `@OnEvent` handlers for document upload/delete, mirroring the
-existing schedule/leave handlers — no capture logic was duplicated.
+existing schedule/leave handlers - no capture logic was duplicated.
 Unit-tested (`audit.service.spec.ts`) and e2e-tested (asserts all three
 event sources appear correctly, and that another doctor's events are
 excluded).
@@ -203,7 +203,7 @@ Severity: Medium
 workflow, availability, dashboard stats) are implemented and e2e-tested,
 but zero frontend UI consumes them. The doctor profile page
 (`apps/web/src/app/dashboard/doctors/[id]/page.tsx`) is byte-for-byte
-unchanged from Checkpoint 4.1's version — confirmed via `pnpm build`'s
+unchanged from Checkpoint 4.1's version - confirmed via `pnpm build`'s
 route list, which shows no new routes.
 
 **Impact:** Checkpoint 4.2 is not user-facing yet and cannot be marked
@@ -232,7 +232,7 @@ Severity: Low
 schema changes) without first running
 `pnpm --filter @medicore/database db:generate` produces ~1000
 `@typescript-eslint/no-unsafe-*` errors scattered across unrelated files
-(`users.service.ts`, `prisma.service.ts`, every Prisma-backed service) —
+(`users.service.ts`, `prisma.service.ts`, every Prisma-backed service) -
 because every Prisma Client call types as `any`/`error` until the client is
 generated against the current schema. This looks like a massive regression
 but is purely a stale-generated-artifact issue; running `db:generate`
@@ -256,15 +256,15 @@ Severity: Low
 
 **Description:** `apps/api/src/modules/scheduling/availability.service.ts`
 has a comment stating appointment-conflict subtraction is deferred to
-"Milestone 5's job (see ADR-0006)" — but `DECISIONS.md` only goes up to
+"Milestone 5's job (see ADR-0006)" - but `DECISIONS.md` only goes up to
 ADR-0005. Either the ADR was never written, or the reference is aspirational
 placeholder text from whoever wrote the availability engine.
 
-**Impact:** Low — purely a documentation-consistency gap; the underlying
+**Impact:** Low - purely a documentation-consistency gap; the underlying
 architectural intent (availability engine doesn't know about `Appointment`
 records yet) is sound and matches Checkpoint 4.2's scope.
 
-**Resolution:** ADR-0006 was recorded during Milestone 5, Checkpoint 5.1 —
+**Resolution:** ADR-0006 was recorded during Milestone 5, Checkpoint 5.1 -
 the comment's reference now resolves to something real, and the design it
 anticipated (appointments subtract conflicts on top of the unmodified
 `AvailabilityService`) is exactly what was built.
@@ -283,7 +283,7 @@ Status: Open
 Severity: Low
 
 **Description:** Verifying the Checkpoint 4.2 frontend required a real
-browser. No project skill or committed tooling exists for this — Playwright
+browser. No project skill or committed tooling exists for this - Playwright
 + Chromium were installed ad hoc into the session's scratch directory
 (`npm install playwright@1.62.1` there; Chromium itself was already cached
 at `~/Library/Caches/ms-playwright` from a prior session). Nothing was
@@ -313,28 +313,28 @@ database produced 403s on `doctors.read` and every other doctor-related
 permission, even though `RESOURCE_ACTIONS`/`ROLE_SPECS` in `seed.ts` clearly
 grant the Hospital Admin role every permission. Root cause:
 `prisma.role.upsert({ where: {...}, update: {}, create: { ...,
-rolePermissions: { create: [...] } } })` — the `update: {}` branch does
+rolePermissions: { create: [...] } } })` - the `update: {}` branch does
 **nothing** when a role with that name already exists in that org. The
 `demo-hospital` org's `Hospital Admin`/`Doctor` roles were created in an
 early session (before the `doctors`, `doctors.schedule`, `doctors.leave`,
 `doctors.documents` resources existed) and have never been touched by any
-later `pnpm db:seed` run since — every resource/permission added since
+later `pnpm db:seed` run since - every resource/permission added since
 Checkpoint 4.1 silently never reached these roles' actual
 `RolePermission` rows, no matter how many times `db:seed` is rerun.
 
 **Impact:** Any local dev database seeded before a given resource was added
 to `seed.ts` will silently lack that permission for its demo accounts. This
-is not cosmetic — it produces confusing 403s that look like application
+is not cosmetic - it produces confusing 403s that look like application
 bugs. This session worked around it by directly granting the missing
 `RolePermission` rows to `medicore_dev`'s `Hospital Admin` (+17) and
-`Doctor` (+6) roles via a one-off script — a **local data fix only**, not a
+`Doctor` (+6) roles via a one-off script - a **local data fix only**, not a
 code change. `medicore_test` is unaffected (each e2e suite creates a fresh
 org via `/auth/register`, which always grants the *current* full
 permission catalog to its admin role via
 `RolesService.createDefaultOrgAdminRole`).
 
 **Resolution:** Added `syncRolePermissions()` to `seed.ts`, called after
-every role upsert (Super Admin + every `ROLE_SPECS` role) — diffs the
+every role upsert (Super Admin + every `ROLE_SPECS` role) - diffs the
 role's current `RolePermission` rows against what it should have and adds
 whatever's missing, without touching or removing anything already there.
 Verified by reproducing the exact bug (deleted one `RolePermission` row,
@@ -351,7 +351,7 @@ Severity: Medium
 
 **Description:** `AppointmentsService.create` checks for conflicts by
 querying existing appointments and computing overlap in application code,
-then creates the row in a separate step — there is no Postgres exclusion
+then creates the row in a separate step - there is no Postgres exclusion
 constraint or equivalent preventing two concurrent requests from both
 passing the conflict check for the same slot before either commits. This
 mirrors a pre-existing limitation in `DoctorLeaveService`'s overlap check
@@ -359,7 +359,7 @@ mirrors a pre-existing limitation in `DoctorLeaveService`'s overlap check
 
 **Impact:** Low probability in practice (requires two near-simultaneous
 booking requests for the exact same doctor+slot), but a genuine correctness
-gap — the system's advertised guarantee ("a slot shown as available is
+gap - the system's advertised guarantee ("a slot shown as available is
 actually bookable") can be violated under concurrent load.
 
 **Resolution plan:** Add a Postgres exclusion constraint on
@@ -382,12 +382,12 @@ server's redirected log file (`pnpm dev > file.log 2>&1 &`) contained zero
 `"request completed"` lines and zero visible email dev-fallback log lines,
 even though the requests demonstrably succeeded (confirmed via the browser
 screenshots and via direct `curl` checks). e2e test runs show these lines
-reliably. Root cause not investigated — plausibly a log-level or
+reliably. Root cause not investigated - plausibly a log-level or
 pino-transport difference between the `test` and `development` NestJS
 environments, or a buffering artifact of backgrounding `pnpm dev` with
 shell redirection specifically.
 
-**Impact:** Low — purely an observability gap in ad hoc local verification,
+**Impact:** Low - purely an observability gap in ad hoc local verification,
 not a product defect (the endpoints work; this only affects how easily a
 session can tail the dev server's log for confirmation instead of relying
 on curl/browser network responses).
@@ -407,17 +407,17 @@ Status: Open
 Severity: Low
 
 **Description:** Per ADR-0007, a recurring booking materializes N
-independent `Appointment` rows sharing one `recurrenceGroupId` — there is
+independent `Appointment` rows sharing one `recurrenceGroupId` - there is
 no endpoint to act on "the whole series" (e.g. "cancel all remaining
 occurrences" or "move every future occurrence to a new time"). Each row
 must be updated individually via the existing single-appointment status
 endpoint.
 
-**Impact:** Low — a real usability gap for a receptionist managing a
+**Impact:** Low - a real usability gap for a receptionist managing a
 patient's recurring series, but not a correctness issue; the grouping id
 already exists to build this on top of later.
 
-**Resolution plan:** Add `GET /appointments?recurrenceGroupId=` (trivial —
+**Resolution plan:** Add `GET /appointments?recurrenceGroupId=` (trivial -
 `AppointmentQuery` would need one more filter field) for viewing the whole
 series, and consider a `PATCH /appointments/recurring/:groupId/cancel-remaining`
 (or similar) if/when a real usability need for bulk actions comes up. Not
@@ -428,18 +428,18 @@ worth building speculatively ahead of that need.
 ## TD-0015 (tracking only, not a defect): SMS confirmations deferred, credential-blocked
 
 Opened: 2026-08-01
-Status: Open — expected to stay open until the user supplies credentials
-Severity: N/A (not a bug — an intentionally deferred feature)
+Status: Open - expected to stay open until the user supplies credentials
+Severity: N/A (not a bug - an intentionally deferred feature)
 
 **Description:** Milestone 5's original scope (`docs/roadmap.md`) included
 SMS appointment confirmations. No SMS provider (Twilio, Fast2SMS, or
-otherwise) is configured anywhere in this repo — unlike email, which had
+otherwise) is configured anywhere in this repo - unlike email, which had
 `EmailService`'s existing console-fallback to build on, there is no
 equivalent SMS scaffolding to reuse. Per `CLAUDE.md`'s prohibition on
 faking clinical/billing/auth logic to "make it work," this was not stubbed
 with a fake send.
 
-**Impact:** None currently — email confirmation covers the same product
+**Impact:** None currently - email confirmation covers the same product
 need for any patient with an email on file. Patients without an email get
 no automated confirmation of any kind, which is a real (but pre-existing,
 not newly introduced) gap.
@@ -465,14 +465,14 @@ medication names against a hardcoded list of ~10 well-known interaction
 pairs (warfarin+aspirin, etc.), case-insensitive substring matching. No
 real drug-interaction terminology service or dataset is configured
 anywhere in this repo. The API response and the frontend both label this
-"basic, non-exhaustive" and it never blocks prescribing — per ADR-0010,
+"basic, non-exhaustive" and it never blocks prescribing - per ADR-0010,
 this was a deliberate, disclosed simplification rather than a silently
 incomplete "real" check.
 
 **Impact:** A prescriber could reasonably (and incorrectly) treat the
 absence of a warning as clinical clearance. The frontend explicitly
 disclaims this, but the disclaimer's visibility depends on a warning
-actually firing at least once for a given session — if no interaction
+actually firing at least once for a given session - if no interaction
 matches, no disclaimer is shown at all.
 
 **Resolution plan:** Integrate a real drug-interaction data source (e.g.
@@ -496,16 +496,16 @@ deterministic regardless of real wall-clock time) uses a single shift
 starts at `23:30`. Observed failing with a `409 Conflict` ("no available
 slot") when the suite happens to run between ~23:30 and 23:59 local time,
 since the walk-in booking logic correctly finds no slot at/after "now"
-today. Not related to Checkpoint 6.2 (Prescriptions) — this module was
+today. Not related to Checkpoint 6.2 (Prescriptions) - this module was
 out of scope for this session per the reading-policy restriction, so it
 was documented rather than fixed.
 
-**Impact:** Low — narrow ~30-minute daily window, doesn't affect any other
+**Impact:** Low - narrow ~30-minute daily window, doesn't affect any other
 test or real usage (a real doctor's schedule wouldn't need to cover this
 edge case the way a synthetic all-hours fixture does).
 
 **Resolution plan:** Either extend the fixture's shift to wrap past
-midnight (if the scheduling engine supports cross-midnight shifts — needs
+midnight (if the scheduling engine supports cross-midnight shifts - needs
 checking) or change the walk-in test to book against a fixed, injected
 "now" rather than real wall-clock time.
 
@@ -514,8 +514,8 @@ checking) or change the walk-in test to book against a fixed, injected
 ## TD-0018 (tracking only, not a defect): AI-powered lab report summarization deferred, credential-blocked
 
 Opened: 2026-08-02
-Status: Open — expected to stay open until the user supplies credentials
-Severity: N/A (not a bug — an intentionally deferred feature)
+Status: Open - expected to stay open until the user supplies credentials
+Severity: N/A (not a bug - an intentionally deferred feature)
 
 **Description:** Milestone 7's roadmap scope (`docs/roadmap.md`) included
 "AI-powered lab report summarization (async)." No AI/LLM provider is
@@ -523,16 +523,16 @@ genuinely configured anywhere in this repo: `apps/api/.env.example` (and
 the local `.env`) declare `OPENAI_API_KEY`/`ANTHROPIC_API_KEY`/
 `AI_PROVIDER` fields, but both hold only unset placeholder values
 (`sk-xxxxxxxxxxxx` / `sk-ant-xxxxxxxxxxxx`), and a repo-wide grep confirms
-no code anywhere reads any of these three env vars — they're template
+no code anywhere reads any of these three env vars - they're template
 placeholders for a future integration, not a wired credential. Confirmed
 `apps/api/src/modules/ai/` remains the same 3-file no-op scaffold (empty
-constructors) it was before this session — unlike `EmailService`
+constructors) it was before this session - unlike `EmailService`
 (Milestone 5), which had a genuine console-fallback to build on, there is
 no equivalent AI scaffolding to extend. Per `CLAUDE.md`'s explicit
 prohibition on faking clinical logic to "make it work," this was not
 stubbed with a canned/fake summary.
 
-**Impact:** None currently — every other Milestone 7 deliverable (catalog,
+**Impact:** None currently - every other Milestone 7 deliverable (catalog,
 order creation, sample collection, structured result entry, abnormal
 flagging, both PDF paths) is fully implemented and covers the clinically
 load-bearing parts of the workflow. Summarization is a convenience layer
@@ -548,7 +548,7 @@ structured `LabTestItem` rows (result/unit/reference range/abnormal
 flags) and stores the summary text on the order (a new nullable field,
 e.g. `LabTest.aiSummary`), and the frontend polls or re-fetches once
 available. Mirrors the general shape of TD-0015 (SMS) and TD-0016 (drug
-interactions) — implement for real once genuinely unblocked, don't
+interactions) - implement for real once genuinely unblocked, don't
 retrofit a fake version now.
 
 ---
@@ -556,20 +556,20 @@ retrofit a fake version now.
 ## TD-0019 (tracking only, not a defect): AI-powered radiology image interpretation and PACS/DICOM integration explicitly out of scope
 
 Opened: 2026-08-02
-Status: Open — explicitly excluded by instruction, not a gap to fill
-Severity: N/A (not a bug — explicitly excluded feature)
+Status: Open - explicitly excluded by instruction, not a gap to fill
+Severity: N/A (not a bug - explicitly excluded feature)
 
 **Description:** Milestone 8's instructions explicitly excluded two
 things: AI image interpretation and real PACS/DICOM server integration.
 Neither is implemented, and neither is faked. The module is designed so
 a future PACS integration has a real extension point: `RadiologyAttachment
-.type` includes `DICOM_PLACEHOLDER`/`EXTERNAL_IMAGING` (metadata-only —
-accession number, external URL, study instance UID — no real file or
+.type` includes `DICOM_PLACEHOLDER`/`EXTERNAL_IMAGING` (metadata-only -
+accession number, external URL, study instance UID - no real file or
 DICOM parsing), and `RadiologyOrder`'s scheduling/report fields are
 plain columns a PACS webhook or worklist integration could populate
 without a schema change.
 
-**Impact:** None — these were never in scope for this session. Recorded
+**Impact:** None - these were never in scope for this session. Recorded
 here only so a future session (or the user) has one place documenting
 that the exclusion was deliberate, not an oversight, and what shape the
 integration point is in.
@@ -577,7 +577,7 @@ integration point is in.
 **Resolution plan:** When/if the user wants real PACS/DICOM connectivity
 or AI-assisted image interpretation, treat both as genuinely new,
 credential/infrastructure-blocked features (same practice as TD-0015
-SMS, TD-0018 AI lab summarization) — do not stub either with fake
+SMS, TD-0018 AI lab summarization) - do not stub either with fake
 output.
 
 ---
@@ -590,15 +590,15 @@ Severity: Low
 
 **Description:** `RadiologyOrder.technicianUserId` is a plain `String`
 (no FK, matching the `LabTest.sampleCollectedBy`-style "actor" convention
-— ADR-0008 point 5), settable via the `POST /radiology/:id/schedule` API,
-but the frontend Scheduling tab has no input for it at all — there is no
+- ADR-0008 point 5), settable via the `POST /radiology/:id/schedule` API,
+but the frontend Scheduling tab has no input for it at all - there is no
 staff-directory/user-lookup endpoint anywhere in this codebase yet (not
 for lab technicians, not for any other staff type) for the frontend to
 populate a picker from. The Radiologist field *does* have a picker
 (reuses the existing `listDoctors` endpoint, since a radiologist is
 modeled as a `Doctor` by specialization).
 
-**Impact:** Low — a receptionist/radiology-technician role can still
+**Impact:** Low - a receptionist/radiology-technician role can still
 process orders end to end (schedule/start/complete/report) without ever
 setting `technicianUserId`; it's an optional metadata field, not
 load-bearing for any status transition or permission check.
@@ -606,7 +606,7 @@ load-bearing for any status transition or permission check.
 **Resolution plan:** Add a generic "list users by role" (or
 per-organization staff directory) endpoint if/when one becomes needed
 for multiple modules (this same gap would block a technician picker for
-Laboratory too, which has the identical `sampleCollectedBy` shape) —
+Laboratory too, which has the identical `sampleCollectedBy` shape) -
 not worth building a one-off endpoint for this single field.
 
 ---
@@ -623,14 +623,14 @@ reject (release reservation) all read `Drug.currentStock`/`reservedStock`
 and write back within an application-level `$transaction`, but there is
 no Postgres row lock (`SELECT ... FOR UPDATE`) or exclusion constraint
 preventing two concurrent dispense orders from both reserving against
-the same batch's available stock before either commits — the same class
+the same batch's available stock before either commits - the same class
 of gap already open and documented for appointment booking (**TD-0012**)
 and `DoctorLeaveService`'s overlap check, not a new pattern introduced
 here.
 
 **Impact:** Low probability in practice (requires two pharmacists
 preparing different orders against the same batch at the exact same
-moment), but a genuine correctness gap — `Drug.reservedStock` could
+moment), but a genuine correctness gap - `Drug.reservedStock` could
 theoretically exceed what's truly available under concurrent load.
 
 **Resolution plan:** Add a `SELECT ... FOR UPDATE`-guarded read of the
@@ -647,7 +647,7 @@ Opened: 2026-08-03
 Status: Open
 Severity: Low
 
-**Description:** "Low stock" means `currentStock <= reorderLevel` — a
+**Description:** "Low stock" means `currentStock <= reorderLevel` - a
 comparison between two columns on the same row, which Prisma's query
 builder cannot express in a `where` filter without a raw query.
 `DrugCatalogService.list` works around this by fetching every drug
@@ -655,9 +655,9 @@ matching the other filters for the org and filtering/paginating in
 JavaScript when `lowStockOnly` is set, instead of paginating at the
 database level like every other query path in this codebase.
 
-**Impact:** Low today — a single organization's drug catalog (one row
+**Impact:** Low today - a single organization's drug catalog (one row
 per batch) is not large enough for this to be a real performance
-problem — but it doesn't scale the way DB-level pagination does, and is
+problem - but it doesn't scale the way DB-level pagination does, and is
 an inconsistent pattern versus the rest of the codebase's query methods.
 
 **Resolution plan:** Replace with a `Prisma.$queryRaw` (or a raw SQL
@@ -676,13 +676,13 @@ Severity: Low
 implemented and REST-exposed (`GET/POST /billing/catalog`, `PATCH
 /billing/catalog/:id`, `GET/POST /billing/charges`, `POST
 /billing/charges/:id/void`), but no frontend page manages them directly
-— the invoice-creation dialog is the only UI surface that touches
+- the invoice-creation dialog is the only UI surface that touches
 catalog items (implicitly, via a charge's denormalized fields) and
 existing pending charges (via the sweep checklist). There is no page to
 browse/deactivate catalog items or raise/void an ad-hoc charge outside
 the context of building an invoice.
 
-**Impact:** Low — every roadmap-required frontend surface (billing
+**Impact:** Low - every roadmap-required frontend surface (billing
 workbench: invoices, payments, refunds) is implemented; catalog/charge
 management is reachable only through the API (Swagger) or indirectly
 through invoice creation, not a dedicated admin screen.
@@ -702,7 +702,7 @@ Severity: Medium
 
 **Description:** `InvoicesService`/`PaymentsService`/`RefundsService` all
 read an `Invoice` row, compute new totals/paid-amount/balance in
-application code, then write back within a `$transaction` — but nothing
+application code, then write back within a `$transaction` - but nothing
 prevents two concurrent requests (e.g. two cashiers recording a payment
 against the same invoice at the same instant) from both reading the
 pre-update balance before either commits. The same class of gap already
@@ -710,7 +710,7 @@ open and accepted for appointment booking (TD-0012) and pharmacy stock
 reservation (TD-0021), not a new pattern introduced here.
 
 **Impact:** Low probability in practice (requires two near-simultaneous
-writes against the same invoice), but a genuine correctness gap —
+writes against the same invoice), but a genuine correctness gap -
 `paidAmount`/`balanceDue` could theoretically be computed from stale
 data under concurrent load.
 
@@ -730,20 +730,20 @@ Severity: Low
 **Description:** `InvoiceStatus.OVERDUE` exists in the schema (from the
 original scaffolding commit) and `Invoice.dueDate` is a real, settable
 field, but nothing in this session transitions an invoice's status to
-`OVERDUE` when its due date passes with a balance still owing — doing so
+`OVERDUE` when its due date passes with a balance still owing - doing so
 would require a scheduled job, and no cron/scheduler infrastructure
 exists anywhere in this repo (the same "no cron infra" gap noted for
 `NotificationType.APPOINTMENT_REMINDER` and every other
 would-be-scheduled feature in this codebase).
 
-**Impact:** Low — `balanceDue` and `dueDate` are both real and queryable
+**Impact:** Low - `balanceDue` and `dueDate` are both real and queryable
 today (the frontend could compute "is this overdue" client-side from
 those two fields), just not reflected in the persisted `status` column
 or filterable via `status=OVERDUE`.
 
 **Resolution plan:** Pick up once this repo has any scheduled-job
 infrastructure (a recurring job scanning `ISSUED`/`PARTIALLY_PAID`
-invoices past `dueDate`) — don't bolt on a one-off cron for this single
+invoices past `dueDate`) - don't bolt on a one-off cron for this single
 feature ahead of that.
 
 ---
@@ -751,17 +751,17 @@ feature ahead of that.
 ## TD-0027 (tracking only, not a defect): Invoice/receipt QR is a disclosed placeholder, not a real payment gateway
 
 Opened: 2026-08-03
-Status: Open — expected to stay open until the user supplies a payment-gateway/UPI integration
-Severity: N/A (not a bug — an intentionally deferred feature)
+Status: Open - expected to stay open until the user supplies a payment-gateway/UPI integration
+Severity: N/A (not a bug - an intentionally deferred feature)
 
 **Description:** Milestone 10's roadmap scope named a receipt/invoice QR
 code. No UPI/payment-gateway credentials or merchant VPA are configured
 anywhere in this repo. Per `CLAUDE.md`'s prohibition on faking
 billing logic to "make it work," both PDF generators (`billing-invoice-
 pdf.ts`, `billing-receipt-pdf.ts`) render a labeled bordered placeholder
-box instead of a real scannable code — see ADR-0015 point 9.
+box instead of a real scannable code - see ADR-0015 point 9.
 
-**Impact:** None currently — every other Milestone 10 deliverable
+**Impact:** None currently - every other Milestone 10 deliverable
 (invoicing, discounts, taxes, multi-mode payments, refunds) is fully
 implemented and functional without it.
 
@@ -769,7 +769,7 @@ implemented and functional without it.
 gateway/UPI merchant integration. At that point, generate an actual UPI
 deep-link QR (e.g. via a `qrcode` npm package) encoding the invoice/
 payment reference, mirroring the general shape of TD-0015 (SMS)/
-TD-0018 (AI summarization)/TD-0019 (PACS) — implement for real once
+TD-0018 (AI summarization)/TD-0019 (PACS) - implement for real once
 genuinely unblocked, don't retrofit a fake one now.
 
 ---
@@ -783,20 +783,20 @@ Severity: Low
 **Description:** `DispenseService.dispenseComplete` calls
 `PrescriptionsService.updateStatus(..., { status: COMPLETED })` after its
 own transaction commits, swallowing any error
-(`.catch(() => undefined)`) rather than failing the whole dispense — the
+(`.catch(() => undefined)`) rather than failing the whole dispense - the
 same "separate service calls, no distributed transaction" pattern already
 used throughout this codebase (e.g. `EncountersService`/
 `RadiologyOrdersService`), not a new gap. In the extremely unlikely case
 this call fails (e.g. the prescription was independently discontinued in
 the same instant), the `DispenseOrder` ends up `DISPENSED` while its
-`Prescription` stays `ACTIVE` — a minor, self-correcting inconsistency
+`Prescription` stays `ACTIVE` - a minor, self-correcting inconsistency
 (the prescription can still be manually marked `COMPLETED`/
 `DISCONTINUED` from the encounter page).
 
 **Impact:** None observed; a real but narrow edge case with a manual
 recovery path already in the UI.
 
-**Resolution plan:** Not planned — acceptable given the same pattern is
+**Resolution plan:** Not planned - acceptable given the same pattern is
 already relied on elsewhere in this codebase. Revisit only if this
 proves to happen in practice.
 
@@ -810,7 +810,7 @@ Severity: Low (UX friction, not a correctness issue)
 
 **Description:** Filing an insurance claim requires an `invoiceId`
 (`InsuranceClaimsService.create`), but no endpoint resolves "the
-invoice for this encounter" — `InvoicesService.list` filters by
+invoice for this encounter" - `InvoicesService.list` filters by
 `patientId`/`status`/`type`/date range, not `encounterId`, even though
 `Invoice.encounterId` exists as a column (added in Milestone 10). The
 Encounter Insurance tab's "File claim" dialog (`apps/web/src/app/
@@ -819,14 +819,14 @@ therefore asks staff to paste the invoice ID manually rather than
 picking it from a list, with a hint pointing them at the Billing
 module.
 
-**Impact:** Low — staff can still file a claim, just with one extra
+**Impact:** Low - staff can still file a claim, just with one extra
 manual step (copying the invoice ID from Billing). No functional
 claims-workflow gap.
 
 **Resolution plan:** Add an `encounterId` filter to
 `InvoicesController`'s list endpoint (mirrors the existing `patientId`
 filter), then have `FileClaimDialog` fetch and offer a select instead
-of a free-text field. Small, low-risk change — deferred only because it
+of a free-text field. Small, low-risk change - deferred only because it
 touches the Billing module and this session's reading policy scoped
 Billing changes to reuse-as-is.
 
@@ -844,16 +844,16 @@ tab backed by a real per-patient event feed (`PatientTimelineEntry`,
 authorization) audit feed exists, even though every claim/pre-auth
 lifecycle transition already emits an `@OnEvent` and is recorded via
 `AuditService` (see `audit.listener.ts`'s 12 new `insurance.*`
-handlers added this milestone) — the audit rows exist in the database,
+handlers added this milestone) - the audit rows exist in the database,
 there's just no endpoint that filters them by `resourceId`/`resource:
 'InsuranceClaim'` for a single claim. The claim detail page's
 "Timeline" panel is a client-side list built from the claim's own
-`createdAt`/`submittedAt`/`settledAt`/`closedAt` columns instead —
+`createdAt`/`submittedAt`/`settledAt`/`closedAt` columns instead -
 correct as far as it goes, but it can't show intermediate transitions
 (e.g. "Under Review" has no timestamp column) or who performed each
 action.
 
-**Impact:** Low — the settlement panel and status badge already carry
+**Impact:** Low - the settlement panel and status badge already carry
 the information that matters for day-to-day use; the timeline gap is a
 "nice to have," not a workflow blocker.
 
@@ -861,7 +861,7 @@ the information that matters for day-to-day use; the timeline gap is a
 resourceId=Y` filter (or a per-claim `GET /insurance/claims/:id/audit`
 convenience endpoint) and swap the claim detail page's synthesized
 timeline for the real feed. Natural follow-up once a second module
-wants the same per-resource audit view — not deferred for a hard
+wants the same per-resource audit view - not deferred for a hard
 blocker, just not built preemptively for one caller.
 
 ---
@@ -869,7 +869,7 @@ blocker, just not built preemptively for one caller.
 ## TD-0030 (tracking only, not a defect): IPD billing integration and discharge are Checkpoint 12.2, not built this session
 
 Opened: 2026-08-04
-Status: **Resolved (2026-08-04)** — closed by Checkpoint 12.2 (see ADR-0019):
+Status: **Resolved (2026-08-04)** - closed by Checkpoint 12.2 (see ADR-0019):
 `DischargeService.complete` computes `days-stayed × Room.chargesPerDay`
 (elapsed time from `admittedAt`, rounded up to the next whole day,
 minimum 1) into a real `Charge` row (`sourceModule: IPD`, `sourceId:
@@ -879,25 +879,25 @@ complete workflow.
 Severity: N/A (explicitly out of scope by instruction, not a gap in what was asked)
 
 **Description:** `docs/roadmap.md`'s Milestone 12 goal names "IPD billing
-integration — a stay's charges accumulate the same way [as the Charge
+integration - a stay's charges accumulate the same way [as the Charge
 Engine]," but Checkpoint 12.1's instructions explicitly excluded
 Nursing Notes, Medication Administration, and Discharge Summary,
-reserving them for 12.2 — and the only sensible trigger point for a
+reserving them for 12.2 - and the only sensible trigger point for a
 per-day room/bed charge is discharge (days-stayed × `Room.
 chargesPerDay`), which doesn't exist yet. `AdmissionStatus.DISCHARGED`/
 `ABSCONDED` exist in the schema (per ADR-0018) but nothing in this
-checkpoint's API ever sets them — only `ADMITTED` (on create) and
+checkpoint's API ever sets them - only `ADMITTED` (on create) and
 `CANCELLED` (the same-stay "opened in error" cancel action) are
-reachable. This mirrors `InvoiceStatus.OVERDUE` (TD-0026) — an enum
+reachable. This mirrors `InvoiceStatus.OVERDUE` (TD-0026) - an enum
 value with no trigger built yet, not a fake implementation.
 
 **Impact:** None for 12.1's actual deliverables (ward/room/bed
 inventory, admission, bed allocation/transfer/reserve/vacate, dashboard
-— all fully implemented, tested, and browser-verified). A stay
+- all fully implemented, tested, and browser-verified). A stay
 currently accrues no billing charges regardless of length.
 
 **Resolution plan:** Build in Checkpoint 12.2 alongside Discharge
-Summary — on discharge, compute `days-stayed × Room.chargesPerDay` (and
+Summary - on discharge, compute `days-stayed × Room.chargesPerDay` (and
 any other per-stay charges) into the existing Charge Engine
 (`sourceModule: 'ipd'`, `sourceId: admission.id`), mirroring how
 Milestone 10 left ad-hoc `Charge` creation manual/event-driven rather
@@ -913,16 +913,16 @@ Severity: Low
 
 **Description:** `BedsService.deactivate` correctly blocks deactivating
 an `OCCUPIED` bed (`ConflictException`). `WardsService.deactivate` and
-`RoomsService.deactivate` don't have the equivalent guard — an admin
+`RoomsService.deactivate` don't have the equivalent guard - an admin
 holding `ipd.wards.delete`/`ipd.rooms.delete` could set a ward or room
 to `INACTIVE` while one or more of its beds still show a live
 `ADMITTED` patient in `Admission.bedId`. Deactivating the ward/room
 doesn't cascade any change to the beds or admissions themselves (the
 bed keeps its own `OCCUPIED` status and the admission is unaffected),
-so no data is lost or silently changed — this is a missing *prevention*
+so no data is lost or silently changed - this is a missing *prevention*
 check, not a correctness bug in what already happened.
 
-**Impact:** Low — an inactive ward/room with a live patient inside is
+**Impact:** Low - an inactive ward/room with a live patient inside is
 confusing in the UI (it'd disappear from the default `status=ACTIVE`-
 filtered lists staff use day to day) but not unsafe; the admission and
 bed records remain fully queryable and correct.
@@ -931,7 +931,7 @@ bed records remain fully queryable and correct.
 `Bed.status: 'OCCUPIED'` query) guard `BedsService.deactivate` already
 has, to `WardsService.deactivate`/`RoomsService.deactivate`, throwing a
 `ConflictException` naming how many beds are still occupied. Small,
-mechanical follow-up — flagged now rather than fixed opportunistically
+mechanical follow-up - flagged now rather than fixed opportunistically
 mid-checkpoint since it isn't exercised by anything this checkpoint's
 UI does (nothing deactivates a ward/room with a live admission in the
 verified flow).
@@ -945,14 +945,14 @@ Status: Open
 Severity: Low
 
 **Description:** `ipd.nursing`/`ipd.orders`/`ipd.tasks`/`ipd.mar`/
-`ipd.discharge` are all-scope only (see ADR-0019) — mirroring `ipd.
+`ipd.discharge` are all-scope only (see ADR-0019) - mirroring `ipd.
 beds`/`ipd.transfer`'s precedent rather than `ipd.admissions`' own-scope
 carve-out (ADR-0018). A doctor holding `ipd.discharge.create`/`.manage`
 can approve or finalize discharge for *any* admission, not only ones
 where they're the attending physician, unlike `ipd.admissions.update`
 which is own-scope-checked via `AdmissionsService.assertOwnScopeOk`.
 
-**Impact:** Low in this repo's threat model — every demo/seeded role is
+**Impact:** Low in this repo's threat model - every demo/seeded role is
 trusted staff within one organization, and the same gap already exists
 for `ipd.transfer` (any nurse can transfer any patient) without having
 caused an issue. A doctor approving discharge for a colleague's patient
@@ -970,21 +970,21 @@ approve/create actions, mirroring the existing pattern exactly.
 ## TD-0033: MAR's barcode-ready fields have no real scanner/hardware integration
 
 Opened: 2026-08-04
-Status: Open — explicitly disclosed, not a gap
+Status: Open - explicitly disclosed, not a gap
 Severity: N/A (no barcode scanner hardware exists in this environment)
 
 **Description:** `MedicationAdministration.barcodeVerified`/
 `scannedCode` are the schema/API hook for a "barcode-ready
-architecture" (per `docs/roadmap.md`'s Checkpoint 12.2 deliverables) —
+architecture" (per `docs/roadmap.md`'s Checkpoint 12.2 deliverables) -
 the `administer` endpoint accepts and stores a scanned code and a
 verified flag, and the MAR tab has a "Barcode scanned/verified"
 checkbox + code field. No physical barcode scanner, camera-based
-scanning, or medication/patient wristband barcode format is wired up —
+scanning, or medication/patient wristband barcode format is wired up -
 a nurse manually types the code (or leaves it unchecked) exactly as
 `radiology`'s DICOM-placeholder precedent (TECH_DEBT for Milestone 8)
 disclosed the same shape of gap.
 
-**Impact:** None for anything this checkpoint claims — the
+**Impact:** None for anything this checkpoint claims - the
 architecture point (a real scan integration could POST into the same
 field without a schema change) is real; there is no fake scanning
 happening.
@@ -992,7 +992,7 @@ happening.
 **Resolution plan:** Wire a real barcode-scanning flow (camera-based
 web scanning library, or hardware scanner emitting keyboard input into
 the `scannedCode` field) if/when barcode hardware becomes available to
-test against — no code changes needed on the backend.
+test against - no code changes needed on the backend.
 
 ---
 
@@ -1006,12 +1006,12 @@ Severity: Low
 vendor-returns` routes (`VendorReturn` create/list/get/acknowledge,
 `inventory.procurement.manage`-gated) are fully implemented and tested
 in the Milestone 13 backend (commit `e7f4abb`), but this session's
-frontend pass — Milestone 13's remaining-frontend scope as given —
+frontend pass - Milestone 13's remaining-frontend scope as given -
 did not include a Vendor Returns page. See ADR-0021.
 
 **Impact:** A vendor return (goods sent back after a GRN, e.g. a
 damaged batch) can only be recorded via a direct API call, not through
-the UI. No data-integrity risk — the workflow itself is real and
+the UI. No data-integrity risk - the workflow itself is real and
 tested; only the frontend surface is missing.
 
 **Resolution plan:** Add `apps/web/src/lib/api/procurement.ts`
@@ -1026,13 +1026,13 @@ return is typically raised against a specific GRN.
 ## TD-0035: No browser-verified screenshots for Milestone 13
 
 Opened: 2026-08-05
-Status: Open — explicitly instructed, not an oversight
+Status: Open - explicitly instructed, not an oversight
 Severity: Low
 
 **Description:** Every milestone from 4 through 12 in this repo has a
 browser-verified walkthrough and screenshots under `docs/screens/`.
 Milestone 13's frontend (both the 2026-08-05 Checkpoint 1 session and
-this session) has neither — Checkpoint 1 disclosed no browser tool
+this session) has neither - Checkpoint 1 disclosed no browser tool
 being available; this session was explicitly instructed "Do NOT use
 Playwright. Do NOT open a browser. Do NOT generate screenshots. Do NOT
 perform manual UI walkthroughs," overriding the standing Screenshot
@@ -1040,7 +1040,7 @@ policy in `CLAUDE.md`. See ADR-0021.
 
 **Impact:** Every new page (Stores, Stock/Transfers, Vendors, Purchase
 Requests, Purchase Orders, Goods Receipt, Vendor Invoices, Store
-Requisitions, Stock Audits, Assets + Maintenance — 20 routes total)
+Requisitions, Stock Audits, Assets + Maintenance - 20 routes total)
 has passed `lint`/`typecheck`/`build`/unit+e2e `test`, but no golden
 path (create a store, receive goods against a real PO, walk a
 requisition through issue→receive, complete a stock audit with a real
@@ -1057,12 +1057,12 @@ end-to-end per the Milestone Completion Checklist, capture
 ## TD-0036: No browser-verified screenshots for Milestone 14
 
 Opened: 2026-08-05
-Status: Open — explicitly instructed, not an oversight
+Status: Open - explicitly instructed, not an oversight
 Severity: Low
 
 **Description:** This session's instructions explicitly said "Do NOT
 use Playwright. Do NOT open a browser. Do NOT generate screenshots,"
-overriding the standing Screenshot policy in `CLAUDE.md` — the same
+overriding the standing Screenshot policy in `CLAUDE.md` - the same
 situation Milestone 13's frontend session was in (TD-0035). All 7 new
 `/dashboard/staff/*` routes have passed `lint`/`typecheck`/`build`/
 unit+e2e `test`, but no golden path (add a staff member, assign a
@@ -1093,7 +1093,7 @@ but no `shiftId` (e.g. a `mark()`-created manual PRESENT row) is
 excluded from the overtime calculation entirely rather than falling
 back to a default shift length.
 
-**Impact:** Low — Payroll Prep is explicitly a preparation/export
+**Impact:** Low - Payroll Prep is explicitly a preparation/export
 step, not a pay-run; a real payroll run downstream is expected to
 apply the organization's actual compensation policy. Disclosed on the
 Payroll Prep page itself ("no pay-run processing").
@@ -1103,21 +1103,21 @@ built, move the day-count convention and overtime multiplier into
 per-organization settings (mirroring `Organization.settings.gstRate`'s
 precedent) rather than a hardcoded constant.
 
-## TD-0038: Attendance corrections apply immediately — no HR approval gate
+## TD-0038: Attendance corrections apply immediately - no HR approval gate
 
 Opened: 2026-08-05
 Status: Open
 Severity: Low
 
 **Description:** `AttendanceController.correct` (`attendance.update`)
-applies a correction the moment it's submitted — there is no
+applies a correction the moment it's submitted - there is no
 pending/approved distinction, unlike `StaffLeave`'s apply→approve/
 reject workflow or `DoctorLeave`'s precedent. A staff member holding
 `attendance.update` at `.own` scope could in principle correct their
 own record without a second approver, though in practice only HR/Admin
 roles are seeded with `attendance.update` (self-service roles only
 hold it to request a fix on their own row, and no self-service role in
-`seed.ts` is granted it — see `packages/database/prisma/seed.ts`).
+`seed.ts` is granted it - see `packages/database/prisma/seed.ts`).
 
 **Impact:** Low today (no role is actually seeded with this gap
 exploitable), but worth closing before granting broader self-service
@@ -1131,7 +1131,7 @@ real requirement, add a `PENDING`/`APPROVED` distinction to
 ## TD-0039: Doctor duty roster and biometric attendance hardware are explicitly out of scope
 
 Opened: 2026-08-05
-Status: Open — by design, not an oversight
+Status: Open - by design, not an oversight
 Severity: Low
 
 **Description:** `docs/roadmap.md`'s Milestone 14 deliverable list
@@ -1139,27 +1139,27 @@ named "Doctor duty roster" and "Attendance marking (manual + biometric
 hook)." This session built a generic Staff/Shift/Attendance/Leave
 system for **non-doctor** employees (Nurse/Receptionist/Lab
 Technician/Radiology Technician/Pharmacist/Cashier/HR/Inventory
-Manager) — see ADR-0022 for the reasoning. Doctors already have their
+Manager) - see ADR-0022 for the reasoning. Doctors already have their
 own dedicated `DoctorSchedule`/`DoctorLeave`/`AvailabilityService`
 system (Checkpoint 4.2); this session did not build a second,
 competing roster for them, nor merge the two systems. "Manual"
 attendance marking (self clock-in/out via the app, or HR's `mark()`
 override) is real; there is no biometric device integration of any
-kind — no hardware, SDK, or vendor is configured anywhere in this
+kind - no hardware, SDK, or vendor is configured anywhere in this
 repo, matching this repo's standing precedent for credential-blocked
-integrations (SMS, AI providers, payment gateways, PACS/DICOM — see
+integrations (SMS, AI providers, payment gateways, PACS/DICOM - see
 TD-0015/TD-0018/TD-0027/TD-0019).
 
-**Impact:** None today — no doctor-roster or biometric requirement has
+**Impact:** None today - no doctor-roster or biometric requirement has
 been raised against this milestone's actual deliverable list; flagging
 so a future session doesn't assume either exists.
 
 **Resolution plan:** If doctor duty rostering needs to move onto the
 generic `Shift`/`ShiftRoster` model (e.g. to unify with non-doctor
 staff scheduling), that is a deliberate architecture decision for a
-future session — record it as an ADR rather than merging silently. A
+future session - record it as an ADR rather than merging silently. A
 biometric hook, if ever required, is an external hardware integration
-with no vendor chosen yet — same category as the payment-gateway/PACS
+with no vendor chosen yet - same category as the payment-gateway/PACS
 gaps above.
 
 ---
@@ -1193,13 +1193,13 @@ service could read.
 path that casts to `InputJsonValue`) can silently diverge from its Zod
 contract and only surface as a runtime 500 in the browser. In this
 instance one bad seed literal broke the doctors dashboard tile and,
-silently, every schedule read — `/availability`, `/availability/today`
-and slot generation — across all 8 seeded doctors.
+silently, every schedule read - `/availability`, `/availability/today`
+and slot generation - across all 8 seeded doctors.
 
 **Resolution plan:** Two complementary options, neither done yet:
 (1) an integration test that runs the demo seed against
 `medicore_test` and asserts the seeded rows parse cleanly against
-their Zod schemas — this is the one that generalises; (2) a lint rule
+their Zod schemas - this is the one that generalises; (2) a lint rule
 or convention banning bare `as unknown as Prisma.InputJsonValue` in
 favour of a `toJson(schema, value)` helper that parses before casting.
 Also worth auditing the other `Json` columns (`Doctor.
@@ -1208,14 +1208,14 @@ writer/reader drift.
 
 ---
 
-## TD-0041: No AI provider credential exists — every AI endpoint returns 503, and no clinical text is generated
+## TD-0041: No AI provider credential exists - every AI endpoint returns 503, and no clinical text is generated
 
 Opened: 2026-08-05
-Status: Open — genuinely credential-blocked, disclosed not faked
+Status: Open - genuinely credential-blocked, disclosed not faked
 Severity: High (blocks the feature entirely, not the code)
 
 **Description:** Checkpoint 15.1 built the complete AI Clinical
-Assistant — provider abstraction over four real vendors, prompt
+Assistant - provider abstraction over four real vendors, prompt
 templates, conversation logging, audit, usage/token accounting, RBAC,
 feature flags, retry, and both streaming and non-streaming transports.
 What it cannot do in this environment is call a provider:
@@ -1225,7 +1225,7 @@ sk-xxxxxxxxxxxx`, `ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxx`), no
 
 `ai.config.ts` treats a run of 6+ `x`s as a placeholder and therefore
 as *absent*, deliberately: sending a placeholder key would produce a
-provider 401 that reads like an outage rather than what it is —
+provider 401 that reads like an outage rather than what it is -
 no credential. With no configured provider, `AiClientService.
 assertAvailable()` throws before any patient data is read, and every
 generation endpoint returns **503 with an explicit reason**. It does
@@ -1236,18 +1236,18 @@ summarization, TD-0019 PACS/DICOM, TD-0027 payment gateway, TD-0039
 biometric attendance).
 
 **Impact:** The seven generators are reachable, RBAC-gated, audited,
-and fully wired end to end in both API and UI — and produce nothing.
+and fully wired end to end in both API and UI - and produce nothing.
 The `/dashboard/ai` page and the `AiAssistDialog` both surface the
 exact reason ("OPENAI_API_KEY is not set (or is still a placeholder
 value)") rather than failing opaquely. The e2e suite asserts *this
-contract* — 503-with-a-reason — rather than asserting generated text,
+contract* - 503-with-a-reason - rather than asserting generated text,
 because there is no honest way to assert output that isn't produced.
 
 **Resolution plan:** Set a real key for whichever provider the
 deployment uses (`AI_PROVIDER` + the matching `*_API_KEY`, or point
 `OLLAMA_BASE_URL` at a running Ollama for a fully self-hosted setup).
 Then extend `apps/api/test/ai.e2e-spec.ts` with the generation-path
-assertions it currently cannot make. No code change is required —
+assertions it currently cannot make. No code change is required -
 the pipeline is complete; only the credential is missing.
 
 ---
@@ -1255,12 +1255,12 @@ the pipeline is complete; only the credential is missing.
 ## TD-0042: Clinical context is sent to a third-party AI provider with no BAA and no de-identification by default
 
 Opened: 2026-08-05
-Status: Open — mitigations exist, policy decision outstanding
+Status: Open - mitigations exist, policy decision outstanding
 Severity: High (compliance, not correctness)
 
 **Description:** The AI generators work by sending assembled clinical
-context — patient demographics, clinical notes, vitals, diagnoses, lab
-results, radiology reports, prescriptions, nursing notes — to whichever
+context - patient demographics, clinical notes, vitals, diagnoses, lab
+results, radiology reports, prescriptions, nursing notes - to whichever
 provider `AI_PROVIDER` selects. For OpenAI/Anthropic/Gemini that is a
 third-party processor. This repo has no signed Business Associate
 Agreement with any of them, no data-processing agreement, no
@@ -1273,7 +1273,7 @@ a BAA:
    UHID with `[redacted]` in every context block while keeping age,
    sex and clinical content (which are load-bearing for the output).
    This is *pseudonymisation*, not HIPAA Safe Harbor de-identification
-   — free-text clinical notes can still carry identifiers the builder
+   - free-text clinical notes can still carry identifiers the builder
    cannot detect.
 2. `AI_PROVIDER=OLLAMA` runs entirely self-hosted, so no PHI leaves the
    deployment at all. This is the only configuration in which the
@@ -1282,7 +1282,7 @@ a BAA:
 **Impact:** A deployment that enables AI against a hosted provider
 without a BAA is very likely in breach of HIPAA (and of India's DPDP
 Act for this system's primary market). Nothing in the code prevents
-that configuration today — it is disclosed here rather than silently
+that configuration today - it is disclosed here rather than silently
 permitted.
 
 **Resolution plan:** Before any production enablement: (a) sign a BAA
@@ -1294,7 +1294,7 @@ generation, and a real de-identification pass over free-text fields.
 
 ---
 
-## TD-0043: `PATIENT_LINKED_MODELS` is a hand-maintained list — a future module adding a `patientId` column can silently break merge
+## TD-0043: `PATIENT_LINKED_MODELS` is a hand-maintained list - a future module adding a `patientId` column can silently break merge
 
 Opened: 2026-08-05
 Status: Open
@@ -1305,22 +1305,22 @@ completion, ADR-0024) reassigns every other module's `patientId` column
 from a merged (duplicate) patient to the survivor by iterating a fixed
 array, `PATIENT_LINKED_MODELS`, in `patients.service.ts`. There is no
 schema-level or test-level check that this array stays in sync with
-every model that actually has a `patientId` column — it was built by
+every model that actually has a `patientId` column - it was built by
 grepping `schema.prisma` once, by hand.
 
 **Impact:** If a future milestone adds a new model with a `patientId`
 column (direct FK or a bare unenforced string, mirroring `Payment`/
 `Charge`'s existing pattern) and doesn't also add it to
 `PATIENT_LINKED_MODELS`, merging two patients will silently leave that
-new module's records pointing at the now-deactivated source patient —
+new module's records pointing at the now-deactivated source patient -
 a data-integrity bug that produces no error and is easy to miss in
 review, since nothing fails loudly.
 
-**Resolution plan:** A schema-introspection test (Prisma DMMF —
+**Resolution plan:** A schema-introspection test (Prisma DMMF -
 enumerate every model with a field literally named `patientId` and
 assert it's covered by `PATIENT_LINKED_MODELS`) would catch this at
 `pnpm test` time instead of relying on manual discipline. Not built
-this session — scoped as a follow-up test-infrastructure improvement
+this session - scoped as a follow-up test-infrastructure improvement
 rather than blocking Milestone 3's completion.
 
 ---
@@ -1328,13 +1328,13 @@ rather than blocking Milestone 3's completion.
 ## TD-0044: No browser-verified screenshots for Milestone 16
 
 **Recorded:** 2026-08-05 (Milestone 16)
-**Status:** Open — deliberate, by instruction
+**Status:** Open - deliberate, by instruction
 **Severity:** Low
 
 This session was explicitly instructed: *"Do NOT use Playwright or browser
 verification. Run only: pnpm lint / pnpm typecheck / pnpm test / pnpm
 test:e2e / pnpm build."* Every one of those passed, and 36 new e2e tests
-exercise the full Organization Dashboard and Platform console API surface —
+exercise the full Organization Dashboard and Platform console API surface -
 but no page under `/dashboard/organization` or `/platform` has been rendered
 in a real browser, and `docs/screens/` has no Milestone 16 entries.
 
@@ -1356,7 +1356,7 @@ a session is permitted to.
 `GET /platform/organizations/:id` and `GET /platform/organizations/:id/usage`
 are fully implemented, tested, and return a rich detail payload (hospitals,
 administrators, storage bytes, active users). The frontend currently surfaces
-only the *list* view plus its inline suspend/enable/plan dialogs — there is no
+only the *list* view plus its inline suspend/enable/plan dialogs - there is no
 `/platform/organizations/[id]` page consuming that detail endpoint.
 
 Nothing is faked: the list shows only data it genuinely has. The gap is a
@@ -1370,13 +1370,13 @@ consuming the two endpoints that already exist.
 ## TD-0046: API usage metering is a rolling Redis window, not a durable ledger
 
 **Recorded:** 2026-08-05 (Milestone 16, Checkpoint 16.2)
-**Status:** Open — deliberate trade-off, disclosed in the UI
+**Status:** Open - deliberate trade-off, disclosed in the UI
 **Severity:** Medium (if usage is ever used for billing)
 
 `ApiUsageService` counts requests in Redis keys
 (`apiusage:{orgId}:{YYYY-MM-DD}`, 35-day TTL), incremented fire-and-forget by
 a global interceptor. This was chosen over a Postgres row-per-day `upsert`
-because that would add a write to every read — a cost this repo pays nowhere
+because that would add a write to every read - a cost this repo pays nowhere
 else (ADR-0025 point 7).
 
 Consequences, all disclosed in both the Organization Usage tab and the
@@ -1386,7 +1386,7 @@ Platform overview:
 - The metering increment is not awaited, so a request that completes as the
   Redis write fails is not counted.
 
-**This is real measured traffic, not an estimate — but it must not be used as
+**This is real measured traffic, not an estimate - but it must not be used as
 a billing ledger without first moving it to durable storage.**
 
 **Resolution:** If usage-based billing is ever introduced, add a scheduled job
@@ -1410,7 +1410,7 @@ Therefore:
 - An object orphaned by a failed `StorageService.delete` still occupies real
   bucket space but is invisible in the reported figure.
 - A future module that adds an upload path must be added to this service by
-  hand, or its files silently stop counting — the same hand-maintained-list
+  hand, or its files silently stop counting - the same hand-maintained-list
   hazard already recorded as TD-0043 for `PATIENT_LINKED_MODELS`.
 
 **Resolution:** Reconcile against the storage driver periodically, and/or add a
@@ -1419,15 +1419,15 @@ represented in `StorageUsageService`.
 
 ---
 
-## TD-0048: Subscriptions record a commercial agreement — no payment is taken
+## TD-0048: Subscriptions record a commercial agreement - no payment is taken
 
 **Recorded:** 2026-08-05 (Milestone 16, Checkpoint 16.2)
-**Status:** Open — genuinely credential-blocked
+**Status:** Open - genuinely credential-blocked
 **Severity:** Medium
 
 A platform owner can set an organization's plan, status, limits, monthly
 price and currency. **Nothing charges anyone.** No payment gateway is
-configured anywhere in this repo — the same gap already recorded for
+configured anywhere in this repo - the same gap already recorded for
 invoice/receipt QR codes (TD-0027).
 
 Related, and equally honest about what is *not* enforced: the limits stored
@@ -1449,18 +1449,18 @@ upload paths if quotas are meant to bind.
 ## TD-0049: Platform global search deliberately excludes patients and clinical records
 
 **Recorded:** 2026-08-05 (Milestone 16, Checkpoint 16.2)
-**Status:** Open — deliberate, disclosed in-page
+**Status:** Open - deliberate, disclosed in-page
 **Severity:** None (this is the safe default; recorded so it isn't "fixed" carelessly)
 
 `PlatformStatsService.search` covers organizations, hospitals and users only.
 A platform operator has no clinical need for patient records, and a single
 search box returning PHI across every tenant would be a significant privacy
-regression — closely related to TD-0042's concern about clinical data leaving
+regression - closely related to TD-0042's concern about clinical data leaving
 a tenant boundary.
 
 **Resolution:** If cross-tenant patient lookup is ever genuinely required
 (e.g. for a support workflow), it should be a separate, individually
-permissioned, individually audited endpoint — not an extension of this search.
+permissioned, individually audited endpoint - not an extension of this search.
 
 ---
 
@@ -1477,7 +1477,7 @@ per-user "this account may not use the console" switch short of removing
 their permissions or deactivating the user.
 
 `JwtStrategy.validate` re-checks `isPlatform` against the database on every
-request, so revoking the organization flag is immediate — but permission
+request, so revoking the organization flag is immediate - but permission
 changes still take up to one access-token lifetime (15 minutes) to take
 effect, the same staleness window every other permission in this system has.
 
@@ -1486,19 +1486,19 @@ flag checked in `PlatformGuard` alongside the organization flag.
 
 ---
 
-## TD-0051: Appointment "waiting time" is a scheduling delay — no arrival timestamp exists
+## TD-0051: Appointment "waiting time" is a scheduling delay - no arrival timestamp exists
 
 **Raised:** 2026-08-05 (Milestone 17, Checkpoint 17.1)
 **Severity:** Medium
 
 The roadmap asks for "Average waiting time". `Appointment` has
 `scheduledAt`, `durationMinutes` and `status`, but **no check-in/arrival
-column** — nothing records when the patient physically arrived or was called
+column** - nothing records when the patient physically arrived or was called
 in. A true waiting time (arrival → consultation start) is therefore not
 derivable from this schema.
 
 What `AppointmentReport.averageConsultationDelayMinutes` reports instead is
-the mean minutes from `Appointment.scheduledAt` to `Encounter.createdAt` —
+the mean minutes from `Appointment.scheduledAt` to `Encounter.createdAt` -
 how late, on average, consultations start relative to their booked slot.
 That is a real and useful operational number, but it is **not** waiting-room
 time, and it is labelled as a "consultation delay" in the API doc comment,
@@ -1508,7 +1508,7 @@ with no linked encounter are excluded, and the sample size is returned
 alongside the mean (`consultationDelaySampleSize`).
 
 **Resolution:** Add `Appointment.arrivedAt`, set when a receptionist marks
-the appointment `ARRIVED` (the status already exists — only the timestamp is
+the appointment `ARRIVED` (the status already exists - only the timestamp is
 missing), then report `arrivedAt → Encounter.createdAt` as true waiting time
 and keep the scheduling delay as a second, separate metric.
 
@@ -1557,7 +1557,7 @@ dispatcher. `bullmq` is already a dependency and the email layer
 (`common/email`) already exists, so the work is a scheduled worker that runs
 the saved report, exports it, and mails it to `scheduleRecipients`.
 
-**Status: Resolved (2026-08-06)** — Milestone 18 shipped
+**Status: Resolved (2026-08-06)** - Milestone 18 shipped
 `modules/reports/scheduled-reports.dispatcher.ts`. It listens on
 `notifications.tick` (the notification worker's clock, so no second scheduler
 exists), matches `scheduleCron` with a new dependency-free
@@ -1566,7 +1566,7 @@ overlapping ticks cannot double-send, runs the report through
 `ReportRegistryService`, exports it through the same `ReportExportService` the
 on-screen button uses, emails every recipient, and raises a
 `SCHEDULED_REPORT_READY` in-app notification to the report's owner. One honest
-carry-over remains — see **TD-0060** (the file is linked, not attached).
+carry-over remains - see **TD-0060** (the file is linked, not attached).
 
 ---
 
@@ -1602,14 +1602,14 @@ year-on-year comparisons.
 
 Two schema facts constrain this: the **laboratory module raises no `Charge`
 rows of its own** (only IPD discharge and the appointment-consultation
-listener do), and `LabTestCatalogItem` has **no price column** — unlike
+listener do), and `LabTestCatalogItem` has **no price column** - unlike
 `RadiologyCatalogItem.price` and `ServiceCatalogItem.price`.
 
 So lab revenue is read from `Charge` rows the billing module owns
 (`sourceModule = LABORATORY`, keyed to the order by `sourceId`). The
 order-level and period-level totals are exact. The per-test figure in
 `LaboratoryReport.topTests[].revenue` is that order's charge **allocated
-evenly across the order's test items** — exact for a single-test order, a
+evenly across the order's test items** - exact for a single-test order, a
 disclosed even split otherwise. The rule is stated in the service doc
 comment, the registry report description and the UI table note.
 
@@ -1620,7 +1620,7 @@ guessed one.
 
 **Resolution:** Add a `price` column to `LabTestCatalogItem` and have the
 laboratory module raise a per-item `Charge` through the existing Charge
-Engine at order time — the same pattern IPD already uses for room charges.
+Engine at order time - the same pattern IPD already uses for room charges.
 Then per-test revenue becomes a direct sum with no allocation.
 
 ---
@@ -1652,14 +1652,14 @@ available bed-days per day from the beds that actually existed that day.
 **Raised:** 2026-08-05 (Milestone 17, Checkpoint 17.1)
 **Severity:** Low
 
-`InventoryReport.stockValuation` values stock at `InventoryItem.unitCost` —
+`InventoryReport.stockValuation` values stock at `InventoryItem.unitCost` -
 the catalog cost. `InventoryBatch` stores no per-batch purchase price (the
 actual paid price lives on `PurchaseOrderItem.unitPrice`, which is not
 linked back to the batch that receipt produced), so a weighted-average or
 FIFO valuation is not derivable without a schema change.
 
 The valuation is at least conservative in one respect: damaged, expired and
-lost quantities are excluded, so only saleable stock is valued — matching
+lost quantities are excluded, so only saleable stock is valued - matching
 how `InventoryStock` itself defines available stock.
 
 **Resolution:** Carry the receipt price onto `InventoryBatch` at GRN time
@@ -1788,7 +1788,7 @@ Two bounded gaps in inventory alerting:
    `StockService` methods that own their own transaction (`setOpeningStock`,
    `adjust`, `updateLevels`). Stock also moves through `receiveStock` /
    `issueStock`, which other inventory workflows (GRN, transfers,
-   requisitions) call *inside their own transaction* — emitting there would
+   requisitions) call *inside their own transaction* - emitting there would
    fire the event before commit, and the listener could read pre-commit
    state. So a GRN or a requisition issue does not currently raise a
    low-stock alert.
@@ -1839,7 +1839,7 @@ sender identity or its own Firebase project.
 
 The Platform Owner console states this on the page rather than presenting a
 per-tenant provider screen that would not do anything. Related: TD-0048
-(subscription limits reported but not enforced) has the same shape — a
+(subscription limits reported but not enforced) has the same shape - a
 platform-level control surface that a tenant cannot yet influence.
 
 **Resolution:** move provider credentials into `Organization.settings` (or a
@@ -1856,7 +1856,7 @@ default when a tenant has configured none.
 
 `POST /notifications/admin/send` accepts both `recipientIds` and
 `roleSlugs`, and both are honoured. The admin console's Send tab only
-exposes the role field, as a comma-separated list — there is no user search
+exposes the role field, as a comma-separated list - there is no user search
 or multi-select, so addressing named individuals means calling the API
 directly.
 
@@ -1877,9 +1877,9 @@ the asset-assignment field.
 
 Explicit instruction this session: "Do NOT use Playwright. Do NOT generate
 screenshots. Do NOT perform browser verification." Every claim about
-Milestone 18 therefore rests on automated verification — 727 API unit tests,
+Milestone 18 therefore rests on automated verification - 727 API unit tests,
 6 web unit tests, 408 e2e tests across 21 suites, plus lint, typecheck and
-build — and none on a rendered page. Mirrors TD-0035/TD-0036/TD-0044.
+build - and none on a rendered page. Mirrors TD-0035/TD-0036/TD-0044.
 
 **Resolution:** a browser pass over the notification centre, preferences
 page, admin console and platform analytics whenever screenshots are next
@@ -1890,7 +1890,7 @@ requested; `docs/screens/` has no Milestone 18 entries.
 ## TD-0067: Rate limiting is per-process, so N replicas mean N × the limit
 
 **Recorded:** 2026-08-06 (Milestone 19.1)
-**Severity:** Medium — matters only when running more than one API instance
+**Severity:** Medium - matters only when running more than one API instance
 **Area:** `apps/api/src/app.module.ts` (`ThrottlerModule`)
 
 `@nestjs/throttler` uses its in-memory storage. Two API replicas behind one load
@@ -1905,7 +1905,7 @@ have been the kind of unused infrastructure this milestone's audit was meant to
 avoid.
 
 **Fix:** register a Redis throttler storage in `ThrottlerModule.forRootAsync`,
-reusing the existing `REDIS_CLIENT` provider. Nothing else changes — the guard,
+reusing the existing `REDIS_CLIENT` provider. Nothing else changes - the guard,
 the tiers and the per-route overrides are storage-agnostic. Do this **before**
 the first multi-instance deployment.
 
@@ -1914,12 +1914,12 @@ the first multi-instance deployment.
 ## TD-0068: Every API instance runs the notification worker
 
 **Recorded:** 2026-08-06 (Milestone 19.3)
-**Severity:** Low — wasteful, not incorrect
+**Severity:** Low - wasteful, not incorrect
 **Area:** `apps/api/src/modules/notifications/notification-scheduler.service.ts`
 
 The worker is a `setInterval` in the application process, so every replica ticks.
-Delivery is still exactly-once — claiming is a compare-and-set on
-`notification_deliveries` (ADR-0027) — but N instances issue N claim queries per
+Delivery is still exactly-once - claiming is a compare-and-set on
+`notification_deliveries` (ADR-0027) - but N instances issue N claim queries per
 tick against the same rows.
 
 **Why it was left:** correct as-is, and the two real fixes both have costs worth
@@ -1927,7 +1927,7 @@ choosing deliberately. A leader election adds coordination state; a separate
 worker process adds a deployment unit.
 
 **Fix (when it matters):** either set `NOTIFICATIONS_WORKER_ENABLED=false` on all
-but one instance — supported today, no code change — or run a dedicated worker
+but one instance - supported today, no code change - or run a dedicated worker
 container from the same image with the API's HTTP server disabled.
 
 ---
@@ -1935,7 +1935,7 @@ container from the same image with the API's HTTP server disabled.
 ## TD-0069: Trace context is propagated, but no OpenTelemetry SDK exports spans
 
 **Recorded:** 2026-08-06 (Milestone 19.4)
-**Severity:** Low — this is a capability gap, not a defect
+**Severity:** Low - this is a capability gap, not a defect
 **Area:** `apps/api/src/common/observability/trace-context.util.ts`
 
 MediCore parses an inbound `traceparent`, continues the trace with its own span,
@@ -1946,7 +1946,7 @@ or a service graph.
 
 **Why it was left:** the SDK is ~8 packages plus a collector to run, and the
 value is entirely in the deployment that receives the spans. Half-installing it
-— dependencies added, nothing exported — would be worse than the honest gap.
+- dependencies added, nothing exported - would be worse than the honest gap.
 
 **Fix:** add `@opentelemetry/sdk-node` with the HTTP, Fastify and Prisma
 instrumentations, initialise it *before* `NestFactory.create` in `main.ts`, and
@@ -1956,7 +1956,7 @@ than generated, so the two cannot disagree.
 
 ---
 
-## TD-0070: There is no backup automation — the DR procedure is specified, not implemented
+## TD-0070: There is no backup automation - the DR procedure is specified, not implemented
 
 **Recorded:** 2026-08-06 (Milestone 19.5/19.7)
 **Severity:** **High** for any real deployment
@@ -1969,8 +1969,8 @@ configuration, no off-site replication, and no automated restore test. A
 deployment following the deployment guide exactly has *no backups*.
 
 **Why it was left:** backup automation belongs to the infrastructure the
-deployment runs on — a managed Postgres with PITR, a Kubernetes CronJob, a
-cloud snapshot policy — and inventing one in this repository would produce a
+deployment runs on - a managed Postgres with PITR, a Kubernetes CronJob, a
+cloud snapshot policy - and inventing one in this repository would produce a
 scheduler that fits nobody's environment. The milestone's remit was explicitly
 "do not invent deployment infrastructure".
 
@@ -1986,7 +1986,7 @@ the checklist's data section as unmet regardless of what the guide describes.
 **Severity:** Low
 **Area:** `apps/api/src/modules/notifications/notification-template.service.ts`
 
-Template resolution is cached in Redis and invalidated exactly — publishing or
+Template resolution is cached in Redis and invalidated exactly - publishing or
 rolling back a version deletes the entry. Because the entry is *shared* in
 Redis, invalidation is in fact global; the 300-second TTL only bounds the window
 if a Redis delete fails silently (`CacheService` swallows write failures by
@@ -2004,18 +2004,18 @@ and have each instance invalidate on receipt, or shorten `CACHE_TTL_SECONDS`.
 ## TD-0072: `pnpm format` / `pnpm format:check` have never worked
 
 **Recorded:** 2026-08-06 (Milestone 19.6)
-**Severity:** Low — cosmetic, but it means formatting is unenforced
+**Severity:** Low - cosmetic, but it means formatting is unenforced
 **Area:** `.prettierrc`, root `package.json`
 
-`.prettierrc` declares two plugins — `@trivago/prettier-plugin-sort-imports` and
-`prettier-plugin-tailwindcss` — that are not installed at the workspace root.
+`.prettierrc` declares two plugins - `@trivago/prettier-plugin-sort-imports` and
+`prettier-plugin-tailwindcss` - that are not installed at the workspace root.
 Both scripts fail with `Cannot find package '@trivago/prettier-plugin-sort-imports'`.
 
 **Why it was left:** installing them makes `format:check` flag a large share of
 the repository (import ordering and Tailwind class ordering across both apps),
 which is a reformatting diff far outside this milestone's remit and one that
 would obscure every real change in it. It was therefore **not** added to CI
-during Checkpoint 19.6 — adding a check that fails is worse than not having it.
+during Checkpoint 19.6 - adding a check that fails is worse than not having it.
 
 Note that the substantive half is already enforced: ESLint's `import/order` runs
 over `apps/api/src` in CI today.
@@ -2025,7 +2025,7 @@ then add `pnpm format:check` to the `lint-and-typecheck` job.
 
 ---
 
-## TD-0073: Three Milestone 19 roadmap line items were deliberately not built — Sentry, k6 load testing, Kubernetes manifests
+## TD-0073: Three Milestone 19 roadmap line items were deliberately not built - Sentry, k6 load testing, Kubernetes manifests
 
 **Recorded:** 2026-08-06 (Milestone 19)
 **Severity:** Low–Medium, depending on the deployment
@@ -2038,7 +2038,7 @@ complete:
 **Sentry (error monitoring).** No DSN and no Sentry account exists in this
 environment, and the milestone was instructed not to invent deployment
 infrastructure. Adding the SDK with a placeholder DSN would produce a
-dependency that silently reports nowhere — the same anti-pattern TD-0041 and
+dependency that silently reports nowhere - the same anti-pattern TD-0041 and
 TD-0059 already avoid elsewhere in this repo. **Substitute in place:** every
 unhandled exception is logged with `requestId` and `traceId`, and 5xx rate is a
 Prometheus metric with an alert rule in `docs/operations/monitoring.md`.
@@ -2046,7 +2046,7 @@ Prometheus metric with an alert rule in `docs/operations/monitoring.md`.
 the request context's `traceId` as the Sentry trace id so the two systems agree.
 
 **k6 load testing.** k6 is not a dependency, and a load test against a laptop's
-Docker Postgres produces numbers that mislead rather than inform — the bottleneck
+Docker Postgres produces numbers that mislead rather than inform - the bottleneck
 measured would be the developer's machine. **What changed:** the instrumentation
 needed to run one meaningfully now exists (`http_request_duration_seconds` by
 route, in-flight gauge, event-loop lag, slow-query logs). **Fix:** write k6
@@ -2062,22 +2062,22 @@ timings alone.
 need, graceful shutdown drains before closing, and the API is stateless apart
 from Redis. **Fix, when a cluster exists:** Deployment + Service + Ingress +
 HPA, probes pointed at those two paths, `terminationGracePeriodSeconds` greater
-than `SHUTDOWN_DRAIN_MS`, and **TD-0067 resolved first** — per-process rate
+than `SHUTDOWN_DRAIN_MS`, and **TD-0067 resolved first** - per-process rate
 limiting is wrong the moment `replicas > 1`.
 
 ---
 
 ## TD-0074: Organization branding reaches only users who hold `organizations.read`
 
-**Discovered:** 2026-08-06 (Design System V2, Phase 1 — ADR-0031)
-**Severity:** Medium — the white-label promise is only half kept.
+**Discovered:** 2026-08-06 (Design System V2, Phase 1 - ADR-0031)
+**Severity:** Medium - the white-label promise is only half kept.
 
 `BrandingProvider` applies a tenant's colours by reading
 `GET /organizations/me/branding`. That endpoint is gated behind
 `organizations.read`, which in `seed.ts`'s role catalogue only Hospital Admin
 holds (via its wildcard grant). **A doctor, nurse, receptionist, pharmacist or
 lab technician therefore sees the default MediCore palette**, not their
-hospital's — which is the majority of the user base.
+hospital's - which is the majority of the user base.
 
 The provider does not paper over this: it skips the request entirely for users
 who lack the permission rather than firing a guaranteed 403 on every page load,
@@ -2090,7 +2090,7 @@ does nothing for a user who has never been able to fetch it.
 
 **Fix (one of):**
 1. Include `branding` in the `/auth/login` and `/auth/refresh` response payload
-   next to `AuthenticatedUser` — the natural home, since it is per-organization
+   next to `AuthenticatedUser` - the natural home, since it is per-organization
    data every authenticated user needs, and it costs no extra round trip.
 2. Add an ungated `GET /organizations/me/branding/public` returning only the
    colour/display fields (no email footer, no internal settings).
@@ -2103,8 +2103,8 @@ device.
 
 ## TD-0075: The hospital selector remembers a choice but does not filter any data
 
-**Discovered:** 2026-08-06 (Design System V2, Phase 1 — ADR-0031)
-**Severity:** Low — disclosed in the UI, not misleading.
+**Discovered:** 2026-08-06 (Design System V2, Phase 1 - ADR-0031)
+**Severity:** Low - disclosed in the UI, not misleading.
 
 `WorkspaceProvider` owns `activeHospitalId` and the top bar's
 `<HospitalSelector>` writes it. **No module query reads it yet**: pages continue
@@ -2112,8 +2112,8 @@ to receive whatever the API scopes them to by organization. Wiring the selection
 into each module's query parameters is page work, and Phase 1 was scoped to the
 UI foundation with feature pages explicitly out of bounds.
 
-This is stated on screen rather than implied — the selector's own menu says
-"Module pages are not yet filtered by this selection" — so no user is led to
+This is stated on screen rather than implied - the selector's own menu says
+"Module pages are not yet filtered by this selection" - so no user is led to
 believe a filter is applied that is not.
 
 **Fix:** as each module is migrated in Phase 2, pass `activeHospitalId` into its
@@ -2121,8 +2121,8 @@ list query and invalidate on change. The API side already supports hospital
 scoping in the modules whose tables carry a `hospitalId`; the ones that do not
 should keep ignoring it rather than pretending.
 
-**Still open after Phase 2 (2026-08-06).** Phase 2 was scoped to presentation —
-layout, tokens, tables, badges, empty/loading states — under an explicit
+**Still open after Phase 2 (2026-08-06).** Phase 2 was scoped to presentation -
+layout, tokens, tables, badges, empty/loading states - under an explicit
 instruction not to touch data-fetching, query parameters or any business logic.
 Wiring `activeHospitalId` into each module's query is exactly that kind of
 change, so it was correctly left untouched. This remains open for a future,
@@ -2130,18 +2130,18 @@ explicitly-scoped task.
 
 ---
 
-## TD-0076: `/dashboard/settings` does not exist — the sidebar and profile menu link to a 404
+## TD-0076: `/dashboard/settings` does not exist - the sidebar and profile menu link to a 404
 
-**Discovered:** 2026-08-06 (Design System V2, Phase 1) — **pre-existing**, not
+**Discovered:** 2026-08-06 (Design System V2, Phase 1) - **pre-existing**, not
 introduced by that work.
-**Severity:** Medium — a dead link in the primary navigation, visible to every
+**Severity:** Medium - a dead link in the primary navigation, visible to every
 user regardless of role (the nav item carries no permission).
 
 `apps/web/src/app/dashboard/` has no `settings/page.tsx`. The sidebar's
 "Settings" item and the header profile menu's "Profile" entry both point at it.
 Phase 1 preserved the existing targets rather than silently re-pointing or
 removing navigation while redesigning the chrome, so the behaviour is unchanged
-from before — but it is a real defect and should not survive Phase 2.
+from before - but it is a real defect and should not survive Phase 2.
 
 **Fix:** build `/dashboard/settings` as the per-*user* settings page (profile
 details, password, sessions, appearance). Organization-level settings already
@@ -2153,17 +2153,17 @@ than duplicate them.
 
 ## TD-0077: Feature pages have not been migrated to the V2 primitives
 
-**Recorded:** 2026-08-06 (Design System V2, Phase 1 — ADR-0031)
-**Resolved:** 2026-08-06 (Design System V2, Phase 2 — same day, later session).
+**Recorded:** 2026-08-06 (Design System V2, Phase 1 - ADR-0031)
+**Resolved:** 2026-08-06 (Design System V2, Phase 2 - same day, later session).
 See `PROGRESS.md` and `CHANGELOG.md` for the full module-by-module record.
-**Severity:** None — this was the planned Phase 2, recorded so the state was not
+**Severity:** None - this was the planned Phase 2, recorded so the state was not
 mistaken for an oversight in the interim.
 
 Phase 1 was explicitly instructed not to redesign pages. Every existing page
-therefore still rendered through the pre-V2 call shapes. They all worked — the
+therefore still rendered through the pre-V2 call shapes. They all worked - the
 primitives kept their old exports, variants and prop names, which is why lint,
 typecheck, build, 785 API unit tests, 49 web unit tests and 431 e2e tests were
-all green — and they inherited the new token layer, density, typography, focus
+all green - and they inherited the new token layer, density, typography, focus
 treatment and branding automatically.
 
 What they did **not** yet use: `PageLayout`/`PageHeader`/breadcrumbs,
@@ -2184,10 +2184,10 @@ per-module local maps had introduced independently (e.g. "Cancelled" rendering
 red in Appointments and Doctors' leave, "In Consultation" rendering green,
 pharmacy low-stock/expiring badges rendering red instead of amber, an IPD
 bed-grid colour pair violating the system's own subtle/subtle-foreground
-contrast rule) — these were corrected as a direct consequence of centralizing
+contrast rule) - these were corrected as a direct consequence of centralizing
 on `StatusBadge`, not scope creep. Three status keys were added to the shared
 `STATUS_TONES` map to cover cases Phase 1 had not encountered yet:
 `UNDER_RENOVATION`, `ADMINISTERED`, `TRIALING`, `PAST_DUE`, `SUCCEEDED`.
 No backend/API/route/business-logic/Prisma-schema file was touched, and no
-browser verification or screenshots were taken — both by the same explicit
+browser verification or screenshots were taken - both by the same explicit
 instruction that started Phase 2, consistent with Phase 1's precedent.

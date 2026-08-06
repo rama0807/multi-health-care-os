@@ -6,7 +6,7 @@ import { PrismaService } from '../../prisma/prisma.service'
 
 import { WardsService } from './wards.service'
 
-/** Room inventory CRUD — a room belongs to exactly one ward (ADR-0018). */
+/** Room inventory CRUD - a room belongs to exactly one ward (ADR-0018). */
 @Injectable()
 export class RoomsService {
   constructor(

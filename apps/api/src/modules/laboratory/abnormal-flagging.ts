@@ -16,11 +16,11 @@ export interface AbnormalFlagResult {
 /**
  * Server-side abnormal-value computation. This is clinical-safety-adjacent,
  * so the exact rule is disclosed here rather than buried in logic (mirrors
- * how the drug-interaction check's limits are disclosed — see TECH_DEBT):
+ * how the drug-interaction check's limits are disclosed - see TECH_DEBT):
  *
  *  - Only a result that parses as a finite number is auto-flagged. A
  *    qualitative result (e.g. "Negative", "Reactive", free text) is left
- *    alone here — the caller may still record `isAbnormalOverride`
+ *    alone here - the caller may still record `isAbnormalOverride`
  *    manually, but this function never coerces text into a number.
  *  - With no numeric reference range at all (both bounds null), nothing can
  *    be auto-flagged.
@@ -32,8 +32,8 @@ export interface AbnormalFlagResult {
  *    range's width (e.g. `criticalHigh = high + 0.2 * (high - low)`). If
  *    only one side of the normal range is defined, the same 20% is applied
  *    to that bound's own magnitude instead of a range width. This 20%
- *    multiplier is a deliberately simple, disclosed heuristic — not a
- *    clinical guideline — and should be replaced with real per-analyte
+ *    multiplier is a deliberately simple, disclosed heuristic - not a
+ *    clinical guideline - and should be replaced with real per-analyte
  *    critical values (e.g. from a lab information system) when one is
  *    integrated; see TECH_DEBT.
  */

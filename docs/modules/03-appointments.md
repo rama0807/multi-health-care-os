@@ -1,7 +1,7 @@
 # Module: Appointments
 
 ## Purpose
-Manages the full appointment lifecycle — from scheduling to completion — for all appointment types (OPD, IPD pre-admission, emergency, teleconsultation).
+Manages the full appointment lifecycle - from scheduling to completion - for all appointment types (OPD, IPD pre-admission, emergency, teleconsultation).
 
 ## Responsibilities
 - Doctor availability slot generation based on weekly schedule
@@ -53,10 +53,10 @@ interface AvailabilitySlot {
 ```
 
 ## Dependencies
-- `PatientsModule` — patient validation
-- `DoctorsModule` — doctor availability config
-- `NotificationsModule` — confirmation SMS/email
-- `BillingModule` — auto-generate invoice on completion
+- `PatientsModule` - patient validation
+- `DoctorsModule` - doctor availability config
+- `NotificationsModule` - confirmation SMS/email
+- `BillingModule` - auto-generate invoice on completion
 
 ## Events Published
 - `appointment.scheduled`

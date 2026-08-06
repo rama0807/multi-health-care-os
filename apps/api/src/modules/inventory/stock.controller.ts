@@ -9,7 +9,7 @@ import { SetOpeningStockDto } from './dto/set-opening-stock.dto'
 import { UpdateStockLevelsDto } from './dto/update-stock-levels.dto'
 import { StockService } from './stock.service'
 
-/** Per-store-per-item stock ledger — see ADR-0020. */
+/** Per-store-per-item stock ledger - see ADR-0020. */
 @ApiTags('inventory-stock')
 @ApiBearerAuth()
 @Controller({ path: 'inventory/stock', version: '1' })

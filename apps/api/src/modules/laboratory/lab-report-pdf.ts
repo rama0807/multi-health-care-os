@@ -22,7 +22,7 @@ export interface LabReportPdfData {
 }
 
 /**
- * A structured, system-generated lab report — distinct from an uploaded
+ * A structured, system-generated lab report - distinct from an uploaded
  * external report file (`reportFileUrl`). Renders every item's result
  * against its reference range with abnormal flags called out, so it can be
  * produced at any time from the structured `LabTestItem` rows without
@@ -61,7 +61,7 @@ export async function generateLabReportPdf(data: LabReportPdfData): Promise<Buff
     doc.moveDown(0.3)
 
     doc.font('Helvetica-Bold').text('Ordered by')
-    doc.font('Helvetica').text(`Dr. ${data.doctor.fullName} — ${data.doctor.specialization}`)
+    doc.font('Helvetica').text(`Dr. ${data.doctor.fullName} - ${data.doctor.specialization}`)
     doc.moveDown(1)
 
     doc.font('Helvetica-Bold').fontSize(12).text('Results')

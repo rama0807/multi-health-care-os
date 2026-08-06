@@ -8,7 +8,7 @@ import { CreateServiceCatalogItemDto } from './dto/create-service-catalog-item.d
 import { UpdateServiceCatalogItemDto } from './dto/update-service-catalog-item.dto'
 import { ServiceCatalogService } from './service-catalog.service'
 
-/** Service catalog with pricing — see ADR-0015. Not own-scoped: no owning doctor. */
+/** Service catalog with pricing - see ADR-0015. Not own-scoped: no owning doctor. */
 @ApiTags('billing-catalog')
 @ApiBearerAuth()
 @Controller({ path: 'billing/catalog', version: '1' })

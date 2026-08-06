@@ -5,7 +5,7 @@ import { PrismaService } from '../../prisma/prisma.service'
 
 /**
  * Shared staff lookup for every sub-service in this module (attendance,
- * shifts, leave, payroll) — mirrors DoctorRefService's role for the
+ * shifts, leave, payroll) - mirrors DoctorRefService's role for the
  * scheduling module.
  */
 @Injectable()

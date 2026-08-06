@@ -15,7 +15,7 @@ import { formatDateTime } from './format'
 
 /**
  * Administrators are users holding an ORG_ADMIN/SUPER_ADMIN role, not a
- * separate entity — see `OrganizationsService.listAdmins`. Full user
+ * separate entity - see `OrganizationsService.listAdmins`. Full user
  * management already lives in the Staff module, so this tab shows the
  * administrator roster plus organization-wide user counts rather than
  * duplicating a second user CRUD screen.

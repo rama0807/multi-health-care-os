@@ -312,7 +312,7 @@ export default function PatientsListPage() {
                   <TableCell>
                     {patient.age}y · {patient.gender.charAt(0) + patient.gender.slice(1).toLowerCase()}
                   </TableCell>
-                  <TableCell>{patient.city ?? '—'}</TableCell>
+                  <TableCell>{patient.city ?? '-'}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {new Date(patient.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
                   </TableCell>
@@ -370,7 +370,7 @@ export default function PatientsListPage() {
           <DialogHeader>
             <DialogTitle>Deactivate {selected.size} patient{selected.size === 1 ? '' : 's'}?</DialogTitle>
             <DialogDescription>
-              This soft-deletes the selected records — they can be restored later from the Deactivated
+              This soft-deletes the selected records - they can be restored later from the Deactivated
               filter.
             </DialogDescription>
           </DialogHeader>

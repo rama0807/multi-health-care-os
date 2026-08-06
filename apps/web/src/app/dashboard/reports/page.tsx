@@ -30,7 +30,7 @@ const DASHBOARDS: Array<{ key: ExecutiveDashboardKey; label: string }> = [
  * Executive dashboards (Milestone 17 Checkpoints 17.2/17.4).
  *
  * Every tile, chart and table on this page is rendered from what the API
- * returned — the page chooses no metrics of its own, so a change to a
+ * returned - the page chooses no metrics of its own, so a change to a
  * dashboard's composition needs no frontend change.
  */
 export default function ReportsDashboardPage() {

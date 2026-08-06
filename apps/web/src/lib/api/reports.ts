@@ -87,7 +87,7 @@ export async function runReport(key: string, filters: ReportFilterQuery = {}): P
 
 /**
  * Downloads an export. The response is a binary blob rather than the usual
- * `{ data }` envelope, so it is handed to the browser through an object URL —
+ * `{ data }` envelope, so it is handed to the browser through an object URL -
  * the same approach the invoice/receipt PDF downloads already use.
  */
 export async function downloadReportExport(
@@ -100,7 +100,7 @@ export async function downloadReportExport(
     responseType: 'blob',
   })
 
-  // Prefer the server's filename — it already encodes the report key and the
+  // Prefer the server's filename - it already encodes the report key and the
   // exact period the export covers, which a client-side guess would not.
   const disposition = String(response.headers['content-disposition'] ?? '')
   const match = disposition.match(/filename="?([^"]+)"?/)

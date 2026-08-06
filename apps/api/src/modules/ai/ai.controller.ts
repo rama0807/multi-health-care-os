@@ -33,7 +33,7 @@ export class AiController {
 
   /**
    * Lets the UI decide whether to offer an AI action at all, and show *why*
-   * it can't when it can't — rather than surfacing a 503 after the click.
+   * it can't when it can't - rather than surfacing a 503 after the click.
    */
   @Get('status')
   @RequirePermissions('ai.read')
@@ -55,7 +55,7 @@ export class AiController {
    * SSE over POST rather than Nest's `@Sse()`, which implies GET: the request
    * body carries patient record identifiers that don't belong in a query
    * string (ADR-0023). Writing to the raw reply deliberately bypasses
-   * `ResponseTransformInterceptor` — a stream has no envelope to wrap.
+   * `ResponseTransformInterceptor` - a stream has no envelope to wrap.
    */
   @Post('generate/stream')
   @RequirePermissions('ai.generate')
@@ -86,7 +86,7 @@ export class AiController {
         }
       }
     } catch (error) {
-      // Headers are already flushed, so the status code can't be changed —
+      // Headers are already flushed, so the status code can't be changed -
       // the failure is delivered as a terminal SSE event instead, carrying the
       // status the equivalent non-streaming call would have returned.
       const statusCode = error instanceof HttpException ? error.getStatus() : 500

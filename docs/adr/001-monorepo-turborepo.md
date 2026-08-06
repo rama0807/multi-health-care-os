@@ -33,9 +33,9 @@ medicore/
 
 **Why monorepo over polyrepo?**
 
-- **Shared code without publishing:** `@medicore/types` is imported directly — no npm publish cycle for every DTO change
+- **Shared code without publishing:** `@medicore/types` is imported directly - no npm publish cycle for every DTO change
 - **Atomic commits:** A change that touches the API, frontend, and types ships in one commit with one CI run
-- **Unified tooling:** One ESLint config, one Prettier config, one TypeScript base config — applied everywhere
+- **Unified tooling:** One ESLint config, one Prettier config, one TypeScript base config - applied everywhere
 - **Easier refactoring:** Renaming a shared type shows all broken references across apps immediately
 
 **Why Turborepo over alternatives?**
@@ -47,19 +47,19 @@ medicore/
 | Lerna | No | Partial | Yes | Medium |
 | Manual scripts | No | Manual | Yes | High |
 
-Turborepo's key advantage is **zero-config build caching** — unchanged packages are never rebuilt. In CI, this cuts build time by 60-80% after the first run.
+Turborepo's key advantage is **zero-config build caching** - unchanged packages are never rebuilt. In CI, this cuts build time by 60-80% after the first run.
 
 ## Consequences
 
 **Positive:**
 - Shared `@medicore/types` package means the API and frontend never have type drift
-- Prisma schema lives in `@medicore/database` — single source of truth
+- Prisma schema lives in `@medicore/database` - single source of truth
 - `turbo run build` builds only what changed and its dependents
 - Adding a new service (e.g., a separate AI microservice) is straightforward
 
 **Negative:**
 - Initial setup complexity vs. two separate repos
-- `pnpm install` pulls all dependencies for all packages — mitigated by pnpm's content-addressable store
+- `pnpm install` pulls all dependencies for all packages - mitigated by pnpm's content-addressable store
 - Engineers need to understand workspace-aware commands (`pnpm --filter`)
 
 ## Rejected Alternatives

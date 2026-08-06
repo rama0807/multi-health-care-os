@@ -1,6 +1,6 @@
 /**
  * Payroll *preparation* only (attendance summary, overtime, leave
- * deduction, export) — no pay-run/payslip/disbursement processing. That is
+ * deduction, export) - no pay-run/payslip/disbursement processing. That is
  * explicitly future scope; see TECH_DEBT.
  */
 export interface PayrollSummaryEntry {

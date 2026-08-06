@@ -7,7 +7,7 @@ import { PrismaService } from '../../../prisma/prisma.service'
 /**
  * What a context builder produces. `doctorId` is what own-scope RBAC is
  * checked against, so every builder must resolve the treating doctor for the
- * record it read — a feature with no resolvable doctor cannot be own-scoped.
+ * record it read - a feature with no resolvable doctor cannot be own-scoped.
  */
 export interface ClinicalContext {
   /** The plaintext block interpolated into the prompt's `{{context}}`. */
@@ -25,7 +25,7 @@ export interface ClinicalContext {
 /**
  * Assembles read-only prompt context from the existing EMR, Laboratory,
  * Radiology, Prescriptions and IPD modules. It never writes, and it never
- * reaches for data a given feature doesn't need — context assembly is itself
+ * reaches for data a given feature doesn't need - context assembly is itself
  * a PHI read, so it runs only after the feature flag and availability checks
  * have passed (ADR-0023).
  */
@@ -128,7 +128,7 @@ export class ClinicalContextService {
       section(
         'PROCEDURES',
         encounter.procedures.map((procedure) =>
-          bullet(`${procedure.name}${procedure.notes ? ` — ${procedure.notes}` : ''}`),
+          bullet(`${procedure.name}${procedure.notes ? ` - ${procedure.notes}` : ''}`),
         ),
       ),
       section(
@@ -150,7 +150,7 @@ export class ClinicalContextService {
         encounter.radiologyOrders.flatMap((order) => {
           const report = order.reports[0]
           return [
-            bullet(`${order.orderNumber} — ${order.modality} ${order.bodyPart} (${order.status})`),
+            bullet(`${order.orderNumber} - ${order.modality} ${order.bodyPart} (${order.status})`),
             ...(report
               ? [
                   `  - Findings: ${clean(report.findings)}`,
@@ -165,7 +165,7 @@ export class ClinicalContextService {
 
     return {
       text: sections.filter(Boolean).join('\n\n'),
-      title: `${encounter.type} encounter — ${this.patientLabel(encounter.patient)}`,
+      title: `${encounter.type} encounter - ${this.patientLabel(encounter.patient)}`,
       doctorId: encounter.doctorId,
       patientId: encounter.patientId,
       encounterId: encounter.id,
@@ -202,7 +202,7 @@ export class ClinicalContextService {
 
     return {
       text,
-      title: `Lab report ${labTest.labOrderNumber} — ${this.patientLabel(labTest.patient)}`,
+      title: `Lab report ${labTest.labOrderNumber} - ${this.patientLabel(labTest.patient)}`,
       doctorId: labTest.doctorId,
       patientId: labTest.patientId,
       labTestId: labTest.id,
@@ -246,7 +246,7 @@ export class ClinicalContextService {
 
     return {
       text,
-      title: `Imaging report ${order.orderNumber} — ${this.patientLabel(order.patient)}`,
+      title: `Imaging report ${order.orderNumber} - ${this.patientLabel(order.patient)}`,
       doctorId: order.doctorId,
       patientId: order.patientId,
       radiologyOrderId: order.id,
@@ -282,7 +282,7 @@ export class ClinicalContextService {
 
     return {
       text,
-      title: `Prescription ${prescription.prescriptionNumber} — ${this.patientLabel(prescription.patient)}`,
+      title: `Prescription ${prescription.prescriptionNumber} - ${this.patientLabel(prescription.patient)}`,
       doctorId: prescription.doctorId,
       patientId: prescription.patientId,
       prescriptionId: prescription.id,
@@ -342,7 +342,7 @@ export class ClinicalContextService {
       section(
         'PROCEDURES',
         (encounter?.procedures ?? []).map((procedure) =>
-          bullet(`${procedure.name}${procedure.notes ? ` — ${procedure.notes}` : ''}`),
+          bullet(`${procedure.name}${procedure.notes ? ` - ${procedure.notes}` : ''}`),
         ),
       ),
       section(
@@ -381,7 +381,7 @@ export class ClinicalContextService {
 
     return {
       text,
-      title: `Discharge summary ${admission.admissionNumber} — ${this.patientLabel(admission.patient)}`,
+      title: `Discharge summary ${admission.admissionNumber} - ${this.patientLabel(admission.patient)}`,
       doctorId: admission.attendingDoctorId,
       patientId: admission.patientId,
       admissionId: admission.id,
@@ -393,7 +393,7 @@ export class ClinicalContextService {
 
   /**
    * Direct identifiers are omitted when `AI_INCLUDE_PATIENT_IDENTIFIERS=false`
-   * — for deployments sending context to a provider without a signed BAA. Age
+   * - for deployments sending context to a provider without a signed BAA. Age
    * and sex stay either way, since they are clinically load-bearing (TD-0042).
    */
   private patientBlock(patient: {
@@ -475,10 +475,10 @@ function describeLabItem(item: {
   return [
     `${item.testName}: ${item.result ?? 'pending'}${item.unit ? ` ${item.unit}` : ''}`,
     range ? `(ref ${range})` : '',
-    // The flag comes from the laboratory module's own rules — the prompt tells
+    // The flag comes from the laboratory module's own rules - the prompt tells
     // the model to repeat it, never to recompute it.
     item.isAbnormal ? `[${item.abnormalType ?? 'ABNORMAL'}]` : '[within range]',
-    item.interpretation ? `— ${item.interpretation}` : '',
+    item.interpretation ? `- ${item.interpretation}` : '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -500,9 +500,9 @@ function describePrescriptionItem(item: {
     `${item.medicationName}${item.genericName ? ` (${item.genericName})` : ''}`,
     item.strength ?? '',
     item.form ?? '',
-    `— ${item.dosage}, ${item.frequency}, for ${item.duration}, ${item.route}`,
+    `- ${item.dosage}, ${item.frequency}, for ${item.duration}, ${item.route}`,
     `qty ${item.quantity}`,
-    item.instructions ? `— ${item.instructions}` : '',
+    item.instructions ? `- ${item.instructions}` : '',
   ]
     .filter(Boolean)
     .join(' ')

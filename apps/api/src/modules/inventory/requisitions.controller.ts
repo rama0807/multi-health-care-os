@@ -11,7 +11,7 @@ import { ReceiveStoreRequisitionDto } from './dto/receive-store-requisition.dto'
 import { RejectStoreRequisitionDto } from './dto/reject-store-requisition.dto'
 import { RequisitionsService } from './requisitions.service'
 
-/** Internal ward/OT/ICU/lab/radiology stock requests — see ADR-0020. */
+/** Internal ward/OT/ICU/lab/radiology stock requests - see ADR-0020. */
 @ApiTags('inventory-requisitions')
 @ApiBearerAuth()
 @Controller({ path: 'inventory/requisitions', version: '1' })

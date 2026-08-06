@@ -34,12 +34,12 @@ export interface PushState {
  *   requires the Firebase JS SDK (`firebase/messaging`), which is not a
  *   dependency of this app, and a Firebase project, which this deployment
  *   does not have. Rather than fabricate a token that would silently never
- *   receive anything, `subscribe()` reports exactly what is missing — the same
+ *   receive anything, `subscribe()` reports exactly what is missing - the same
  *   line this repo already holds for SMS, payment gateways and AI providers.
  *
  * When a deployment does configure FCM, the remaining work is a single
- * `getToken()` call in `acquireToken` below; every other piece — permission,
- * worker, registration API, multi-device storage, click routing — is done.
+ * `getToken()` call in `acquireToken` below; every other piece - permission,
+ * worker, registration API, multi-device storage, click routing - is done.
  */
 export function usePushNotifications(): PushState {
   const [config, setConfig] = useState<PushConfigStatus | null>(null)
@@ -145,7 +145,7 @@ function currentPermission(): PushPermission {
  * Deliberately returns null rather than falling back to a Web Push
  * `PushSubscription`: a raw subscription is *not* an FCM token, and storing
  * one would make `UserDevice` rows that `FcmPushProvider` can never deliver
- * to — a device list that looks healthy and silently drops every message.
+ * to - a device list that looks healthy and silently drops every message.
  */
 // eslint-disable-next-line @typescript-eslint/require-await -- becomes a real await once the Firebase SDK is present
 async function acquireToken(config: PushConfigStatus): Promise<string | null> {
@@ -157,7 +157,7 @@ async function acquireToken(config: PushConfigStatus): Promise<string | null> {
   return null
 }
 
-/** Best-effort, user-facing device label — never used for identification. */
+/** Best-effort, user-facing device label - never used for identification. */
 function describeDevice(): { deviceName: string; browser: string; osName: string; userAgent: string } {
   const userAgent = navigator.userAgent
   const browser = /Edg\//.test(userAgent)

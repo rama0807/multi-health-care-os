@@ -250,7 +250,7 @@ function NewInvoiceDialog({
                           }
                         />
                         <span>
-                          {charge.description} — ₹{charge.totalAmount}
+                          {charge.description} - ₹{charge.totalAmount}
                         </span>
                       </label>
                     ))}

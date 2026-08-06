@@ -4,10 +4,10 @@ import { deflateRawSync } from 'node:zlib'
  * A minimal, dependency-free `.xlsx` writer (Milestone 17 Checkpoint 17.3).
  *
  * An XLSX file is a ZIP of a handful of XML parts, and Node ships the only
- * hard part (DEFLATE) in `node:zlib` — so producing a genuine Excel workbook
+ * hard part (DEFLATE) in `node:zlib` - so producing a genuine Excel workbook
  * costs ~150 lines here versus adding a large dependency to an API that
  * needs exactly one feature from it. The alternative frequently taken in
- * this situation — emitting CSV and naming it `.xlsx` — produces a file
+ * this situation - emitting CSV and naming it `.xlsx` - produces a file
  * Excel warns about on open, which is not "Excel export".
  *
  * Scope is deliberately narrow: one sheet, inline strings, a bold header

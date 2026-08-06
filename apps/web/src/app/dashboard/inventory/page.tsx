@@ -66,7 +66,7 @@ export default function InventoryDashboardPage() {
   return (
     <PageLayout
       title="Inventory"
-      description="Equipment, consumables, and supplies — item master, stock, and procurement."
+      description="Equipment, consumables, and supplies - item master, stock, and procurement."
       actions={
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline">

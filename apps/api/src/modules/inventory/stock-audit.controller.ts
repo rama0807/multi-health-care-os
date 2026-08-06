@@ -9,7 +9,7 @@ import { CreateStockAuditDto } from './dto/create-stock-audit.dto'
 import { RecordAuditCountDto } from './dto/record-audit-count.dto'
 import { StockAuditService } from './stock-audit.service'
 
-/** Cycle counting / physical verification — see ADR-0020. */
+/** Cycle counting / physical verification - see ADR-0020. */
 @ApiTags('inventory-stock-audit')
 @ApiBearerAuth()
 @Controller({ path: 'inventory/audits', version: '1' })

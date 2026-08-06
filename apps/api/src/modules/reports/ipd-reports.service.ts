@@ -25,8 +25,8 @@ import {
  * Bed occupancy is reported two ways because they answer different questions:
  * `bedOccupancyPercent` is the live snapshot (the same figure
  * `IpdDashboardService` already surfaces, kept consistent with it), while
- * `occupancyRateTrend` is a true **bed-days** rate — occupied bed-days over
- * available bed-days per bucket — reconstructed from each admission's own
+ * `occupancyRateTrend` is a true **bed-days** rate - occupied bed-days over
+ * available bed-days per bucket - reconstructed from each admission's own
  * stay window. A snapshot alone cannot show whether the ward was full last
  * Tuesday.
  *
@@ -69,7 +69,7 @@ export class IpdReportsService {
           select: { id: true, name: true, type: true },
         }),
         this.prisma.bed.findMany({ where: { organizationId }, select: { wardId: true, status: true } }),
-        // Every stay that overlaps the window at all, for the bed-days rate —
+        // Every stay that overlaps the window at all, for the bed-days rate -
         // an admission from before the window still occupies a bed inside it.
         this.prisma.admission.findMany({
           where: {

@@ -3,7 +3,7 @@
  *
  * An organization configures a single hex colour. That colour has to work as a
  * button fill, as button *text* on a tinted pill, as a selected-row background,
- * as a border, and as a chart series — in both light and dark mode — while
+ * as a border, and as a chart series - in both light and dark mode - while
  * staying legible. A tenant that picks `#FFFF00` or `#0A0A0A` must not be able
  * to render an unreadable application.
  *
@@ -37,7 +37,7 @@ const round = (value: number, places = 2) => {
 
 /**
  * Parses `#rgb`, `#rrggbb` (with or without the hash). Returns `null` for
- * anything else — callers fall back to the default palette rather than
+ * anything else - callers fall back to the default palette rather than
  * throwing, because a malformed branding value must never white-screen the app.
  */
 export function parseHex(input: string): { r: number; g: number; b: number } | null {
@@ -163,7 +163,7 @@ export function readableForeground(background: Hsl): Hsl {
 }
 
 /**
- * Walks a colour's lightness — in the direction that helps — until it clears
+ * Walks a colour's lightness - in the direction that helps - until it clears
  * `target` against `against`, or until it runs out of room.
  *
  * Returns the best colour it found. It never *throws* on an impossible
@@ -253,7 +253,7 @@ export function deriveBrandRoles(color: Hsl, mode: 'light' | 'dark'): BrandRoles
   }
 
   // 3. A fill sitting near 50% lightness is the one case where *neither* light
-  //    nor dark text clears AA — mid-grey tops out around 4.2:1 either way. The
+  //    nor dark text clears AA - mid-grey tops out around 4.2:1 either way. The
   //    band in step 1 does not catch it, because the limit is not the band but
   //    the colour's own luminance. Push the fill off the midpoint, in whichever
   //    direction the better text candidate is already pulling.
@@ -271,12 +271,12 @@ export function deriveBrandRoles(color: Hsl, mode: 'light' | 'dark'): BrandRoles
   const hover = shiftLightness(base, interactionStep)
   const active = shiftLightness(base, interactionStep * 2)
 
-  // 5. Text on the solid fill. Forced to AA — this is button copy.
+  // 5. Text on the solid fill. Forced to AA - this is button copy.
   foreground = ensureContrast(foreground, base, AA_TEXT)
 
   // 5. The tint used for pills, selected rows and soft buttons, plus the text
   //    that sits on it. The tint is a wash of the brand hue; the text is the
-  //    brand colour pushed until it clears AA *against that tint* — which is a
+  //    brand colour pushed until it clears AA *against that tint* - which is a
   //    different requirement from clearing AA against the page.
   const subtle: Hsl =
     mode === 'light'
@@ -290,7 +290,7 @@ export function deriveBrandRoles(color: Hsl, mode: 'light' | 'dark'): BrandRoles
     { direction: mode === 'light' ? 'darker' : 'lighter' },
   )
 
-  // 6. Border only has to be *perceivable*, not readable — 1.5:1 against the
+  // 6. Border only has to be *perceivable*, not readable - 1.5:1 against the
   //    surface is the conventional floor for a decorative edge.
   const border: Hsl =
     mode === 'light'
@@ -303,8 +303,8 @@ export function deriveBrandRoles(color: Hsl, mode: 'light' | 'dark'): BrandRoles
 /**
  * Sidebar treatment derived from the brand.
  *
- * The rail keeps a neutral surface — a fully brand-coloured sidebar is a 2014
- * look and destroys the calm this system is after — but the *active item*
+ * The rail keeps a neutral surface - a fully brand-coloured sidebar is a 2014
+ * look and destroys the calm this system is after - but the *active item*
  * carries the brand, which is the one place navigation state must be
  * unambiguous.
  */

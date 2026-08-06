@@ -93,7 +93,7 @@ function IpdOrdersSection({ admissionId, canOrder }: { admissionId: string; canO
   return (
     <div className="rounded-lg border bg-card p-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-foreground">Doctor orders — diet, fluid, activity, oxygen, isolation</h3>
+        <h3 className="text-sm font-semibold text-foreground">Doctor orders - diet, fluid, activity, oxygen, isolation</h3>
         {canOrder && (
           <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
             <Plus className="h-3.5 w-3.5" />

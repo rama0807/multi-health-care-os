@@ -10,7 +10,7 @@ import { CreateRefundDto } from './dto/create-refund.dto'
 import { RejectRefundDto } from './dto/reject-refund.dto'
 import { RefundsService } from './refunds.service'
 
-/** Refunds — see ADR-0015. `billing.*` stays all-scope (staff-facing). */
+/** Refunds - see ADR-0015. `billing.*` stays all-scope (staff-facing). */
 @ApiTags('billing-refunds')
 @ApiBearerAuth()
 @Controller({ path: 'billing', version: '1' })

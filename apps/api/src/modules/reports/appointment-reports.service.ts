@@ -18,7 +18,7 @@ import {
   ResolvedRange,
 } from './report-range.util'
 
-/** Statuses that represent a settled outcome — the denominator for no-show rate. */
+/** Statuses that represent a settled outcome - the denominator for no-show rate. */
 const TERMINAL_STATUSES: readonly string[] = ['COMPLETED', 'CANCELLED', 'NO_SHOW']
 
 /**
@@ -69,7 +69,7 @@ export class AppointmentReportsService {
     const walkIns = appointments.filter((a) => a.isWalkIn)
     const terminal = appointments.filter((a) => TERMINAL_STATUSES.includes(a.status)).length
 
-    // `Encounter.createdAt` is when the consultation record was opened — the
+    // `Encounter.createdAt` is when the consultation record was opened - the
     // closest thing this schema has to "consultation started". There is no
     // arrival/check-in column (TD-0051), so this is a scheduling delay, not a
     // waiting-room time, and negative values (seen early) are kept rather
@@ -105,7 +105,7 @@ export class AppointmentReportsService {
   }
 
   /**
-   * `hospitalId` filters through the doctor rather than the appointment —
+   * `hospitalId` filters through the doctor rather than the appointment -
    * `Appointment` has `departmentId` but no `hospitalId`, and a department
    * already belongs to exactly one hospital, so routing it through
    * `doctor.hospitalId` keeps the filter meaningful without a schema change.
@@ -168,7 +168,7 @@ export class AppointmentReportsService {
     ])
 
     // The schedule in force is the latest `effectiveFrom` at or before the
-    // window — the same selection rule DoctorSchedule's own comment states.
+    // window - the same selection rule DoctorSchedule's own comment states.
     const scheduleByDoctor = new Map<string, (typeof schedules)[number]>()
     for (const schedule of schedules) {
       if (!scheduleByDoctor.has(schedule.doctorId)) scheduleByDoctor.set(schedule.doctorId, schedule)
@@ -200,7 +200,7 @@ export class AppointmentReportsService {
 
   /**
    * Total scheduled working minutes across the window, walking the range one
-   * day at a time and summing that weekday's shifts (breaks excluded — they
+   * day at a time and summing that weekday's shifts (breaks excluded - they
    * are not bookable, so counting them would understate utilisation).
    */
   private availableMinutes(

@@ -15,7 +15,7 @@ import { PlatformOrganizationsService } from './platform-organizations.service'
 import { PlatformStatsService } from './platform-stats.service'
 
 /**
- * Platform Owner console (Checkpoint 16.2) — the internal Super Admin surface.
+ * Platform Owner console (Checkpoint 16.2) - the internal Super Admin surface.
  *
  * Isolation is enforced twice, and at the controller level so no route can
  * forget it: `PlatformGuard` requires the caller's organization to be the
@@ -119,7 +119,7 @@ export class PlatformController {
     return this.organizationsService.setEnabled(organizationId, false, userId)
   }
 
-  // ── Subscriptions (write side — tenants get read-only access) ──────────
+  // ── Subscriptions (write side - tenants get read-only access) ──────────
 
   @Get('organizations/:organizationId/subscription')
   @RequirePermissions('platform.subscriptions.read')

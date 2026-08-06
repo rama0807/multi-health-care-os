@@ -5,16 +5,16 @@ const prisma = new PrismaClient()
 
 const DEMO_PASSWORD = 'Demo@12345'
 
-// Per-resource action lists — deliberately not a blanket CRUD-for-everything
+// Per-resource action lists - deliberately not a blanket CRUD-for-everything
 // matrix. Audit logs are append-only (no update/delete), reports are
 // read/export only, etc. `own` scope is only meaningful where an individual
 // staff member's own assignments are a real query dimension today
-// (patients/medical_records/prescriptions) — everything else stays `all`
+// (patients/medical_records/prescriptions) - everything else stays `all`
 // until later milestones build ownership-aware modules.
 const RESOURCE_ACTIONS: Record<string, string[]> = {
   // `manage` gates the two bulk/destructive operations added for Milestone 3
-  // completion — merging duplicate records (reassigns every other module's
-  // patientId) and CSV import — kept admin-only by default, mirroring
+  // completion - merging duplicate records (reassigns every other module's
+  // patientId) and CSV import - kept admin-only by default, mirroring
   // `billing.manage`/`insurance.settlement`'s requester/approver precedent
   // rather than granting it alongside ordinary create/update.
   patients: ['read', 'create', 'update', 'delete', 'manage'],
@@ -29,7 +29,7 @@ const RESOURCE_ACTIONS: Record<string, string[]> = {
   radiology: ['read', 'create', 'update'],
   billing: ['read', 'create', 'update', 'manage'],
   // Split from a flat `insurance` resource into namespaced sub-resources
-  // (Milestone 11 / ADR-0016) — mirrors `doctors.schedule`/`doctors.leave`/
+  // (Milestone 11 / ADR-0016) - mirrors `doctors.schedule`/`doctors.leave`/
   // `doctors.documents`'s precedent for a module with genuinely distinct
   // sub-workflows rather than one CRUD surface.
   'insurance.providers': ['read', 'create', 'update'],
@@ -38,7 +38,7 @@ const RESOURCE_ACTIONS: Record<string, string[]> = {
   'insurance.preauth': ['read', 'create', 'update'],
   'insurance.settlement': ['read', 'manage'],
   pharmacy: ['read', 'create', 'update'],
-  // General (non-drug) Inventory & Procurement (Milestone 13 / ADR-0020) —
+  // General (non-drug) Inventory & Procurement (Milestone 13 / ADR-0020) -
   // replaces the flat `inventory` resource (never actually built on) with
   // namespaced sub-resources mirroring `insurance.*`/`ipd.*`'s precedent
   // for a module with genuinely distinct sub-workflows. `.procurement`
@@ -54,7 +54,7 @@ const RESOURCE_ACTIONS: Record<string, string[]> = {
   'inventory.requests': ['read', 'create', 'update', 'approve'],
   'inventory.assets': ['read', 'create', 'update'],
   'inventory.audit': ['read', 'create', 'update', 'manage'],
-  // IPD & Bed Management (Milestone 12 / ADR-0018) — `ipd.wards`/`ipd.rooms`/
+  // IPD & Bed Management (Milestone 12 / ADR-0018) - `ipd.wards`/`ipd.rooms`/
   // `ipd.beds` are the ward/room/bed inventory CRUD surface; `ipd.admissions`
   // is the admit/cancel workflow; `ipd.transfer` is the allocate/reserve/
   // vacate/transfer workflow, kept separate from `ipd.beds` since it's an
@@ -64,27 +64,27 @@ const RESOURCE_ACTIONS: Record<string, string[]> = {
   'ipd.beds': ['read', 'create', 'update', 'delete'],
   'ipd.admissions': ['read', 'create', 'update'],
   'ipd.transfer': ['read', 'create'],
-  // Nursing, MAR & Discharge (Milestone 12 Checkpoint 12.2 / ADR-0019) — all
+  // Nursing, MAR & Discharge (Milestone 12 Checkpoint 12.2 / ADR-0019) - all
   // all-scope, mirroring `ipd.beds`/`ipd.transfer`'s precedent rather than
   // `ipd.admissions`' own-scope carve-out: these are ward-level operational
   // surfaces run by whoever's on shift, not doctor-specific. `ipd.nursing`
   // bundles notes/assessments/I-O charting (all nurse-authored charting).
   // `ipd.discharge` splits `create` (doctor approval), `update` (nursing
-  // checklist + summary edits), and `manage` (finalize — mirrors
+  // checklist + summary edits), and `manage` (finalize - mirrors
   // `billing.manage`'s requester/approver separation).
   'ipd.nursing': ['read', 'create'],
   'ipd.orders': ['read', 'create', 'update'],
   'ipd.tasks': ['read', 'create', 'update'],
   'ipd.mar': ['read', 'create', 'update'],
   'ipd.discharge': ['read', 'create', 'update', 'manage'],
-  // Staff & Attendance (Milestone 14 / ADR-0022) — `staff`/`staff.documents`
+  // Staff & Attendance (Milestone 14 / ADR-0022) - `staff`/`staff.documents`
   // mirror `doctors`/`doctors.documents`'s precedent for the non-doctor
   // employee directory (Nurse/Receptionist/Lab Technician/Radiology
-  // Technician/Pharmacist/Cashier/HR/Inventory Manager — Doctors keep their
+  // Technician/Pharmacist/Cashier/HR/Inventory Manager - Doctors keep their
   // own dedicated module). `attendance`/`leave`/`shifts`/`shifts.roster` are
   // new namespaces: `leave` covers both leave requests and the holiday
   // calendar (`manage` gates holiday CRUD, same action that gates
-  // apply/cancel on one's own leave — mirrors `doctors.leave`'s action set).
+  // apply/cancel on one's own leave - mirrors `doctors.leave`'s action set).
   // `attendance.manage` also gates the Payroll Prep summary/export, since
   // it's an administrative read over the same data, not a distinct workflow.
   staff: ['read', 'create', 'update', 'delete'],
@@ -93,22 +93,22 @@ const RESOURCE_ACTIONS: Record<string, string[]> = {
   leave: ['read', 'approve', 'manage'],
   shifts: ['read', 'create', 'update', 'delete'],
   'shifts.roster': ['read', 'create', 'update'],
-  // AI Features (Milestone 15 Checkpoint 15.1 / ADR-0023) — `ai.generate` runs
+  // AI Features (Milestone 15 Checkpoint 15.1 / ADR-0023) - `ai.generate` runs
   // a clinical generator, `ai.read` views conversation transcripts, and
   // `ai.manage` is the admin-shaped org-wide usage/token reporting surface
   // (mirrors `billing.manage`'s requester/reviewer separation). `ai.templates`
   // is separate because editing a prompt changes clinical output for the whole
-  // organization — a strictly narrower audience than running a generator.
+  // organization - a strictly narrower audience than running a generator.
   ai: ['read', 'generate', 'manage'],
   'ai.templates': ['read', 'manage'],
   // Communication & Notification Platform (Milestone 18 / ADR-0027).
   //
   // A user's *own* notification centre, preferences and devices are
-  // deliberately ungated — every authenticated user reads their own inbox, the
+  // deliberately ungated - every authenticated user reads their own inbox, the
   // same way `/auth/me` needs no permission. These three cover only the
   // organization-wide console: `read` for history/statistics, `send` for
   // composing a broadcast, and `manage` for the operational levers (template
-  // versions, retrying failed deliveries, cancelling a scheduled send) —
+  // versions, retrying failed deliveries, cancelling a scheduled send) -
   // mirroring `billing.manage`'s requester/approver separation.
   notifications: ['read', 'send', 'manage'],
   users: ['read', 'create', 'update', 'manage'],
@@ -121,7 +121,7 @@ const RESOURCE_ACTIONS: Record<string, string[]> = {
   // Platform & Multi-Tenant Administration (Milestone 16 / ADR-0025).
   //
   // These are the only permissions deliberately withheld from an organization
-  // admin — every other resource is granted org-wide by
+  // admin - every other resource is granted org-wide by
   // `RolesService.createDefaultOrgAdminRole`. They are also useless on their
   // own: `PlatformGuard` additionally requires the caller's organization to be
   // flagged `isPlatform`, so holding one inside a customer tenant grants
@@ -158,7 +158,7 @@ const OWN_SCOPE_PERMISSIONS: Array<{ resource: string; action: string }> = [
   { resource: 'laboratory', action: 'update' },
   // Own-scoped for the same reason as laboratory (ADR-0013): a doctor only
   // orders/views/updates radiology studies for patients they're treating.
-  // Radiology Technician stays all-scope below — they process every study
+  // Radiology Technician stays all-scope below - they process every study
   // in the queue regardless of which doctor ordered it.
   { resource: 'radiology', action: 'read' },
   { resource: 'radiology', action: 'create' },
@@ -170,13 +170,13 @@ const OWN_SCOPE_PERMISSIONS: Array<{ resource: string; action: string }> = [
   { resource: 'doctors.documents', action: 'manage' },
   { resource: 'appointments', action: 'update' },
   // A doctor only admits/manages IPD stays for patients they're the
-  // attending physician for — mirrors medical_records/prescriptions.
+  // attending physician for - mirrors medical_records/prescriptions.
   { resource: 'ipd.admissions', action: 'read' },
   { resource: 'ipd.admissions', action: 'create' },
   { resource: 'ipd.admissions', action: 'update' },
   // Every non-doctor staff role clocks itself in/out, requests its own
   // corrections, applies for/cancels its own leave, and views its own
-  // roster — mirrors the `ipd.admissions` own-scope carve-out above, just
+  // roster - mirrors the `ipd.admissions` own-scope carve-out above, just
   // for self-service HR actions rather than patient-care ones.
   { resource: 'attendance', action: 'read' },
   { resource: 'attendance', action: 'create' },
@@ -185,7 +185,7 @@ const OWN_SCOPE_PERMISSIONS: Array<{ resource: string; action: string }> = [
   { resource: 'leave', action: 'manage' },
   { resource: 'shifts.roster', action: 'read' },
   // A doctor may only generate against, and read back, AI output for records
-  // where they are the treating doctor — mirrors medical_records/prescriptions.
+  // where they are the treating doctor - mirrors medical_records/prescriptions.
   { resource: 'ai', action: 'read' },
   { resource: 'ai', action: 'generate' },
 ]
@@ -193,7 +193,7 @@ const OWN_SCOPE_PERMISSIONS: Array<{ resource: string; action: string }> = [
 /**
  * `role.upsert`'s `update: {}` branch intentionally leaves an existing
  * role's fields untouched, but that meant a role created before a given
- * permission existed would never receive it on subsequent seed runs —
+ * permission existed would never receive it on subsequent seed runs -
  * every permission added after a role's first creation silently never
  * reached its `RolePermission` rows (see TECH_DEBT TD-0011). This tops a
  * role up to include every permission it should currently have, without
@@ -281,7 +281,7 @@ const ROLE_SPECS: RoleSpec[] = [
       { resource: 'appointments', action: 'update', scope: 'own' },
       // Own-scoped, mirroring prescriptions/medical_records (ADR-0012): a
       // doctor only orders/views/updates lab tests for patients they're
-      // treating. Lab Technician/Nurse stay all-scope below — they process
+      // treating. Lab Technician/Nurse stay all-scope below - they process
       // and view every order regardless of which doctor placed it.
       { resource: 'laboratory', action: 'read', scope: 'own' },
       { resource: 'laboratory', action: 'create', scope: 'own' },
@@ -298,7 +298,7 @@ const ROLE_SPECS: RoleSpec[] = [
       { resource: 'ipd.rooms', action: 'read' },
       { resource: 'ipd.beds', action: 'read' },
       // A doctor places diet/fluid/activity/oxygen/isolation orders,
-      // approves discharge, and finalizes it — but reads (not writes)
+      // approves discharge, and finalizes it - but reads (not writes)
       // nurse-authored notes/MAR/tasks.
       { resource: 'ipd.nursing', action: 'read' },
       { resource: 'ipd.orders', action: 'read' },
@@ -311,7 +311,7 @@ const ROLE_SPECS: RoleSpec[] = [
       { resource: 'ipd.discharge', action: 'manage' },
       // Own-scoped, mirroring medical_records/prescriptions (ADR-0023): a
       // doctor generates and reads AI drafts only for their own patients.
-      // No `ai.manage` — org-wide usage/cost reporting is an admin surface.
+      // No `ai.manage` - org-wide usage/cost reporting is an admin surface.
       { resource: 'ai', action: 'read', scope: 'own' },
       { resource: 'ai', action: 'generate', scope: 'own' },
       { resource: 'ai.templates', action: 'read' },
@@ -339,7 +339,7 @@ const ROLE_SPECS: RoleSpec[] = [
       { resource: 'ipd.transfer', action: 'read' },
       { resource: 'ipd.transfer', action: 'create' },
       // Nursing documentation, MAR administration, doctor-order visibility,
-      // nursing-task management, and discharge-checklist/summary editing —
+      // nursing-task management, and discharge-checklist/summary editing -
       // but not discharge approval or finalization (doctor-only).
       // All-scope like the rest of the nurse's ward surfaces (ipd.nursing's
       // precedent): summarising a lab report or an admission's course is
@@ -394,7 +394,7 @@ const ROLE_SPECS: RoleSpec[] = [
       { resource: 'ipd.admissions', action: 'read' },
       { resource: 'ipd.admissions', action: 'create' },
       // Read-only visibility into discharge status for exit/billing
-      // formalities — front desk doesn't approve or finalize discharge.
+      // formalities - front desk doesn't approve or finalize discharge.
       { resource: 'ipd.discharge', action: 'read' },
       // Self-service: clock in/out, request corrections, apply/cancel own
       // leave, view own roster (Milestone 14 / ADR-0022).
@@ -430,7 +430,7 @@ const ROLE_SPECS: RoleSpec[] = [
   {
     // `SystemRole.RADIOLOGY_TECHNICIAN` already existed in the enum from the
     // original scaffolding commit but had no ROLE_SPEC (same situation
-    // `LAB_TECHNICIAN` was in before Milestone 7) — mirrors `lab-technician`
+    // `LAB_TECHNICIAN` was in before Milestone 7) - mirrors `lab-technician`
     // exactly, since a radiology technician needs to see/process every
     // study in the queue regardless of which doctor ordered it (ADR-0013).
     slug: 'radiology-technician',
@@ -462,7 +462,7 @@ const ROLE_SPECS: RoleSpec[] = [
       { resource: 'pharmacy', action: 'update' },
       { resource: 'prescriptions', action: 'read' },
       // Completing a dispense transitions the source Prescription to
-      // COMPLETED via PrescriptionsService.updateStatus — see ADR-0014.
+      // COMPLETED via PrescriptionsService.updateStatus - see ADR-0014.
       { resource: 'prescriptions', action: 'update' },
       { resource: 'inventory.stock', action: 'read' },
       { resource: 'inventory.requests', action: 'read' },
@@ -557,10 +557,10 @@ const ROLE_SPECS: RoleSpec[] = [
   },
   {
     // `SystemRole.INVENTORY_MANAGER` already existed in the enum from the
-    // original scaffolding commit but had no ROLE_SPEC — the same
+    // original scaffolding commit but had no ROLE_SPEC - the same
     // situation `LAB_TECHNICIAN`/`RADIOLOGY_TECHNICIAN` were in before
     // their own milestones (ADR-0012/ADR-0013). All-scope across every
-    // `inventory.*` sub-resource — a store/inventory manager runs the
+    // `inventory.*` sub-resource - a store/inventory manager runs the
     // whole general-inventory-and-procurement workflow end to end.
     slug: 'inventory-manager',
     name: 'Inventory Manager',
@@ -744,7 +744,7 @@ async function main() {
   for (const spec of ROLE_SPECS) {
     const permissionIds =
       spec.slug === 'hospital-admin'
-        ? // Every permission except the platform-tenant-only family — an
+        ? // Every permission except the platform-tenant-only family - an
           // organization admin's authority stops at their own organization
           // (Milestone 16 / ADR-0025). Mirrors
           // `RolesService.createDefaultOrgAdminRole`, which applies the same

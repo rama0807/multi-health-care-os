@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils"
 /**
  * The header every page in MediCore wears.
  *
- * The shape is fixed — breadcrumb, title, optional status/metadata, actions on
- * the right — so that moving between Billing, Radiology and IPD feels like
+ * The shape is fixed - breadcrumb, title, optional status/metadata, actions on
+ * the right - so that moving between Billing, Radiology and IPD feels like
  * moving inside one product rather than between three that were built in
  * different months. Pages supply content; they do not re-decide the layout.
  */
@@ -17,7 +17,7 @@ export interface PageHeaderProps extends Omit<React.HTMLAttributes<HTMLElement>,
   title: React.ReactNode
   description?: React.ReactNode
   breadcrumbs?: BreadcrumbItem[]
-  /** Sits inline after the title — a status badge, a record number, an avatar. */
+  /** Sits inline after the title - a status badge, a record number, an avatar. */
   badge?: React.ReactNode
   /** Metadata row under the title: UHID, admitted date, ordering doctor. */
   meta?: React.ReactNode
@@ -101,7 +101,7 @@ export function PageHeaderMeta({
 }
 
 /**
- * A heading inside a page — the divider between "Vitals" and "Diagnoses" on an
+ * A heading inside a page - the divider between "Vitals" and "Diagnoses" on an
  * encounter, for instance. Deliberately much quieter than `PageHeader`: one
  * page, one `<h1>`.
  */

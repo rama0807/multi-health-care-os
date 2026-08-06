@@ -64,7 +64,7 @@ describe('Doctors (e2e)', () => {
     server = app.getHttpAdapter().getInstance().server
 
     // Ensure the permission catalog this suite depends on exists in the test
-    // DB regardless of whether `db:seed` has been run against it —
+    // DB regardless of whether `db:seed` has been run against it -
     // /auth/register grants the new org's admin role every row currently in
     // the Permission table.
     const prisma = app.get(PrismaService)
@@ -104,7 +104,7 @@ describe('Doctors (e2e)', () => {
     const org = await prisma.organization.findUniqueOrThrow({ where: { slug: orgSlug } })
     organizationId = org.id
 
-    // Onboarding requires a "Doctor" role to already exist for the org —
+    // Onboarding requires a "Doctor" role to already exist for the org -
     // /auth/register only provisions the org-admin role, so create it
     // directly (mirrors what packages/database/prisma/seed.ts does for the
     // demo org).

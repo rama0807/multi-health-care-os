@@ -2,7 +2,7 @@ import axios, { AxiosError, type AxiosInstance } from 'axios'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api'
 
-// Access token lives in memory only (never localStorage/sessionStorage) —
+// Access token lives in memory only (never localStorage/sessionStorage) -
 // the refresh token is an HttpOnly cookie the browser sends automatically
 // via `withCredentials`. AuthProvider is the only writer of this value.
 let accessToken: string | null = null

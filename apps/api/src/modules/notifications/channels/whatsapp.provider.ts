@@ -14,7 +14,7 @@ import {
  * Same shape and same honesty rule as `SmsProvider`: abstraction plus a local
  * `LOG` driver, no paid provider integrated by explicit instruction. A real
  * WhatsApp Business integration would additionally have to send a
- * pre-approved template rather than free text — a constraint recorded in
+ * pre-approved template rather than free text - a constraint recorded in
  * TECH_DEBT rather than pretended away here.
  */
 @Injectable()
@@ -38,7 +38,7 @@ export class WhatsappProvider implements NotificationChannelProvider {
 
   unconfiguredReason(): string | null {
     if (this.isConfigured()) return null
-    return 'No WhatsApp provider is configured — set WHATSAPP_DRIVER=LOG for local development, or add a real provider adapter'
+    return 'No WhatsApp provider is configured - set WHATSAPP_DRIVER=LOG for local development, or add a real provider adapter'
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await -- the interface is async
@@ -57,7 +57,7 @@ export class WhatsappProvider implements NotificationChannelProvider {
       }
     }
 
-    this.logger.log(`[whatsapp:log-driver] To ${request.destination}: ${request.title} — ${request.body}`)
+    this.logger.log(`[whatsapp:log-driver] To ${request.destination}: ${request.title} - ${request.body}`)
     return { ok: true, providerName: this.providerName, retryable: false }
   }
 }

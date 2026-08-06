@@ -92,7 +92,7 @@ export default function InsurancePlansPage() {
                   <TableCell align="right">{p.coveragePercent}%</TableCell>
                   <TableCell align="right">{p.coPayPercent}%</TableCell>
                   <TableCell align="right">₹{p.deductible}</TableCell>
-                  <TableCell align="right">{p.annualLimit ? `₹${p.annualLimit}` : '—'}</TableCell>
+                  <TableCell align="right">{p.annualLimit ? `₹${p.annualLimit}` : '-'}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{formatEnumLabel(p.networkType)}</Badge>
                   </TableCell>

@@ -25,8 +25,8 @@ interface FcmError {
  * Written directly against the REST API with `node:crypto` for the
  * service-account JWT rather than pulling in `firebase-admin`: the repo
  * already talks to four AI vendors this way (`common/ai/providers/`), the
- * dependency footprint stays flat, and the same code path serves web and — via
- * `UserDevice.platform` — any future mobile client, since an FCM token is
+ * dependency footprint stays flat, and the same code path serves web and - via
+ * `UserDevice.platform` - any future mobile client, since an FCM token is
  * opaque to the sender.
  *
  * With no service account configured, every send fails with an explicit
@@ -64,7 +64,7 @@ export class FcmPushProvider implements NotificationChannelProvider {
       !clientEmail && 'FCM_CLIENT_EMAIL',
       !privateKey && 'FCM_PRIVATE_KEY',
     ].filter(Boolean)
-    return `Firebase Cloud Messaging is not configured — missing ${missing.join(', ')}`
+    return `Firebase Cloud Messaging is not configured - missing ${missing.join(', ')}`
   }
 
   /** The browser also needs the VAPID public key before it can subscribe. */
@@ -73,7 +73,7 @@ export class FcmPushProvider implements NotificationChannelProvider {
     if (base) return base
     return this.credentials.vapidPublicKey
       ? null
-      : 'FCM_VAPID_PUBLIC_KEY is not set — the browser cannot obtain a push token'
+      : 'FCM_VAPID_PUBLIC_KEY is not set - the browser cannot obtain a push token'
   }
 
   vapidPublicKey(): string | null {
@@ -104,7 +104,7 @@ export class FcmPushProvider implements NotificationChannelProvider {
     try {
       accessToken = await this.accessToken()
     } catch (error) {
-      // An auth failure is usually a clock skew or a transient Google error —
+      // An auth failure is usually a clock skew or a transient Google error -
       // both worth another attempt.
       return {
         ok: false,
@@ -148,7 +148,7 @@ export class FcmPushProvider implements NotificationChannelProvider {
       ok: false,
       providerName: this.providerName,
       // Every token failed. If they all failed because they are gone, another
-      // attempt cannot help — say so rather than looping the queue.
+      // attempt cannot help - say so rather than looping the queue.
       failureReason: failures[0] ?? 'FCM send failed',
       retryable,
       invalidTokens,
@@ -210,7 +210,7 @@ export class FcmPushProvider implements NotificationChannelProvider {
       try {
         parsed = JSON.parse(text) as FcmError
       } catch {
-        // Non-JSON error body — the raw text is still the best explanation.
+        // Non-JSON error body - the raw text is still the best explanation.
       }
       const errorCode = parsed.error?.details?.find((d) => d.errorCode)?.errorCode ?? parsed.error?.status
       const message = parsed.error?.message ?? text.slice(0, 300)

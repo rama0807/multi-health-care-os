@@ -1,4 +1,4 @@
-# MediCore — System Architecture
+# MediCore - System Architecture
 
 ## Table of Contents
 
@@ -234,7 +234,7 @@ All API responses follow this structure:
 
 ## Authentication Flow
 
-*(Implemented in Milestone 2 — apps/api/src/modules/auth)*
+*(Implemented in Milestone 2 - apps/api/src/modules/auth)*
 
 ### Login Flow
 
@@ -272,7 +272,7 @@ Client                     API                      Database           Redis
   │◄── Set-Cookie: medicore_rt (HttpOnly), medicore_csrf │                 │
 ```
 
-Refresh token never appears in the response body — only as an HttpOnly cookie. The access token is returned in the body and kept in memory by the frontend (never persisted to storage).
+Refresh token never appears in the response body - only as an HttpOnly cookie. The access token is returned in the body and kept in memory by the frontend (never persisted to storage).
 
 ### Token Refresh Flow (with rotation + reuse detection)
 
@@ -297,7 +297,7 @@ Client                     API                          Redis
   │◄── Set-Cookie: medicore_rt (rotated), medicore_csrf         │
 ```
 
-`JwtStrategy` additionally checks `session:{userId}:{sessionId}` exists on **every** authenticated request — this is what makes logout/theft-detection revoke access immediately rather than waiting out the access token's 15-minute expiry.
+`JwtStrategy` additionally checks `session:{userId}:{sessionId}` exists on **every** authenticated request - this is what makes logout/theft-detection revoke access immediately rather than waiting out the access token's 15-minute expiry.
 
 ### RBAC Structure
 
@@ -315,20 +315,20 @@ Organization
                                 └── scope: "own" | "all"
 ```
 
-Permissions are **entirely DB-driven** (seeded via `packages/database/prisma/seed.ts`, never hardcoded in guards). At login/refresh, a user's full permission set is resolved and embedded in the JWT as `"resource.action.scope"` strings; `PermissionsGuard` + `@RequirePermissions()` check membership with no role-based bypass — including for `SUPER_ADMIN`, whose access comes purely from its seeded role holding every permission row. `UserRole.hospitalId` (nullable) lets a role assignment be scoped to one hospital ("Hospital Admin for Hospital X") instead of the whole org — this only affects Department/Hospital-management endpoints today; clinical/financial resources remain org-wide.
+Permissions are **entirely DB-driven** (seeded via `packages/database/prisma/seed.ts`, never hardcoded in guards). At login/refresh, a user's full permission set is resolved and embedded in the JWT as `"resource.action.scope"` strings; `PermissionsGuard` + `@RequirePermissions()` check membership with no role-based bypass - including for `SUPER_ADMIN`, whose access comes purely from its seeded role holding every permission row. `UserRole.hospitalId` (nullable) lets a role assignment be scoped to one hospital ("Hospital Admin for Hospital X") instead of the whole org - this only affects Department/Hospital-management endpoints today; clinical/financial resources remain org-wide.
 
-**System Roles** (`SystemRole` enum — tags a Role's intent, not its permissions):
-- `SUPER_ADMIN` — MediCore platform admin (seeded in its own dedicated org; cross-tenant querying is future work, see ADR-008)
-- `ORG_ADMIN` — Hospital/organization administrator (org-wide by default, or hospital-scoped via `UserRole.hospitalId`)
-- `DOCTOR` — Clinical access, scoped to assigned patients (`.own` scope)
-- `NURSE` — Clinical read access
-- `RECEPTIONIST` — Patient registration, appointments, billing read
-- `LAB_TECHNICIAN` — Laboratory module access
-- `RADIOLOGY_TECHNICIAN` — Radiology module access
-- `PHARMACIST` — Pharmacy module access
-- `CASHIER` — Billing and payments
-- `HR` — Staff management
-- `INVENTORY_MANAGER` — Inventory and stock
+**System Roles** (`SystemRole` enum - tags a Role's intent, not its permissions):
+- `SUPER_ADMIN` - MediCore platform admin (seeded in its own dedicated org; cross-tenant querying is future work, see ADR-008)
+- `ORG_ADMIN` - Hospital/organization administrator (org-wide by default, or hospital-scoped via `UserRole.hospitalId`)
+- `DOCTOR` - Clinical access, scoped to assigned patients (`.own` scope)
+- `NURSE` - Clinical read access
+- `RECEPTIONIST` - Patient registration, appointments, billing read
+- `LAB_TECHNICIAN` - Laboratory module access
+- `RADIOLOGY_TECHNICIAN` - Radiology module access
+- `PHARMACIST` - Pharmacy module access
+- `CASHIER` - Billing and payments
+- `HR` - Staff management
+- `INVENTORY_MANAGER` - Inventory and stock
 
 ---
 
@@ -363,11 +363,11 @@ AI in MediCore is designed as a pluggable layer. The `AIService` abstracts over 
 ### Prompt Architecture
 
 Each AI feature has:
-1. **System prompt template** — defines role and constraints
-2. **Context builder** — assembles patient/org context from DB
-3. **Prompt constructor** — combines system prompt + context + user query
-4. **Response parser** — validates and structures AI output
-5. **Fallback handler** — graceful degradation if AI fails
+1. **System prompt template** - defines role and constraints
+2. **Context builder** - assembles patient/org context from DB
+3. **Prompt constructor** - combines system prompt + context + user query
+4. **Response parser** - validates and structures AI output
+5. **Fallback handler** - graceful degradation if AI fails
 
 ### AI Processing Pipeline
 
@@ -382,7 +382,7 @@ Request ──► API ──► Queue Job ──► Worker ──► AI Provider
 
 ## Storage Strategy
 
-### PostgreSQL — Primary Datastore
+### PostgreSQL - Primary Datastore
 
 - All structured application data
 - Multi-tenant isolation via `organizationId` on every row
@@ -390,14 +390,14 @@ Request ──► API ──► Queue Job ──► Worker ──► AI Provider
 - Indexed for common query patterns
 - JSONB for semi-structured data (settings, metadata, form responses)
 
-### Redis — Ephemeral State
+### Redis - Ephemeral State
 
 | Key Pattern | Purpose | TTL |
 |-------------|---------|-----|
 | `session:{userId}:{sessionId}` | Session metadata (userAgent, ipAddress, lastUsedAt) | 30d (remember-me) / 1d |
 | `sessions:{userId}` | Set of a user's active session IDs (enumeration for logout-all / list-sessions, no `KEYS`/`SCAN`) | matches sessions |
 | `refresh:{sha256(token)}` | Refresh token metadata | 30d (remember-me) / 1d |
-| `refresh:revoked:{sha256(token)}` | Short-lived tombstone left behind on rotation — a hit here means the token was replayed after rotation (theft) | 60s |
+| `refresh:revoked:{sha256(token)}` | Short-lived tombstone left behind on rotation - a hit here means the token was replayed after rotation (theft) | 60s |
 | `email_verify:{sha256(token)}` | Email verification token → userId, single-use (`GETDEL`) | 24h |
 | `pwd_reset:{sha256(token)}` | Password reset token → userId, single-use (`GETDEL`) | 1h |
 | `rate:{ip}:{endpoint}` | Rate limiting counters | 1m |
@@ -445,7 +445,7 @@ MediCore uses an internal event bus (NestJS EventEmitter) for synchronous in-pro
 - `user.password_reset`
 - `auth.suspicious_login`
 
-### Event Flow Example — Appointment Completed
+### Event Flow Example - Appointment Completed
 
 ```
 Doctor marks appointment complete
@@ -501,7 +501,7 @@ defaultJobOptions: {
 
 ## Multi-Tenancy Architecture
 
-MediCore uses **row-level multi-tenancy** — all tenant data lives in shared tables, isolated by `organizationId`.
+MediCore uses **row-level multi-tenancy** - all tenant data lives in shared tables, isolated by `organizationId`.
 
 **Organization hierarchy** (Milestone 2): an `Organization` (the tenant) can own multiple `Hospital` rows (physical facilities/branches), each containing `Department` rows. Every tenant-scoped table still carries `organizationId` directly (defense-in-depth, per the isolation guarantee below) even where it's also derivable via the hospital/department chain. `organizationId` is always read from the JWT claim (`request.user.orgId`), never from a route param or request body.
 
@@ -532,9 +532,9 @@ prisma.$extends({
 ### Organization Resolution
 
 Tenant context is resolved from:
-1. **Subdomain** — `hospital-name.medicore.app` → resolve org slug
-2. **JWT claim** — `organizationId` embedded in access token
-3. **API header** — `X-Organization-ID` for M2M integrations
+1. **Subdomain** - `hospital-name.medicore.app` → resolve org slug
+2. **JWT claim** - `organizationId` embedded in access token
+3. **API header** - `X-Organization-ID` for M2M integrations
 
 ---
 
@@ -583,7 +583,7 @@ Tenant context is resolved from:
 
 | Environment | Purpose | Deploy Trigger |
 |-------------|---------|----------------|
-| `development` | Local development | — |
+| `development` | Local development | - |
 | `staging` | Pre-production QA | Push to `staging` branch |
 | `production` | Live system | Tag `v*.*.*` on `main` |
 

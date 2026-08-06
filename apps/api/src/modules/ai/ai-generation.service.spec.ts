@@ -29,7 +29,7 @@ describe('AiGenerationService', () => {
 
   const context = {
     text: '## PATIENT\nName: Ramesh Gupta',
-    title: 'OPD encounter — Ramesh Gupta (MED-1)',
+    title: 'OPD encounter - Ramesh Gupta (MED-1)',
     doctorId: 'doctor_1',
     patientId: 'patient_1',
     encounterId: 'enc_1',
@@ -87,7 +87,7 @@ describe('AiGenerationService', () => {
 
   const dto = { feature: 'SOAP_NOTE', encounterId: 'enc_1' } as never
 
-  it('checks the feature flag before assembling context — a disabled feature must not read PHI', async () => {
+  it('checks the feature flag before assembling context - a disabled feature must not read PHI', async () => {
     aiClient.assertAvailable.mockImplementation(() => {
       throw new ServiceUnavailableException('AI features are disabled for this deployment')
     })

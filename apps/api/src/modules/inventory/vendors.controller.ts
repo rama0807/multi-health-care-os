@@ -9,7 +9,7 @@ import { RateVendorDto } from './dto/rate-vendor.dto'
 import { UpdateVendorDto } from './dto/update-vendor.dto'
 import { VendorsService } from './vendors.service'
 
-/** Vendor management — CRUD, rating, purchase history, outstanding balance. See ADR-0020. */
+/** Vendor management - CRUD, rating, purchase history, outstanding balance. See ADR-0020. */
 @ApiTags('inventory-vendors')
 @ApiBearerAuth()
 @Controller({ path: 'inventory/vendors', version: '1' })

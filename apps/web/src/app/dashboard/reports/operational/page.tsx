@@ -51,7 +51,7 @@ interface ModuleView {
 
 /**
  * One entry per module. `load` fetches *and* shapes in a single typed step,
- * so every field access below is checked against the real report type — no
+ * so every field access below is checked against the real report type - no
  * `any` bridge between the API client and the renderer.
  */
 interface ModuleConfig {
@@ -114,7 +114,7 @@ const categoryBars = (
 })
 
 const money = (value: string) => `₹${Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
-const orDash = (value: number | null, suffix = '') => (value === null ? '—' : `${value}${suffix}`)
+const orDash = (value: number | null, suffix = '') => (value === null ? '-' : `${value}${suffix}`)
 
 // ─── Module definitions ──────────────────────────────────────────────────────
 
@@ -173,7 +173,7 @@ const MODULES: ModuleConfig[] = [
             d.noShow,
             d.utilisationPercent,
           ]),
-          note: 'Consultation delay is measured from the scheduled slot to when the encounter was opened — this system records no arrival time, so it is a scheduling delay, not a waiting-room time.',
+          note: 'Consultation delay is measured from the scheduled slot to when the encounter was opened - this system records no arrival time, so it is a scheduling delay, not a waiting-room time.',
         },
       }
     },
@@ -275,7 +275,7 @@ const MODULES: ModuleConfig[] = [
             m.scheduledMinutes,
             m.sharePercent,
           ]),
-          note: 'Relative load only — this system models no machine capacity or operating hours, so this is not a duty-cycle utilisation figure.',
+          note: 'Relative load only - this system models no machine capacity or operating hours, so this is not a duty-cycle utilisation figure.',
         },
       }
     },
@@ -575,7 +575,7 @@ export default function OperationalReportsPage() {
                               className={cellIndex === 0 ? undefined : 'tabular-nums'}
                             >
                               {/* An absent measurement prints as a dash, never as 0. */}
-                              {cell === null || cell === undefined ? '—' : String(cell)}
+                              {cell === null || cell === undefined ? '-' : String(cell)}
                             </TableCell>
                           ))}
                         </TableRow>

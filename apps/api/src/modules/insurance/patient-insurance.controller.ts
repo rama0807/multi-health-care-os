@@ -8,7 +8,7 @@ import { CreatePatientInsuranceDto } from './dto/create-patient-insurance.dto'
 import { UpdatePatientInsuranceDto } from './dto/update-patient-insurance.dto'
 import { PatientInsuranceService } from './patient-insurance.service'
 
-/** Backs the frontend's "Patient Insurance Tab" — see ADR-0016. */
+/** Backs the frontend's "Patient Insurance Tab" - see ADR-0016. */
 @ApiTags('insurance-patient-coverage')
 @ApiBearerAuth()
 @Controller({ path: 'insurance/patients/:patientId/coverages', version: '1' })

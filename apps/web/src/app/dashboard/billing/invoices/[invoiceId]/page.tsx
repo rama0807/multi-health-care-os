@@ -205,7 +205,7 @@ export default function InvoiceDetailPage() {
       {invoice.discountApprovalStatus === DiscountApprovalStatus.PENDING && (
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-warning-border bg-warning-subtle p-3 text-sm text-warning-subtle-foreground">
           <span>
-            Discount pending approval: {invoice.discountType === DiscountType.FLAT ? `₹${invoice.discountValue}` : `${invoice.discountValue}%`} —{' '}
+            Discount pending approval: {invoice.discountType === DiscountType.FLAT ? `₹${invoice.discountValue}` : `${invoice.discountValue}%`} -{' '}
             {invoice.discountReason}
           </span>
           {canManage && (
@@ -474,7 +474,7 @@ function RequestRefundDialog({
   const mutation = useMutation({
     mutationFn: () => requestRefund(invoiceId, { amount: Number(amount), reason }),
     onSuccess: (refund) => {
-      toast({ title: refund.status === RefundStatus.COMPLETED ? 'Refund completed' : 'Refund requested — pending approval' })
+      toast({ title: refund.status === RefundStatus.COMPLETED ? 'Refund completed' : 'Refund requested - pending approval' })
       setAmount('')
       setReason('')
       onOpenChange(false)
@@ -488,7 +488,7 @@ function RequestRefundDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Request refund</DialogTitle>
-          <DialogDescription>Partial or full — an admin approval may be required.</DialogDescription>
+          <DialogDescription>Partial or full - an admin approval may be required.</DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
           <Input type="number" placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} />
@@ -531,7 +531,7 @@ function ApplyDiscountDialog({
         title:
           updated.discountApprovalStatus === DiscountApprovalStatus.APPROVED
             ? 'Discount applied'
-            : 'Discount requested — pending approval',
+            : 'Discount requested - pending approval',
       })
       setValue('')
       setReason('')

@@ -4,7 +4,7 @@
  * Written rather than pulled from a package for the same reason `xlsx.util.ts`
  * was: the requirement is "did this schedule become due between the last tick
  * and now?", which is a match, not a full scheduler. A cron library brings a
- * scheduler, its own timers and its own notion of a job — all of which would
+ * scheduler, its own timers and its own notion of a job - all of which would
  * duplicate the queue this repo already has.
  *
  * Supported syntax, deliberately the subset `SavedReport.scheduleCron` is
@@ -36,7 +36,7 @@ export interface ParsedCron {
   dayOfMonth: CronField
   month: CronField
   dayOfWeek: CronField
-  /** True when both day fields are restricted — see `matchesCron`. */
+  /** True when both day fields are restricted - see `matchesCron`. */
   bothDaysRestricted: boolean
 }
 
@@ -48,7 +48,7 @@ const RANGES: Array<[number, number]> = [
   [0, 6], // day of week
 ]
 
-/** Returns null for anything this subset cannot express — never a guess. */
+/** Returns null for anything this subset cannot express - never a guess. */
 export function parseCron(expression: string): ParsedCron | null {
   const parts = expression.trim().split(/\s+/)
   if (parts.length !== 5) return null

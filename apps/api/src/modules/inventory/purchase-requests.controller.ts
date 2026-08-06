@@ -9,7 +9,7 @@ import { CreatePurchaseRequestDto } from './dto/create-purchase-request.dto'
 import { RejectPurchaseRequestDto } from './dto/reject-purchase-request.dto'
 import { PurchaseRequestsService } from './purchase-requests.service'
 
-/** Purchase Request — the first step of the procurement chain. See ADR-0020. */
+/** Purchase Request - the first step of the procurement chain. See ADR-0020. */
 @ApiTags('inventory-purchase-requests')
 @ApiBearerAuth()
 @Controller({ path: 'inventory/purchase-requests', version: '1' })

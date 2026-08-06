@@ -5,7 +5,7 @@ import { PrismaService } from '../../prisma/prisma.service'
 
 const TREND_DAYS = 7
 
-/** Revenue dashboard — see ADR-0015. */
+/** Revenue dashboard - see ADR-0015. */
 @Injectable()
 export class BillingDashboardService {
   constructor(private readonly prisma: PrismaService) {}

@@ -118,11 +118,11 @@ export default function RosterPage() {
                     return (
                       <TableCell key={toDateString(d)} className="text-center text-xs">
                         {!entry ? (
-                          <span className="text-muted-foreground">—</span>
+                          <span className="text-muted-foreground">-</span>
                         ) : entry.isOff ? (
                           <Badge variant="neutral">Off</Badge>
                         ) : (
-                          <Badge variant="outline">{entry.shift?.code ?? '—'}</Badge>
+                          <Badge variant="outline">{entry.shift?.code ?? '-'}</Badge>
                         )}
                       </TableCell>
                     )

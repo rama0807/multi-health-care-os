@@ -5,7 +5,7 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 /**
- * Design System V2 — the table primitives.
+ * Design System V2 - the table primitives.
  *
  * What changed, and why:
  *
@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils"
  *   failure a dense table can have, so `<TableHeader sticky>` is available on
  *   every table and is the default inside `<TableContainer>`.
  * - **A real scroll container.** The old `<Table>` wrapped itself in
- *   `overflow-auto` with no height, so it could never actually scroll — the
+ *   `overflow-auto` with no height, so it could never actually scroll - the
  *   *page* scrolled instead, which is what made sticky headers impossible.
  *   Scrolling is now the container's job, and the container is opt-in.
  * - **Density.** Cells are 12px vertical at `comfortable`, 8px at `compact`.
@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils"
  * - **Selection is a first-class row state**, visually distinct from hover, so
  *   a bulk action never leaves you unsure what it will apply to.
  *
- * Numeric columns must use `align="right"` on both the head and the cell —
+ * Numeric columns must use `align="right"` on both the head and the cell -
  * combined with the global `tabular-nums`, that is what makes a currency column
  * comparable at a glance.
  */
@@ -106,7 +106,7 @@ const TableHeader = React.forwardRef<
     className={cn(
       "bg-surface-secondary [&_th]:border-b",
       // `border-separate` above means the header's bottom border travels with
-      // it while stuck — a collapsed border would be left behind at the top of
+      // it while stuck - a collapsed border would be left behind at the top of
       // the scrolled content.
       sticky && "sticky top-0 z-sticky",
       className
@@ -177,7 +177,7 @@ TableRow.displayName = "TableRow"
 
 interface TableHeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
   align?: "left" | "center" | "right"
-  /** Pins the column horizontally — for an identity column on a wide table. */
+  /** Pins the column horizontally - for an identity column on a wide table. */
   sticky?: boolean
 }
 
@@ -243,7 +243,7 @@ TableCaption.displayName = "TableCaption"
 
 /**
  * Row actions that stay out of the way until the row is hovered or focused.
- * They remain in the DOM and reachable by keyboard at all times — hiding them
+ * They remain in the DOM and reachable by keyboard at all times - hiding them
  * with `display:none` until hover would make them mouse-only.
  */
 const TableRowActions = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(

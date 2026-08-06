@@ -22,7 +22,7 @@ const cardVariants = cva(
       variant: {
         default: "shadow-xs",
         elevated: "shadow-md",
-        /** No shadow, muted fill — for a nested/inset panel inside a card. */
+        /** No shadow, muted fill - for a nested/inset panel inside a card. */
         inset: "border-border/70 bg-surface-secondary shadow-none",
         ghost: "border-transparent bg-transparent shadow-none",
       },
@@ -52,7 +52,7 @@ const CardHeader = React.forwardRef<
 CardHeader.displayName = "CardHeader"
 
 /**
- * Header row for a card that carries actions — title on the left, controls on
+ * Header row for a card that carries actions - title on the left, controls on
  * the right, aligned on the same baseline.
  */
 const CardToolbar = React.forwardRef<

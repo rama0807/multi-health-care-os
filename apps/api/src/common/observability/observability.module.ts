@@ -7,7 +7,7 @@ import { RequestContextService } from './request-context.service'
 /**
  * Cross-cutting observability (Milestone 19.4 / ADR-0029).
  *
- * Global because correlation ids and metrics are not a domain concern — a
+ * Global because correlation ids and metrics are not a domain concern - a
  * service in any module may log, and forcing thirty modules to import this one
  * would be noise. It follows the precedent already set by `RedisModule` and
  * `PermissionsModule`.

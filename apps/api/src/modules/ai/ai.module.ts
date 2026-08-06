@@ -13,7 +13,7 @@ import { AiController } from './ai.controller'
 import { ClinicalContextService } from './context/clinical-context.service'
 
 /**
- * Domain layer only — the provider abstraction lives in `common/ai`
+ * Domain layer only - the provider abstraction lives in `common/ai`
  * (`AiCommonModule`, global) so no domain module ever imports a vendor
  * adapter. `SchedulingModule` supplies `DoctorRefService` for own-scope
  * resolution, exactly as Prescriptions/Medical Records already use it.

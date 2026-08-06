@@ -31,13 +31,13 @@ import { StaffReportsService } from './staff-reports.service'
  * a static helper called directly rather than pulled in through DI, which
  * keeps the reporting layer free of module cycles.
  *
- * Milestone 18 added its single module import — see the `imports` note below.
+ * Milestone 18 added its single module import - see the `imports` note below.
  */
 @Module({
   // Milestone 18 adds the only import this module has ever needed: scheduled
   // reports notify their owner in-app when a run completes (TD-0053). The
-  // dependency is one-way — the notification module reads `report-range.util`
-  // as a plain function, never through DI — so no cycle is possible.
+  // dependency is one-way - the notification module reads `report-range.util`
+  // as a plain function, never through DI - so no cycle is possible.
   imports: [NotificationsModule],
   controllers: [ReportsController, DashboardsController, ReportBuilderController],
   providers: [

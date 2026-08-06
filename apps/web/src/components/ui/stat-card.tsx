@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils"
  *    conflates them is lying quietly.
  * 2. **A trend never asserts a direction it was not given.** `trend.direction`
  *    is explicit, because "down" is good for readmissions and bad for
- *    collections — the tile cannot infer polarity from the sign.
+ *    collections - the tile cannot infer polarity from the sign.
  */
 
 export interface StatCardTrend {
@@ -40,7 +40,7 @@ export interface StatCardProps extends Omit<React.HTMLAttributes<HTMLDivElement>
   /** Makes the whole tile a link to the drill-down view. */
   href?: string
   loading?: boolean
-  /** Tints the icon chip — use to carry a status meaning, e.g. critical count. */
+  /** Tints the icon chip - use to carry a status meaning, e.g. critical count. */
   tone?: "default" | "success" | "warning" | "danger" | "info"
 }
 

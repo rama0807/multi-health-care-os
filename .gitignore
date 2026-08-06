@@ -53,14 +53,14 @@ packages/database/node_modules/
 *.d.ts.map
 tsconfig.tsbuildinfo
 
-# Compiled output must only ever live in dist/ — never committed alongside
+# Compiled output must only ever live in dist/ - never committed alongside
 # .ts sources in src/ (this bit us once: stale .js/.d.ts twins in
 # packages/*/src shadowed real source changes during module resolution)
 packages/*/src/**/*.js
 packages/*/src/**/*.js.map
 packages/*/src/**/*.d.ts
 
-# Local file storage (StorageService "local" driver — dev/test uploads)
+# Local file storage (StorageService "local" driver - dev/test uploads)
 apps/api/uploads/
 apps/api/uploads-e2e-test/
 

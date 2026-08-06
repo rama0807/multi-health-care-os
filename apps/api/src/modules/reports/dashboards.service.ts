@@ -36,7 +36,7 @@ export const DASHBOARD_KEYS = Object.keys(DASHBOARD_TITLES) as ExecutiveDashboar
 /**
  * Executive dashboards (Milestone 17 Checkpoint 17.2).
  *
- * Every figure here is composed from the Checkpoint 17.1 report services —
+ * Every figure here is composed from the Checkpoint 17.1 report services -
  * this class runs no Prisma query of its own except the one lookup that
  * resolves a department's name. That is deliberate: a dashboard that
  * re-queried the same tables would eventually disagree with the report it
@@ -524,7 +524,7 @@ function percent(
 }
 
 /**
- * A null measurement renders as an em dash rather than 0 — "no discharges to
+ * A null measurement renders as an em dash rather than 0 - "no discharges to
  * measure" and "discharged the same day" are different facts and must not
  * look identical on a tile.
  */
@@ -537,7 +537,7 @@ function days(
   return {
     key,
     label,
-    value: value === null ? '—' : String(value),
+    value: value === null ? '-' : String(value),
     format: 'days',
     changePercent: null,
     higherIsBetter: opts.higherIsBetter ?? true,
@@ -554,7 +554,7 @@ function hours(
   return {
     key,
     label,
-    value: value === null ? '—' : String(value),
+    value: value === null ? '-' : String(value),
     format: 'hours',
     changePercent: null,
     higherIsBetter: opts.higherIsBetter ?? false,

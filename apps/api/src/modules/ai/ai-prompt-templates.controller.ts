@@ -30,7 +30,7 @@ export class AiPromptTemplatesController {
 
   @Post()
   @RequirePermissions('ai.templates.manage')
-  @ApiOperation({ summary: 'Add a new prompt template version (append-only — never edits in place)' })
+  @ApiOperation({ summary: 'Add a new prompt template version (append-only - never edits in place)' })
   createVersion(@CurrentUser() user: JwtPayload, @Body() dto: CreateAiPromptTemplateDto) {
     return this.templatesService.createVersion(user.orgId, user.sub, dto)
   }

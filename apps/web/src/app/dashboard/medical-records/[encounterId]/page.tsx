@@ -214,7 +214,7 @@ export default function EncounterDetailPage() {
         }
         actions={
           <>
-            {/* Drafts only — the dialog hands text back for review, it never writes to the chart. */}
+            {/* Drafts only - the dialog hands text back for review, it never writes to the chart. */}
             <AiAssistButton feature="SOAP_NOTE" contextRefs={{ encounterId }} label="AI SOAP note" />
             <AiAssistButton
               feature="CLINICAL_NOTE_SUMMARY"
@@ -377,7 +377,7 @@ function ClinicalNotesTab({ encounterId, canUpdate }: { encounterId: string; can
               <Check className="mr-1 inline h-3 w-3 text-success" /> Saved as new version
             </>
           )}
-          {saveState === 'idle' && !currentQuery.data && 'No notes yet — start typing to create version 1.'}
+          {saveState === 'idle' && !currentQuery.data && 'No notes yet - start typing to create version 1.'}
           {saveState === 'idle' && currentQuery.data && `Current version: v${currentQuery.data.version}`}
         </p>
         <Button variant="outline" size="sm" onClick={() => setShowHistory(true)}>
@@ -405,7 +405,7 @@ function ClinicalNotesTab({ encounterId, canUpdate }: { encounterId: string; can
           <DialogHeader>
             <DialogTitle>Clinical note version history</DialogTitle>
             <DialogDescription>
-              Every save creates a new version — nothing is ever overwritten.
+              Every save creates a new version - nothing is ever overwritten.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -835,7 +835,7 @@ function AttachmentsTab({ encounterId, canUpdate }: { encounterId: string; canUp
             </Select>
           </div>
           <div className="flex-1 space-y-1.5">
-            <label className="text-sm font-medium">File (PDF, PNG, JPEG, WEBP — max 10MB)</label>
+            <label className="text-sm font-medium">File (PDF, PNG, JPEG, WEBP - max 10MB)</label>
             <Input
               type="file"
               accept="application/pdf,image/png,image/jpeg,image/webp"
@@ -1384,7 +1384,7 @@ function PrescriptionsTab({
                   ))}
                 </ul>
                 <p className="mt-1 text-xs">
-                  This is a basic, non-exhaustive check — always use clinical judgment.
+                  This is a basic, non-exhaustive check - always use clinical judgment.
                 </p>
               </AlertDescription>
             </Alert>
@@ -1462,7 +1462,7 @@ function PrescriptionsTab({
                   {rx.items.map((item) => (
                     <li key={item.id}>
                       {item.medicationName}
-                      {item.strength ? ` ${item.strength}` : ''} — {item.dosage} · {item.frequency} · {item.duration}
+                      {item.strength ? ` ${item.strength}` : ''} - {item.dosage} · {item.frequency} · {item.duration}
                       {item.instructions ? ` (${item.instructions})` : ''}
                     </li>
                   ))}
@@ -1639,7 +1639,7 @@ function LabOrdersTab({
                     <SelectItem value="__adhoc__">Ad hoc (enter manually)</SelectItem>
                     {catalogQuery.data?.map((c: LabTestCatalogItem) => (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.testName} ({c.testCode}) — {c.category}
+                        {c.testName} ({c.testCode}) - {c.category}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1934,7 +1934,7 @@ function RadiologyTab({ encounterId, canOrder }: { encounterId: string; canOrder
               <SelectItem value="__adhoc__">Ad hoc (enter manually)</SelectItem>
               {catalogQuery.data?.map((c: RadiologyCatalogItem) => (
                 <SelectItem key={c.id} value={c.id}>
-                  {c.name} ({c.code}) — {c.modality} · {c.bodyPart}
+                  {c.name} ({c.code}) - {c.modality} · {c.bodyPart}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -1991,7 +1991,7 @@ function RadiologyTab({ encounterId, canOrder }: { encounterId: string; canOrder
                   <StatusBadge status={order.status} />
                   <Badge variant="outline">{formatEnumLabel(order.priority)}</Badge>
                   <span>
-                    {order.modality} — {order.bodyPart}
+                    {order.modality} - {order.bodyPart}
                   </span>
                 </Link>
               </li>

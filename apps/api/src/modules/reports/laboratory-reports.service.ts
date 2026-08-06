@@ -72,7 +72,7 @@ export class LaboratoryReportsService {
         select: { sourceId: true, totalAmount: true, createdAt: true },
       }),
       // Turnaround is measured over orders *reported* in the window, keyed off
-      // the order's own creation time — an order placed before the window but
+      // the order's own creation time - an order placed before the window but
       // reported inside it is still a real turnaround observation.
       this.prisma.labTest.findMany({
         where: { ...where, reportedAt: window },
@@ -131,7 +131,7 @@ export class LaboratoryReportsService {
 
     for (const order of orders) {
       if (order.items.length === 0) continue
-      // Equal split across the order's items — exact when the order has one
+      // Equal split across the order's items - exact when the order has one
       // test, a disclosed allocation otherwise (see the class doc comment).
       const perItemRevenue = (revenueByOrder.get(order.id) ?? 0) / order.items.length
 

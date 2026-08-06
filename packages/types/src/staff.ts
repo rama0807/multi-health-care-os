@@ -47,7 +47,7 @@ export interface Staff {
 }
 
 export const CreateStaffSchema = z.object({
-  // Account fields — used to create (or link to) the staff member's login.
+  // Account fields - used to create (or link to) the staff member's login.
   email: z.string().email(),
   firstName: z.string().min(2).max(50),
   lastName: z.string().min(2).max(50),
@@ -55,7 +55,7 @@ export const CreateStaffSchema = z.object({
     .string()
     .regex(/^[6-9]\d{9}$/, 'Enter valid Indian mobile number')
     .optional(),
-  // Which SystemRole the login gets — any non-doctor employee role (Nurse,
+  // Which SystemRole the login gets - any non-doctor employee role (Nurse,
   // Receptionist, Lab Technician, Radiology Technician, Pharmacist, Cashier,
   // HR, Inventory Manager). Doctors keep their own dedicated flow.
   systemRole: z.enum([

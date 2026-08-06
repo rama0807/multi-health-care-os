@@ -12,7 +12,7 @@ const PLAN_WITH_PROVIDER_INCLUDE = {
   provider: { select: { id: true, name: true, code: true } },
 } satisfies Prisma.InsurancePlanInclude
 
-/** A provider's coverage plan — see ADR-0016. Not own-scoped: no owning doctor. */
+/** A provider's coverage plan - see ADR-0016. Not own-scoped: no owning doctor. */
 @Injectable()
 export class InsurancePlansService {
   constructor(

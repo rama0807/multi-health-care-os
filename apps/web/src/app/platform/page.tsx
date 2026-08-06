@@ -59,7 +59,7 @@ export default function PlatformOverviewPage() {
             </div>
             <div>
               <p className="text-lg font-semibold text-foreground">
-                {statsQuery.isLoading ? '—' : (tile.value ?? 0)}
+                {statsQuery.isLoading ? '-' : (tile.value ?? 0)}
               </p>
               <p className="text-xs text-muted-foreground">{tile.label}</p>
             </div>
@@ -103,7 +103,7 @@ export default function PlatformOverviewPage() {
               ))}
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Rolling window held in Redis — real measured traffic, not a durable billing ledger.
+              Rolling window held in Redis - real measured traffic, not a durable billing ledger.
             </p>
           </div>
         </div>

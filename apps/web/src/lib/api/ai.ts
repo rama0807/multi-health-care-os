@@ -58,7 +58,7 @@ export async function streamAiContent(
 
   if (!response.ok || !response.body) {
     // A non-200 here means the request failed before the stream opened (auth,
-    // RBAC, validation, or AI being unconfigured) — the body is a normal
+    // RBAC, validation, or AI being unconfigured) - the body is a normal
     // JSON error envelope, not SSE.
     const fallback = await response.text().catch(() => '')
     handlers.onError(extractErrorMessage(fallback) ?? `Request failed with status ${response.status}`)

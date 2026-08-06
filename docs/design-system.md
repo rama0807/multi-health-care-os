@@ -5,7 +5,7 @@
 > it (TD-0077).
 
 The product should read as **enterprise, calm, premium, trustworthy, fast,
-medical, dense and relentlessly consistent** — Linear and Stripe Dashboard, not
+medical, dense and relentlessly consistent** - Linear and Stripe Dashboard, not
 a gradient-heavy AI dashboard. In practice that means: depth comes from borders
 rather than shadows, colour belongs to *data* rather than chrome, motion is a
 hint rather than a performance, and no screen invents a pattern another screen
@@ -17,7 +17,7 @@ already has.
 
 ```
 apps/web/src/
-  app/globals.css              THE token layer — the only place a colour is defined
+  app/globals.css              THE token layer - the only place a colour is defined
   components/ui/               Primitives (button, table, badge, page-header, …)
   components/layout/           App shell (sidebar, header, command palette, page layout)
   lib/branding/color.ts        Colour maths + WCAG derivation (43 unit tests)
@@ -25,7 +25,7 @@ apps/web/src/
   lib/charts/palette.ts        Chart colours resolved from the tokens
   providers/branding-provider  Applies a tenant's branding at runtime
   providers/workspace-provider Active hospital selection
-tailwind.config.ts             Token *references* only — contains no colour values
+tailwind.config.ts             Token *references* only - contains no colour values
 ```
 
 There is no `packages/ui`. Earlier `.ai/` documents claimed one; it has never
@@ -40,7 +40,7 @@ Tailwind palette class like `bg-blue-600` or `text-red-500`.
 
 Every colour resolves through a semantic token, because an organization's
 branding rewrites that layer at runtime. A hardcoded colour is a colour that
-silently ignores the tenant's brand — and, in the status case, a colour that
+silently ignores the tenant's brand - and, in the status case, a colour that
 ignores a clinical convention.
 
 If the colour you need does not exist, **add a token** to `globals.css` (light
@@ -55,19 +55,19 @@ If the colour you need does not exist, **add a token** to `globals.css` (light
 | Line | `border`, `border-strong`, `input`, `ring` | |
 | Brand | `primary`, `-hover`, `-active`, `-foreground`, `-subtle`, `-subtle-foreground`, `-border` | Branded. Actions, links, selection, focus |
 | Brand accent / secondary | `brand-accent-*`, `brand-secondary-*` | Branded. Chart series 2–3, accent badges |
-| Neutral interaction | `secondary`, `accent`, `muted` | **Not** branded — hover surfaces, muted buttons |
+| Neutral interaction | `secondary`, `accent`, `muted` | **Not** branded - hover surfaces, muted buttons |
 | Sidebar | `sidebar`, `-foreground`, `-muted`, `-border`, `-item-hover`, `-item-active`, `-item-active-foreground` | The rail's own surface |
 | Status | `success`, `warning`, `danger`, `info`, `neutral` × `DEFAULT / foreground / subtle / subtle-foreground / border` | **Never** branded |
 | Chart | `chart-1` … `chart-8` | 1–3 follow branding; 4–8 fixed |
 
 `subtle-foreground` is the text colour that sits **on** the matching `subtle`
-tint — a different contrast requirement from clearing AA against the page. Use
+tint - a different contrast requirement from clearing AA against the page. Use
 `bg-danger-subtle text-danger-subtle-foreground`, never
 `bg-danger-subtle text-danger`.
 
 Elevation is `shadow-xs|sm|md|lg|xl`; radius is `rounded-xs|sm|md|lg|xl`;
 layering is a named scale (`z-sticky`, `z-dropdown`, `z-overlay`, `z-modal`,
-`z-toast`, `z-tooltip`) — never an ad-hoc `z-50`.
+`z-toast`, `z-tooltip`) - never an ad-hoc `z-50`.
 
 ---
 
@@ -78,7 +78,7 @@ An organization configures `primaryColor`, `accentColor`, `secondaryColor`,
 (`/dashboard/organization` → Branding).
 
 `BrandingProvider` turns those into a stylesheet injected into `<head>`, emitting
-both a `:root` block and a `.dark` block — dark mode needs a *different*
+both a `:root` block and a `.dark` block - dark mode needs a *different*
 derivation of the same colour, which inline styles cannot express. From there,
 branding flows automatically to buttons, links, focus rings, the sidebar's active
 item, badges, progress fills and chart series.
@@ -119,7 +119,7 @@ const { displayName, logo } = useBranding()
 ```
 
 **Known gap (TD-0074):** `GET /organizations/me/branding` is gated behind
-`organizations.read`, which only Hospital Admin holds — so most clinical users
+`organizations.read`, which only Hospital Admin holds - so most clinical users
 currently see the default palette. The last successful payload is cached in
 `localStorage` per organization, which helps on a returning device but does not
 close the gap. The fix is backend-side and was out of scope for Phase 1.
@@ -185,7 +185,7 @@ Primary action last in the `actions` row, the way a dialog reads.
 
 - Sticky headers need a **height-bounded** container; scrolling is the
   container's job, never the page's.
-- `align="right"` on numeric columns — combined with global tabular numerals,
+- `align="right"` on numeric columns - combined with global tabular numerals,
   that is what makes a currency column comparable at a glance.
 - `TableRowActions` fades in on hover but stays keyboard-reachable and is always
   visible on touch.
@@ -200,7 +200,7 @@ Primary action last in the `actions` row, the way a dialog reads.
 <StatusBadge status="SAMPLE_COLLECTED" />   // → "Sample collected", info tone
 ```
 
-Tone is decided once, centrally, by *meaning* — terminal-good, in-flight,
+Tone is decided once, centrally, by *meaning* - terminal-good, in-flight,
 waiting-on-a-human, failed/urgent, inert. If a status maps wrongly, **fix the
 map**, do not override `tone` at the call site.
 
@@ -219,7 +219,7 @@ Empty and *filtered*-empty are different states with different fixes; collapsing
 them into one grey "No data" is the most common way a dashboard wastes a user's
 time.
 
-A missing measurement is `<EmptyValue />` (an em dash) — **never `0`**. "Not
+A missing measurement is `<EmptyValue />` (an em dash) - **never `0`**. "Not
 recorded" and "zero" are different clinical and financial facts. `StatCard`
 enforces this for you.
 
@@ -231,15 +231,15 @@ becomes a dense table shifts every row exactly when the user starts reading.
 ## 7. Motion and accessibility
 
 - Durations: `duration-fast` (120ms) for hover/colour, default 160ms, `slow`
-  (240ms) for layout. Decelerating ease — never a bounce.
+  (240ms) for layout. Decelerating ease - never a bounce.
 - `prefers-reduced-motion` is honoured globally, including Radix keyframe
   animations.
 - One focus treatment for the whole app: a 2px brand ring with an offset, on
   `:focus-visible` only.
-- Colour is never the only signal — the sidebar's active item has a marker as
+- Colour is never the only signal - the sidebar's active item has a marker as
   well as a tint, and `Badge dot` pairs a dot with the label.
 - Interactive rows are real controls: focusable, Enter-activatable.
-- `subtle-foreground` does not pass AA — decoration only, never information.
+- `subtle-foreground` does not pass AA - decoration only, never information.
 
 ---
 
@@ -247,6 +247,6 @@ becomes a dense table shifts every row exactly when the user starts reading.
 
 1. Does a primitive already do it? Extend it rather than adding a sibling.
 2. Needs a colour? Add a **token** (light *and* dark), then reference it.
-3. Never remove a pre-V2 export, variant or prop — ~90 pages still depend on
+3. Never remove a pre-V2 export, variant or prop - ~90 pages still depend on
    them (TD-0077).
 4. Verify with `pnpm lint && pnpm typecheck && pnpm test && pnpm build`.

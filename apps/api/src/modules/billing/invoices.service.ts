@@ -48,10 +48,10 @@ const INVOICE_WITH_RELATIONS_INCLUDE = {
 } satisfies Prisma.InvoiceInclude
 
 /**
- * Invoicing — see ADR-0015. `billing.*` stays all-scope (staff-facing), so
+ * Invoicing - see ADR-0015. `billing.*` stays all-scope (staff-facing), so
  * no own-scope check is needed. Created DRAFT, either from manual line
  * items and/or by sweeping the patient's existing `PENDING` charges (see
- * `ChargesService`) — at least one of the two is required.
+ * `ChargesService`) - at least one of the two is required.
  */
 @Injectable()
 export class InvoicesService {
@@ -227,7 +227,7 @@ export class InvoicesService {
     return this.getById(organizationId, invoice.id)
   }
 
-  /** "Manual line-item addition" — only while the invoice is still DRAFT. */
+  /** "Manual line-item addition" - only while the invoice is still DRAFT. */
   async addItem(
     organizationId: string,
     id: string,
@@ -262,7 +262,7 @@ export class InvoicesService {
   }
 
   /**
-   * Discount request — see ADR-0015. `canManage` (caller holds
+   * Discount request - see ADR-0015. `canManage` (caller holds
    * `billing.manage`) auto-approves and applies the discount immediately;
    * otherwise the request lands `PENDING` for a manage-scope holder to
    * approve/reject, and totals are left untouched until then.
@@ -334,7 +334,7 @@ export class InvoicesService {
       throw new BadRequestException('No pending discount request on this invoice')
     }
     if (Number(invoice.paidAmount) > 0) {
-      throw new ConflictException('A payment was recorded since this discount was requested — reject it instead')
+      throw new ConflictException('A payment was recorded since this discount was requested - reject it instead')
     }
 
     const totals = computeInvoiceTotals(this.toLineItemInputs(invoice.items), {
@@ -427,7 +427,7 @@ export class InvoicesService {
       throw new BadRequestException(`Cannot cancel an invoice that is ${currentStatus}`)
     }
     if (Number(invoice.paidAmount) > 0) {
-      throw new BadRequestException('Cannot cancel an invoice that has payments recorded — refund it instead')
+      throw new BadRequestException('Cannot cancel an invoice that has payments recorded - refund it instead')
     }
 
     await this.prisma.$transaction(async (tx) => {

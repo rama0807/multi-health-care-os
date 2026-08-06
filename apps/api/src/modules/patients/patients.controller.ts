@@ -59,7 +59,7 @@ export class PatientsController {
     })
   }
 
-  /** Alias of GET /patients — kept as its own documented route since search-by
+  /** Alias of GET /patients - kept as its own documented route since search-by
    *  name/phone/UHID/DOB is a distinct product capability even though the
    *  underlying query is identical to the general list endpoint. */
   @Get('search')
@@ -176,7 +176,7 @@ export class PatientsController {
     @Req() request: FastifyRequest,
   ) {
     const data = await request.file()
-    if (!data) throw new BadRequestException('No file uploaded — send multipart/form-data with a "file" field')
+    if (!data) throw new BadRequestException('No file uploaded - send multipart/form-data with a "file" field')
 
     const buffer = await data.toBuffer()
     return this.patientsService.importFromCsv(orgId, buffer, userId)
@@ -192,7 +192,7 @@ export class PatientsController {
     @Req() request: FastifyRequest,
   ) {
     const data = await request.file()
-    if (!data) throw new BadRequestException('No file uploaded — send multipart/form-data')
+    if (!data) throw new BadRequestException('No file uploaded - send multipart/form-data')
 
     const documentTypeField = data.fields.documentType as { value?: unknown } | undefined
     const documentType =

@@ -17,12 +17,12 @@ export function formatBytes(bytes: number): string {
 }
 
 export function formatDateTime(value: string | Date | null | undefined): string {
-  if (!value) return '—'
+  if (!value) return '-'
   return new Date(value).toLocaleString()
 }
 
 export function formatDate(value: string | Date | null | undefined): string {
-  if (!value) return '—'
+  if (!value) return '-'
   return new Date(value).toLocaleDateString()
 }
 
@@ -33,7 +33,7 @@ export function humanizeAction(action: string): string {
 
 /**
  * Renders a usage figure against its plan limit. A null limit means the plan
- * negotiated no cap — shown as "unlimited" rather than as an unbounded bar, so
+ * negotiated no cap - shown as "unlimited" rather than as an unbounded bar, so
  * an unlimited plan is never mistaken for a plan sitting at 0% usage.
  */
 export function formatAgainstLimit(used: number, limit: number | null): string {

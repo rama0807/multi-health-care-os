@@ -30,7 +30,7 @@ export interface ClinicalResult {
 /**
  * Seeds the outpatient clinical spine: appointments across the last 30 days
  * and the next two weeks, the encounters completed ones produced, and
- * everything a real consultation generates downstream — notes, vitals,
+ * everything a real consultation generates downstream - notes, vitals,
  * diagnoses, prescriptions, lab and radiology orders, dispensing, charges,
  * invoices, payments, and insurance claims.
  */
@@ -51,7 +51,7 @@ export async function seedClinical(prisma: PrismaClient, ctx: DemoContext): Prom
 
   for (let dayOffset = -30; dayOffset <= 14; dayOffset += 1) {
     const dayDate = at(dayOffset, 12)
-    if (dayDate.getDay() === 0) continue // Sunday — OPD closed
+    if (dayDate.getDay() === 0) continue // Sunday - OPD closed
 
     const isPast = dayOffset < 0
     const isToday = dayOffset === 0
@@ -143,19 +143,19 @@ export async function seedClinical(prisma: PrismaClient, ctx: DemoContext): Prom
               'Bronchial asthma in childhood, currently asymptomatic.',
             ])
             : 'Nil significant.',
-          familyHistory: chance(0.3) ? 'Father — hypertension. Mother — type 2 diabetes mellitus.' : 'Non-contributory.',
+          familyHistory: chance(0.3) ? 'Father - hypertension. Mother - type 2 diabetes mellitus.' : 'Non-contributory.',
           surgicalHistory: chance(0.2) ? pick(['Appendicectomy in 2014.', 'Lower segment caesarean section in 2019.']) : 'Nil.',
           socialHistory: chance(0.3)
-            ? pick(['Non-smoker, occasional alcohol.', 'Smoker — 10 pack years.', 'Teetotaller, vegetarian diet.'])
+            ? pick(['Non-smoker, occasional alcohol.', 'Smoker - 10 pack years.', 'Teetotaller, vegetarian diet.'])
             : 'Non-smoker, non-alcoholic.',
-          allergies: chance(0.15) ? pick(['Sulpha drugs — rash.', 'Penicillin — urticaria.', 'Dust and pollen.']) : 'No known drug allergy.',
+          allergies: chance(0.15) ? pick(['Sulpha drugs - rash.', 'Penicillin - urticaria.', 'Dust and pollen.']) : 'No known drug allergy.',
           currentMedications: chance(0.35) ? 'On regular antihypertensives.' : 'Nil.',
           createdByUserId: doctor.userId,
           createdAt: scheduledAt,
         },
       })
 
-      // Vitals — plausible for the patient's build, with a drift in weight
+      // Vitals - plausible for the patient's build, with a drift in weight
       // across visits so the trend chart has a real line to draw.
       const weightKg = round1(patient.baseWeightKg + (rnd() * 6 - 3))
       const isFebrile = /febrile|pneumonia|otitis|gastroenteritis/.test(complaint.diagnosis.toLowerCase())
@@ -364,7 +364,7 @@ export async function seedClinical(prisma: PrismaClient, ctx: DemoContext): Prom
               criticalHigh: spec.criticalHigh,
               isAbnormal,
               abnormalType: abnormalType as never,
-              interpretation: isAbnormal ? 'Outside the reference range — correlate clinically.' : null,
+              interpretation: isAbnormal ? 'Outside the reference range - correlate clinically.' : null,
               createdAt: scheduledAt,
             },
           })
@@ -533,7 +533,7 @@ export async function seedClinical(prisma: PrismaClient, ctx: DemoContext): Prom
                 appointmentId: appointment.id,
                 sourceModule: 'PHARMACY',
                 sourceId: dispenseOrder.id,
-                description: 'Pharmacy — medicines dispensed',
+                description: 'Pharmacy - medicines dispensed',
                 quantity: 1,
                 unitPrice,
                 taxPercent: 12,
@@ -545,7 +545,7 @@ export async function seedClinical(prisma: PrismaClient, ctx: DemoContext): Prom
               },
             })
             createdCharges.push({
-              id: pharmCharge.id, description: 'Pharmacy — medicines dispensed', quantity: 1,
+              id: pharmCharge.id, description: 'Pharmacy - medicines dispensed', quantity: 1,
               unitPrice, taxPercent: 12, totalAmount: pharmTotals.totalAmount, category: 'Pharmacy',
             })
           }

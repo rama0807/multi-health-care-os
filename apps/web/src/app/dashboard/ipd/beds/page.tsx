@@ -84,7 +84,7 @@ function BedGrid() {
   const beds = bedsQuery.data?.data ?? []
 
   const grouped = beds.reduce<Record<string, BedWithDetails[]>>((acc, bed) => {
-    const key = `${bed.ward.name} — ${bed.room.roomNumber}`
+    const key = `${bed.ward.name} - ${bed.room.roomNumber}`
     acc[key] = acc[key] ? [...acc[key], bed] : [bed]
     return acc
   }, {})

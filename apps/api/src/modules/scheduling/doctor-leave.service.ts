@@ -172,7 +172,7 @@ export class DoctorLeaveService {
     if (query.doctorId) where.doctorId = query.doctorId
     if (query.status) where.status = query.status as unknown as Prisma.EnumLeaveStatusFilter
     // "from"/"to" filter to leave requests whose date range intersects
-    // [from, to] — a leave starting before `to` and ending after `from`.
+    // [from, to] - a leave starting before `to` and ending after `from`.
     if (query.from) where.endDate = { gte: new Date(query.from) }
     if (query.to) where.startDate = { lte: new Date(query.to) }
 

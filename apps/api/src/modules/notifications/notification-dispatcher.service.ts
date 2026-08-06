@@ -118,7 +118,7 @@ export class NotificationDispatcherService {
       return
     }
 
-    // Preference gate — staff recipients only. A patient-addressed message has
+    // Preference gate - staff recipients only. A patient-addressed message has
     // no user account and therefore no preferences; it is governed by the
     // channels the calling module chose, not by a preferences row.
     if (notification.recipientId) {
@@ -208,7 +208,7 @@ export class NotificationDispatcherService {
       status = NotificationStatus.PENDING
     } else if (attempted === 0) {
       // Every channel was suppressed. The in-app record still exists, so this
-      // is not a failure — it is a notification that reached nobody by design.
+      // is not a failure - it is a notification that reached nobody by design.
       status = NotificationStatus.CANCELLED
     } else if (inFlight > 0) {
       status = NotificationStatus.QUEUED

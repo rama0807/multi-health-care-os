@@ -114,7 +114,7 @@ export default function PharmacyStockPage() {
                 <TableRow key={drug.id}>
                   <TableCell>
                     <div className="font-medium">{drug.genericName}</div>
-                    <div className="text-xs text-muted-foreground">{drug.brandName ?? '—'} · {drug.strength ?? '—'}</div>
+                    <div className="text-xs text-muted-foreground">{drug.brandName ?? '-'} · {drug.strength ?? '-'}</div>
                   </TableCell>
                   <TableCell className="font-mono text-xs">{drug.batchNumber}</TableCell>
                   <TableCell>

@@ -57,7 +57,7 @@ Value: {
 TTL: 30 days
 ```
 
-**Token rotation:** Each refresh issues a new refresh token and invalidates the old one. This enables detecting token theft — if a stolen token is used, the legitimate user's next refresh will fail (old token already consumed).
+**Token rotation:** Each refresh issues a new refresh token and invalidates the old one. This enables detecting token theft - if a stolen token is used, the legitimate user's next refresh will fail (old token already consumed).
 
 **Why not cookies?** We'll support both browser (httpOnly cookie option) and mobile/API clients (bearer token). The auth service handles both.
 
@@ -101,7 +101,7 @@ Every state-changing action is logged:
 }
 ```
 
-Audit logs are append-only — no UPDATE or DELETE ever runs on the audit_logs table.
+Audit logs are append-only - no UPDATE or DELETE ever runs on the audit_logs table.
 
 ## Rejected Alternatives
 

@@ -9,7 +9,7 @@ import { ChargesService } from './charges.service'
 import { CreateChargeDto } from './dto/create-charge.dto'
 
 /**
- * The reusable Charge Engine — see ADR-0015. `billing.*` stays all-scope
+ * The reusable Charge Engine - see ADR-0015. `billing.*` stays all-scope
  * (staff-facing), so no own-scope check is needed on these routes.
  */
 @ApiTags('billing-charges')

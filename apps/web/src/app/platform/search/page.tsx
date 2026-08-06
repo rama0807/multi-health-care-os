@@ -85,7 +85,7 @@ export default function PlatformSearchPage() {
       )}
 
       <p className="text-xs text-muted-foreground">
-        Search covers tenant administration records only — organizations, hospitals and users. It
+        Search covers tenant administration records only - organizations, hospitals and users. It
         deliberately does not search patients or clinical records.
       </p>
     </div>

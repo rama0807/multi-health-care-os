@@ -63,7 +63,7 @@ describe('HealthService', () => {
 
       await service.checkDependencies()
 
-      // Redis started before the database finished — they overlap.
+      // Redis started before the database finished - they overlap.
       expect(order.indexOf('redis:start')).toBeLessThan(order.indexOf('db:end'))
     })
   })
@@ -90,7 +90,7 @@ describe('HealthService', () => {
   })
 
   describe('beginShutdown', () => {
-    it('is idempotent — a second signal does not reset anything', () => {
+    it('is idempotent - a second signal does not reset anything', () => {
       service.beginShutdown()
       service.beginShutdown()
 

@@ -128,7 +128,7 @@ export function MarTab({
                 <span className="ml-auto text-xs text-muted-foreground">Due {formatDateTime(d.scheduledAt)}</span>
               </div>
               <p className="mt-1 font-medium text-foreground">
-                {d.prescriptionItem.medicationName} — {d.prescriptionItem.dosage} · {d.prescriptionItem.frequency}
+                {d.prescriptionItem.medicationName} - {d.prescriptionItem.dosage} · {d.prescriptionItem.frequency}
               </p>
               {d.administeredAt && (
                 <p className="text-xs text-muted-foreground">
@@ -409,7 +409,7 @@ function DoseActionDialog({
         </DialogHeader>
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            {dose.prescriptionItem.medicationName} — {dose.prescriptionItem.dosage}
+            {dose.prescriptionItem.medicationName} - {dose.prescriptionItem.dosage}
           </p>
           {action === 'administer' && (
             <>

@@ -11,7 +11,7 @@ import { PrismaClient } from '@prisma/client'
  * `GoodsReceiptItem.purchaseOrderItemId`) the parent's delete is sequenced
  * after the dependant's.
  *
- * Deliberately NOT deleted — these belong to the base seed (`seed.ts`) and
+ * Deliberately NOT deleted - these belong to the base seed (`seed.ts`) and
  * are upserted rather than recreated: permissions, roles, users,
  * organizations, hospitals, departments, and doctor profiles.
  */
@@ -35,7 +35,7 @@ export async function resetDemoData(prisma: PrismaClient, organizationId: string
   await prisma.vendorReturnItem.deleteMany({ where: { vendorReturn: { organizationId } } })
   await prisma.vendorReturn.deleteMany({ where: org })
 
-  // Vendor invoices reference both the PO and the GRN — clear them first.
+  // Vendor invoices reference both the PO and the GRN - clear them first.
   await prisma.vendorInvoice.deleteMany({ where: org })
   await prisma.goodsReceiptItem.deleteMany({ where: { goodsReceiptNote: { organizationId } } })
   await prisma.goodsReceiptNote.deleteMany({ where: org })
@@ -96,7 +96,7 @@ export async function resetDemoData(prisma: PrismaClient, organizationId: string
 
   // ── Pharmacy ────────────────────────────────────────────────────────────
   // `DrugReturn` restricts on `DispenseItem`; `DispenseItem` restricts on
-  // `PrescriptionItem` — so both go before prescriptions are touched.
+  // `PrescriptionItem` - so both go before prescriptions are touched.
   await prisma.drugReturn.deleteMany({ where: org })
   await prisma.dispenseItem.deleteMany({ where: { dispenseOrder: { organizationId } } })
   await prisma.dispenseOrder.deleteMany({ where: org })

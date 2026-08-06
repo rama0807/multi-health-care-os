@@ -29,7 +29,7 @@ import { DoctorScheduleService } from './doctor-schedule.service'
 /**
  * Reusable availability engine: weekly schedule + approved-leave overlay ->
  * bookable slots. Deliberately does NOT know about Appointment records yet
- * — appointment-conflict subtraction is Milestone 5's job (see ADR-0006).
+ * - appointment-conflict subtraction is Milestone 5's job (see ADR-0006).
  * The public shape (getAvailableSlots(organizationId, doctorId, date,
  * duration)) is meant to stay stable across that addition.
  */
@@ -141,7 +141,7 @@ export class AvailabilityService {
       }),
       // Ordered by effectiveFrom desc so the first row seen per doctorId
       // below is that doctor's best-matching (most recent, already-started)
-      // version — see DoctorScheduleService for the same resolution rule.
+      // version - see DoctorScheduleService for the same resolution rule.
       this.prisma.doctorSchedule.findMany({
         where: { doctorId: { in: doctorIds }, organizationId, isActive: true, effectiveFrom: { lte: dbToday } },
         include: { days: true },

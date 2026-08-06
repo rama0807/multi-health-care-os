@@ -15,7 +15,7 @@ type RoutedRequest = FastifyRequest & {
  * Records latency and outcome for every HTTP request (Milestone 19.4).
  *
  * The `route` label is the matched **route pattern**, never `request.url`.
- * Labelling by URL would mint one Prometheus time series per patient id — an
+ * Labelling by URL would mint one Prometheus time series per patient id - an
  * unbounded cardinality explosion, and a slow leak of record identifiers into
  * the monitoring system. A request that matches no route is labelled
  * `unmatched` for the same reason.

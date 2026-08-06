@@ -1,7 +1,7 @@
 # Disaster Recovery
 
 > Milestone 19.5. **Honest scope statement:** this document specifies the
-> procedure and the targets. MediCore ships no backup automation — no cron, no
+> procedure and the targets. MediCore ships no backup automation - no cron, no
 > snapshot scheduler, no off-site replication. Everything below must be
 > implemented against your infrastructure before the deployment is genuinely
 > recoverable. That gap is recorded as **TD-0070**, not glossed over.
@@ -23,7 +23,7 @@ requires continuous WAL archiving (PITR) or a managed instance with it enabled.
 | **Postgres** | every clinical, billing and audit record | catastrophic and unreconstructable |
 | **Object storage** | uploaded documents, lab/radiology reports, generated PDFs | clinical attachments; the rows referencing them survive and dangle |
 | **Secrets** | `.env.production`, JWT keypair, cookie secret | recoverable by rotation, at the cost of logging every user out |
-| **Redis** | sessions, rate-limit counters, cache | **not backed up, by design** — a cold Redis logs everyone out and nothing else |
+| **Redis** | sessions, rate-limit counters, cache | **not backed up, by design** - a cold Redis logs everyone out and nothing else |
 
 ## Postgres
 
@@ -62,7 +62,7 @@ production. A restore that silently truncates is worse than the outage.
 Enable versioning and cross-region replication on the bucket. If
 `STARTUP` warnings showed `STORAGE_PROVIDER` is not `s3`, uploaded documents
 are on the container filesystem and are **already** unrecoverable across a
-container replacement — fix that before worrying about replication.
+container replacement - fix that before worrying about replication.
 
 ## Scenarios
 
@@ -74,7 +74,7 @@ docker compose -f docker-compose.prod.yml logs --tail=200 api
 docker compose -f docker-compose.prod.yml up -d --force-recreate api
 ```
 
-If it will not boot, read the boot error. `Refusing to start — N environment
+If it will not boot, read the boot error. `Refusing to start - N environment
 problem(s)` is the validator doing its job: fix the variable, do not delete
 the check.
 
@@ -83,7 +83,7 @@ the check.
 Everyone is logged out; nothing else. Sessions, rate-limit counters and cache
 entries are all reconstructible. Bring Redis back, confirm
 `/api/health/ready`, tell users to sign in again. Do not restore Redis from a
-snapshot to "recover sessions" — a stale session set is worse than none.
+snapshot to "recover sessions" - a stale session set is worse than none.
 
 ### Postgres is lost
 

@@ -5,13 +5,13 @@ import { toLocalIsoString } from '../scheduling/availability.util'
 import { AppointmentsService } from './appointments.service'
 
 // Built from real Date objects (via toLocalIsoString, the same helper the
-// service uses) rather than hardcoded strings — a literal "09:00:00" string
+// service uses) rather than hardcoded strings - a literal "09:00:00" string
 // would only match the service's output on a machine whose local timezone
 // happens to line up, since `scheduledAt` round-trips through `Date`/ISO.
 const SLOT_0 = new Date('2026-08-03T09:00:00')
 
 // Generates the same 09:00/09:15/09:30/09:45 shift grid on whatever date is
-// requested — recurring-booking tests span several distinct dates, and a
+// requested - recurring-booking tests span several distinct dates, and a
 // slot list hardcoded to one date would never match later occurrences'
 // requested times.
 function buildAvailability(dateStr = '2026-08-03', overrides: Partial<Record<string, unknown>> = {}) {
@@ -261,7 +261,7 @@ describe('AppointmentsService', () => {
 
       const result = await service.createWalkIn('org_1', walkInDto as never, 'actor_1')
 
-      // SLOT_0 (09:00) is already in the past relative to 09:10 "now" —
+      // SLOT_0 (09:00) is already in the past relative to 09:10 "now" -
       // the earliest slot at/after now is SLOT_1 (09:15).
       expect(availabilityService.getAvailableSlots).toHaveBeenCalledWith('org_1', 'doctor_1', '2026-08-03', 15)
       expect(result.isWalkIn).toBe(true)

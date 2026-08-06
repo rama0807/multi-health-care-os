@@ -20,7 +20,7 @@ export interface DischargeSummaryPdfData {
   dischargePrescription: { prescriptionNumber: string } | null
 }
 
-/** Discharge summary — final diagnosis, hospital course, follow-up plan. Structured, system-generated, mirrors `generateEncounterSummaryPdf`. */
+/** Discharge summary - final diagnosis, hospital course, follow-up plan. Structured, system-generated, mirrors `generateEncounterSummaryPdf`. */
 export async function generateDischargeSummaryPdf(data: DischargeSummaryPdfData): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 50 })

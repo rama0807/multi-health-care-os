@@ -186,7 +186,7 @@ export class AiGenerationService {
       }),
     ])
 
-    // The generated text is deliberately NOT written into the audit payload —
+    // The generated text is deliberately NOT written into the audit payload -
     // audit rows are widely readable, and the content already lives on the
     // conversation, which is `ai.read`-gated.
     await this.auditService.record({
@@ -228,7 +228,7 @@ export class AiGenerationService {
     }
   }
 
-  /** Failed dispatches are logged too — otherwise a provider outage is invisible in usage reporting. */
+  /** Failed dispatches are logged too - otherwise a provider outage is invisible in usage reporting. */
   private async recordFailure(
     organizationId: string,
     user: JwtPayload,
@@ -257,7 +257,7 @@ export class AiGenerationService {
   }
 
   /**
-   * `ai.generate` can be held at `.own` scope — a doctor may only generate
+   * `ai.generate` can be held at `.own` scope - a doctor may only generate
    * against records where they are the treating doctor. Same idiom as
    * `PrescriptionsService.assertOwnScopeOk`; the treating doctor is resolved
    * by whichever context builder ran.

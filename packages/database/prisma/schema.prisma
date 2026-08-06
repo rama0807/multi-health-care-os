@@ -27,7 +27,7 @@ enum SubscriptionTier {
 /// (Milestone 16 / ADR-0025). Deliberately distinct from
 /// `Organization.isActive`, which stays the single hard switch every existing
 /// auth path already checks (`JwtStrategy.validate`, `AuthService.login`,
-/// `AuthService.refresh`) — suspending or cancelling an organization sets
+/// `AuthService.refresh`) - suspending or cancelling an organization sets
 /// `isActive = false` alongside this status rather than introducing a second,
 /// parallel enforcement point that could drift out of sync.
 enum OrganizationStatus {
@@ -39,7 +39,7 @@ enum OrganizationStatus {
 
 /// Billing state of an organization's subscription. Kept separate from
 /// `OrganizationStatus` because a tenant can be commercially PAST_DUE while
-/// still operationally ACTIVE — only an explicit platform-owner suspension
+/// still operationally ACTIVE - only an explicit platform-owner suspension
 /// stops logins.
 enum SubscriptionStatus {
   TRIALING
@@ -122,7 +122,7 @@ enum PaymentStatus {
   REFUNDED
 }
 
-// ─── Charge Engine — see ADR-0015. `Charge` is the reusable line-item entity
+// ─── Charge Engine - see ADR-0015. `Charge` is the reusable line-item entity
 // every clinical module (or a manual cashier action) creates one row of;
 // `sourceModule`/`sourceId` record where it came from without a hard FK into
 // each clinical module's own tables (mirrors the `sampleCollectedBy`-style
@@ -325,7 +325,7 @@ enum StaffDocumentType {
   OTHER
 }
 
-// One row per staff per calendar day — derived at clock-out (or by a manual
+// One row per staff per calendar day - derived at clock-out (or by a manual
 // correction) from the day's ShiftRoster assignment, mirrors the abnormal-
 // flagging precedent (laboratory/abnormal-flagging.ts): a disclosed,
 // documented rule, not a clinically/legally certified attendance policy.
@@ -372,7 +372,7 @@ enum DocumentType {
 }
 
 /// The *event* a notification reports. One value per real trigger wired in
-/// `notification-events.listener.ts` (Milestone 18 Checkpoint 18.4) — a value
+/// `notification-events.listener.ts` (Milestone 18 Checkpoint 18.4) - a value
 /// is only added here once something actually emits it, so this enum doubles
 /// as the list of events the platform genuinely reacts to.
 enum NotificationType {
@@ -462,7 +462,7 @@ enum NotificationStatus {
 
 /// One channel attempt's state. Separate from `NotificationStatus` because a
 /// single notification fans out to several channels that succeed and fail
-/// independently — collapsing them onto the notification row would make
+/// independently - collapsing them onto the notification row would make
 /// "which channel actually failed?" unanswerable.
 enum NotificationDeliveryStatus {
   PENDING
@@ -471,7 +471,7 @@ enum NotificationDeliveryStatus {
   SENT
   DELIVERED
   FAILED
-  /// The channel was suppressed before dispatch — muted category, quiet
+  /// The channel was suppressed before dispatch - muted category, quiet
   /// hours, disabled channel, or no destination address on file. Not a
   /// failure: nothing was attempted, and it is never retried.
   SKIPPED
@@ -494,7 +494,7 @@ enum DevicePlatform {
 }
 
 /// See ADR-0016. `UNDER_REVIEW` already covers what a payer calls a claim
-/// "Pending" their decision — not duplicated as a separate value.
+/// "Pending" their decision - not duplicated as a separate value.
 /// `CLOSED`/`PARTIALLY_SETTLED` are new terminal states this milestone adds.
 enum InsuranceClaimStatus {
   DRAFT
@@ -588,7 +588,7 @@ model Organization {
   /// the operational settings blob every clinical module already reads.
   branding              Json               @default("{}")
   /// True for the single internal tenant that owns the platform. Platform
-  /// Owner console access requires this AND a `platform.*` permission —
+  /// Owner console access requires this AND a `platform.*` permission -
   /// see `PlatformGuard` (ADR-0025).
   isPlatform            Boolean            @default(false)
   status                OrganizationStatus @default(ACTIVE)
@@ -691,7 +691,7 @@ model Organization {
 }
 
 /// One current subscription per organization (`organizationId` is unique).
-/// Plan *changes* are not kept as rows here — every mutation is recorded by
+/// Plan *changes* are not kept as rows here - every mutation is recorded by
 /// the existing `AuditService`, which already stores `before`/`after`
 /// snapshots, so a separate history table would duplicate that trail.
 model Subscription {
@@ -701,7 +701,7 @@ model Subscription {
   status         SubscriptionStatus @default(TRIALING)
   startsAt       DateTime           @default(now())
   endsAt         DateTime?
-  /// Null on any limit means "unlimited" — enforced at the application layer
+  /// Null on any limit means "unlimited" - enforced at the application layer
   /// by `SubscriptionLimitsService`, not by a DB constraint, because the
   /// limit must be checked before a create rather than after it fails.
   maxHospitals   Int?
@@ -916,7 +916,7 @@ model Doctor {
 // ─── Provider Scheduling ───────────────────────────────────────────────────
 //
 // Modeled per-provider-type (Doctor) rather than through a polymorphic
-// "Provider" table — see ADR-0006. The *algorithm* in AvailabilityService
+// "Provider" table - see ADR-0006. The *algorithm* in AvailabilityService
 // (weekly schedule + leave overlay + shift/break slot slicing) is written
 // generically enough that a future provider type (Nurse, Physiotherapist,
 // etc.) can stand up its own {Type}Schedule/{Type}ScheduleDay/{Type}Leave
@@ -928,7 +928,7 @@ model DoctorSchedule {
   organizationId String
   // The date this version takes effect from. Selecting "the schedule that
   // applies on date X" = the isActive row with the greatest effectiveFrom
-  // that is <= X — this lets a new version be created ahead of time
+  // that is <= X - this lets a new version be created ahead of time
   // (effectiveFrom in the future) without disturbing what's currently in
   // effect, and keeps every prior version in place for history/audit
   // instead of overwriting it in place.
@@ -953,7 +953,7 @@ model DoctorScheduleDay {
   scheduleId   String
   dayOfWeek    Weekday
   isWorkingDay Boolean  @default(true)
-  // ScheduleShift[] — see packages/types/src/doctor-schedule.ts. Kept as JSON
+  // ScheduleShift[] - see packages/types/src/doctor-schedule.ts. Kept as JSON
   // (like Doctor.languagesSpoken/Organization.settings elsewhere in this
   // schema) since a day's shifts+breaks are always read/written together as
   // one unit from the schedule editor, never queried independently.
@@ -1034,7 +1034,7 @@ model Staff {
   dateOfLeaving    DateTime?
   // Monthly gross, used only to derive a per-day rate for unpaid-leave
   // deduction and an hourly rate for overtime in Payroll Prep (see
-  // PayrollService) — not a full payroll/compensation-management feature.
+  // PayrollService) - not a full payroll/compensation-management feature.
   monthlySalary    Decimal?         @db.Decimal(10, 2)
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
@@ -1076,7 +1076,7 @@ model StaffDocument {
   @@map("staff_documents")
 }
 
-// Shift catalog — org-scoped definitions (a hospital typically has a
+// Shift catalog - org-scoped definitions (a hospital typically has a
 // handful: Morning/Afternoon/Night). startTime/endTime are "HH:mm" strings,
 // mirroring DoctorScheduleDay's ScheduleShift JSON convention, since a shift
 // is always read/written as a whole unit and never queried by time range.
@@ -1103,7 +1103,7 @@ model Shift {
   @@map("shifts")
 }
 
-// One row per staff per date — the weekly/rotating roster is just this
+// One row per staff per date - the weekly/rotating roster is just this
 // table filtered to a date range and grouped by staff. `isOff` marks an
 // explicit day off (week-off) without needing a shift row.
 model ShiftRoster {
@@ -1175,7 +1175,7 @@ model Holiday {
 
 // Per-org, per-leave-type annual quota. Leave *balance* is computed on read
 // (annualDays minus the sum of approved StaffLeave day-spans this calendar
-// year), not stored as a mutable counter — mirrors this repo's preference
+// year), not stored as a mutable counter - mirrors this repo's preference
 // for computed fields (Vital.bmi, IntakeOutputRecord's balance) over a
 // counter that can drift out of sync with the source rows.
 model LeaveTypeConfig {
@@ -1247,7 +1247,7 @@ model Patient {
   createdAt             DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
 
-  // Family linkage (Milestone 3) — one level deep by design (a head of
+  // Family linkage (Milestone 3) - one level deep by design (a head of
   // family cannot itself be someone else's member, enforced in
   // PatientsService, not the DB): every member points at the same head,
   // so listing a family is a single `headOfFamilyId` lookup rather than a
@@ -1256,7 +1256,7 @@ model Patient {
   headOfFamily   Patient?  @relation("FamilyMembers", fields: [headOfFamilyId], references: [id])
   familyMembers  Patient[] @relation("FamilyMembers")
 
-  // Patient merge (Milestone 3) — a merged (duplicate) record is soft-
+  // Patient merge (Milestone 3) - a merged (duplicate) record is soft-
   // deleted and points at the surviving record it was merged into; every
   // other module's patientId column is reassigned to the survivor at merge
   // time (see PatientsService.mergePatients), so this pointer exists purely
@@ -1325,11 +1325,11 @@ model Appointment {
   notes             String?
   roomNumber        String?
   referredBy        String?
-  // `isWalkIn`/`recurrenceGroupId` — see ADR-0007. A walk-in still has a
+  // `isWalkIn`/`recurrenceGroupId` - see ADR-0007. A walk-in still has a
   // real `scheduledAt` (the receptionist assigns the next available slot
   // automatically); the flag only distinguishes how it was booked, for
   // reporting/queue-display purposes. `recurrenceGroupId` links every
-  // occurrence created from one recurring-booking request — null for a
+  // occurrence created from one recurring-booking request - null for a
   // one-off appointment.
   isWalkIn          Boolean           @default(false)
   recurrenceGroupId String?
@@ -1354,14 +1354,14 @@ model Appointment {
   @@map("appointments")
 }
 
-// ─── Clinical — EMR (see ADR-0008) ─────────────────────────────────────────
+// ─── Clinical - EMR (see ADR-0008) ─────────────────────────────────────────
 //
-// `Encounter` is the longitudinal EMR's central entity — one per
+// `Encounter` is the longitudinal EMR's central entity - one per
 // consultation, created from a completed `Appointment`. Everything a
 // clinician records during that consultation hangs off it as its own
 // child table (`ClinicalNote`, `Vital`, `Diagnosis`, `Procedure`,
 // `EncounterAttachment`) rather than being flat columns on `Encounter`
-// itself, so each facet can evolve/be queried independently — most
+// itself, so each facet can evolve/be queried independently - most
 // importantly `ClinicalNote`, which is append-only (see its own comment).
 
 enum EncounterType {
@@ -1430,7 +1430,7 @@ model Encounter {
 }
 
 /// Append-only: an edit inserts a new row with `version = previous + 1`
-/// rather than updating in place — "never overwrite historical notes" is
+/// rather than updating in place - "never overwrite historical notes" is
 /// enforced by never exposing an `update` at the service layer, not just
 /// by convention. The current note is the highest `version` per encounter.
 model ClinicalNote {
@@ -1460,7 +1460,7 @@ model Vital {
   encounterId            String
   heightCm               Float?
   weightKg               Float?
-  /// Computed server-side from height/weight at write time — denormalized
+  /// Computed server-side from height/weight at write time - denormalized
   /// so trend/chart queries don't recompute float math per row.
   bmi                    Float?
   bloodPressureSystolic  Int?
@@ -1484,7 +1484,7 @@ model Diagnosis {
   type        DiagnosisType @default(PRIMARY)
   description String
   /// Placeholder, not a validated lookup against a real ICD-10 terminology
-  /// service — see ADR-0008/TECH_DEBT.
+  /// service - see ADR-0008/TECH_DEBT.
   icdCode     String?
   createdAt   DateTime      @default(now())
 
@@ -1584,11 +1584,11 @@ model PrescriptionItem {
 
 // ─── Laboratory ────────────────────────────────────────────────────────────
 
-/// Org-scoped, configurable catalog of orderable lab tests — see ADR-0012.
+/// Org-scoped, configurable catalog of orderable lab tests - see ADR-0012.
 /// Supports both a numeric reference range (`referenceRangeLow`/`High`, used
 /// for automatic abnormal-value flagging) and a free-text range (for
 /// qualitative tests like "Negative"/"Non-reactive" where a numeric bound
-/// makes no sense) — either or both may be set. `criticalLow`/`criticalHigh`
+/// makes no sense) - either or both may be set. `criticalLow`/`criticalHigh`
 /// are optional explicit critical thresholds; when absent, callers fall back
 /// to a documented multiplier of the normal range (see `abnormal-flagging.ts`).
 model LabTestCatalogItem {
@@ -1659,7 +1659,7 @@ model LabTestItem {
   unit               String?
   referenceRange     String?
   /// Denormalized from the catalog item (or explicit ad-hoc bounds) at order
-  /// time, not looked up again at result-entry time — so a later edit or
+  /// time, not looked up again at result-entry time - so a later edit or
   /// deactivation of the catalog item never changes how an already-ordered
   /// item's abnormal flag is computed. See `abnormal-flagging.ts`.
   referenceRangeLow  Float?
@@ -1682,9 +1682,9 @@ model LabTestItem {
 // ─── Radiology ─────────────────────────────────────────────────────────────
 
 /// Org-configurable catalog of orderable radiology studies (Milestone 8,
-/// mirrors LabTestCatalogItem's shape/role — ADR-0013). `modality`/`bodyPart`
+/// mirrors LabTestCatalogItem's shape/role - ADR-0013). `modality`/`bodyPart`
 /// stay free-text `String` (not enums), matching the pre-existing
-/// `RadiologyOrder.modality`/`bodyPart` columns from the original scaffold —
+/// `RadiologyOrder.modality`/`bodyPart` columns from the original scaffold -
 /// real-world modality vocabularies (DICOM's CR/CT/MR/US/MG/NM/PT/XA/...)
 /// are broad and this keeps the door open for a future PACS integration to
 /// supply its own values without a schema change.
@@ -1725,9 +1725,9 @@ model RadiologyOrder {
   status             RadiologyStatus @default(ORDERED)
   priority           Priority        @default(ROUTINE)
 
-  // Scheduling — appointment date/time, room, machine, and staff assignment.
+  // Scheduling - appointment date/time, room, machine, and staff assignment.
   // `technicianUserId` stays a plain String (no FK), matching the existing
-  // "actor" convention (ADR-0008 point 5, e.g. LabTest.sampleCollectedBy) —
+  // "actor" convention (ADR-0008 point 5, e.g. LabTest.sampleCollectedBy) -
   // there is no dedicated RadiologyTechnician profile model, just a User
   // with the RADIOLOGY_TECHNICIAN system role. `radiologistDoctorId` is a
   // real FK to Doctor since a radiologist is a Doctor profile (by
@@ -1739,7 +1739,7 @@ model RadiologyOrder {
   radiologistDoctorId String?
   durationMinutes     Int?
 
-  // Report — current/released snapshot, denormalized from the latest
+  // Report - current/released snapshot, denormalized from the latest
   // RadiologyReport version below for cheap reads (list/queue views) without
   // an extra join; the versioned history itself lives in `reports`.
   technique        String?
@@ -1773,7 +1773,7 @@ model RadiologyOrder {
   @@map("radiology_orders")
 }
 
-/// Append-only, versioned radiology report — same "never overwrite" pattern
+/// Append-only, versioned radiology report - same "never overwrite" pattern
 /// as `ClinicalNote` (ADR-0008): an edit inserts a new row with
 /// `version = previous + 1` rather than updating in place. The current
 /// (highest-version) row's content is denormalized onto `RadiologyOrder`
@@ -1798,10 +1798,10 @@ model RadiologyReport {
 
 /// Image/document attachments for a radiology order. `EXTERNAL_IMAGING` and
 /// `DICOM_PLACEHOLDER` support a study referenced from an outside PACS/imaging
-/// center without a real file (metadata-only — accession number, external
+/// center without a real file (metadata-only - accession number, external
 /// URL, study instance UID placeholder); `IMAGE`/`PDF` require a real
 /// uploaded file via the existing `StorageService`. No real PACS/DICOM server
-/// integration exists — see TECH_DEBT.
+/// integration exists - see TECH_DEBT.
 model RadiologyAttachment {
   id               String                  @id @default(cuid())
   radiologyOrderId String
@@ -1824,7 +1824,7 @@ model RadiologyAttachment {
 // ─── Inpatient ─────────────────────────────────────────────────────────────
 // Hierarchy: Ward -> Room -> Bed. `Bed`/`Admission` denormalize `wardId`
 // alongside the room-level FK so ward-scoped occupancy queries (dashboard,
-// bed grid) don't need a join through Room — see ADR-0018.
+// bed grid) don't need a join through Room - see ADR-0018.
 
 model Ward {
   id             String     @id @default(cuid())
@@ -1906,7 +1906,7 @@ model Bed {
 
 /// The scaffolded field names (`admissionNumber`/`admissionReason`/
 /// `admittedAt`/`status`/`patientId`) predate this checkpoint and are
-/// already read by `patients.service.ts`'s timeline/summary queries — kept
+/// already read by `patients.service.ts`'s timeline/summary queries - kept
 /// unchanged so that code (out of scope for this checkpoint) keeps working.
 model Admission {
   id                        String          @id @default(cuid())
@@ -1929,7 +1929,7 @@ model Admission {
   dischargedAt              DateTime?
   dischargeNotes            String?
   dischargeCondition        String?
-  /// Set when the attending doctor approves discharge (Checkpoint 12.2) —
+  /// Set when the attending doctor approves discharge (Checkpoint 12.2) -
   /// admission stays `ADMITTED` ("pending discharge") until the nursing
   /// checklist is complete and `completeDischarge` finalizes it.
   dischargeApprovedAt       DateTime?
@@ -1969,7 +1969,7 @@ model Admission {
 }
 
 /// One row per allocate/reserve/vacate/reservation-cancel event against a
-/// single bed — the audit trail for "Bed Allocation" (ADR-0018). A transfer
+/// single bed - the audit trail for "Bed Allocation" (ADR-0018). A transfer
 /// is recorded separately in `BedTransfer` so the UI can render it as one
 /// from→to row rather than reconstructing it from a vacate+allocate pair.
 model BedAllocation {
@@ -2022,15 +2022,15 @@ model BedTransfer {
   @@map("bed_transfers")
 }
 
-// ─── Nursing, MAR & Discharge — Milestone 12, Checkpoint 12.2 ─────────────
+// ─── Nursing, MAR & Discharge - Milestone 12, Checkpoint 12.2 ─────────────
 // Nursing notes/assessments/I-O charting/orders/tasks are admission-scoped
-// rather than encounter-scoped like `ClinicalNote`/`Vital` — IPD nursing
+// rather than encounter-scoped like `ClinicalNote`/`Vital` - IPD nursing
 // documentation is materially higher-frequency (multiple entries per shift)
 // and nurse-authored, a genuinely distinct workflow from the doctor-
 // authored, per-consultation EMR entities in medical-records (see NEXT.md's
 // judgment-call framing / DECISIONS.md ADR-0019). Vitals charting reuses
 // the existing encounter-scoped `Vital` model as-is via the admission's
-// `encounterId` — no new model needed there. MAR reuses
+// `encounterId` - no new model needed there. MAR reuses
 // `Prescription`/`PrescriptionItem` as the source of truth for what's
 // prescribed, with `MedicationAdministration` as the admin-log child table,
 // mirroring `DispenseOrder`/`DispenseItem`'s precedent rather than a
@@ -2111,7 +2111,7 @@ enum DischargeChecklistItemKey {
   TRANSPORT_ARRANGED
 }
 
-/// Free-text nursing note, admission-scoped — covers general notes, shift
+/// Free-text nursing note, admission-scoped - covers general notes, shift
 /// handover, and ad hoc assessment narratives. `isEscalated` is the
 /// "escalation flag" scope item: a nurse flags a note for physician
 /// attention without a separate notification/paging system (none exists in
@@ -2136,7 +2136,7 @@ model NursingNote {
   @@map("nursing_notes")
 }
 
-/// One consolidated structured assessment row per charting event — pain
+/// One consolidated structured assessment row per charting event - pain
 /// score, fall risk (Morse-style score + derived level), Braden pressure-
 /// ulcer risk (score + derived level), Glasgow Coma Scale (eye/verbal/motor
 /// + server-computed total), and free-text daily-assessment notes.
@@ -2169,7 +2169,7 @@ model NursingAssessment {
   @@map("nursing_assessments")
 }
 
-/// Intake/Output chart — one row per recording event.
+/// Intake/Output chart - one row per recording event.
 model IntakeOutputRecord {
   id               String   @id @default(cuid())
   admissionId      String
@@ -2194,7 +2194,7 @@ model IntakeOutputRecord {
   @@map("intake_output_records")
 }
 
-/// A doctor's order against an admission — diet/fluid/activity/oxygen/
+/// A doctor's order against an admission - diet/fluid/activity/oxygen/
 /// isolation-precaution instructions. Distinct from `NursingTask` (the
 /// nurse-facing to-do it may spawn) and from `Prescription` (medication
 /// orders, handled through MAR instead).
@@ -2221,7 +2221,7 @@ model IpdOrder {
   @@map("ipd_orders")
 }
 
-/// A nursing to-do item — either standalone (a nurse's own checklist entry)
+/// A nursing to-do item - either standalone (a nurse's own checklist entry)
 /// or spawned from an `IpdOrder` (`sourceOrderId`). Backs the "Pending
 /// nursing tasks" dashboard stat and the `/dashboard/nursing/tasks` queue.
 model NursingTask {
@@ -2250,10 +2250,10 @@ model NursingTask {
   @@map("nursing_tasks")
 }
 
-/// Medication Administration Record row — one per scheduled/PRN/STAT dose
+/// Medication Administration Record row - one per scheduled/PRN/STAT dose
 /// instance for a `PrescriptionItem` during an admission. `barcodeVerified`/
 /// `scannedCode` are the barcode-ready architecture hook (no physical
-/// scanner hardware/integration exists in this repo — see TECH_DEBT).
+/// scanner hardware/integration exists in this repo - see TECH_DEBT).
 /// `nurseSignature` is a typed-name attestation, not a cryptographic
 /// signature. The full administration audit trail is the existing
 /// `AuditLog` (via `AuditListener`), not a duplicate log table.
@@ -2309,7 +2309,7 @@ model DischargeChecklistItem {
   @@map("discharge_checklist_items")
 }
 
-/// The discharge summary document — final diagnosis, hospital course,
+/// The discharge summary document - final diagnosis, hospital course,
 /// medication reconciliation, follow-up instructions/appointment, and a
 /// link to the discharge prescription (a normal `Prescription` row tagged
 /// by this FK rather than a parallel model). One per admission; drafted
@@ -2362,7 +2362,7 @@ model Invoice {
   notes                     String?
   dueDate                   DateTime?
   createdByUserId           String?
-  // Discount workflow — see ADR-0015. A discount applied by a `billing.manage`
+  // Discount workflow - see ADR-0015. A discount applied by a `billing.manage`
   // scope holder is auto-approved; anyone else's request lands `PENDING`
   // until a manage-scope holder approves/rejects it. Only an `APPROVED`
   // discount is ever reflected in `discountAmount`/`totalAmount`/`balanceDue`.
@@ -2441,7 +2441,7 @@ model Payment {
 /// See ADR-0016. `insuranceProvider`/`policyNumber` are denormalized at
 /// claim-creation time from the resolved `InsuranceProvider`/
 /// `PatientInsurance` (the same "denormalize at order time" idiom as
-/// `LabTestItem`/`RadiologyOrder`) — kept as the original scaffold's
+/// `LabTestItem`/`RadiologyOrder`) - kept as the original scaffold's
 /// required display fields rather than dropped, since a claim must always
 /// show a provider name/policy number even if the structured records
 /// backing it are later edited or deactivated.
@@ -2493,7 +2493,7 @@ model InsuranceClaim {
   @@map("insurance_claims")
 }
 
-/// Insurance Company / TPA / Corporate Plan issuer — see ADR-0016.
+/// Insurance Company / TPA / Corporate Plan issuer - see ADR-0016.
 model InsuranceProvider {
   id             String                @id @default(cuid())
   organizationId String
@@ -2518,7 +2518,7 @@ model InsuranceProvider {
   @@map("insurance_providers")
 }
 
-/// A provider's plan — coverage terms a `PatientInsurance` enrollment
+/// A provider's plan - coverage terms a `PatientInsurance` enrollment
 /// inherits by default (a patient-level `coveragePercent` override is still
 /// possible on `PatientInsurance` itself for a negotiated exception).
 model InsurancePlan {
@@ -2548,9 +2548,9 @@ model InsurancePlan {
   @@map("insurance_plans")
 }
 
-/// A patient's enrollment in a plan — "each patient may have Primary
+/// A patient's enrollment in a plan - "each patient may have Primary
 /// Insurance, Secondary Insurance" (see ADR-0016). No DB-level constraint
-/// enforces "only one ACTIVE primary at a time" — application code does,
+/// enforces "only one ACTIVE primary at a time" - application code does,
 /// leaving room for a patient's insurance history (expired enrollments)
 /// to stay queryable rather than being overwritten.
 model PatientInsurance {
@@ -2581,7 +2581,7 @@ model PatientInsurance {
   @@map("patient_insurances")
 }
 
-/// Cashless/TPA pre-authorization request against a specific encounter —
+/// Cashless/TPA pre-authorization request against a specific encounter -
 /// see ADR-0016. A settled claim can (optionally) trace back to the
 /// pre-auth that cleared it via `InsuranceClaim.preAuthorizationId`.
 model PreAuthorization {
@@ -2632,10 +2632,10 @@ model PreAuthAttachment {
   @@map("pre_auth_attachments")
 }
 
-/// A claim's supporting documents — auto-attached from other modules'
+/// A claim's supporting documents - auto-attached from other modules'
 /// existing PDF generators (invoice, prescription, lab/radiology reports,
 /// a new encounter-summary generator) at claim-creation time, plus manual
-/// uploads via the existing `StorageService` — see ADR-0016.
+/// uploads via the existing `StorageService` - see ADR-0016.
 model ClaimDocument {
   id               String            @id @default(cuid())
   claimId          String
@@ -2653,7 +2653,7 @@ model ClaimDocument {
   @@map("claim_documents")
 }
 
-/// Configurable pricing catalog ("service catalog with pricing") — see
+/// Configurable pricing catalog ("service catalog with pricing") - see
 /// ADR-0015. `category` stays free-text (mirrors `RadiologyCatalogItem
 /// .modality`/`bodyPart`'s precedent) rather than an enum, since billable
 /// service categories vary per organization. `taxPercent` defaults from
@@ -2678,12 +2678,12 @@ model ServiceCatalogItem {
   @@map("service_catalog_items")
 }
 
-/// The reusable Charge Engine entity — see ADR-0015. Every clinical module
+/// The reusable Charge Engine entity - see ADR-0015. Every clinical module
 /// (or a manual cashier action) creates one `Charge` row; invoice generation
 /// (auto from a completed appointment, or manual) sweeps every `PENDING`
 /// charge for a patient/encounter into `InvoiceItem` rows and flips them to
 /// `INVOICED`. Denormalizes `description`/`unitPrice`/`taxPercent` at
-/// creation time (from the catalog item or ad-hoc) — the same "denormalize
+/// creation time (from the catalog item or ad-hoc) - the same "denormalize
 /// at order time" idiom as `LabTestItem`/`RadiologyOrder`/`DispenseItem`, so
 /// a later catalog edit never retroactively changes an already-billed charge.
 model Charge {
@@ -2721,9 +2721,9 @@ model Charge {
   @@map("charges")
 }
 
-/// Partial or full refund against a `Payment`/`Invoice` — see ADR-0015. A
+/// Partial or full refund against a `Payment`/`Invoice` - see ADR-0015. A
 /// `billing.manage` scope holder's request is auto-approved+completed;
-/// anyone else's lands `PENDING` until a manage-scope holder approves it —
+/// anyone else's lands `PENDING` until a manage-scope holder approves it -
 /// the same approval-workflow shape as `Invoice`'s discount fields.
 model Refund {
   id                String       @id @default(cuid())
@@ -2765,10 +2765,10 @@ enum DispenseStatus {
   RETURNED
 }
 
-/// Org-scoped pharmacy catalog — see ADR-0014. One row is one batch of a
+/// Org-scoped pharmacy catalog - see ADR-0014. One row is one batch of a
 /// drug: batch number and expiry are first-class catalog fields (per the
 /// roadmap's own "Drug Catalog CRUD Fields" list), not a separate child
-/// table — restocking the same generic/brand drug with a new batch creates
+/// table - restocking the same generic/brand drug with a new batch creates
 /// a new `Drug` row rather than a join. Replaces the unused `Medication`
 /// model from the original scaffolding commit (confirmed zero references
 /// anywhere before this milestone), whose shape was missing brand name,
@@ -2789,7 +2789,7 @@ model Drug {
   /// Physical quantity on hand, including any reserved portion.
   currentStock   Int      @default(0)
   /// Portion of `currentStock` earmarked by an in-progress `DispenseOrder`
-  /// (status `PREPARING`/`READY`) — not yet deducted. See ADR-0014 point 6.
+  /// (status `PREPARING`/`READY`) - not yet deducted. See ADR-0014 point 6.
   reservedStock  Int      @default(0)
   minStockLevel  Int      @default(10)
   reorderLevel   Int      @default(20)
@@ -2806,7 +2806,7 @@ model Drug {
   @@map("drugs")
 }
 
-/// One dispense order per prescription (`prescriptionId` unique) — tracks
+/// One dispense order per prescription (`prescriptionId` unique) - tracks
 /// the full fulfillment lifecycle of that prescription, the same
 /// one-central-record-per-source-document idiom as `Encounter` per
 /// consultation. See ADR-0014 for the status-machine design (partial vs.
@@ -2821,7 +2821,7 @@ model DispenseOrder {
   preparedByUserId  String?
   dispensedByUserId String?
   dispensedAt       DateTime?
-  /// Distinguishes a pharmacist-initiated reject from a requester cancel —
+  /// Distinguishes a pharmacist-initiated reject from a requester cancel -
   /// both land on `CANCELLED` (see ADR-0014 point 5).
   rejected          Boolean        @default(false)
   cancelReason      String?
@@ -2842,7 +2842,7 @@ model DispenseOrder {
 }
 
 /// Mirrors a `PrescriptionItem` 1:1 (`prescriptionItemId` unique),
-/// denormalizing `medicationName` at creation time — same idiom as
+/// denormalizing `medicationName` at creation time - same idiom as
 /// `LabTestItem`/`RadiologyOrder`. `drugId` is null until the pharmacist
 /// resolves the prescribed medication to a catalog batch ("Batch
 /// selection" in the roadmap's frontend feature list).
@@ -2867,7 +2867,7 @@ model DispenseItem {
   @@map("dispense_items")
 }
 
-/// A medicine return against an already-dispensed item — restocks
+/// A medicine return against an already-dispensed item - restocks
 /// `Drug.currentStock` and moves the parent `DispenseOrder` to `RETURNED`
 /// (see ADR-0014 point 5). Audited like every other pharmacy mutation.
 model DrugReturn {
@@ -2894,14 +2894,14 @@ model DrugReturn {
 // ─── General Inventory & Procurement (Milestone 13 / ADR-0020) ─────────────
 //
 // Replaces the unused `InventoryItem` scaffold (name/sku/category/
-// quantityInStock/reorderLevel/reorderQuantity/unitCost/storageLocation —
+// quantityInStock/reorderLevel/reorderQuantity/unitCost/storageLocation -
 // confirmed zero references anywhere before this milestone, same situation
 // as `Medication` before ADR-0014 and `Ward`/`Bed`/`Admission` before
 // ADR-0018) with a full multi-store item master, stock ledger, procurement
 // lifecycle, vendor management, internal requisitions, asset management,
 // and stock audit surface. This is explicitly the *general* hospital
 // inventory system (wards/ICU/OT/labs/radiology/housekeeping/biomedical/
-// central stores) — separate from `Drug`'s pharmacy-specific catalog
+// central stores) - separate from `Drug`'s pharmacy-specific catalog
 // (ADR-0014), which is untouched by this milestone.
 
 enum InventoryItemType {
@@ -2911,7 +2911,7 @@ enum InventoryItemType {
 
 /// Two-level category hierarchy via self-relation (`parentId` null = a
 /// top-level Category, non-null = a Subcategory of that category) rather
-/// than a separate `InventorySubcategory` model — the two are structurally
+/// than a separate `InventorySubcategory` model - the two are structurally
 /// identical (name/code/description/isActive) and Prisma's self-relation
 /// models the hierarchy without a second near-duplicate table.
 model InventoryCategory {
@@ -2937,7 +2937,7 @@ model InventoryCategory {
 }
 
 /// A cross-cutting classification independent of the category tree (e.g.
-/// "Fast Moving", "Surgical", "High Value") — the roadmap lists this as a
+/// "Fast Moving", "Surgical", "High Value") - the roadmap lists this as a
 /// distinct concept from Category/Subcategory, so it stays its own table
 /// rather than folded into the category hierarchy.
 model InventoryItemGroup {
@@ -3016,11 +3016,11 @@ model InventoryBrand {
 
 /// The item master. `hsnCode`/`gstPercent` are the GST-compliance fields;
 /// `barcodeValue`/`qrCodeValue` hold the encoded string a scanner would
-/// read (no image generation here — the frontend renders the code from the
+/// read (no image generation here - the frontend renders the code from the
 /// value, same disclosed-scope idiom as every other placeholder in this
 /// project). `trackBatch`/`trackSerial`/`trackExpiry` are per-item flags
 /// the stock/batch layer honors rather than assuming every item behaves
-/// like a drug batch (ADR-0014) — a biomedical asset tracks a serial
+/// like a drug batch (ADR-0014) - a biomedical asset tracks a serial
 /// number and never expires; a bandage roll tracks neither.
 model InventoryItem {
   id             String            @id @default(cuid())
@@ -3175,7 +3175,7 @@ model Vendor {
 }
 
 /// Standalone rating events rather than a single mutable field on `Vendor`
-/// — preserves rating history; a vendor's current/average rating is
+/// - preserves rating history; a vendor's current/average rating is
 /// computed at read time from these rows (same "don't denormalize
 /// something that changes often" reasoning that kept billing/insurance
 /// totals computed rather than cached where they'd go stale).
@@ -3196,7 +3196,7 @@ model VendorRating {
   @@map("vendor_ratings")
 }
 
-/// One row per (item, store) — the current stock summary. `availableStock`
+/// One row per (item, store) - the current stock summary. `availableStock`
 /// is deliberately not a stored column: it's `currentStock - reservedStock
 /// - damagedStock - expiredStock - lostStock`, computed at read time so it
 /// can never drift out of sync with the components it's derived from.
@@ -3239,7 +3239,7 @@ enum InventoryBatchStatus {
 }
 
 /// Per-batch/serial breakdown of an `InventoryStock` row, populated only
-/// for items with `trackBatch`/`trackSerial`/`trackExpiry` set — an item
+/// for items with `trackBatch`/`trackSerial`/`trackExpiry` set - an item
 /// without any of those flags is tracked purely at the `InventoryStock`
 /// aggregate level with no batch rows at all.
 model InventoryBatch {
@@ -3286,7 +3286,7 @@ enum InventoryAdjustmentType {
   TRANSFER
 }
 
-/// An append-only ledger of every stock movement/correction — the single
+/// An append-only ledger of every stock movement/correction - the single
 /// source of truth for "why did this number change," mirroring the
 /// audit-trail idiom every other module in this project already uses for
 /// its own domain (e.g. `BedTransfer`/`BedAllocation` for beds).
@@ -3321,7 +3321,7 @@ enum StockTransferStatus {
 }
 
 /// A direct store-to-store stock movement, distinct from `StoreRequisition`
-/// — a transfer is supply-initiated (e.g. Central proactively rebalancing
+/// - a transfer is supply-initiated (e.g. Central proactively rebalancing
 /// stock into ICU Store) with no approval step, while a requisition is
 /// demand-initiated by the requesting store and needs approval.
 model InventoryStockTransfer {
@@ -3620,7 +3620,7 @@ enum RequisitionStatus {
   CANCELLED
 }
 
-/// Internal ward/OT/ICU/lab/radiology stock requests — demand-initiated by
+/// Internal ward/OT/ICU/lab/radiology stock requests - demand-initiated by
 /// the requesting store (`toStoreId`) against a fulfilling store
 /// (`fromStoreId`, typically Central), requiring approval before issue.
 /// Distinct from `InventoryStockTransfer` (supply-initiated, no approval).
@@ -3682,7 +3682,7 @@ enum AssetStatus {
 }
 
 /// One row per physical unit of an `InventoryItem` with `itemType: ASSET`
-/// (a biomedical device, a bed's monitor, etc.) — mirrors `Drug`'s
+/// (a biomedical device, a bed's monitor, etc.) - mirrors `Drug`'s
 /// "one row is one real-world unit" idiom, adapted for serialized
 /// equipment instead of a drug batch. Current assignment is denormalized
 /// here (`assignedToUserId`/`assignedToDepartmentId`) for quick lookup,
@@ -3741,7 +3741,7 @@ enum AssetMaintenanceStatus {
 
 /// Covers both "Maintenance Schedule" (a row with `status: SCHEDULED` and
 /// a future `scheduledDate`) and "Breakdown History" (a row with
-/// `type: BREAKDOWN`, completed) in one model — the roadmap lists them as
+/// `type: BREAKDOWN`, completed) in one model - the roadmap lists them as
 /// related facets of the same underlying concept (asset service events),
 /// not two independently-shaped entities.
 model AssetMaintenanceRecord {
@@ -3768,7 +3768,7 @@ model AssetMaintenanceRecord {
   @@map("asset_maintenance_records")
 }
 
-/// History of who/where an asset has been assigned — `Asset.assignedTo*`
+/// History of who/where an asset has been assigned - `Asset.assignedTo*`
 /// always reflects the latest (or null once returned) row here.
 model AssetAssignment {
   id                     String    @id @default(cuid())
@@ -3823,7 +3823,7 @@ model StockAudit {
 
 /// `varianceQuantity` is computed and stored at count-entry time (not
 /// derived at read time) because it's a snapshot of a discrepancy found at
-/// a specific moment — the underlying `InventoryStock.currentStock` may
+/// a specific moment - the underlying `InventoryStock.currentStock` may
 /// have already moved on by the time the audit is reviewed later.
 model StockAuditItem {
   id               String  @id @default(cuid())
@@ -3877,7 +3877,7 @@ model Notification {
   /// migration.
   icon           String?
   imageUrl       String?
-  /// In-app route the notification opens — `/dashboard/appointments/{id}`
+  /// In-app route the notification opens - `/dashboard/appointments/{id}`
   /// and friends. Also carried into the push payload so a background
   /// notification click lands on the same page.
   deepLink       String?
@@ -3886,7 +3886,7 @@ model Notification {
   payload        Json                 @default("{}")
   /// Set for a future-dated notification; null means dispatch immediately.
   scheduleAt     DateTime?
-  /// Dispatch attempts made across all channels — the per-channel counter
+  /// Dispatch attempts made across all channels - the per-channel counter
   /// that actually drives backoff lives on `NotificationDelivery.attempts`.
   retryCount     Int                  @default(0)
   deliveryStatus NotificationStatus   @default(PENDING)
@@ -3927,7 +3927,7 @@ model NotificationDelivery {
   organizationId    String
   channel           NotificationChannel
   status            NotificationDeliveryStatus @default(PENDING)
-  /// Where it was actually sent — email address, phone number, or the
+  /// Where it was actually sent - email address, phone number, or the
   /// `UserDevice` id for push. Recorded so a delivery can be explained after
   /// the user's contact details change.
   destination       String?
@@ -3957,7 +3957,7 @@ model NotificationDelivery {
 }
 
 /// An organization's override of a bundled default template, versioned
-/// append-only exactly like `AiPromptTemplate` — editing a template changes
+/// append-only exactly like `AiPromptTemplate` - editing a template changes
 /// what every future recipient reads, so the previous wording stays
 /// recoverable. A `(key, channel)` pair with no row here falls back to the
 /// bundled default in `default-templates.ts`.
@@ -3978,7 +3978,7 @@ model NotificationTemplate {
   bodyTemplate     String
   deepLinkTemplate String?
   /// Variable names the template declares, for the admin editor's help text.
-  /// Rendering does not depend on it — an undeclared variable still renders.
+  /// Rendering does not depend on it - an undeclared variable still renders.
   variables        Json                 @default("[]")
   isActive         Boolean              @default(true)
   createdByUserId  String?
@@ -3992,7 +3992,7 @@ model NotificationTemplate {
   @@map("notification_templates")
 }
 
-/// One row per user. Absent means "every default applies" — the services
+/// One row per user. Absent means "every default applies" - the services
 /// never require a row to exist, so a user who has never opened the
 /// preferences page still receives notifications.
 model NotificationPreference {
@@ -4014,7 +4014,7 @@ model NotificationPreference {
   timezone            String               @default("Asia/Kolkata")
   /// `{ "<NotificationCategory>": { "enabled": bool, "channels": [...] } }`.
   /// A category absent from the map is enabled with the channel defaults
-  /// above — new categories therefore never arrive silently muted.
+  /// above - new categories therefore never arrive silently muted.
   categoryPreferences Json                 @default("{}")
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
@@ -4026,7 +4026,7 @@ model NotificationPreference {
   @@map("notification_preferences")
 }
 
-/// A push destination. One user has many — a browser is one device, and the
+/// A push destination. One user has many - a browser is one device, and the
 /// same person legitimately runs several. Deliberately not web-only:
 /// `platform` and an opaque `token` are all the FCM adapter needs, so a
 /// future mobile app registers here unchanged (Checkpoint 18.2).
@@ -4035,7 +4035,7 @@ model UserDevice {
   organizationId String
   userId         String
   /// FCM registration token. Unique because FCM reissues a token to at most
-  /// one installation — a token appearing again means the device moved, and
+  /// one installation - a token appearing again means the device moved, and
   /// registration re-points the existing row rather than duplicating it.
   token          String         @unique
   platform       DevicePlatform @default(WEB)
@@ -4046,7 +4046,7 @@ model UserDevice {
   userAgent      String?
   isActive       Boolean        @default(true)
   /// Cleared on a successful send, set when FCM reports the token
-  /// unregistered — the row is deactivated rather than deleted so delivery
+  /// unregistered - the row is deactivated rather than deleted so delivery
   /// history keeps pointing at something real.
   deactivatedAt  DateTime?
   lastSeenAt     DateTime       @default(now())
@@ -4086,7 +4086,7 @@ model AuditLog {
   @@map("audit_logs")
 }
 
-// ─── AI (Milestone 15, Checkpoint 15.1 — ADR-0023) ─────────────────────────
+// ─── AI (Milestone 15, Checkpoint 15.1 - ADR-0023) ─────────────────────────
 
 /// Which vendor adapter served a request. Stored per `AiUsageLog` row (not
 /// read back from config at report time) so historical usage stays accurate
@@ -4131,7 +4131,7 @@ model AiConversation {
   organizationId   String
   feature          AiFeature
   title            String
-  /// Context the generation was run against — all optional because which one
+  /// Context the generation was run against - all optional because which one
   /// applies depends on `feature` (an encounter for SOAP notes, an admission
   /// for a discharge summary, and so on).
   patientId        String?
@@ -4196,7 +4196,7 @@ model AiUsageLog {
   totalTokens      Int             @default(0)
   tokensEstimated  Boolean         @default(false)
   /// Derived from `AI_INPUT_COST_PER_1K`/`AI_OUTPUT_COST_PER_1K`, which
-  /// default to 0 — a 0 here means "no price configured," not "free."
+  /// default to 0 - a 0 here means "no price configured," not "free."
   estimatedCostUsd Decimal         @default(0) @db.Decimal(12, 6)
   latencyMs        Int             @default(0)
   /// How many provider calls this dispatch took, including retries.
@@ -4241,7 +4241,7 @@ model AiPromptTemplate {
 
 // ─── Reports & Analytics (Milestone 17 / ADR-0026) ─────────────────────────
 
-/// A named, re-runnable set of filters against one report in the registry —
+/// A named, re-runnable set of filters against one report in the registry -
 /// the only table Milestone 17 adds. Reports themselves are pure read-only
 /// aggregations over tables other modules already own, so nothing here
 /// caches or duplicates a result: `reportKey` names a `ReportDefinition` in
@@ -4251,7 +4251,7 @@ model AiPromptTemplate {
 /// `scheduleCron`/`scheduleRecipients`/`scheduleEnabled` are a **disclosed
 /// placeholder** (see TECH_DEBT TD-0053): the fields persist a schedule so
 /// Milestone 18 (Notifications & Communication) has somewhere to read from,
-/// but no job in this repo dispatches them — the same "disclosed
+/// but no job in this repo dispatches them - the same "disclosed
 /// placeholder, not a fake feature" practice as the DICOM/ICD-10/payment-QR
 /// placeholders in earlier milestones.
 model SavedReport {

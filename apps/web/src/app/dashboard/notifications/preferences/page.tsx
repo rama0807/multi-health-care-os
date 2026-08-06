@@ -126,7 +126,7 @@ export default function NotificationPreferencesPage() {
       <Card className="flex items-start gap-2 border-info-border bg-info-subtle p-3 text-sm">
         <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-info-subtle-foreground" />
         <p className="text-info-subtle-foreground">
-          <strong>Critical priority overrides every setting on this page</strong> —
+          <strong>Critical priority overrides every setting on this page</strong> -
           quiet hours, muted categories and disabled channels included. A critical lab value or a rejected claim
           reaching nobody because it was 23:00 is not an acceptable outcome in a hospital.
         </p>
@@ -200,7 +200,7 @@ export default function NotificationPreferencesPage() {
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">
-            Digest batching is not yet implemented — anything other than Immediate or Never currently behaves as
+            Digest batching is not yet implemented - anything other than Immediate or Never currently behaves as
             Immediate.
           </p>
         </div>

@@ -30,7 +30,7 @@ export interface Organization {
 
 /**
  * Operational settings blob (`Organization.settings`). Every key that existed
- * before Milestone 16 is still required — clinical/billing modules read
+ * before Milestone 16 is still required - clinical/billing modules read
  * `uhidPrefix`, `gstRate` and `defaultAppointmentDuration` without a fallback.
  * Keys added for Checkpoint 16.4 are optional so an organization seeded before
  * this milestone stays valid without a data backfill.
@@ -61,7 +61,7 @@ export interface OrganizationSettings {
 
 /**
  * Visual identity (`Organization.branding`). Separate column from `settings`
- * so a branding save can never clobber operational settings — see ADR-0025.
+ * so a branding save can never clobber operational settings - see ADR-0025.
  * The logo itself stays on the pre-existing `Organization.logo` column so
  * existing readers keep working; it is not duplicated here.
  */
@@ -163,7 +163,7 @@ export interface OrganizationUsage {
   users: { total: number; active: number; activeLast30Days: number; limit: number | null }
   hospitals: { total: number; limit: number | null }
   patients: { total: number; limit: number | null }
-  /** Rolling window backed by Redis counters — see `ApiUsageService`. */
+  /** Rolling window backed by Redis counters - see `ApiUsageService`. */
   api: {
     windowDays: number
     totalRequests: number

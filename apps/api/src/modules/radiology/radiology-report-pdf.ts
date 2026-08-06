@@ -18,7 +18,7 @@ export interface RadiologyReportPdfData {
 }
 
 /**
- * A structured, system-generated radiology report — built from the order's
+ * A structured, system-generated radiology report - built from the order's
  * own denormalized current-report fields (clinicalIndication/technique/
  * findings/impression/recommendations), independent of whether an external
  * report file was ever uploaded via `uploadReportFile`. Mirrors
@@ -57,15 +57,15 @@ export async function generateRadiologyReportPdf(data: RadiologyReportPdfData): 
     doc.moveDown(0.3)
 
     doc.font('Helvetica-Bold').text('Study')
-    doc.font('Helvetica').text(`${data.modality} — ${data.bodyPart}`)
+    doc.font('Helvetica').text(`${data.modality} - ${data.bodyPart}`)
     doc.moveDown(0.3)
 
     doc.font('Helvetica-Bold').text('Ordered by')
-    doc.font('Helvetica').text(`Dr. ${data.doctor.fullName} — ${data.doctor.specialization}`)
+    doc.font('Helvetica').text(`Dr. ${data.doctor.fullName} - ${data.doctor.specialization}`)
     if (data.radiologist) {
       doc.moveDown(0.2)
       doc.font('Helvetica-Bold').text('Radiologist')
-      doc.font('Helvetica').text(`Dr. ${data.radiologist.fullName} — ${data.radiologist.specialization}`)
+      doc.font('Helvetica').text(`Dr. ${data.radiologist.fullName} - ${data.radiologist.specialization}`)
     }
     doc.moveDown(1)
 

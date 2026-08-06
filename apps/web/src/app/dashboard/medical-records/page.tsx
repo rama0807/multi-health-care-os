@@ -146,7 +146,7 @@ export default function MedicalRecordsPage() {
             <SelectItem value="all">All doctors</SelectItem>
             {doctorsQuery.data?.data.map((d) => (
               <SelectItem key={d.id} value={d.id}>
-                Dr. {d.fullName} — {d.specialization}
+                Dr. {d.fullName} - {d.specialization}
               </SelectItem>
             ))}
           </SelectContent>
@@ -175,7 +175,7 @@ export default function MedicalRecordsPage() {
           {weightSeries.length > 1 && (
             <div className="rounded-lg border bg-card p-4">
               <h3 className="mb-3 text-sm font-semibold text-foreground">
-                Weight trend — {patientFilter.fullName}
+                Weight trend - {patientFilter.fullName}
               </h3>
               <div className="h-40">
                 <ResponsiveContainer width="100%" height="100%">
@@ -193,7 +193,7 @@ export default function MedicalRecordsPage() {
           {Boolean(prescriptionsQuery.data?.data.length) && (
             <div className="rounded-lg border bg-card p-4">
               <h3 className="mb-3 text-sm font-semibold text-foreground">
-                Recent prescriptions — {patientFilter.fullName}
+                Recent prescriptions - {patientFilter.fullName}
               </h3>
               <ul className="space-y-2">
                 {prescriptionsQuery.data?.data.map((rx) => (
@@ -218,7 +218,7 @@ export default function MedicalRecordsPage() {
           {Boolean(labOrdersQuery.data?.data.length) && (
             <div className="rounded-lg border bg-card p-4">
               <h3 className="mb-3 text-sm font-semibold text-foreground">
-                Recent lab orders — {patientFilter.fullName}
+                Recent lab orders - {patientFilter.fullName}
               </h3>
               <ul className="space-y-2">
                 {labOrdersQuery.data?.data.map((order) => (
@@ -243,7 +243,7 @@ export default function MedicalRecordsPage() {
           {Boolean(radiologyOrdersQuery.data?.data.length) && (
             <div className="rounded-lg border bg-card p-4">
               <h3 className="mb-3 text-sm font-semibold text-foreground">
-                Recent imaging — {patientFilter.fullName}
+                Recent imaging - {patientFilter.fullName}
               </h3>
               <ul className="space-y-2">
                 {radiologyOrdersQuery.data?.data.map((order) => (
@@ -256,7 +256,7 @@ export default function MedicalRecordsPage() {
                       <span className="font-mono text-xs text-muted-foreground">{order.orderNumber}</span>
                       <StatusBadge status={order.status} />
                       <span className="text-xs text-muted-foreground">
-                        {order.modality} — {order.bodyPart}
+                        {order.modality} - {order.bodyPart}
                       </span>
                     </Link>
                   </li>

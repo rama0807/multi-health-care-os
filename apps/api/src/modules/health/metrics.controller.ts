@@ -21,7 +21,7 @@ function secretsMatch(presented: string, expected: string): boolean {
  *
  * Version-neutral (`/api/metrics`) because a scrape config outlives an API
  * version, and throttle-exempt because a 15-second scrape interval is exactly
- * the traffic the global limiter exists to stop — losing metrics during an
+ * the traffic the global limiter exists to stop - losing metrics during an
  * incident is the opposite of what this endpoint is for.
  *
  * Access follows `security.config.ts`: a `METRICS_TOKEN` makes it a bearer

@@ -1,12 +1,12 @@
 import type { Config } from 'tailwindcss'
 
 /**
- * MediCore Design System V2 — Tailwind mapping.
+ * MediCore Design System V2 - Tailwind mapping.
  *
  * This file contains **no colour values**. Every colour is a reference to a
  * semantic token declared in `src/app/globals.css`, which an organization's
  * branding rewrites at runtime (see `src/lib/branding/`). If you find yourself
- * adding a hex code here, the token layer is missing something — add it there
+ * adding a hex code here, the token layer is missing something - add it there
  * instead.
  *
  * `<alpha-value>` is threaded through every token so `bg-primary/10`,
@@ -32,7 +32,7 @@ const config: Config = {
 
       /**
        * Type scale. Sizes match Tailwind's defaults so no existing page shifts;
-       * what changes is the *leading and tracking* — tightened at display sizes
+       * what changes is the *leading and tracking* - tightened at display sizes
        * (large text needs less air to feel deliberate) and loosened at caption
        * sizes (small text needs more to stay legible). `2xs` is new, for
        * table metadata and eyebrow labels.
@@ -82,7 +82,7 @@ const config: Config = {
         /**
          * The organization's accent and secondary brand colours. Kept apart
          * from `accent`/`secondary` above, which are neutral interaction
-         * surfaces — see the note in globals.css.
+         * surfaces - see the note in globals.css.
          */
         brand: {
           accent: {
@@ -165,7 +165,7 @@ const config: Config = {
           'subtle-foreground': token('neutral-subtle-foreground'),
           border: token('neutral-border'),
         },
-        /** Pre-V2 alias for `danger` — kept so existing pages keep working. */
+        /** Pre-V2 alias for `danger` - kept so existing pages keep working. */
         destructive: {
           DEFAULT: token('destructive'),
           foreground: token('destructive-foreground'),

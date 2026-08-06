@@ -15,7 +15,7 @@ import { useAuth } from '@/lib/auth/auth-context'
 
 import { formatBytes } from './format'
 
-/** Contact, address and tax details — Checkpoint 16.4's profile half. */
+/** Contact, address and tax details - Checkpoint 16.4's profile half. */
 const PROFILE_FIELDS = [
   { key: 'name', label: 'Organization name' },
   { key: 'email', label: 'Contact email' },
@@ -95,7 +95,7 @@ export function OverviewTab() {
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
 
-    // Empty optional fields are sent as `undefined`, not `''` — an empty
+    // Empty optional fields are sent as `undefined`, not `''` - an empty
     // string fails the URL/email format checks on the server.
     const payload = Object.fromEntries(
       Object.entries(form).map(([key, value]) => [key, value?.trim() ? value.trim() : undefined]),

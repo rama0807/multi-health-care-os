@@ -6,7 +6,7 @@ import { NotificationCategory, NotificationChannel, NotificationPriority } from 
  * Deliberately narrow: a provider receives a fully-rendered message and a
  * resolved destination, and answers whether it left the building. It performs
  * no preference checks, no templating, no retry scheduling and no database
- * access — those belong to the dispatcher and the queue, so a second
+ * access - those belong to the dispatcher and the queue, so a second
  * implementation of any channel (a real SMS vendor, a mobile push service)
  * can be dropped in without re-deriving any of that logic.
  */
@@ -14,7 +14,7 @@ export interface ChannelSendRequest {
   organizationId: string
   notificationId: string
   /**
-   * Where to send. Email address, E.164 phone number, or — for push — an
+   * Where to send. Email address, E.164 phone number, or - for push - an
    * opaque label, since push fans out over `pushTokens` instead.
    */
   destination: string
@@ -27,7 +27,7 @@ export interface ChannelSendRequest {
   imageUrl?: string | null
   icon?: string | null
   payload: Record<string, unknown>
-  /** PUSH only — every active device token for the recipient. */
+  /** PUSH only - every active device token for the recipient. */
   pushTokens?: string[]
   recipientName?: string | null
 }
@@ -40,11 +40,11 @@ export interface ChannelSendResult {
   failureReason?: string
   /**
    * Whether another attempt could plausibly succeed. A missing credential or
-   * a rejected recipient is not retryable — retrying it burns the queue and
+   * a rejected recipient is not retryable - retrying it burns the queue and
    * buries the real reason under attempt counts.
    */
   retryable: boolean
-  /** PUSH only — tokens the provider reported as permanently gone. */
+  /** PUSH only - tokens the provider reported as permanently gone. */
   invalidTokens?: string[]
 }
 

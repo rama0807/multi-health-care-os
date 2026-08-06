@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils"
 /**
  * Timeline and activity feed.
  *
- * MediCore renders chronology on at least six surfaces — the patient
+ * MediCore renders chronology on at least six surfaces - the patient
  * cross-module timeline, the doctor audit trail, claim lifecycle, bed
  * allocation history, notification centre, MAR dose history. They were each
  * drawn differently. This is the one shape.
@@ -41,7 +41,7 @@ export interface TimelineItemProps extends Omit<React.HTMLAttributes<HTMLLIEleme
   description?: React.ReactNode
   /** Who did it. */
   actor?: React.ReactNode
-  /** ISO string — rendered as a real `<time>` element. */
+  /** ISO string - rendered as a real `<time>` element. */
   timestamp?: string
   /** Human label for the timestamp; falls back to the raw ISO value. */
   timestampLabel?: React.ReactNode
@@ -104,7 +104,7 @@ export function TimelineItem({
 }
 
 /**
- * A compact activity list — same chronology, no rail. For sidebars and card
+ * A compact activity list - same chronology, no rail. For sidebars and card
  * bodies where the vertical connector would be more ink than information.
  */
 export function ActivityFeed({ className, ...props }: React.HTMLAttributes<HTMLUListElement>) {

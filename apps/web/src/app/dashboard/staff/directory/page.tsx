@@ -155,7 +155,7 @@ export default function StaffDirectoryPage() {
                   </TableCell>
                   <TableCell className="font-medium">{s.fullName}</TableCell>
                   <TableCell>{s.designation}</TableCell>
-                  <TableCell className="text-muted-foreground">{s.department?.name ?? '—'}</TableCell>
+                  <TableCell className="text-muted-foreground">{s.department?.name ?? '-'}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{formatEnumLabel(s.employmentType)}</Badge>
                   </TableCell>
@@ -428,7 +428,7 @@ function AddStaffDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
                 name="monthlySalary"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Monthly salary (₹, optional — used for payroll prep)</FormLabel>
+                    <FormLabel>Monthly salary (₹, optional - used for payroll prep)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"

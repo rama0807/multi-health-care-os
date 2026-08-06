@@ -230,7 +230,7 @@ export class PrescriptionsService {
 
   /**
    * `prescriptions.*` can be held at `.own` scope (a doctor managing only
-   * prescriptions where they're the prescribing doctor) — same idiom as
+   * prescriptions where they're the prescribing doctor) - same idiom as
    * `EncountersService.assertOwnScopeOk`.
    */
   async assertOwnScopeOk(organizationId: string, id: string, user: JwtPayload, action: string): Promise<void> {

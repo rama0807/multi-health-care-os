@@ -47,6 +47,15 @@ function looksLikePem(value: string | undefined): boolean {
   }
 }
 
+/** Mirrors `SecretEncryptionService`'s own key check - a base64-encoded 32-byte (256-bit) key. */
+function isValidEncryptionKey(value: string): boolean {
+  try {
+    return Buffer.from(value, 'base64').length === 32
+  } catch {
+    return false
+  }
+}
+
 function isPositiveInt(value: string | undefined): boolean {
   if (value === undefined || value.trim() === '') return true
   const parsed = Number(value)
@@ -145,6 +154,19 @@ export function checkEnv(env: Record<string, unknown>): EnvValidationResult {
     warnings.push(
       'AI is enabled against a third-party provider - confirm a BAA is in place, or set AI_PROVIDER=OLLAMA ' +
         '(see TD-0042)',
+    )
+  }
+
+  const emailConfigEncryptionKey = get('EMAIL_CONFIG_ENCRYPTION_KEY')?.trim()
+  if (!emailConfigEncryptionKey) {
+    warnings.push(
+      'EMAIL_CONFIG_ENCRYPTION_KEY is not set - organizations cannot configure their own Resend key ' +
+        '(TD-0064); every tenant shares the platform RESEND_API_KEY',
+    )
+  } else if (!isValidEncryptionKey(emailConfigEncryptionKey)) {
+    errors.push(
+      'EMAIL_CONFIG_ENCRYPTION_KEY must be a base64-encoded 32-byte key (generate one with ' +
+        '`node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'base64\'))"`)',
     )
   }
 

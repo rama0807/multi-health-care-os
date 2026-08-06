@@ -17,10 +17,13 @@ import { RequirePermissions } from '../../common/decorators/permissions.decorato
 import { AuditService } from '../audit/audit.service'
 
 import {
+  SendTestEmailDto,
   UpdateOrganizationBrandingDto,
+  UpdateOrganizationEmailConfigDto,
   UpdateOrganizationSettingsDto,
 } from './dto/organization-settings.dto'
 import { UpdateOrganizationDto } from './dto/update-organization.dto'
+import { OrganizationEmailConfigService } from './organization-email-config.service'
 import { OrganizationUsageService } from './organization-usage.service'
 import { OrganizationsService } from './organizations.service'
 import { SubscriptionsService } from './subscriptions.service'
@@ -42,6 +45,7 @@ export class OrganizationsController {
     private readonly usageService: OrganizationUsageService,
     private readonly subscriptionsService: SubscriptionsService,
     private readonly auditService: AuditService,
+    private readonly emailConfigService: OrganizationEmailConfigService,
   ) {}
 
   @Get('me')
@@ -138,6 +142,30 @@ export class OrganizationsController {
   async removeLogo(@CurrentUser('orgId') orgId: string, @CurrentUser('sub') userId: string) {
     await this.organizationsService.removeLogo(orgId, userId)
     return { success: true }
+  }
+
+  // ── Email provider config (TD-0064) ────────────────────────────────────
+
+  @Get('me/email-config')
+  @RequirePermissions('organizations.read')
+  getEmailConfig(@CurrentUser('orgId') orgId: string) {
+    return this.emailConfigService.getSummary(orgId)
+  }
+
+  @Patch('me/email-config')
+  @RequirePermissions('organizations.update')
+  updateEmailConfig(
+    @CurrentUser('orgId') orgId: string,
+    @CurrentUser('sub') userId: string,
+    @Body() dto: UpdateOrganizationEmailConfigDto,
+  ) {
+    return this.emailConfigService.update(orgId, dto, userId)
+  }
+
+  @Post('me/email-config/test')
+  @RequirePermissions('organizations.update')
+  sendTestEmail(@CurrentUser('orgId') orgId: string, @Body() dto: SendTestEmailDto) {
+    return this.emailConfigService.sendTestEmail(orgId, dto.to)
   }
 
   // ── Subscription (read-only for a tenant - see SubscriptionsService) ────

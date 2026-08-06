@@ -19,13 +19,10 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useAuth } from '@/lib/auth/auth-context'
+import { initials } from '@/lib/format'
 
 import { CommandPalette } from './command-palette'
 import { HospitalSelector } from './hospital-selector'
-
-function initials(firstName: string, lastName: string): string {
-  return `${firstName[0] ?? ''}${lastName[0] ?? ''}`.toUpperCase()
-}
 
 /**
  * The application command bar.
@@ -98,7 +95,7 @@ export function Header() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.push('/dashboard/settings')}>
+                <DropdownMenuItem onClick={() => router.push('/dashboard/profile')}>
                   <User />
                   Profile
                 </DropdownMenuItem>

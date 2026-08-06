@@ -1,5 +1,14 @@
+import { readFileSync } from 'node:fs'
+
+// Real package version, not a hardcoded string - so the About section in
+// /dashboard/settings shows what's actually deployed.
+const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url)))
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  env: {
+    NEXT_PUBLIC_APP_VERSION: version,
+  },
   transpilePackages: ['@medicore/types', '@medicore/ui'],
   // typedRoutes requires every href to resolve to a page that already
   // exists - incompatible with a nav that intentionally links ahead to

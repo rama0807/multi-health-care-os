@@ -7,6 +7,7 @@ import { LoggerModule } from 'nestjs-pino'
 
 import { AiCommonModule } from './common/ai/ai-common.module'
 import { BackgroundModule } from './common/background/background.module'
+import { SecretEncryptionModule } from './common/crypto/secret-encryption.module'
 import { EmailModule } from './common/email/email.module'
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard'
 import { PermissionsGuard } from './common/guards/permissions.guard'
@@ -146,6 +147,7 @@ import { PrismaModule } from './prisma/prisma.module'
     PrismaModule,
     RedisModule,
     EmailModule,
+    SecretEncryptionModule,
     StorageModule,
     TenantModule,
     AiCommonModule,

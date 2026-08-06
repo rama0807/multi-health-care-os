@@ -12,6 +12,7 @@ function productionEnv(overrides: Record<string, string | undefined> = {}) {
     FRONTEND_URL: 'https://app.medicore.test',
     METRICS_TOKEN: 'metrics-secret',
     STORAGE_PROVIDER: 's3',
+    EMAIL_CONFIG_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString('base64'),
     ...overrides,
   }
 }
@@ -97,6 +98,17 @@ describe('checkEnv', () => {
     it('stays quiet about AI when the self-hosted provider is selected', () => {
       const { warnings } = checkEnv(productionEnv({ AI_ENABLED: 'true', AI_PROVIDER: 'OLLAMA' }))
       expect(warnings.join()).not.toContain('BAA')
+    })
+
+    it('warns when no per-organization email-encryption key is set (TD-0064)', () => {
+      const { errors, warnings } = checkEnv(productionEnv({ EMAIL_CONFIG_ENCRYPTION_KEY: undefined }))
+      expect(errors).toEqual([])
+      expect(warnings.join()).toContain('EMAIL_CONFIG_ENCRYPTION_KEY')
+    })
+
+    it('refuses a malformed email-encryption key rather than booting with one that will never decrypt', () => {
+      const { errors } = checkEnv(productionEnv({ EMAIL_CONFIG_ENCRYPTION_KEY: 'too-short' }))
+      expect(errors.join()).toContain('EMAIL_CONFIG_ENCRYPTION_KEY')
     })
   })
 })

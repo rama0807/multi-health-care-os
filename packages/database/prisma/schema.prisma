@@ -684,10 +684,37 @@ model Organization {
   notificationPreferences   NotificationPreference[]
   userDevices               UserDevice[]
   subscription              Subscription?
+  emailConfig               OrganizationEmailConfig?
 
   @@index([slug])
   @@index([status])
   @@map("organizations")
+}
+
+/// A tenant's own Resend credential, so it is not forced to share the
+/// platform's single `RESEND_API_KEY` (TD-0064). The key is never stored in
+/// the clear - `apiKeyCiphertext`/`apiKeyIv`/`apiKeyAuthTag` are AES-256-GCM
+/// output from `SecretEncryptionService`; `apiKeyLast4` exists only so the
+/// dashboard can show "•••• re42" without ever decrypting for display.
+/// One row per organization, created on first save - absence of a row means
+/// "use the platform default," not "misconfigured."
+model OrganizationEmailConfig {
+  id               String   @id @default(cuid())
+  organizationId   String   @unique
+  apiKeyCiphertext String?
+  apiKeyIv         String?
+  apiKeyAuthTag    String?
+  apiKeyLast4      String?
+  fromName         String?
+  fromEmail        String?
+  replyToEmail     String?
+  updatedByUserId  String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("organization_email_configs")
 }
 
 /// One current subscription per organization (`organizationId` is unique).

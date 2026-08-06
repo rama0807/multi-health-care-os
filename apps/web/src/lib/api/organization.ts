@@ -6,12 +6,15 @@ import type {
   OnboardHospitalResult,
   Organization,
   OrganizationBranding,
+  OrganizationEmailConfigSummary,
   OrganizationSettings,
   OrganizationStats,
   OrganizationUsage,
+  SendTestEmailResult,
   SubscriptionSummary,
   UpdateOrganizationBrandingDto,
   UpdateOrganizationDto,
+  UpdateOrganizationEmailConfigDto,
   UpdateOrganizationSettingsDto,
   UpdateDepartmentDto,
 } from '@medicore/types'
@@ -150,6 +153,31 @@ export async function uploadOrganizationLogo(file: File): Promise<{ logo: string
 
 export async function removeOrganizationLogo(): Promise<void> {
   await apiClient.delete('/organizations/me/branding/logo')
+}
+
+export async function getOrganizationEmailConfig(): Promise<OrganizationEmailConfigSummary> {
+  const { data } = await apiClient.get<{ data: OrganizationEmailConfigSummary }>(
+    '/organizations/me/email-config',
+  )
+  return data.data
+}
+
+export async function updateOrganizationEmailConfig(
+  dto: UpdateOrganizationEmailConfigDto,
+): Promise<OrganizationEmailConfigSummary> {
+  const { data } = await apiClient.patch<{ data: OrganizationEmailConfigSummary }>(
+    '/organizations/me/email-config',
+    dto,
+  )
+  return data.data
+}
+
+export async function sendTestEmail(to: string): Promise<SendTestEmailResult> {
+  const { data } = await apiClient.post<{ data: SendTestEmailResult }>(
+    '/organizations/me/email-config/test',
+    { to },
+  )
+  return data.data
 }
 
 export async function getSubscription(): Promise<SubscriptionSummary> {

@@ -2566,3 +2566,94 @@ not change APIs - the single most significant open gap, recorded as TD-0074 with
 the two candidate fixes. A pre-existing dead link (`/dashboard/settings`, 404)
 was found and left behaving exactly as before rather than silently re-pointed
 mid-redesign; it is TD-0076.
+
+---
+
+## ADR-0032: Per-organization Resend credential (TD-0064) - a narrow encryption-at-rest primitive, not a general secrets vault; wired into auth email only
+
+**Date:** 2026-08-07
+**Status:** Accepted
+**Context:** Ad-hoc feature request, resolving TD-0064
+
+### Context
+
+TD-0064 recorded that every organization on a deployment shares one platform
+`RESEND_API_KEY` - no tenant could bring its own sender. The user asked for
+this directly, plus "save things securely encrypted." Two things made this
+worth pausing for rather than just writing the obvious CRUD: **no
+encryption-at-rest of any kind exists anywhere in this codebase** (every other
+credential - AI provider keys, S3, FCM - is a plaintext env var), and a
+credential like this is workspace-level, not personal, so it belongs in
+`/dashboard/organization`, a module under an explicit prior instruction not
+to touch. Both were raised with the user before writing code; both were
+confirmed (Organization → new "Email" section; a dedicated
+`EMAIL_CONFIG_ENCRYPTION_KEY` rather than reusing `COOKIE_SECRET`).
+
+### Decisions
+
+**1. A new `OrganizationEmailConfig` model, not `Organization.settings` or `.branding`.**
+
+TD-0064 offered both as candidates. `settings` is an unstructured blob every
+module already reads; `branding` is explicitly scoped to visual identity
+(`schema.prisma`'s own comment on that column). Neither should carry
+ciphertext. A dedicated model keeps the encrypted columns
+(`apiKeyCiphertext`/`apiKeyIv`/`apiKeyAuthTag`) somewhere only
+`OrganizationEmailConfigService` ever reads.
+
+**2. `SecretEncryptionService` (AES-256-GCM) is deliberately narrow - one
+key, one purpose, not a "vault."**
+
+Authenticated encryption: a tampered ciphertext or a key rotated out from
+under a row fails via `authTag` verification, never returns silently-wrong
+bytes. `isConfigured()` is how every caller asks before encrypting/decrypting,
+so a server with no `EMAIL_CONFIG_ENCRYPTION_KEY` set returns an honest 503
+("email credentials cannot be stored") rather than crash or - worse - silently
+fall back to storing the key in the clear. This mirrors the line already held
+for AI providers (TD-0041: no key configured → 503, never fabricated output).
+
+**3. A dedicated key, not `COOKIE_SECRET` reused.**
+
+Session signing and data-at-rest encryption are different failure domains;
+rotating one should never force rotating the other. `env.validation.ts`
+treats it the same way as every other production-only advisory: a **warning**
+(not a boot-blocking error) when unset - the platform default still works for
+every tenant - and an **error** if set but malformed (wrong length), since a
+key that will never decrypt is worse than no key.
+
+**4. The plaintext key never leaves `encrypt`/`decrypt`.**
+
+`OrganizationEmailConfigSummary` (the only shape an API response returns)
+carries `apiKeyMasked` - a display string built from the stored `apiKeyLast4`,
+never a decrypted value. The audit trail (`organization.email_config_updated`)
+records that a key changed and its last four characters, never the key or its
+ciphertext. There is no route, anywhere, that returns a decrypted key.
+
+**5. Wired into `AuthService.forgotPassword`/`sendVerificationEmail` only -
+not the other five `EmailService.send` call sites.**
+
+`OrganizationEmailConfigService` lives in its own module (not folded into the
+much larger `OrganizationsService`) specifically so `AuthModule` could import
+it without a circular dependency on `OrganizationsModule`. `EmailService.send`
+gained an optional per-call `override` - a one-off `Resend` client when an
+`apiKey` override is present, otherwise the platform-default client - so
+existing callers that ignore it are unaffected. Appointments, staff
+onboarding, scheduled reports and the generic notification channel still send
+through the platform default; extending each to resolve its own org's
+override is real work (each needs its own organizationId threaded to the send
+site) and was left as a scoped, disclosed follow-up rather than attempted
+under one ADR - see TD-0064's updated entry.
+
+### Consequences
+
+- An organization can now bring its own Resend key, sender name/address and
+  reply-to for password-reset and verification email, with a real
+  send-a-test-email action that never reports success for a send that only
+  reached the console fallback (`EmailService.send`'s `delivered` flag).
+- Every other transactional email in the product still uses the platform
+  default sender, even for an organization that has configured its own key -
+  a real, disclosed gap, not a silent inconsistency.
+- This deployment's `EMAIL_CONFIG_ENCRYPTION_KEY` and `RESEND_API_KEY` are
+  both real values in `apps/api/.env`/`.env.local` for this environment;
+  `RESEND_API_KEY` is still the shipped placeholder (`re_xxxxxxxxxxxx`), so a
+  test email here exercises the encryption/storage path fully but still lands
+  on the console-fallback path for actual delivery, exactly as documented.

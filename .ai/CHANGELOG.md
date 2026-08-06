@@ -5,6 +5,45 @@
 
 ## [Unreleased]
 
+### Added
+- **Per-organization Resend email credential (TD-0064, ADR-0032).** An org
+  admin can now configure their own Resend API key, sender name/address and
+  reply-to under `/dashboard/organization` → Email, instead of every tenant
+  sharing one platform key. The key is encrypted at rest (AES-256-GCM via a
+  new `SecretEncryptionService` - this codebase's first encryption-at-rest
+  anywhere) and never round-tripped back to the browser, only a masked
+  `••••last4`. Wired into password-reset and verification email; a real
+  "send a test email" action reports which credential actually carried it.
+  Other transactional email (appointments, staff onboarding, scheduled
+  reports) still uses the platform default - a disclosed, scoped follow-up,
+  not a silent gap. New Prisma model + migration, new `EMAIL_CONFIG_ENCRYPTION_KEY`
+  env var (production-required warning, not a hard error - the platform
+  default still works without it).
+- **Account Settings workspace at `/dashboard/settings`** (resolves TD-0076,
+  a pre-existing 404 linked from the profile menu). Ten sections - Account,
+  Appearance, Notifications, Security, Sessions, Devices, Keyboard
+  Shortcuts, Accessibility, Developer, About - behind a new vertical nav.
+  Real actions (change password, list/revoke sessions, browser-push
+  devices, a notification-preferences summary) call real existing
+  endpoints; theme is real and instant via `next-themes`; five new
+  appearance preferences (density, sidebar-default, motion, corners, font
+  size, accent) persist to `localStorage` with draft/save/discard and a
+  live preview card. Every field or action with no backing API (profile
+  editing, avatar upload, 2FA, per-session revoke, personal API tokens,
+  accessibility persistence, a self-service security-activity feed) is
+  disclosed honestly rather than faked. Frontend only - no backend, API,
+  route, permission, or business-logic change; Organization module and
+  Notification Preferences are untouched. See `PROGRESS.md`.
+- **New `/dashboard/profile` page.** The sidebar's pre-existing "Settings"
+  nav item and the header avatar menu's "Profile" item both used to open
+  the same `/dashboard/settings` page once it existed - split into two
+  destinations instead: the sidebar keeps the full Settings workspace above,
+  and "Profile" now opens a small, separate glance page (avatar, name,
+  email, role, org/hospital scope, profile completion) with a button into
+  the full workspace. `initials`/`humanizeRole` were extracted into a new
+  shared `lib/format.ts` so the header, Profile page and Settings workspace
+  share one implementation instead of three copies.
+
 ### Changed
 - **Reports & Analytics redesigned into an executive-dashboard hub** - one
   page, a segmented nav across ten sections (Overview, Revenue, Patients,

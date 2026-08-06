@@ -3,6 +3,42 @@
 > The next logical task(s) to pick up. Replaced (not appended) whenever a
 > milestone completes - this file always describes "start here," not history.
 
+## Per-organization Resend email config - complete (2026-08-07). No active task.
+
+Resolves TD-0064 **for email only** - see ADR-0032. An org can now bring its
+own encrypted Resend API key, sender identity and reply-to under
+`/dashboard/organization` → Email, wired into password-reset and
+verification email. **What's genuinely left, if this is revisited:**
+appointment confirmations, staff onboarding, scheduled reports, and the
+generic notification-channel email provider still send through the
+platform default even for an organization that has configured its own key
+- TD-0064's updated entry names exactly which four call sites and the
+one-line change each needs (`resolveSendOverride` + the send site's own
+`organizationId`, mirroring what `auth.service.ts` already does). FCM and
+SMS/WhatsApp are unchanged - still deployment-wide. Do not re-architect the
+encryption approach (`SecretEncryptionService`, AES-256-GCM) without reading
+ADR-0032 first; it was a deliberate, narrow choice, not a starting point for
+a general secrets vault.
+
+## Account Settings workspace (`/dashboard/settings`) + Profile page (`/dashboard/profile`) - complete (2026-08-07). No active task.
+
+Built per TD-0076: a ten-section personal account workspace (Account,
+Appearance, Notifications, Security, Sessions, Devices, Keyboard Shortcuts,
+Accessibility, Developer, About), reachable from the sidebar's own
+pre-existing "Settings" nav item. See `PROGRESS.md`'s matching entry and
+TD-0076's resolution note for exactly what's real vs. honestly disclosed as
+unavailable - most notably, there is still no self-service profile-edit
+endpoint, avatar upload, 2FA, granular session revoke, or personal API
+tokens. **Same-day follow-up:** the header avatar menu's "Profile" item was
+split off into its own small page (`/dashboard/profile` - avatar, name,
+email, role, org/hospital scope, profile completion, a button into full
+Settings) rather than sharing the Settings destination, since two
+differently-labelled nav entries opening the identical page read as a bug.
+Do not restyle or re-architect either page again without a fresh
+instruction; if asked to close one of the disclosed gaps, that is backend
+work in `apps/api` first (see TD-0076), then a small frontend follow-up to
+swap the matching `NotAvailableCard` for a real control.
+
 ## Reports & Analytics executive-dashboard redesign - complete (2026-08-06). No active task.
 
 `/dashboard/reports` was redesigned from three separate pages (executive
@@ -57,16 +93,15 @@ backend/query change and were therefore left open on purpose - read their
   query and invalidate on change. Do this only where the API already scopes
   by `hospitalId` - do not fake scoping where it doesn't.
 
-Also still open: **TD-0076** (`/dashboard/settings` is a pre-existing 404
-linked from the sidebar and the profile menu - build it as the per-user
-settings page: profile, password, sessions, appearance).
+TD-0076 (`/dashboard/settings` was a pre-existing 404) is now resolved - see
+this file's top entry.
 
 ### If asked to pick one of these up
 
 Read the full TD entry first - each records exactly what changed and what
-didn't. TD-0074 and TD-0076 are each a small, self-contained backend/route
-addition. TD-0075 touches every module's list query one at a time and should
-probably be its own scoped pass rather than bundled with anything else.
+didn't. TD-0074 is a small, self-contained backend/route addition. TD-0075
+touches every module's list query one at a time and should probably be its
+own scoped pass rather than bundled with anything else.
 
 ---
 

@@ -4,6 +4,245 @@
 > after every completed task. Pair with `CHANGELOG.md` (human-facing summary)
 > and `MODULE_STATUS.md` (per-module state).
 
+## 2026-08-07 - Per-organization Resend email config - complete, resolves TD-0064 (email only) - see ADR-0032
+
+Instruction, following the Account Settings/Profile split above: give each
+organization its own Resend API key ("using resend... ask user to put in
+the api key in the dashboard and save things securely encrypted"), plus
+related email settings. This was scoped up front rather than built blind -
+research established Resend was **already** the real email provider
+(`common/email/email.service.ts`), the actual gap was *per-tenant* keys
+(already recorded as TD-0064), and **no encryption-at-rest of any kind
+existed anywhere in this codebase** - every other secret is a plaintext env
+var. Two placement questions were confirmed with the user before writing
+code: this belongs in `/dashboard/organization` (workspace-level, not
+personal), and the encryption key should be its own env var, not
+`COOKIE_SECRET` reused. Full reasoning in **ADR-0032**.
+
+### Backend
+
+- **`packages/database` migration `20260806201014_add_organization_email_config`**
+  - real, applied to both `medicore_dev` and `medicore_test` via
+  `prisma migrate dev`/`deploy` against the local containers (ports 5434/6381,
+  not 5432/6379 as an older `NEXT.md` note claimed). New model
+  `OrganizationEmailConfig`: `apiKeyCiphertext`/`apiKeyIv`/`apiKeyAuthTag`
+  (AES-256-GCM output, never plaintext) + `apiKeyLast4` (display only),
+  `fromName`/`fromEmail`/`replyToEmail`, one row per organization.
+- **`common/crypto/secret-encryption.service.ts`** - `SecretEncryptionService`,
+  this codebase's first encryption-at-rest utility. AES-256-GCM,
+  `EMAIL_CONFIG_ENCRYPTION_KEY` (base64, 32 bytes) from env,
+  `isConfigured()` so callers get an honest 503 instead of a crash or an
+  insecure fallback. 8 unit tests: round-trip, random IV per call, tamper
+  detection, wrong-key rejection, missing/malformed key.
+- **`env.validation.ts`** - malformed key is a production **error**; unset
+  key is a production **warning** (the platform default still works for
+  every tenant) - mirrors the existing COOKIE_SECRET/AI_ENABLED pattern
+  exactly. 2 new tests; existing `productionEnv()` fixture updated with a
+  valid key so it doesn't spuriously warn in unrelated tests.
+- **`EmailService.send`** gained an optional `override` param
+  (`{apiKey?, fromEmail?, fromName?, replyTo?}`) and now returns
+  `{ delivered: boolean }` - `false` only for the dev/no-key console
+  fallback, so a genuine send failure still throws rather than reporting
+  `delivered: false`. Existing callers that ignore the return value are
+  unaffected (only a type widening).
+- **`OrganizationEmailConfigService`** (own module, not folded into
+  `OrganizationsService`, specifically so `AuthModule` can import it without
+  a circular dependency on `OrganizationsModule`): `getSummary` (masked -
+  `apiKeyMasked` like `"••••a1b2"`, never the key), `update` (encrypt on
+  save; omitting `apiKey` leaves the stored one untouched; `apiKey: null`
+  clears it back to the platform default), `resolveSendOverride` (decrypts
+  for one send, or `undefined` for an unconfigured org), `sendTestEmail`
+  (fires a real send, reports which credential actually carried it). Audit
+  trail records that a key changed and its last four characters, **never**
+  the key or its ciphertext. 12 unit tests including "never puts the
+  plaintext key in the audit trail" and "refuses to save when encryption
+  isn't configured, rather than storing it in the clear."
+- **`organizations.controller.ts`** - `GET/PATCH /organizations/me/email-config`
+  + `POST .../test`, gated by the existing `organizations.read`/`.update`
+  permissions (no new permission needed).
+- **`AuthService.forgotPassword`/`sendVerificationEmail`** - the concrete
+  "password change using resend" ask - now resolve the calling user's
+  org override before sending. `sendVerificationEmail` gained an
+  `organizationId` parameter (both call sites already had `user.organizationId`
+  / `org.id` in scope - no extra query). 4 new tests covering both the
+  overridden and platform-default paths, plus that a nonexistent email
+  never triggers a lookup (preserves the existing timing-safety property).
+- **`packages/types/src/organization.ts`** - `OrganizationEmailConfigSummary`,
+  `UpdateOrganizationEmailConfigSchema`/`Dto`, `SendTestEmailResult`.
+
+### Frontend
+
+- **`dashboard/organization/_components/email-section.tsx`** - new
+  "Email" section in the Organization workspace's segmented nav (after
+  Brand). API key field (write-only - a saved key is never echoed back,
+  only its `••••last4` mask), sender identity (from name/address,
+  reply-to), a "Remove key - revert to platform default" action, and a
+  real "Send a test email" button that reports which credential actually
+  sent it (or that it only reached the console fallback - never a fake
+  success). Notes that footer text stays in Brand → Email branding rather
+  than duplicating it.
+- **`lib/api/organization.ts`** - `getOrganizationEmailConfig`,
+  `updateOrganizationEmailConfig`, `sendTestEmail`.
+- **`dashboard/profile/page.tsx`** - per the earlier follow-up's own
+  "move more info here": added a Platform Owner badge (when applicable), a
+  real permissions-granted count, and a "Quick links" card into real
+  Settings sections (`?section=security`/`sessions`/`appearance`/
+  `accessibility`) and Notification Preferences - genuine navigation, no
+  new data invented.
+
+### Verification
+
+Real migration applied to both `medicore_dev` and `medicore_test`. API:
+`lint`/`typecheck` clean; unit suite **98 suites / 811 tests** (811 = 799
+prior + 12 email-config-service tests); full e2e suite run against the real
+local Postgres/Redis - **431/431 passing** (one transient 401 seen in a
+full back-to-back `--runInBand` run, reproduced as a pass in isolation -
+almost certainly the shared 20/min auth-throttle budget across suites, not
+a regression; see `auth.e2e-spec.ts`'s own note on that throttle tier).
+Web: `lint`/`typecheck`/`test` (56 passing)/`build` clean;
+`/dashboard/organization` and `/dashboard/profile` both build. No dedicated
+e2e spec was added for the new `organizations.me.email-config` routes -
+disclosed, not hidden: the rest of the Organization module's settings/
+branding/subscription endpoints have unit coverage only too, no precedent
+broken.
+
+## 2026-08-07 - Account Settings workspace (`/dashboard/settings`) - complete, resolves TD-0076
+
+Instruction: build a complete, premium personal Account Settings workspace
+(Linear/Slack/Notion/Vercel-quality) at `/dashboard/settings`, fix the
+profile menu's "Profile" item (previously routed to this same 404), and
+leave Notification Preferences and the Organization module untouched.
+Frontend only; any field or action with no backing API had to say so
+honestly rather than pretend to work - this repeats the pattern
+`organization/_components/security-section.tsx` already established.
+
+### What was verified before writing any UI
+
+A full read of `apps/api/src/modules/auth`, `notifications`, `users`, and
+the Prisma schema, done by a research subagent, established exactly what a
+self-service settings page can honestly do today:
+
+- **Real:** `GET /auth/me`, `POST /auth/change-password` (revokes every
+  *other* session on success), `GET /auth/sessions`, `POST /auth/logout-all`,
+  the full `UserDevice` push-notification registry
+  (`/notifications/devices/*`), and `GET/PATCH /notifications/preferences`.
+- **Missing:** there is no self-service "update my own profile" endpoint -
+  only an admin-only `PATCH /users/:id` (`users.manage`) that doesn't even
+  check `id === self`. No phone/job-title/department/language/date-format/
+  time-format/bio/profile-visibility field exists on `User` at all; timezone
+  exists in the schema but isn't returned by `/auth/me`. No avatar-upload
+  endpoint. `User.mfaEnabled`/`mfaSecret` are schema-only, wired nowhere. No
+  personal API token / webhook / CLI token model exists anywhere. No route
+  revokes one specific *other* session (`SessionsService.
+  revokeAllSessionsExcept` exists but is only ever called as a side effect
+  of `changePassword`). No accessibility-preference or extended
+  `UserPreferences` store exists - theme persists only via `next-themes`.
+
+Every section below reflects exactly that split - real actions call the
+real endpoint; everything else is a `NotAvailableCard` stating the actual
+gap, never a control that would silently do nothing.
+
+### What was built
+
+- **Layout** - `app/dashboard/settings/page.tsx`: a two-column workspace
+  (`SettingsNav` - a new vertical rail, ten sections - plus content), an
+  identity header (`SettingsHeader`: avatar, name, email, role badges, a
+  profile-completion meter counting only the three fields MediCore actually
+  has, and an honestly-disclosed "last active - not tracked yet"), and a
+  single `SettingsFooterProvider` context so whichever section has unsaved
+  changes owns the one Save/Discard control (most sections register nothing,
+  because there is nothing to save).
+- **Account** - real name/email read-only (no update endpoint to write to,
+  so fields are disabled rather than editable-but-broken); real role badges
+  and hospital scope; a profile-completion checklist; disclosed gaps for
+  avatar upload, phone, job title/department, language/date/time
+  format/timezone, bio and profile visibility.
+- **Appearance** - theme (light/dark/system) is real and instant via the
+  same `next-themes` control the header's `ThemeToggle` already uses. Five
+  preferences with no backend (density, sidebar-collapsed-by-default, reduce
+  motion, rounded corners, font size, accent colour) are genuinely new: a
+  `useAppearancePreferences` hook (`lib/settings/`) persists them to
+  `localStorage` with draft/save/discard semantics, demonstrated live in a
+  preview card rather than repainting the real app chrome (which would
+  fight the design system's tenant-branding rules).
+- **Notifications** - a summary card only (real channels-enabled badges,
+  real quiet-hours value) plus a button to the existing
+  `/dashboard/notifications/preferences` page - no duplicated state, per
+  instruction.
+- **Security** - a real "Change password" dialog wired to
+  `POST /auth/change-password`; disclosed gaps for 2FA, personal API
+  support, recovery email, and security score/activity (no self-service
+  audit-log endpoint exists, only an org-wide admin-gated one).
+- **Sessions** - real `GET /auth/sessions` list (current-device badge,
+  IP, a small user-agent parser for browser/OS - "location" honestly marked
+  unavailable, no geo-IP anywhere in this stack) and a real "Sign out
+  everywhere" action (`logoutAll`) with a confirming dialog, since that is
+  the only session-revocation route that actually exists; per-row revoke is
+  disclosed as missing rather than faked.
+- **Devices** - reuses `usePushNotifications` (the same hook the
+  notifications-preferences page uses) for real browser-push device
+  management, framed as a device inventory; "mobile devices" and "trusted
+  devices" are disclosed as concepts this system doesn't have.
+- **Keyboard Shortcuts** - the real ⌘K command palette shortcut, plus the
+  real quick-create actions from `nav-config.ts` shown as "⌘K then type
+  …" - no invented chord shortcuts (no "G then P" binding exists anywhere
+  in this app).
+- **Accessibility** - five honestly-disclosed cards (high contrast, reduce
+  animation, focus outlines, keyboard navigation, screen-reader support) -
+  per explicit instruction, none are wired to a fake toggle since none has
+  real settings-level support today.
+- **Developer** - personal API token / webhook status / CLI token, each
+  shown as "Enterprise edition" per the task's requested copy - none of
+  these models exist in this codebase at all.
+- **About** - real version (`NEXT_PUBLIC_APP_VERSION`, now injected from
+  `package.json` in `next.config.mjs`), real `NODE_ENV`, real
+  organization/role/browser; build id, license, Privacy Policy/Terms/OSS
+  licenses disclosed as unavailable - **no URL was guessed or fabricated**
+  for any of them.
+- Fixed the profile menu's dead "Profile" link by giving `/dashboard/settings`
+  a real page - `header.tsx` already pointed there; it just 404'd.
+
+### Verification
+
+`pnpm --filter web lint` / `typecheck` / `test` (56 passing - 49 pre-existing
++ 7 new for `format.ts`'s pure helpers, matching this repo's existing
+"unit-test pure logic, not every component" convention) / `build` all clean.
+`/dashboard/settings` builds as a static route. Not browser-verified - no
+browser tool available this session; no UI regression suspected since no
+existing route, component export, or shared file's behaviour changed
+(`next.config.mjs`'s only change is additive - a new `env` key).
+
+### Known limitations (see TECH_DEBT - TD-0076 resolved by this entry)
+
+Every limitation above is a real, current backend gap, not a shortcut taken
+by this task - closing any of them is backend work for a future session:
+self-service profile update, avatar upload, 2FA, per-session revoke,
+personal API tokens, a self-service security-activity feed, and a
+persisted `UserPreferences` store are the concrete follow-ups if this module
+is revisited.
+
+### Follow-up same day: split "Profile" from "Settings" into two destinations
+
+The sidebar's own "Settings" nav item (`nav-config.ts:206`, pre-existing -
+not added by this task) already pointed at `/dashboard/settings` too, so
+once the page existed, two differently-labelled nav entries opened the
+identical page. Asked to resolve it: keep the sidebar "Settings" → the full
+ten-section workspace above, unchanged; give the header avatar menu's
+"Profile" item its own new, small destination -
+`app/dashboard/profile/page.tsx` - a single-page glance (avatar, name, email,
+role badges, organization, hospital scope, profile completion) reading
+straight from `useAuth()`'s already-loaded session user rather than an extra
+`getCurrentUser` fetch, with a button to the full Settings workspace for
+everything else. It deliberately repeats a few facts the Account section
+also shows - an accepted, explicit duplication of *content*, not of *code*:
+extracted `initials`/`humanizeRole` out of `header.tsx` and
+`settings/_components/format.ts` into a new shared `lib/format.ts` so all
+three call sites (header, Profile page, Settings) share one implementation.
+`header.tsx`'s "Profile" menu item now routes to `/dashboard/profile`
+instead of `/dashboard/settings`. Re-verified: `pnpm --filter web
+lint`/`typecheck`/`test` (56 passing, unchanged)/`build` all clean;
+`/dashboard/profile` builds as its own static route.
+
 ## 2026-08-06 - Reports & Analytics: executive-dashboard redesign - complete
 
 Instruction: redesign the Reports & Analytics module into an executive

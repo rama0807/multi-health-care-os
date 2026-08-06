@@ -1,7 +1,7 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { Building2, CreditCard, History, LayoutDashboard, Palette, ShieldCheck, UsersRound } from 'lucide-react'
+import { Building2, CreditCard, History, LayoutDashboard, Mail, Palette, ShieldCheck, UsersRound } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { Suspense, useState } from 'react'
 
@@ -10,6 +10,7 @@ import { getOrganization, getOrganizationStats, getSubscription, listAuditLogs }
 
 import { AuditSection } from './_components/audit-section'
 import { BrandSection } from './_components/brand-section'
+import { EmailSection } from './_components/email-section'
 import { OrgHeader } from './_components/org-header'
 import { OverviewSection } from './_components/overview-section'
 import { PeopleSection } from './_components/people-section'
@@ -23,6 +24,7 @@ const SECTIONS = [
   { value: 'people', label: 'People', icon: UsersRound },
   { value: 'subscription', label: 'Subscription', icon: CreditCard },
   { value: 'brand', label: 'Brand', icon: Palette },
+  { value: 'email', label: 'Email', icon: Mail },
   { value: 'security', label: 'Security', icon: ShieldCheck },
   { value: 'audit', label: 'Audit', icon: History },
 ] as const
@@ -73,6 +75,7 @@ function OrganizationDashboard() {
         {section === 'people' && <PeopleSection />}
         {section === 'subscription' && <SubscriptionSection />}
         {section === 'brand' && <BrandSection />}
+        {section === 'email' && <EmailSection />}
         {section === 'security' && <SecuritySection />}
         {section === 'audit' && <AuditSection />}
       </div>

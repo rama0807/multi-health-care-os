@@ -47,6 +47,7 @@ describe('AuthService', () => {
   }
   let tokensService: Record<string, jest.Mock>
   let emailService: { send: jest.Mock }
+  let emailConfigService: { resolveSendOverride: jest.Mock }
   let authService: AuthService
 
   beforeEach(() => {
@@ -76,7 +77,8 @@ describe('AuthService', () => {
       consumePasswordResetToken: jest.fn(),
       consumeEmailVerificationToken: jest.fn(),
     }
-    emailService = { send: jest.fn().mockResolvedValue(undefined) }
+    emailService = { send: jest.fn().mockResolvedValue({ delivered: true }) }
+    emailConfigService = { resolveSendOverride: jest.fn().mockResolvedValue(undefined) }
 
     // Runs the scheduled work inline, so these tests still observe the send.
     const background = { run: (_job: string, work: () => Promise<unknown>) => void work() }
@@ -90,6 +92,7 @@ describe('AuthService', () => {
       sessionsService as never,
       tokensService as never,
       emailService as never,
+      emailConfigService as never,
     )
   })
 
@@ -201,6 +204,8 @@ describe('AuthService', () => {
       )
       expect(emailService.send).toHaveBeenCalled()
       expect(result.accessToken).toBe('signed.jwt.token')
+      // Verification email resolves the *new* org's own Resend config (TD-0064), not some stale id.
+      expect(emailConfigService.resolveSendOverride).toHaveBeenCalledWith('org_1')
     })
 
     it('rejects a taken organization slug', async () => {
@@ -209,6 +214,49 @@ describe('AuthService', () => {
       await expect(
         authService.register({ organizationSlug: 'taken' } as never, meta),
       ).rejects.toThrow('Organization slug already taken')
+    })
+  })
+
+  describe('forgotPassword', () => {
+    it('resolves the org email override and sends the reset email through it', async () => {
+      const override = { apiKey: 'org-own-resend-key' }
+      prisma.user.findUnique.mockResolvedValue(buildUser())
+      emailConfigService.resolveSendOverride.mockResolvedValue(override)
+
+      await authService.forgotPassword('doctor@example.com')
+
+      expect(emailConfigService.resolveSendOverride).toHaveBeenCalledWith('org_1')
+      expect(emailService.send).toHaveBeenCalledWith(expect.objectContaining({ to: 'doctor@example.com' }), override)
+    })
+
+    it('resolves to the platform default (undefined override) for an org with no config', async () => {
+      prisma.user.findUnique.mockResolvedValue(buildUser())
+      emailConfigService.resolveSendOverride.mockResolvedValue(undefined)
+
+      await authService.forgotPassword('doctor@example.com')
+
+      expect(emailService.send).toHaveBeenCalledWith(expect.anything(), undefined)
+    })
+
+    it('never looks up an email override for an address that does not exist', async () => {
+      prisma.user.findUnique.mockResolvedValue(null)
+
+      await authService.forgotPassword('nobody@example.com')
+
+      expect(emailConfigService.resolveSendOverride).not.toHaveBeenCalled()
+      expect(emailService.send).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('sendVerificationEmail', () => {
+    it('resolves the given organization’s own email override', async () => {
+      const override = { fromEmail: 'no-reply@tenant.example' }
+      emailConfigService.resolveSendOverride.mockResolvedValue(override)
+
+      await authService.sendVerificationEmail('user_1', 'doctor@example.com', 'Test', 'org_9')
+
+      expect(emailConfigService.resolveSendOverride).toHaveBeenCalledWith('org_9')
+      expect(emailService.send).toHaveBeenCalledWith(expect.objectContaining({ to: 'doctor@example.com' }), override)
     })
   })
 

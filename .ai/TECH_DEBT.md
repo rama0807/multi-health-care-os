@@ -1830,6 +1830,8 @@ streaming transport.
 ## TD-0064: Notification provider configuration is deployment-wide, not per tenant
 
 **Raised:** 2026-08-06 (Milestone 18, Checkpoint 18.6)
+**Partially resolved:** 2026-08-07 (ADR-0032) - **for email only.** FCM and SMS
+are unchanged; see below.
 **Severity:** Low
 
 Channel adapters are selected and credentialed from environment
@@ -1837,15 +1839,29 @@ configuration, so every organization on a deployment shares one FCM project,
 one Resend sender and one SMS driver. A tenant cannot send from its own
 sender identity or its own Firebase project.
 
-The Platform Owner console states this on the page rather than presenting a
-per-tenant provider screen that would not do anything. Related: TD-0048
-(subscription limits reported but not enforced) has the same shape - a
-platform-level control surface that a tenant cannot yet influence.
+**Email is now per-tenant.** `OrganizationEmailConfig` (encrypted Resend key,
+from name/address, reply-to) plus `/dashboard/organization` → Email lets an
+org configure its own sender; `AuthService.forgotPassword`/
+`sendVerificationEmail` resolve it via `OrganizationEmailConfigService.
+resolveSendOverride`, falling back to the platform default when unconfigured.
+See ADR-0032 for the encryption design (`SecretEncryptionService`,
+AES-256-GCM, this codebase's first encryption-at-rest of anything).
 
-**Resolution:** move provider credentials into `Organization.settings` (or a
-dedicated `NotificationProviderConfig` model), resolve the adapter per
-notification rather than per process, and fall back to the deployment
-default when a tenant has configured none.
+**Still deployment-wide, unchanged:** FCM (push) and the SMS/WhatsApp log
+drivers - only email got a per-tenant path. **Still deployment-wide even for
+email:** appointment confirmations, staff onboarding, scheduled reports, and
+the generic notification-channel email provider (`modules/notifications/
+channels/email.provider.ts`) all still call `EmailService.send` without an
+override - `EmailService.send` accepts one (an optional second parameter),
+but only the two auth flows resolve and pass it today. Wiring the remaining
+four call sites is mechanical (thread `organizationId` to the send site, call
+`resolveSendOverride`) but was left as a follow-up rather than done under one
+change - see ADR-0032's "Consequences."
+
+**Resolution (remaining scope):** thread `OrganizationEmailConfigService.
+resolveSendOverride` into the four email call sites listed above; move FCM
+and SMS/WhatsApp credentials into their own per-tenant config following the
+same `OrganizationEmailConfig` pattern if that's ever prioritized.
 
 ---
 
@@ -2134,20 +2150,27 @@ explicitly-scoped task.
 
 **Discovered:** 2026-08-06 (Design System V2, Phase 1) - **pre-existing**, not
 introduced by that work.
-**Severity:** Medium - a dead link in the primary navigation, visible to every
-user regardless of role (the nav item carries no permission).
+**Resolved:** 2026-08-07 - see `PROGRESS.md`'s and `SESSION_LOG.md`'s matching
+entries for the full build.
+**Severity:** Was Medium - a dead link in the primary navigation, visible to
+every user regardless of role (the nav item carries no permission).
 
-`apps/web/src/app/dashboard/` has no `settings/page.tsx`. The sidebar's
-"Settings" item and the header profile menu's "Profile" entry both point at it.
-Phase 1 preserved the existing targets rather than silently re-pointing or
-removing navigation while redesigning the chrome, so the behaviour is unchanged
-from before - but it is a real defect and should not survive Phase 2.
+`apps/web/src/app/dashboard/settings/page.tsx` now exists: a ten-section
+personal Account Settings workspace (Account, Appearance, Notifications,
+Security, Sessions, Devices, Keyboard Shortcuts, Accessibility, Developer,
+About). It links out to `/dashboard/organization` and
+`/dashboard/notifications/preferences` rather than duplicating either, per
+this ticket's original fix note.
 
-**Fix:** build `/dashboard/settings` as the per-*user* settings page (profile
-details, password, sessions, appearance). Organization-level settings already
-live at `/dashboard/organization` and notification preferences at
-`/dashboard/notifications/preferences`; this page should link to both rather
-than duplicate them.
+**What this did *not* close** - these are real backend gaps the new page
+discloses honestly rather than resolves, and are the concrete follow-ups if
+this module is revisited: no self-service "update my profile" endpoint (only
+admin-only `PATCH /users/:id`), no avatar-upload endpoint, no 2FA
+implementation (schema fields unused), no route to revoke one specific
+*other* session, no personal API token/webhook/CLI token model, no
+self-service security-activity feed, and no persisted `UserPreferences` store
+(the new Appearance preferences live in `localStorage` instead, by design -
+see `PROGRESS.md`).
 
 ---
 

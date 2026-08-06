@@ -23,6 +23,7 @@ import { BackgroundTaskService } from '../../common/background/background-task.s
 import { EmailService } from '../../common/email/email.service'
 import { passwordResetTemplate, verifyEmailTemplate } from '../../common/email/email.templates'
 import { PrismaService } from '../../prisma/prisma.service'
+import { OrganizationEmailConfigService } from '../organizations/organization-email-config.service'
 import { RolesService } from '../roles/roles.service'
 
 import { RotationResult, SessionsService } from './sessions.service'
@@ -65,6 +66,7 @@ export class AuthService {
     private readonly sessionsService: SessionsService,
     private readonly tokensService: TokensService,
     private readonly emailService: EmailService,
+    private readonly emailConfigService: OrganizationEmailConfigService,
   ) {}
 
   async register(dto: RegisterOrganizationDto, meta: RequestMeta): Promise<AuthSessionResult> {
@@ -125,7 +127,7 @@ export class AuthService {
       userId: user.id,
     })
 
-    await this.sendVerificationEmail(user.id, user.email, user.firstName)
+    await this.sendVerificationEmail(user.id, user.email, user.firstName, org.id)
 
     return this.issueSession(
       { ...user, organization: org },
@@ -258,10 +260,13 @@ export class AuthService {
     // Off the request path (Milestone 19.3): this endpoint deliberately
     // answers the same way whether or not the address exists, so awaiting the
     // provider only leaks how long the lookup took - and lets its latency
-    // shape the timing side channel this method exists to avoid.
-    this.background.run('auth.password_reset_email', () =>
-      this.emailService.send({ to: user.email, subject, html }),
-    )
+    // shape the timing side channel this method exists to avoid. Resolving
+    // the org's own Resend key (TD-0064) happens inside the same background
+    // task, for the same reason - it's one more query, off this timing path.
+    this.background.run('auth.password_reset_email', async () => {
+      const override = await this.emailConfigService.resolveSendOverride(user.organizationId)
+      return this.emailService.send({ to: user.email, subject, html }, override)
+    })
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {
@@ -317,19 +322,25 @@ export class AuthService {
   async resendVerificationEmail(userId: string): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } })
     if (!user || user.isEmailVerified) return
-    await this.sendVerificationEmail(user.id, user.email, user.firstName)
+    await this.sendVerificationEmail(user.id, user.email, user.firstName, user.organizationId)
   }
 
-  async sendVerificationEmail(userId: string, email: string, firstName: string): Promise<void> {
+  async sendVerificationEmail(
+    userId: string,
+    email: string,
+    firstName: string,
+    organizationId: string,
+  ): Promise<void> {
     const token = await this.tokensService.issueEmailVerificationToken(userId)
     const verifyUrl = `${process.env.FRONTEND_URL ?? 'http://localhost:3000'}/verify-email?token=${token}`
     const { subject, html } = verifyEmailTemplate(firstName, verifyUrl)
     // Off the request path (Milestone 19.3). Registration must not fail
     // because a mail provider is slow or down - the account was created, and
     // `resendVerificationEmail` is the product's own retry.
-    this.background.run('auth.verification_email', () =>
-      this.emailService.send({ to: email, subject, html }),
-    )
+    this.background.run('auth.verification_email', async () => {
+      const override = await this.emailConfigService.resolveSendOverride(organizationId)
+      return this.emailService.send({ to: email, subject, html }, override)
+    })
   }
 
   accessTokenExpirySeconds(): number {

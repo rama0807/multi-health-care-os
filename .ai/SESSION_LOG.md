@@ -6,6 +6,223 @@
 
 ---
 
+## Session - 2026-08-07 - Per-organization Resend email config (TD-0064, ADR-0032)
+
+### What was completed
+
+Same session as the Account Settings/Profile split below, continued: the
+user asked for "password change like things using resend... other email
+related settings... ask user to put in the api key in the dashboard and
+save things securely encrypted." Rather than build blind, this was
+researched first (one `Explore` subagent): Resend was **already** the real
+email provider (`common/email/email.service.ts`), not a stub - the actual
+gap was that every organization shared one platform `RESEND_API_KEY`
+(already recorded as TD-0064), and **no encryption-at-rest existed anywhere
+in this codebase**. Two placement questions were put to the user via
+`AskUserQuestion` before writing any code - both confirmed: this belongs in
+`/dashboard/organization` (workspace-level, not personal Settings), and the
+encryption key should be its own env var rather than reusing
+`COOKIE_SECRET`. Full design reasoning is **ADR-0032**; full file-by-file
+detail is `PROGRESS.md`'s matching entry.
+
+Built, in order: a real Prisma migration (`OrganizationEmailConfig`, applied
+to both `medicore_dev` and `medicore_test`); `SecretEncryptionService`
+(AES-256-GCM, this codebase's first encryption-at-rest); `EmailService.send`
+gained an optional per-call credential override and now reports whether it
+actually delivered vs. hit the dev console fallback;
+`OrganizationEmailConfigService` (its own module, so `AuthModule` could
+import it without a circular dependency on `OrganizationsModule`); two
+`AuthService` methods (`forgotPassword`, `sendVerificationEmail`) resolve
+the calling user's org override before sending - the concrete "password
+change using resend" ask; new `organizations.me.email-config` routes reusing
+the existing `organizations.read`/`.update` permissions; a new "Email"
+section in the Organization workspace's segmented nav; and a few honest
+real-data additions to `/dashboard/profile` per its own earlier "move more
+info here" ask (Platform Owner badge, permissions count, quick links into
+real Settings sections).
+
+### Files modified/created
+
+New: `apps/api/src/common/crypto/secret-encryption.service.ts` (+`.spec.ts`,
++`.module.ts`), `apps/api/src/modules/organizations/organization-email-config.service.ts`
+(+`.spec.ts`, +`.module.ts`), `packages/database/prisma/migrations/20260806201014_add_organization_email_config/`,
+`apps/web/src/app/dashboard/organization/_components/email-section.tsx`.
+
+Modified: `packages/database/prisma/schema.prisma` (new model + relation),
+`packages/types/src/organization.ts` (new schema/types), `apps/api/src/config/email.config.ts`
+(+`configEncryptionKey`), `apps/api/src/config/env.validation.ts` (+2 rules,
++2 tests), `apps/api/src/common/email/email.service.ts` (override param,
+`{delivered}` return), `apps/api/src/modules/auth/auth.service.ts` (+
+`emailConfigService` injection, `sendVerificationEmail` gained an
+`organizationId` param), `apps/api/src/modules/auth/auth.service.spec.ts`
+(+4 tests, constructor mock updated), `apps/api/src/modules/organizations/organizations.controller.ts`
++`.module.ts`, `apps/api/src/modules/organizations/dto/organization-settings.dto.ts`,
+`apps/api/src/modules/auth/auth.module.ts`, `apps/api/src/app.module.ts`,
+`apps/api/.env`/`.env.local`/`.env.example` (new `EMAIL_CONFIG_ENCRYPTION_KEY`
+- a real generated key in the two local files, gitignored),
+`apps/web/src/lib/api/organization.ts`, `apps/web/src/app/dashboard/organization/page.tsx`
+(new nav section), `apps/web/src/app/dashboard/profile/page.tsx`.
+
+### Architectural decisions
+
+All five recorded in **ADR-0032**: a dedicated `OrganizationEmailConfig`
+model rather than overloading `Organization.settings`/`.branding`;
+`SecretEncryptionService` deliberately narrow (one key, one purpose) rather
+than a general vault; a dedicated `EMAIL_CONFIG_ENCRYPTION_KEY` rather than
+reusing `COOKIE_SECRET`; the plaintext key never leaves `encrypt`/`decrypt`
+(API responses, the audit trail, and logs all carry only a `••••last4`
+mask); and wiring scoped to the two auth email flows only, with the other
+four `EmailService.send` call sites left on the platform default as a
+disclosed follow-up (TD-0064's updated entry) rather than attempted under
+one change.
+
+### Known issues
+
+None introduced. The disclosed, intentional gap: appointment confirmations,
+staff onboarding, scheduled reports, and the generic notification-channel
+email provider still use the platform default sender even for an
+organization that has configured its own key - TD-0064 records exactly
+which four call sites and what wiring each needs. No dedicated e2e spec was
+added for the new routes (the rest of the Organization module's settings/
+branding/subscription endpoints are unit-tested only too - no precedent
+broken, and the full e2e suite (431/431) was re-run and passes with the new
+migration in place).
+
+### Recommended next task
+
+No active task. If revisited: thread `resolveSendOverride` into the four
+remaining `EmailService.send` call sites (TD-0064), or pick up TD-0074/
+TD-0075 as `NEXT.md` already named before this session.
+
+### Estimated project completion percentage
+
+- Overall: unaudited (unchanged - see TD-0001).
+- Per-organization email config: **100% of the requested scope** (API key
+  input + secure encrypted storage + password/verification email wiring +
+  test-send action), with the cross-module email-provider consistency gap
+  (TD-0064) explicitly, not silently, left open.
+
+---
+
+## Session - 2026-08-07 - Account Settings workspace (`/dashboard/settings`)
+
+### What was completed
+
+Built the personal Account Settings workspace at `/dashboard/settings`
+(TD-0076 - previously a 404 linked from the profile menu's "Profile" item).
+Ten sections behind a new vertical nav (`SettingsNav`): Account, Appearance,
+Notifications, Security, Sessions, Devices, Keyboard Shortcuts,
+Accessibility, Developer, About. Full detail in `PROGRESS.md`'s matching
+entry - the short version: every real backend capability
+(`/auth/me`, `/auth/change-password`, `/auth/sessions`, `/auth/logout-all`,
+the `UserDevice` push registry, `/notifications/preferences`) is wired to a
+real control; everything else (self-service profile edits, avatar upload,
+2FA, per-session revoke, personal API tokens, accessibility persistence, a
+self-service security-activity feed) is disclosed through a shared
+`NotAvailableCard` rather than faked, following the pattern
+`organization/_components/security-section.tsx` already set. Appearance's
+five preferences with no backend home (density, sidebar-default, motion,
+corners, font size, accent) persist to `localStorage` with draft/save/
+discard and a live preview card - real, working, just browser-scoped rather
+than server-scoped.
+
+A research subagent (`Explore`) was used once, up front, to establish
+exactly which backend endpoints exist before any UI was written - this is
+the one subagent this session used, per `CLAUDE.md`'s cost-optimization rule.
+
+### Files modified/created
+
+New:
+- `apps/web/src/app/dashboard/settings/page.tsx`
+- `apps/web/src/app/dashboard/settings/_components/` - `settings-nav.tsx`,
+  `settings-header.tsx`, `settings-footer-context.tsx`, `format.ts` (+
+  `format.test.ts`), `not-available-card.tsx`, `account-section.tsx`,
+  `appearance-section.tsx`, `notifications-section.tsx`,
+  `security-section.tsx`, `sessions-section.tsx`, `devices-section.tsx`,
+  `shortcuts-section.tsx`, `accessibility-section.tsx`,
+  `developer-section.tsx`, `about-section.tsx`
+- `apps/web/src/lib/api/account.ts` (`getCurrentUser`, `changePassword`,
+  `getSessions`)
+- `apps/web/src/lib/settings/use-appearance-preferences.ts`
+
+Modified:
+- `apps/web/next.config.mjs` - injects `NEXT_PUBLIC_APP_VERSION` from
+  `package.json` (additive `env` key only) for the About section.
+
+Not modified (confirmed deliberately out of scope, per instruction):
+`components/layout/header.tsx` (the "Profile" menu item already pointed at
+`/dashboard/settings` - it just 404'd; nothing needed to change there),
+`dashboard/organization/*`, `dashboard/notifications/preferences/*`, the
+sidebar, and everything under `apps/api`/`packages/database`.
+
+### Architectural decisions
+
+- **No self-service profile editing was built, even as a disabled preview.**
+  There is no `PATCH /auth/me` or self-scoped profile-update endpoint - only
+  an admin-only `PATCH /users/:id`. Account section fields are real values
+  from `GET /auth/me`, rendered read-only, rather than editable inputs that
+  would silently discard input. See `PROGRESS.md`'s entry for the full list
+  of fields (phone, job title, department, language, date/time format,
+  bio, profile visibility) that don't exist on a `User` record at all.
+- **Accent colour and other new Appearance preferences preview-only, not
+  applied app-wide.** Repainting the real app chrome with a personal accent
+  would fight `docs/design-system.md`'s tenant-branding rules (§3: only
+  `--brand-accent-*`/`--brand-secondary-*`, set by an org admin, may do
+  that). Scoped instead to `localStorage` + a preview card.
+- **Sessions section labels "Sign out everywhere" accurately.** The only
+  session-revocation route that exists is `POST /auth/logout-all`, which
+  ends the *current* session too (`revokeAllSessions`, not
+  `revokeAllSessionsExcept` - that's only ever called internally by
+  `changePassword`). The UI says this signs you out of this device as well,
+  rather than mislabeling it as a background "sign out other devices."
+- **Keyboard Shortcuts lists no chord bindings** ("G then P" etc.) because
+  none exist in this app - only ⌘K (command palette) is real. Listing
+  invented chords would have been the exact kind of faked functionality
+  `CLAUDE.md` prohibits.
+
+### Known issues
+
+None introduced. Every limitation in this workspace is a pre-existing
+backend gap, now disclosed rather than newly created - see TD-0076's
+resolution note in `TECH_DEBT.md` for the concrete backend follow-ups if
+this module is revisited (self-service profile update, avatar upload, 2FA,
+per-session revoke, personal API tokens, a `UserPreferences` store).
+
+### Same-session follow-up: Profile split into its own page
+
+The user noticed the header avatar menu's "Profile" item and the sidebar's
+own pre-existing "Settings" item (`nav-config.ts:206` - not added by this
+session) both opened the identical `/dashboard/settings` page once it
+existed. Asked to choose between merging, removing one nav entry, or
+splitting - chose to split: added `app/dashboard/profile/page.tsx` (a small
+glance page: avatar, name, email, role, org/hospital scope, profile
+completion, button into full Settings), repointed `header.tsx`'s "Profile"
+item to it, and extracted `initials`/`humanizeRole` into a new shared
+`apps/web/src/lib/format.ts` (previously duplicated in `header.tsx` and
+`settings/_components/format.ts`) so all three call sites share one
+implementation. Sidebar's "Settings" item is unchanged. Re-verified
+lint/typecheck/test(56 passing)/build all clean; `/dashboard/profile` builds
+as its own static route.
+
+### Recommended next task
+
+No active task. `NEXT.md`'s TD-0076 pointer is now resolved and has been
+replaced. Pick up whatever `NEXT.md` names next - likely TD-0074 (branding
+permission gate) or TD-0075 (hospital-selector filtering), both still open
+and unrelated to this session's work.
+
+### Estimated project completion percentage
+
+- Overall: unaudited (unchanged - see TD-0001; this session added one
+  frontend module, it didn't re-audit the platform).
+- Account Settings (`dashboard/settings`): **100% of what's honestly
+  buildable against today's backend.** Not 100% of the task's literal
+  feature list - several requested capabilities (profile editing, avatar
+  upload, 2FA, granular session revoke, personal API tokens) have no
+  backend yet and are disclosed as such rather than implemented.
+
+---
+
 ## Session - 2026-08-06 - Reports & Analytics: executive-dashboard redesign
 
 ### What was completed

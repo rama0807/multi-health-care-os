@@ -202,3 +202,41 @@ export const UpsertSubscriptionSchema = z.object({
 })
 
 export type UpsertSubscriptionDto = z.infer<typeof UpsertSubscriptionSchema>
+
+// ─── Organization email config (TD-0064) ────────────────────────────────────
+
+/**
+ * Never carries the plaintext key - `apiKeyMasked` is `null` (no key
+ * configured, the platform default applies) or a display-only string like
+ * `"re_••••live_a1b2"` built server-side from the encrypted row's last four
+ * characters. There is no route that returns a decrypted key.
+ */
+export interface OrganizationEmailConfigSummary {
+  hasApiKey: boolean
+  apiKeyMasked: string | null
+  fromName: string | null
+  fromEmail: string | null
+  replyToEmail: string | null
+  updatedAt: Date | null
+}
+
+export const UpdateOrganizationEmailConfigSchema = z.object({
+  /**
+   * Omit to leave the stored key untouched. `null` clears it (reverts to the
+   * platform default). A non-empty string replaces it - the API re-encrypts
+   * and never echoes it back.
+   */
+  apiKey: z.string().min(1).max(500).nullish(),
+  fromName: z.string().max(100).nullish(),
+  fromEmail: optionalString(z.string().email()).nullish(),
+  replyToEmail: optionalString(z.string().email()).nullish(),
+})
+
+export type UpdateOrganizationEmailConfigDto = z.infer<typeof UpdateOrganizationEmailConfigSchema>
+
+export interface SendTestEmailResult {
+  sent: boolean
+  to: string
+  /** Which credential actually sent it - so the admin knows their own key was exercised, not the platform default. */
+  usedOrganizationKey: boolean
+}

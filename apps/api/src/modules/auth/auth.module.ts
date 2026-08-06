@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config'
 import { JwtModule } from '@nestjs/jwt'
 import { PassportModule } from '@nestjs/passport'
 
+import { OrganizationEmailConfigModule } from '../organizations/organization-email-config.module'
 import { RolesModule } from '../roles/roles.module'
 
 import { AuthController } from './auth.controller'
@@ -27,6 +28,7 @@ import { TokensService } from './tokens.service'
       inject: [ConfigService],
     }),
     RolesModule,
+    OrganizationEmailConfigModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, SessionsService, TokensService, JwtStrategy],

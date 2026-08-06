@@ -1,13 +1,14 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ImageIcon, Upload } from 'lucide-react'
+import { FileImage, ImageIcon, Receipt, Upload } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { SectionHeader } from '@/components/ui/page-header'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -19,14 +20,14 @@ import {
 import { useAuth } from '@/lib/auth/auth-context'
 
 const COLOR_FIELDS = [
-  { key: 'primaryColor', label: 'Primary colour' },
-  { key: 'secondaryColor', label: 'Secondary colour' },
-  { key: 'accentColor', label: 'Accent colour' },
+  { key: 'primaryColor', label: 'Primary' },
+  { key: 'secondaryColor', label: 'Secondary' },
+  { key: 'accentColor', label: 'Accent' },
 ] as const
 
 type ColorKey = (typeof COLOR_FIELDS)[number]['key']
 
-export function BrandingTab() {
+export function BrandSection() {
   const { toast } = useToast()
   const { hasPermission } = useAuth()
   const queryClient = useQueryClient()
@@ -112,14 +113,16 @@ export function BrandingTab() {
   const logo = brandingQuery.data?.logo ?? null
 
   return (
-    <div className="space-y-4 pt-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Logo</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-md border bg-muted">
+    <div className="space-y-4">
+      <SectionHeader title="Brand" description="Logo, theme colours and the identity that reaches emails." />
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-1">
+          <CardHeader>
+            <CardTitle>Logo</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex h-24 items-center justify-center overflow-hidden rounded-md border bg-muted">
               {logo ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={logo} alt="Organization logo" className="h-full w-full object-contain" />
@@ -128,7 +131,7 @@ export function BrandingTab() {
               )}
             </div>
             {canEdit && (
-              <div className="flex flex-wrap gap-2">
+              <div className="mt-3 flex flex-wrap gap-2">
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -143,16 +146,18 @@ export function BrandingTab() {
                 <Button
                   type="button"
                   variant="outline"
+                  size="sm"
                   disabled={uploadMutation.isPending}
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <Upload className="mr-1.5 h-4 w-4" />
-                  {uploadMutation.isPending ? 'Uploading…' : 'Upload logo'}
+                  {uploadMutation.isPending ? 'Uploading…' : 'Upload'}
                 </Button>
                 {logo && (
                   <Button
                     type="button"
                     variant="ghost"
+                    size="sm"
                     disabled={removeMutation.isPending}
                     onClick={() => removeMutation.mutate()}
                   >
@@ -161,45 +166,72 @@ export function BrandingTab() {
                 )}
               </div>
             )}
-          </div>
-          <p className="mt-2 text-xs text-muted-foreground">
-            PNG, JPEG, SVG or WebP, up to 2 MB. Stored through the same storage service as every other
-            document in MediCore.
-          </p>
-        </CardContent>
-      </Card>
+            <p className="mt-2 text-xs text-muted-foreground">PNG, JPEG, SVG or WebP, up to 2 MB.</p>
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Theme</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSave}>
+              <div className="flex items-center gap-2 rounded-md border border-border bg-surface-secondary/50 p-3">
+                {COLOR_FIELDS.map((field) => (
+                  <span
+                    key={field.key}
+                    className="h-8 flex-1 rounded"
+                    style={{ backgroundColor: colors[field.key] ?? '#e5e5e5' }}
+                    title={field.label}
+                  />
+                ))}
+              </div>
+
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                {COLOR_FIELDS.map((field) => (
+                  <div key={field.key} className="space-y-1">
+                    <Label htmlFor={`brand-${field.key}`}>{field.label} colour</Label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        aria-label={`${field.label} picker`}
+                        className="h-9 w-10 cursor-pointer rounded border bg-background"
+                        value={colors[field.key] ?? '#000000'}
+                        disabled={!canEdit}
+                        onChange={(e) => setColors((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                      />
+                      <Input
+                        id={`brand-${field.key}`}
+                        value={colors[field.key] ?? ''}
+                        disabled={!canEdit}
+                        onChange={(e) => setColors((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {canEdit ? (
+                <div className="mt-4 flex justify-end">
+                  <Button type="submit" disabled={saveMutation.isPending}>
+                    {saveMutation.isPending ? 'Saving…' : 'Save theme'}
+                  </Button>
+                </div>
+              ) : (
+                <p className="mt-3 text-xs text-muted-foreground">You have read-only access to branding.</p>
+              )}
+            </form>
+          </CardContent>
+        </Card>
+      </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Theme</CardTitle>
+          <CardTitle>Email branding</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSave}>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              {COLOR_FIELDS.map((field) => (
-                <div key={field.key} className="space-y-1">
-                  <Label htmlFor={`brand-${field.key}`}>{field.label}</Label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      aria-label={`${field.label} picker`}
-                      className="h-9 w-12 cursor-pointer rounded border bg-background"
-                      value={colors[field.key] ?? '#000000'}
-                      disabled={!canEdit}
-                      onChange={(e) => setColors((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                    />
-                    <Input
-                      id={`brand-${field.key}`}
-                      value={colors[field.key] ?? ''}
-                      disabled={!canEdit}
-                      onChange={(e) => setColors((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1">
                 <Label htmlFor="brand-display-name">Display name</Label>
                 <Input
@@ -232,18 +264,38 @@ export function BrandingTab() {
               />
             </div>
 
-            {canEdit ? (
+            {canEdit && (
               <div className="mt-4 flex justify-end">
                 <Button type="submit" disabled={saveMutation.isPending}>
-                  {saveMutation.isPending ? 'Saving…' : 'Save branding'}
+                  {saveMutation.isPending ? 'Saving…' : 'Save email branding'}
                 </Button>
               </div>
-            ) : (
-              <p className="mt-3 text-xs text-muted-foreground">You have read-only access to branding.</p>
             )}
           </form>
         </CardContent>
       </Card>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Card variant="inset" className="p-4">
+          <div className="flex items-center gap-2">
+            <FileImage className="size-4 text-subtle-foreground" aria-hidden="true" />
+            <p className="text-sm font-medium text-foreground">Favicon</p>
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Not configurable per organization yet - every tenant uses MediCore&apos;s default browser icon.
+          </p>
+        </Card>
+        <Card variant="inset" className="p-4">
+          <div className="flex items-center gap-2">
+            <Receipt className="size-4 text-subtle-foreground" aria-hidden="true" />
+            <p className="text-sm font-medium text-foreground">Invoice &amp; PDF branding</p>
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Invoices, receipts and reports already include your organization name, address and tax
+            details. Logo and colour theming inside those documents isn&apos;t available yet.
+          </p>
+        </Card>
+      </div>
     </div>
   )
 }

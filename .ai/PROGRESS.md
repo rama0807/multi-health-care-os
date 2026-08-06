@@ -4,6 +4,230 @@
 > after every completed task. Pair with `CHANGELOG.md` (human-facing summary)
 > and `MODULE_STATUS.md` (per-module state).
 
+## 2026-08-06 - Reports & Analytics: executive-dashboard redesign - complete
+
+Instruction: redesign the Reports & Analytics module into an executive
+dashboard "similar to Metabase, Power BI, or Stripe Dashboard," covering
+Executive overview, Revenue, Patients, Doctor productivity, OPD/IPD trends,
+Laboratory, Pharmacy, Insurance, Inventory and Bed occupancy analytics, with
+better filters/exports/empty/loading states and period-over-period
+comparison where the data already supports it. Explicit constraints: no
+backend/API/database/routing/permission/business-logic change, no invented
+data, missing endpoints get an honest empty state. Frontend only, mirroring
+the Organization module's IA-redesign pattern from earlier the same day.
+
+### Audit first
+
+Milestone 17 (2026-08-05) had already built everything this instruction
+asked for on the backend: eleven per-module report services, a
+`DashboardsService` composing five executive dashboards (CEO/Medical
+Director/Operations/Finance/Department), a 23-report registry with CSV/
+XLSX/PDF export, and a frontend split across three routes
+(`/dashboard/reports`, `/dashboard/reports/operational`,
+`/dashboard/reports/builder`). Nothing was missing or fake - the gap was
+purely informational architecture: three separate pages, each resetting its
+own date filter, with the eleven module reports one navigation hop away
+from the executive dashboards they're built from, and no export path except
+through a fourth page (the Builder).
+
+### What changed
+
+Consolidated the three routes into one hub at `/dashboard/reports`:
+
+- **`SegmentedNav`** (promoted from `dashboard/organization/_components/` to
+  `components/ui/segmented-nav.tsx` - it was already fully generic, just not
+  yet shared) drives ten sections: **Overview** (unchanged five composed
+  executive dashboards, now behind their own small perspective switch
+  inside the section rather than the page's primary nav), **Revenue**
+  (billing), **Patients**, **Doctors** (doctor workload *and* appointment
+  utilisation in one section - two tables, one query pair), **OPD/IPD**
+  (appointment volume/status as the OPD side, admission trend as the IPD
+  side - deliberately not mixed with ward/bed data), **Bed Occupancy**
+  (the same IPD report's ward/bed side, split out from OPD/IPD Trends so an
+  occupancy heatmap doesn't sit next to a volume trend it isn't one),
+  **Laboratory**, **Pharmacy** (now also lists actual low-stock/expiring
+  batches, not just their counts - the report already returned the rows,
+  the old page just didn't render them), **Insurance**, **Inventory**.
+- **One shared filter bar** (`ReportFilters`, unchanged component) sits
+  between the nav and the section body, driving whichever section is
+  active - changing the date range once now applies across every section
+  instead of resetting to "last 30 days" on every tab switch, the concrete
+  behaviour a Stripe/Metabase-style dashboard is expected to have.
+- **Comparison against the previous period** - `_components/report-sections.ts`
+  builds a `DashboardKpi` (the same shape the executive dashboards already
+  use, rendered through the existing `KpiTile`) for every stat; where the
+  underlying report exposes a `*Comparison` field (`PatientReport
+  .registrationsComparison`, `AppointmentReport.totalComparison`,
+  `BillingReport.{revenue,collections}Comparison`, `IpdReport
+  .admissionsComparison`), the tile shows a real trend arrow. Where no such
+  field exists (doctors, laboratory, pharmacy, insurance, inventory,
+  bed occupancy), the tile renders with no trend - not a fabricated one.
+  This is an honest reflection of what Milestone 17 actually computes, not
+  a new backend capability.
+- **`SectionExportMenu`** (new) - lists every report-registry entry for the
+  active section's module(s) directly in the shared filter bar, each with
+  CSV/XLSX/PDF, gated on `reports.export` exactly like the Builder's own
+  export buttons. Calls the same `GET /reports/builder/export/:key`
+  endpoint the Builder already used - no new backend route.
+- **Loading states** - added `ChartCardSkeleton` (same card shell, same
+  footprint as a real `ChartCard`) alongside the pre-existing
+  `StatCardSkeleton`, so a section's first paint no longer collapses to a
+  bare stat-tile skeleton while its charts pop in with no placeholder.
+- **`/dashboard/reports/operational` is retired** - its eleven module tabs
+  are now first-class hub sections (Appointments' OPD-side data folded into
+  OPD/IPD Trends; its doctor-utilisation table folded into Doctors).
+  **Radiology and Staff analytics were not named in this instruction's
+  scope** and are not promoted to top-level sections, but remain fully
+  reachable, completely unchanged, through `/dashboard/reports/builder`'s
+  existing module-grouped catalog - nothing was deleted, only not
+  privileged in the new nav.
+- `/dashboard/reports/builder` itself is otherwise untouched - its
+  now-dead "Operational reports" link was removed and its actions
+  simplified to one "Back to dashboards" button.
+
+### Verification
+
+`pnpm --filter @medicore/web lint`/`typecheck`/`build` after each file, then
+the full-repo suite: `pnpm lint`, `pnpm typecheck`, `pnpm test` (**785 API
+unit tests across 96 suites, 49 web unit tests across 3 suites**, both
+unchanged - no backend or business logic touched), `pnpm build` (all 6
+packages) - all clean. `pnpm test:e2e` **was run this session** (the
+documented local Postgres/Redis containers on 5434/6381 were already up) -
+**431/431 passing across 22 suites**, matching `NEXT.md`'s recorded
+baseline exactly, confirming this frontend-only pass broke nothing.
+Confirmed zero backend/database changes via `git status` on `apps/api`/
+`packages/database`. Not browser-verified - no browser tool available this
+session.
+
+### Files added
+
+`apps/web/src/components/ui/segmented-nav.tsx` (moved, not new - see
+above); `apps/web/src/app/dashboard/reports/_components/{module-section,
+overview-section,report-sections,section-export-menu}.tsx`.
+
+### Files removed
+
+`apps/web/src/app/dashboard/organization/_components/segmented-nav.tsx`
+(moved to `components/ui/`); `apps/web/src/app/dashboard/reports/
+operational/page.tsx` (content absorbed into the new hub sections).
+
+### Files modified
+
+`apps/web/src/app/dashboard/reports/page.tsx` (full rewrite - the hub),
+`apps/web/src/app/dashboard/reports/builder/page.tsx` (dead-link cleanup
+only), `apps/web/src/app/dashboard/reports/_components/charts.tsx`
+(+`ChartCardSkeleton`), `apps/web/src/app/dashboard/organization/page.tsx`
+and `_components/workspace-section.tsx` (import path update only, following
+the `SegmentedNav` move - no behaviour change).
+
+### Honest gaps
+
+None new. This session invented no metric and faked no export - every
+number and every export already existed in the Milestone 17 backend;
+this pass only changed how they're organized, filtered and discovered.
+
+---
+
+## 2026-08-06 - Organization module: information-architecture redesign - complete
+
+Instruction: the Organization page "still feels like a generic admin panel" -
+redesign the module's information architecture, hierarchy, navigation and
+spacing to feel like an enterprise workspace (Stripe Dashboard/Linear/Vercel/
+GitHub Enterprise/Atlassian Admin), explicitly **not** a restyle of the
+existing flat tabs. Frontend only - backend/APIs/database/business logic/
+permissions/routes untouched (confirmed via `git status` on `apps/api` and
+`packages/database`: no change).
+
+### What changed
+
+Replaced the flat 8-tab layout (`Tabs`/`TabsList`/`TabsTrigger`) with:
+
+- **`OrgHeader`** (`_components/org-header.tsx`) - logo, name, live
+  `StatusBadge`, slug/type, and a metrics strip of real numbers (subscription
+  plan+status, member count, storage used, most recent audit-log timestamp)
+  plus a "Quick actions" dropdown that jumps to Workspace/Brand/Audit.
+- **`SegmentedNav`** (`_components/segmented-nav.tsx`) - a new pill-in-track
+  control (not a restyled `TabsList`), used both for the seven top-level
+  sections and Workspace's own sub-nav.
+- **Seven sections**, each a full rewrite/merge of the old tabs:
+  - **Overview** - now the landing dashboard: stat tiles, three glance cards
+    (Subscription/Security status/API status), usage-vs-limit bars, a brand
+    preview, a recent-activity feed (real `listAuditLogs` call), and the
+    editable organization-profile form.
+  - **Workspace** - Hospitals (unchanged content, restyled), a **new**
+    Departments panel (see below), and Settings (the old locale/tax/hours/
+    feature-flags/holidays form, relocated here since it's org-operational
+    configuration, not a top-level concept the user's spec named).
+  - **People** - the administrator roster + user stats (unchanged data),
+    plus three honestly-disclosed "not available" cards for Roles/
+    Invitations/Teams - no backing API exists for any of the three (TD-0078).
+  - **Subscription** - merges the old separate Subscription and Usage tabs:
+    plan card + renewal, then Storage/Users/Hospitals/Patients usage bars
+    against their plan limits, storage breakdown table, AI usage, and the
+    API-requests chart.
+  - **Brand** - logo + theme-colour swatches + email branding (unchanged
+    data), plus disclosed-gap cards for Favicon and Invoice/PDF branding
+    (TD-0078).
+  - **Security** - **new section**, no equivalent tab existed before. One
+    real "Authentication" card (states the actual JWT + per-account-lockout
+    behaviour already enforced by `AuthService`); five honestly-disclosed
+    "Not available" cards for Password policy/Sessions/2FA/API keys/
+    Connected apps - deliberately **not** fake toggles, per `CLAUDE.md`'s
+    prohibition on faking auth logic (TD-0078).
+  - **Audit** - unchanged filters/table, plus a new client-side CSV export
+    of the current filtered page (a genuine capability, scoped honestly to
+    "the page on screen," not a fabricated full-history export).
+
+### Departments panel - a real feature, not a restyle
+
+`GET/POST/PATCH/DELETE /departments` already existed in
+`apps/api/src/modules/departments/` with full CRUD, but no frontend anywhere
+in this repo called `POST`/`PATCH`/`DELETE` - `listOrganizationDepartments`
+was wired to nothing before this session. Added `createDepartment`/
+`updateDepartment`/`deactivateDepartment` to `lib/api/organization.ts` (no
+backend change - these are pre-existing routes) and built a real list +
+create-dialog + deactivate panel, mirroring the Hospitals panel's UX
+conventions. "Branches"/"Locations" from the user's example IA map onto the
+existing Hospital entity - no separate fake entity was invented for either.
+
+### Verification
+
+`pnpm --filter @medicore/database db:generate`, `pnpm --filter @medicore/types
+build`, then `pnpm --filter @medicore/web lint`/`typecheck`/`test` (49 passing,
+unchanged - no existing test targeted the old tab components)/`build` (all 6
+packages/apps unaffected outside `apps/web`) - all clean. Not browser-verified
+- no browser tool available this session (TD-0044, unchanged).
+
+### Files added
+
+`apps/web/src/app/dashboard/organization/_components/{org-header,
+segmented-nav,overview-section,workspace-section,hospitals-panel,
+departments-panel,settings-panel,people-section,subscription-section,
+brand-section,security-section,audit-section}.tsx`.
+
+### Files removed
+
+The eight superseded tab files: `_components/{overview-tab,hospitals-tab,
+subscription-tab,usage-tab,branding-tab,settings-tab,users-tab,
+audit-logs-tab}.tsx`.
+
+### Files modified
+
+`_components/format.ts` (+`humanizeEnum`, `+formatRelativeTime`),
+`lib/api/organization.ts` (+`createDepartment`/`updateDepartment`/
+`deactivateDepartment`), `page.tsx` (full rewrite - section state replaces
+tab state, `?section=` replaces `?tab=`).
+
+### Honest gaps
+
+See **TD-0078** - People's Roles/Invitations/Teams and most of Security
+(password policy/sessions/2FA/API keys/connected apps) and part of Brand
+(favicon/invoice-PDF theming) are disclosed "not available" cards, not
+fabricated controls. Nothing here regressed; these are net-new IA slots for
+features that never existed in this repo.
+
+---
+
 ## 2026-08-06 - Design System V2, Phase 2: every feature page migrated - complete
 
 Instruction: redesign the frontend into a premium enterprise-SaaS look, in two

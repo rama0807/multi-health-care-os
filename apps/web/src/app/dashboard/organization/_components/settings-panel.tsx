@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { SectionHeader } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
@@ -42,7 +43,7 @@ const KNOWN_FEATURE_FLAGS = [
   { key: 'smsNotifications', label: 'SMS notifications' },
 ]
 
-export function SettingsTab() {
+export function SettingsPanel() {
   const { toast } = useToast()
   const { hasPermission } = useAuth()
   const queryClient = useQueryClient()
@@ -131,7 +132,12 @@ export function SettingsTab() {
   ]
 
   return (
-    <div className="space-y-4 pt-4">
+    <div className="space-y-4">
+      <SectionHeader
+        title="Operational settings"
+        description="Locale, tax, working hours and feature flags shared across every hospital in this organization."
+      />
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <Card>
           <CardHeader>

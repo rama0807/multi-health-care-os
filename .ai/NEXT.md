@@ -3,6 +3,31 @@
 > The next logical task(s) to pick up. Replaced (not appended) whenever a
 > milestone completes - this file always describes "start here," not history.
 
+## Reports & Analytics executive-dashboard redesign - complete (2026-08-06). No active task.
+
+`/dashboard/reports` was redesigned from three separate pages (executive
+dashboards / operational reports / builder) into one hub - a `SegmentedNav`
+across ten sections, one shared filter bar, per-section export, and KPI
+trend arrows wherever the backend already computes a period comparison. See
+`PROGRESS.md`'s matching entry for the full list. `/dashboard/reports/
+operational` no longer exists - its content lives in the new hub sections.
+Do not restyle or re-architect this module again without a fresh
+instruction. Radiology and Staff analytics remain reachable only through
+`/dashboard/reports/builder`'s catalog, not a top-level hub section - a
+deliberate scope choice (not named in this redesign's instruction), not an
+oversight; promoting them is a small follow-up if ever asked for.
+
+## Organization module IA redesign - complete (2026-08-06). No active task.
+
+The Organization dashboard (`/dashboard/organization`) was redesigned from a
+flat 8-tab layout into an enterprise workspace IA (header + segmented nav +
+seven sections: Overview/Workspace/People/Subscription/Brand/Security/
+Audit) per explicit instruction. See `PROGRESS.md`'s matching entry and
+**TD-0078** for exactly what's real vs. honestly disclosed as unavailable
+(People's Roles/Invitations/Teams; most of Security; Brand's favicon/
+invoice-PDF theming). Do not restyle or re-architect this module again
+without a fresh instruction.
+
 ## Design System V2 - both phases are complete. There is no active frontend-redesign task.
 
 **Phase 1 (reusable UI foundation) and Phase 2 (every feature page migrated

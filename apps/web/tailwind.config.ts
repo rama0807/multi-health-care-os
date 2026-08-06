@@ -213,14 +213,20 @@ const config: Config = {
       /**
        * A named z-index scale. Ad-hoc `z-50` everywhere is how overlays end up
        * fighting; these are the only layers that exist.
+       *
+       * `dropdown` sits above `modal`, not below it: Select/DropdownMenu
+       * content is portaled to `document.body` and is very often opened from
+       * *inside* an already-open Dialog/Sheet (a "Doctor" select in a form
+       * dialog, an export menu in a page toolbar next to a modal) - it must
+       * outrank the modal it's nested in, or it renders visually behind it.
        */
       zIndex: {
         base: '0',
         raised: '10',
         sticky: '20',
-        dropdown: '30',
-        overlay: '40',
-        modal: '50',
+        overlay: '30',
+        modal: '40',
+        dropdown: '50',
         toast: '60',
         tooltip: '70',
       },

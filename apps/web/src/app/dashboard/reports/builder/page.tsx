@@ -164,14 +164,9 @@ export default function ReportBuilderPage() {
       title="Report Builder"
       description="Pick a report, set filters, then export or save it for reuse."
       actions={
-        <>
-          <Button asChild variant="outline">
-            <Link href="/dashboard/reports">Dashboards</Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href="/dashboard/reports/operational">Operational reports</Link>
-          </Button>
-        </>
+        <Button asChild variant="outline">
+          <Link href="/dashboard/reports">Back to dashboards</Link>
+        </Button>
       }
     >
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">

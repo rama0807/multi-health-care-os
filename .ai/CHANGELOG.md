@@ -5,6 +5,27 @@
 
 ## [Unreleased]
 
+### Changed
+- **Reports & Analytics redesigned into an executive-dashboard hub** - one
+  page, a segmented nav across ten sections (Overview, Revenue, Patients,
+  Doctors, OPD/IPD, Bed Occupancy, Laboratory, Pharmacy, Insurance,
+  Inventory), and a single shared date-range/group-by/doctor filter bar
+  instead of three separate pages each resetting its own filters. KPI tiles
+  now show a period-over-period trend wherever the underlying report already
+  computes one; a new per-section export menu downloads that domain's
+  registered reports (CSV/XLSX/PDF) without a trip to the Report Builder.
+  The old `/dashboard/reports/operational` route is retired - its content is
+  now first-class hub sections. Frontend only - no backend, API, route,
+  permission or business-logic change. See `PROGRESS.md`.
+- **Organization module redesigned into an enterprise workspace IA** - a
+  rich header (identity, live status, subscription/members/storage/last-
+  activity, quick actions) and a premium segmented nav replace the old flat
+  8-tab layout. Seven sections: Overview (now a real landing dashboard),
+  Workspace (Hospitals + a newly-wired **Departments** panel + Settings),
+  People, Subscription (absorbs the old Usage tab), Brand, a **new Security**
+  section, and Audit (gained a CSV export). Frontend only - no backend, API,
+  route, permission or business-logic change. See `PROGRESS.md` and TD-0078.
+
 ### Fixed
 - **Stale refresh-token cookie caused an infinite `/dashboard` ⇄ `/login`
   redirect loop for a user who "was already logged in."** `middleware.ts`

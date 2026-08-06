@@ -1,139 +1,163 @@
 'use client'
 
 import type { ExecutiveDashboardKey, ReportFilterQuery } from '@medicore/types'
-import { useQuery } from '@tanstack/react-query'
+import {
+  Activity,
+  BedDouble,
+  Boxes,
+  FlaskConical,
+  Landmark,
+  LayoutDashboard,
+  Pill,
+  ShieldCheck,
+  Stethoscope,
+  Users,
+} from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 
 import { PageLayout } from '@/components/layout/page-layout'
 import { Button } from '@/components/ui/button'
-import { EmptyState } from '@/components/ui/empty-state'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { StatCardSkeleton } from '@/components/ui/skeleton'
-import { StatCardGrid } from '@/components/ui/stat-card'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { listDepartments } from '@/lib/api/hospitals'
-import { getExecutiveDashboard } from '@/lib/api/reports'
+import { SegmentedNav } from '@/components/ui/segmented-nav'
 
-import { ChartCard } from './_components/charts'
-import { DashboardDataTable, KpiTile, ReportFilters, defaultFilters } from './_components/report-filters'
+import { ModuleSection } from './_components/module-section'
+import type { ModuleView } from './_components/module-section'
+import { OverviewSection } from './_components/overview-section'
+import { ReportFilters, defaultFilters } from './_components/report-filters'
+import {
+  loadBedOccupancy,
+  loadDoctors,
+  loadInsurance,
+  loadInventory,
+  loadLaboratory,
+  loadOpdIpdTrends,
+  loadPatients,
+  loadPharmacy,
+  loadRevenue,
+} from './_components/report-sections'
+import { SectionExportMenu } from './_components/section-export-menu'
 
-const DASHBOARDS: Array<{ key: ExecutiveDashboardKey; label: string }> = [
-  { key: 'ceo', label: 'CEO' },
-  { key: 'medical-director', label: 'Medical Director' },
-  { key: 'operations', label: 'Operations' },
-  { key: 'finance', label: 'Finance' },
-  { key: 'department', label: 'Department' },
-]
+const SECTIONS = [
+  { value: 'overview', label: 'Overview', icon: LayoutDashboard },
+  { value: 'revenue', label: 'Revenue', icon: Landmark },
+  { value: 'patients', label: 'Patients', icon: Users },
+  { value: 'doctors', label: 'Doctors', icon: Stethoscope },
+  { value: 'opd-ipd', label: 'OPD / IPD', icon: Activity },
+  { value: 'bed-occupancy', label: 'Bed Occupancy', icon: BedDouble },
+  { value: 'laboratory', label: 'Laboratory', icon: FlaskConical },
+  { value: 'pharmacy', label: 'Pharmacy', icon: Pill },
+  { value: 'insurance', label: 'Insurance', icon: ShieldCheck },
+  { value: 'inventory', label: 'Inventory', icon: Boxes },
+] as const
+
+type SectionKey = (typeof SECTIONS)[number]['value']
+
+interface ModuleConfig {
+  description: string
+  exportModule: string | string[]
+  filterControls: Array<'groupBy' | 'doctorId' | 'departmentId'>
+  load: (filters: ReportFilterQuery) => Promise<ModuleView>
+}
+
+const MODULE_CONFIG: Record<Exclude<SectionKey, 'overview'>, ModuleConfig> = {
+  revenue: {
+    description: 'Invoiced revenue, collections, outstanding balances and GST - straight from the billing ledger.',
+    exportModule: 'Billing',
+    filterControls: ['groupBy'],
+    load: loadRevenue,
+  },
+  patients: {
+    description: 'Registrations, demographics and how many of them were active in the period.',
+    exportModule: 'Patients',
+    filterControls: ['groupBy'],
+    load: loadPatients,
+  },
+  doctors: {
+    description: 'Consultation load, OPD/IPD split and appointment utilisation, doctor by doctor.',
+    exportModule: ['Doctors', 'Appointments'],
+    filterControls: ['groupBy', 'doctorId'],
+    load: loadDoctors,
+  },
+  'opd-ipd': {
+    description: 'Outpatient appointment volume alongside inpatient admissions - two flows, one period.',
+    exportModule: ['Appointments', 'IPD'],
+    filterControls: ['groupBy', 'doctorId'],
+    load: loadOpdIpdTrends,
+  },
+  'bed-occupancy': {
+    description: 'Live bed occupancy and ward-by-ward utilisation across the inpatient estate.',
+    exportModule: 'IPD',
+    filterControls: ['groupBy'],
+    load: loadBedOccupancy,
+  },
+  laboratory: {
+    description: 'Order volume, turnaround time and revenue by test category.',
+    exportModule: 'Laboratory',
+    filterControls: ['groupBy', 'doctorId'],
+    load: loadLaboratory,
+  },
+  pharmacy: {
+    description: 'Dispensing volume, top medicines and current stock alerts.',
+    exportModule: 'Pharmacy',
+    filterControls: ['groupBy'],
+    load: loadPharmacy,
+  },
+  insurance: {
+    description: 'Claims filed, settlement performance and how each payer compares.',
+    exportModule: 'Insurance',
+    filterControls: ['groupBy'],
+    load: loadInsurance,
+  },
+  inventory: {
+    description: 'Consumption value, purchasing activity and vendor performance.',
+    exportModule: 'Inventory',
+    filterControls: ['groupBy'],
+    load: loadInventory,
+  },
+}
 
 /**
- * Executive dashboards (Milestone 17 Checkpoints 17.2/17.4).
+ * Reports & Analytics hub (Milestone 17 redesign).
  *
- * Every tile, chart and table on this page is rendered from what the API
- * returned - the page chooses no metrics of its own, so a change to a
- * dashboard's composition needs no frontend change.
+ * One page, one shared date range, ten sections - the same information
+ * architecture pattern the Organization workspace uses (header + segmented
+ * nav + section body). Every section renders only what the API returned;
+ * nothing here invents a metric the backend doesn't already compute. The
+ * former `/operational` route is retired - its module-by-module reports now
+ * live here as first-class sections instead of a second page to discover.
  */
-export default function ReportsDashboardPage() {
-  const [active, setActive] = useState<ExecutiveDashboardKey>('ceo')
+export default function ReportsPage() {
+  const [section, setSection] = useState<SectionKey>('overview')
+  const [perspective, setPerspective] = useState<ExecutiveDashboardKey>('ceo')
   const [filters, setFilters] = useState<ReportFilterQuery>(defaultFilters())
 
-  const departmentsQuery = useQuery({
-    queryKey: ['reports', 'departments'],
-    queryFn: () => listDepartments(),
-    enabled: active === 'department',
-  })
-  const departments = departmentsQuery.data ?? []
-
-  // The department dashboard is the one view that cannot render without a
-  // department, so it is only requested once one is chosen.
-  const ready = active !== 'department' || Boolean(filters.departmentId)
-
-  const dashboardQuery = useQuery({
-    queryKey: ['reports', 'dashboard', active, filters],
-    queryFn: () => getExecutiveDashboard(active, filters),
-    enabled: ready,
-  })
-  const dashboard = dashboardQuery.data
+  const moduleConfig = section === 'overview' ? null : MODULE_CONFIG[section]
 
   return (
     <PageLayout
       title="Reports & Analytics"
-      description="Executive dashboards built from live operational data."
+      description="Executive dashboards and module analytics, built entirely from live operational data."
       actions={
-        <>
-          <Button asChild variant="outline">
-            <Link href="/dashboard/reports/operational">Operational reports</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/dashboard/reports/builder">Report builder</Link>
-          </Button>
-        </>
+        <Button asChild variant="outline">
+          <Link href="/dashboard/reports/builder">Custom reports</Link>
+        </Button>
       }
     >
-      <Tabs value={active} onValueChange={(next) => setActive(next as ExecutiveDashboardKey)}>
-        <TabsList>
-          {DASHBOARDS.map((dash) => (
-            <TabsTrigger key={dash.key} value={dash.key}>
-              {dash.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+      <SegmentedNav items={SECTIONS} value={section} onChange={setSection} />
 
-      <ReportFilters value={filters} onChange={setFilters} show={['groupBy']}>
-        {active === 'department' && (
-          <Select
-            value={filters.departmentId ?? ''}
-            onValueChange={(next) => setFilters({ ...filters, departmentId: next })}
-          >
-            <SelectTrigger className="h-9 w-[220px]">
-              <SelectValue placeholder="Select a department" />
-            </SelectTrigger>
-            <SelectContent>
-              {departments.map((department) => (
-                <SelectItem key={department.id} value={department.id}>
-                  {department.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+      <ReportFilters value={filters} onChange={setFilters} show={moduleConfig?.filterControls ?? ['groupBy']}>
+        {moduleConfig && <SectionExportMenu module={moduleConfig.exportModule} filters={filters} />}
       </ReportFilters>
 
-      {!ready ? (
-        <EmptyState compact title="Select a department to view its dashboard" />
-      ) : dashboardQuery.isLoading ? (
-        <StatCardSkeleton count={4} />
-      ) : dashboardQuery.isError ? (
-        <EmptyState variant="error" title="Could not load this dashboard" description={dashboardQuery.error.message} />
-      ) : dashboard ? (
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-lg font-semibold text-foreground">{dashboard.title}</h2>
-            <p className="text-xs text-muted-foreground">
-              {dashboard.period.from} to {dashboard.period.to} · {dashboard.period.days} days · grouped by{' '}
-              {dashboard.period.groupBy}
-            </p>
-          </div>
-
-          <StatCardGrid columns={4}>
-            {dashboard.kpis.map((kpi) => (
-              <KpiTile key={kpi.key} kpi={kpi} />
-            ))}
-          </StatCardGrid>
-
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-            {dashboard.charts.map((chart) => (
-              <ChartCard key={chart.key} chart={chart} />
-            ))}
-          </div>
-
-          <div className="space-y-4">
-            {dashboard.tables.map((table) => (
-              <DashboardDataTable key={table.key} table={table} />
-            ))}
-          </div>
-        </div>
+      {section === 'overview' ? (
+        <OverviewSection
+          perspective={perspective}
+          onPerspectiveChange={setPerspective}
+          filters={filters}
+          onFiltersChange={setFilters}
+        />
+      ) : moduleConfig ? (
+        <ModuleSection key={section} sectionKey={section} description={moduleConfig.description} filters={filters} load={moduleConfig.load} />
       ) : null}
     </PageLayout>
   )

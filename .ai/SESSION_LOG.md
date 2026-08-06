@@ -6,6 +6,156 @@
 
 ---
 
+## Session - 2026-08-06 - Reports & Analytics: executive-dashboard redesign
+
+### What was completed
+
+Explicit instruction: redesign Reports & Analytics into an executive
+dashboard (Metabase/Power BI/Stripe Dashboard-style) covering Executive
+overview, Revenue, Patients, Doctor productivity, OPD/IPD trends,
+Laboratory, Pharmacy, Insurance, Inventory and Bed occupancy - reusing
+existing endpoints/components only, no invented data, honest empty states
+for anything missing, better filters/exports/loading/empty states, and
+period-over-period comparison where the data already supports it. No
+backend/API/database/routing/permission/business-logic change, by
+instruction.
+
+Milestone 17 (2026-08-05) had already built every metric this instruction
+named - the gap was purely IA: three separate pages (`/dashboard/reports`
+executive dashboards, `/operational` eleven module tabs, `/builder` custom
+reports), each with its own reset-per-tab date filter, and no export path
+except through the Builder. Consolidated into one hub at
+`/dashboard/reports`: a `SegmentedNav` (promoted from the Organization
+module to `components/ui/segmented-nav.tsx`, since it was already fully
+generic) across ten sections, one shared date-range/group-by/doctor filter
+bar driving whichever section is active, a per-section `SectionExportMenu`
+(CSV/XLSX/PDF straight from the filter bar, reusing the existing builder
+export endpoint), trend arrows on every KPI where the underlying report
+already exposes a `*Comparison` field (not fabricated where it doesn't),
+and a `ChartCardSkeleton` for shaped loading states. `/operational` is
+retired - its content is now first-class hub sections. Radiology and Staff
+analytics (not named in this instruction's scope) were not promoted to
+top-level sections but remain fully reachable, unchanged, through the
+Report Builder's catalog - nothing was deleted.
+
+Full detail in `PROGRESS.md`'s matching entry.
+
+### Files modified
+
+See `PROGRESS.md`'s entry for the complete added/removed/modified list.
+Net: 5 new files under `dashboard/reports/_components/`, 1 file moved
+(`segmented-nav.tsx` → `components/ui/`), 1 route deleted
+(`dashboard/reports/operational/`), `page.tsx` rewritten, `builder/page.tsx`
+and `charts.tsx` lightly touched, 2 Organization files updated for the
+`SegmentedNav` import path only.
+
+### Architectural decisions made
+
+None requiring a new ADR - this is a presentation-only IA change over an
+already-complete Milestone 17 backend, the same category as the
+Organization module's redesign earlier the same day. No `DECISIONS.md`
+entry needed.
+
+### Known issues
+
+None new. Not browser-verified - no browser tool available this session
+(consistent with every other UI-only pass in this repo lacking one).
+
+### Recommended next task
+
+None queued automatically. This closes the loop on the "premium enterprise
+UI" instructions given across this project's later sessions - every module
+now renders through Design System V2 primitives, and Reports/Organization
+both have a redesigned, non-flat-tabs IA. If further work is wanted here,
+the two genuine backend-shaped gaps this pass did *not* touch (correctly,
+per instruction) are: no report exposes a `*Comparison` field beyond the
+four listed above (doctors/laboratory/pharmacy/insurance/inventory/bed-
+occupancy KPIs render with no trend), and Radiology/Staff analytics have no
+dedicated hub section. Neither should be started without a fresh
+instruction, per `CLAUDE.md`.
+
+### Estimated project completion
+
+Unchanged in feature terms - no HMS functionality added, no business rule
+changed, no backend touched. Frontend presentation layer: Reports &
+Analytics moves from "functionally complete, flat 3-page IA" to
+"functionally complete, redesigned single-hub IA" - the same maturity step
+the Organization module took earlier the same day.
+
+---
+
+## Session - 2026-08-06 - Organization module: information-architecture redesign
+
+### What was completed
+
+Explicit instruction: the Organization page "feels like a generic admin
+panel" - redesign its information architecture, hierarchy, navigation and
+spacing into an enterprise workspace (Stripe/Linear/Vercel/GitHub
+Enterprise/Atlassian Admin), explicitly not a restyle of the existing flat
+tabs. Frontend only, by instruction.
+
+Replaced the 8-tab layout with: a rich `OrgHeader` (logo/name/live status,
+a metrics strip of real subscription/members/storage/last-activity numbers,
+a quick-actions menu) + a new `SegmentedNav` control + seven sections -
+Overview (rebuilt as a real landing dashboard), Workspace (Hospitals +
+a newly-wired Departments panel + Settings, each behind its own sub-nav),
+People (admin roster + honestly-disclosed Roles/Invitations/Teams
+placeholders), Subscription (absorbs the old Usage tab - plan, renewal,
+usage-vs-limit bars, storage breakdown, AI usage, API chart), Brand (logo/
+theme/email branding + disclosed favicon/invoice-PDF gaps), a **new**
+Security section (one real Authentication card, five honestly-disclosed
+"not available" cards - no fake toggles), and Audit (unchanged + a new CSV
+export). Full detail in `PROGRESS.md`'s matching entry.
+
+### Files modified
+
+Added: `apps/web/src/app/dashboard/organization/_components/{org-header,
+segmented-nav,overview-section,workspace-section,hospitals-panel,
+departments-panel,settings-panel,people-section,subscription-section,
+brand-section,security-section,audit-section}.tsx`.
+Removed: the eight superseded `_components/*-tab.tsx` files.
+Modified: `_components/format.ts`, `lib/api/organization.ts` (added
+`createDepartment`/`updateDepartment`/`deactivateDepartment` - wiring
+pre-existing, previously-unused `/departments` endpoints), `page.tsx`
+(full rewrite).
+
+### Architectural decisions made
+
+None requiring a new ADR - this is a presentation-layer reorganization, the
+same category as ADR-0031's Design System V2 passes. The one judgment call
+worth recording here rather than in `DECISIONS.md`: the user's example IA
+named several sub-features with zero backend support (People's Roles/
+Invitations/Teams; Security's password policy/sessions/2FA/API keys/
+connected apps; Brand's favicon/invoice-PDF theming). Per `CLAUDE.md`'s
+prohibition on faking auth/business logic, each renders as a clearly
+labeled, non-interactive "Not available" card stating what's genuinely true
+today, rather than a control wired to nothing. Recorded as **TD-0078**.
+
+### Known issues
+
+- TD-0078 (new) - the disclosed gaps above.
+- TD-0044 (unchanged) - not browser-verified this session, no browser tool
+  available.
+- TD-0074/TD-0075 (unchanged, correctly out of scope - both need a
+  backend/query change, this session was frontend-only).
+
+### Recommended next task
+
+Nothing is queued automatically. If a fresh instruction asks for it: close
+TD-0078 piece by piece (custom roles is the cheapest - extends the existing
+`RolesService`/`RolePermission` join table with no schema change), or pick
+up TD-0074/TD-0076 per `NEXT.md`. Do not restyle or re-architect the
+Organization module again without a fresh instruction - this pass is
+complete.
+
+### Estimated project completion
+
+Unchanged in feature terms - presentation-layer reorganization only, no HMS
+functionality added or changed, no business rule touched. `MODULE_STATUS.md`
+already reflects the redesign under the Organization Dashboard row.
+
+---
+
 ## Session - 2026-08-06 - Design System V2, Phase 3: shared component visual polish
 
 ### What was completed

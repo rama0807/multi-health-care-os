@@ -94,6 +94,13 @@ function addDays(dateStr: string, days: number): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
+/** `y-m-d` local components, not `new Date(dateStr)` directly - the latter parses as UTC
+ * midnight and can print the wrong day in a timezone behind UTC. */
+function formatFriendlyDate(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
 /**
  * Only the primary forward transition is surfaced as a one-click button -
  * the state machine (see ADR-0006 / AppointmentsService.ALLOWED_TRANSITIONS)
@@ -557,7 +564,12 @@ function BookAppointmentDialog({
   const { toast } = useToast()
   const [patient, setPatient] = useState<Patient | null>(null)
   const [doctorId, setDoctorId] = useState('')
-  const [date, setDate] = useState(defaultDate)
+  // Starts unselected, not pre-filled with `defaultDate` - the slot grid below is
+  // gated on a date being chosen, so a pre-filled value would make slots appear
+  // without the user ever consciously picking a day. `defaultDate` still bounds
+  // the picker's `min` so a booking can't be made for a day before the one the
+  // page was viewing.
+  const [date, setDate] = useState('')
   const [duration, setDuration] = useState(15)
   const [type, setType] = useState<string>(AppointmentType.OPD)
   const [chiefComplaint, setChiefComplaint] = useState('')
@@ -610,7 +622,7 @@ function BookAppointmentDialog({
   function reset() {
     setPatient(null)
     setDoctorId('')
-    setDate(defaultDate)
+    setDate('')
     setDuration(15)
     setType(AppointmentType.OPD)
     setChiefComplaint('')
@@ -727,7 +739,7 @@ function BookAppointmentDialog({
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">Start date</label>
-                  <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                  <Input type="date" min={defaultDate} value={date} onChange={(e) => setDate(e.target.value)} />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">Time</label>
@@ -777,12 +789,13 @@ function BookAppointmentDialog({
               </p>
             </>
           ) : (
-            <>
+            <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">Date</label>
                   <Input
                     type="date"
+                    min={defaultDate}
                     value={date}
                     onChange={(e) => {
                       setDate(e.target.value)
@@ -805,10 +818,17 @@ function BookAppointmentDialog({
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">Available slots</label>
+              {/* Gated on doctor *and* date, in that order, so the empty-state copy always
+                  names whichever step the user hasn't completed yet - the slot grid should
+                  never appear to float free of the selection that produced it. */}
+              <div className="space-y-1.5 border-t pt-3">
+                <label className="text-sm font-medium">
+                  {doctorId && date ? `Available slots on ${formatFriendlyDate(date)}` : 'Available slots'}
+                </label>
                 {!doctorId ? (
                   <p className="text-xs text-muted-foreground">Select a doctor to see available slots.</p>
+                ) : !date ? (
+                  <p className="text-xs text-muted-foreground">Select a date to see available slots.</p>
                 ) : slotsQuery.isLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                 ) : slotsQuery.data?.length ? (
@@ -832,7 +852,7 @@ function BookAppointmentDialog({
                   <p className="text-xs text-muted-foreground">No slots available for this doctor on this date.</p>
                 )}
               </div>
-            </>
+            </div>
           )}
 
           <div className="space-y-1.5">
@@ -849,6 +869,7 @@ function BookAppointmentDialog({
             disabled={
               !patient ||
               !doctorId ||
+              !date ||
               (isRecurring ? !time || occurrences < 2 : !selectedSlot) ||
               bookMutation.isPending ||
               recurringMutation.isPending

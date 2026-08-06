@@ -17,6 +17,7 @@ import {
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { SectionHeader } from '@/components/ui/page-header'
 import { TableSkeleton } from '@/components/ui/skeleton'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -36,7 +37,7 @@ interface DepartmentDraft {
   code: string
 }
 
-export function HospitalsTab() {
+export function HospitalsPanel() {
   const { toast } = useToast()
   const { hasPermission } = useAuth()
   const queryClient = useQueryClient()
@@ -146,11 +147,12 @@ export function HospitalsTab() {
     !adminEmail.trim() || (Boolean(adminFirstName.trim()) && Boolean(adminLastName.trim()))
 
   return (
-    <div className="space-y-4 pt-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          Hospitals belonging to this organization. {hospitals.length} total.
-        </p>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <SectionHeader
+          title="Hospitals"
+          description={`${hospitals.length} hospital${hospitals.length === 1 ? '' : 's'} in this organization.`}
+        />
         {canCreate && (
           <Dialog
             open={wizardOpen}

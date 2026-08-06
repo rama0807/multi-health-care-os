@@ -21,6 +21,7 @@ import {
 
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
+import { Skeleton } from '@/components/ui/skeleton'
 
 /**
  * Chart primitives for the reports module (Milestone 17 Checkpoint 17.4).
@@ -66,6 +67,20 @@ function formatBucket(value: string): string {
   if (!match) return value
   const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
   return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+}
+
+/**
+ * A chart's loading placeholder - same card shell and footprint as
+ * `<ChartCard>` so nothing shifts underneath the reader once real data
+ * arrives.
+ */
+export function ChartCardSkeleton({ height = 240 }: { height?: number }) {
+  return (
+    <Card className="p-4" role="status" aria-label="Loading chart">
+      <Skeleton className="mb-3 h-4 w-40" />
+      <Skeleton style={{ height }} className="w-full" />
+    </Card>
+  )
 }
 
 export interface ChartCardProps {

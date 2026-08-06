@@ -31,6 +31,27 @@ export function humanizeAction(action: string): string {
   return action.replace(/[._]/g, ' ')
 }
 
+/** "DIAGNOSTIC_CENTER" → "Diagnostic center" */
+export function humanizeEnum(value: string): string {
+  const words = value.replace(/_/g, ' ').toLowerCase()
+  return words.charAt(0).toUpperCase() + words.slice(1)
+}
+
+/** "2026-08-06T10:00:00Z" → "2h ago" / "3d ago" / a plain date once it's old. */
+export function formatRelativeTime(value: string | Date | null | undefined): string {
+  if (!value) return 'Never'
+  const date = new Date(value)
+  const diffMs = Date.now() - date.getTime()
+  const minutes = Math.floor(diffMs / 60_000)
+  if (minutes < 1) return 'Just now'
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}d ago`
+  return date.toLocaleDateString()
+}
+
 /**
  * Renders a usage figure against its plan limit. A null limit means the plan
  * negotiated no cap - shown as "unlimited" rather than as an unbounded bar, so

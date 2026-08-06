@@ -2191,3 +2191,53 @@ on `StatusBadge`, not scope creep. Three status keys were added to the shared
 No backend/API/route/business-logic/Prisma-schema file was touched, and no
 browser verification or screenshots were taken - both by the same explicit
 instruction that started Phase 2, consistent with Phase 1's precedent.
+
+---
+
+## TD-0078: Organization workspace's People/Security/Brand sections disclose real gaps rather than fabricating controls
+
+Opened: 2026-08-06
+Status: Open
+Severity: Low
+
+**Description:** The Organization module's information-architecture redesign
+(2026-08-06) surfaced the IA the user asked for - Overview/Workspace/People/
+Subscription/Brand/Security/Audit - but three of those sections name
+sub-features with no backing API anywhere in this repo:
+
+- **People:** custom Roles, email Invitations, and Teams. Access today is
+  still the seeded role catalog only (`RolesService`); there is no per-org
+  custom-role composer, no invite-by-email flow, and no cross-hospital team
+  grouping.
+- **Security:** Password policy, Sessions (view/revoke), Two-factor
+  authentication, API keys, and Connected apps. Only "Authentication" (email +
+  password over JWT, with the pre-existing per-account lockout in
+  `AuthService`) is real. None of the other five has any backend model,
+  endpoint, or config surface.
+- **Brand:** Favicon and per-document (invoice/PDF) logo-and-colour theming.
+  Only the logo, three theme colours, and the three email-branding text fields
+  (`OrganizationBranding`) are real and editable.
+
+Rather than build toggles/forms that call no real endpoint (which
+`CLAUDE.md` explicitly forbids for auth-adjacent logic - "never fake or stub
+... auth logic to make it work"), each is rendered as a clearly labeled,
+non-interactive "Not available" card stating what's genuinely true today.
+
+**Impact:** None - nothing regressed; these are net-new IA slots for
+features that never existed, disclosed rather than hidden or faked.
+
+**Resolution plan:** Build each capability for real once there's a fresh
+instruction to do so:
+- Custom roles: extend `RolesService` with a per-org role composer over the
+  existing `RolePermission` join table - no schema change needed.
+- Invitations: a new `Invitation` model + token-based accept flow, reusing
+  `EmailService` the way password reset already does.
+- Sessions/API keys/2FA/Connected apps: each is a genuinely new auth
+  primitive (refresh-token session registry, per-org password policy config,
+  TOTP secret + backup codes, an API-key model with hashed secrets, an OAuth
+  client registry) - treat as credential/scope-blocked feature work, not a
+  quick add, the same category as TD-0015/TD-0027's disclosed-not-faked
+  precedent.
+- Favicon/invoice-PDF branding: a `faviconUrl` column mirroring `logo`, and
+  threading `Organization.branding` colours into the existing PDF generators
+  (`billing-invoice-pdf.ts` etc.) instead of only their name/address/GSTIN.

@@ -1,4 +1,5 @@
 import type {
+  CreateDepartmentDto,
   Department,
   Hospital,
   OnboardHospitalDto,
@@ -12,6 +13,7 @@ import type {
   UpdateOrganizationBrandingDto,
   UpdateOrganizationDto,
   UpdateOrganizationSettingsDto,
+  UpdateDepartmentDto,
 } from '@medicore/types'
 
 import { apiClient } from './client'
@@ -198,5 +200,20 @@ export async function listOrganizationDepartments(hospitalId?: string): Promise<
   const { data } = await apiClient.get<{ data: Department[] }>('/departments', {
     params: hospitalId ? { hospitalId } : undefined,
   })
+  return data.data
+}
+
+export async function createDepartment(dto: CreateDepartmentDto): Promise<Department> {
+  const { data } = await apiClient.post<{ data: Department }>('/departments', dto)
+  return data.data
+}
+
+export async function updateDepartment(id: string, dto: UpdateDepartmentDto): Promise<Department> {
+  const { data } = await apiClient.patch<{ data: Department }>(`/departments/${id}`, dto)
+  return data.data
+}
+
+export async function deactivateDepartment(id: string): Promise<Department> {
+  const { data } = await apiClient.delete<{ data: Department }>(`/departments/${id}`)
   return data.data
 }

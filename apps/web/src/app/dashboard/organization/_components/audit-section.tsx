@@ -1,23 +1,50 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
+import { Download } from 'lucide-react'
 import { useState } from 'react'
 
+import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { SectionHeader } from '@/components/ui/page-header'
 import { Pagination } from '@/components/ui/pagination'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { TableSkeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { getAuditFilterOptions, listAuditLogs } from '@/lib/api/organization'
+import { getAuditFilterOptions, listAuditLogs, type AuditLogRow } from '@/lib/api/organization'
 
 import { formatDateTime, humanizeAction } from './format'
 
 const ANY = '__any__'
 
-export function AuditLogsTab() {
+function exportRowsToCsv(rows: AuditLogRow[]) {
+  const header = ['When', 'Action', 'Resource', 'Resource ID', 'By', 'IP']
+  const lines = rows.map((row) =>
+    [
+      formatDateTime(row.createdAt),
+      humanizeAction(row.action),
+      row.resource,
+      row.resourceId ?? '',
+      row.userName ?? row.userEmail ?? 'System',
+      row.ipAddress ?? '',
+    ]
+      .map((value) => `"${String(value).replace(/"/g, '""')}"`)
+      .join(','),
+  )
+  const csv = [header.join(','), ...lines].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `audit-log-${new Date().toISOString().slice(0, 10)}.csv`
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+export function AuditSection() {
   const [page, setPage] = useState(1)
   const [action, setAction] = useState(ANY)
   const [resource, setResource] = useState(ANY)
@@ -56,7 +83,18 @@ export function AuditLogsTab() {
   }
 
   return (
-    <div className="space-y-4 pt-4">
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <SectionHeader
+          title="Audit"
+          description="Every action recorded against this organization, append-only and tenant-scoped."
+        />
+        <Button variant="outline" size="sm" disabled={rows.length === 0} onClick={() => exportRowsToCsv(rows)}>
+          <Download className="mr-1.5 size-4" aria-hidden="true" />
+          Export page (CSV)
+        </Button>
+      </div>
+
       <Card className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-5">
         <div className="space-y-1">
           <Label htmlFor="audit-search">Search</Label>
@@ -163,7 +201,8 @@ export function AuditLogsTab() {
 
       <p className="text-xs text-muted-foreground">
         Audit entries are append-only and scoped to this organization - no other tenant&apos;s
-        activity is visible here.
+        activity is visible here. Export writes the current filtered page (up to 25 rows), not the
+        full history.
       </p>
     </div>
   )

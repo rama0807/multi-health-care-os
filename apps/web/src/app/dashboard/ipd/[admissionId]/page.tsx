@@ -7,10 +7,12 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useState } from 'react'
 
-import { Badge } from '@/components/ui/badge'
+import { PageLayout } from '@/components/layout/page-layout'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { PageHeaderMeta } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
@@ -44,13 +46,6 @@ function formatEnumLabel(value: string): string {
 
 function formatDateTime(value: string | Date): string {
   return new Date(value).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
-}
-
-const ADMISSION_STATUS_BADGE: Record<AdmissionStatus, 'success' | 'secondary' | 'destructive' | 'outline'> = {
-  ADMITTED: 'success',
-  DISCHARGED: 'secondary',
-  ABSCONDED: 'destructive',
-  CANCELLED: 'outline',
 }
 
 export default function AdmissionDetailPage() {
@@ -122,9 +117,15 @@ export default function AdmissionDetailPage() {
 
   if (admissionQuery.isLoading || !admission) {
     return (
-      <div className="flex h-40 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
+      <PageLayout
+        breadcrumbs={[{ label: 'IPD', href: '/dashboard/ipd' }, { label: 'Admissions', href: '/dashboard/ipd/admissions' }, { label: '…' }]}
+        title="…"
+        loading
+      >
+        <div className="flex h-40 items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </PageLayout>
     )
   }
 
@@ -139,35 +140,38 @@ export default function AdmissionDetailPage() {
   ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-        <div>
-          <Link href="/dashboard/ipd/admissions" className="text-xs text-muted-foreground hover:underline">
-            ← Back to admissions
-          </Link>
-          <h1 className="mt-1 text-xl font-semibold text-foreground">
-            {admission.admissionNumber} <Badge variant={ADMISSION_STATUS_BADGE[admission.status]}>{formatEnumLabel(admission.status)}</Badge>
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {admission.patient.fullName} <span className="font-mono text-xs">({admission.patient.uhid})</span>
-          </p>
-        </div>
-        {isActive && canUpdate && (
-          <Button variant="destructive" size="sm" onClick={() => setCancelOpen(true)}>
-            Cancel admission
-          </Button>
-        )}
-      </div>
-
-      <Tabs defaultValue="overview">
-        <TabsList className="flex-wrap">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="nursing">Nursing</TabsTrigger>
-          <TabsTrigger value="orders">Orders & Tasks</TabsTrigger>
-          <TabsTrigger value="mar">MAR</TabsTrigger>
-          <TabsTrigger value="discharge">Discharge</TabsTrigger>
-        </TabsList>
-
+    <Tabs defaultValue="overview">
+      <PageLayout
+        breadcrumbs={[
+          { label: 'IPD', href: '/dashboard/ipd' },
+          { label: 'Admissions', href: '/dashboard/ipd/admissions' },
+          { label: admission.admissionNumber },
+        ]}
+        title={admission.admissionNumber}
+        badge={<StatusBadge status={admission.status} />}
+        meta={
+          <PageHeaderMeta label="Patient">
+            {admission.patient.fullName} ({admission.patient.uhid})
+          </PageHeaderMeta>
+        }
+        actions={
+          isActive &&
+          canUpdate && (
+            <Button variant="destructive" size="sm" onClick={() => setCancelOpen(true)}>
+              Cancel admission
+            </Button>
+          )
+        }
+        toolbar={
+          <TabsList className="flex-wrap">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="nursing">Nursing</TabsTrigger>
+            <TabsTrigger value="orders">Orders & Tasks</TabsTrigger>
+            <TabsTrigger value="mar">MAR</TabsTrigger>
+            <TabsTrigger value="discharge">Discharge</TabsTrigger>
+          </TabsList>
+        }
+      >
         <TabsContent value="overview" className="space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <InfoCard label="Attending doctor" value={`${admission.attendingDoctor.fullName} (${admission.attendingDoctor.specialization})`} />
@@ -199,7 +203,7 @@ export default function AdmissionDetailPage() {
           <div className="rounded-lg border bg-card p-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-foreground">Bed allocation</h3>
-              {admission.bed && <Badge variant="outline">{formatEnumLabel(admission.bed.status)}</Badge>}
+              {admission.bed && <StatusBadge status={admission.bed.status} />}
             </div>
             <p className="mt-1 text-sm text-foreground">
               {admission.bed ? `Bed ${admission.bed.bedNumber}` : 'No bed currently allocated'}
@@ -297,7 +301,6 @@ export default function AdmissionDetailPage() {
             onDischarged={invalidate}
           />
         </TabsContent>
-      </Tabs>
 
       <AllocateBedDialog
         open={allocateOpen}
@@ -353,7 +356,8 @@ export default function AdmissionDetailPage() {
         isPending={cancelAdmissionMutation.isPending}
         onConfirm={(reason) => cancelAdmissionMutation.mutate(reason)}
       />
-    </div>
+      </PageLayout>
+    </Tabs>
   )
 }
 

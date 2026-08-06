@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -41,16 +42,6 @@ function formatDateTime(value: string | Date): string {
 
 function formatEnumLabel(value: string): string {
   return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
-}
-
-const DOSE_STATUS_BADGE: Record<string, 'success' | 'secondary' | 'destructive' | 'outline'> = {
-  PENDING: 'outline',
-  ADMINISTERED: 'success',
-  MISSED: 'destructive',
-  REFUSED: 'destructive',
-  HELD: 'secondary',
-  DELAYED: 'secondary',
-  CANCELLED: 'outline',
 }
 
 function useEncounterMedications(encounterId: string | null) {
@@ -128,7 +119,7 @@ export function MarTab({
             <li key={d.id} className="rounded-md border p-3 text-sm">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline">{formatEnumLabel(d.type)}</Badge>
-                <Badge variant={DOSE_STATUS_BADGE[d.status]}>{formatEnumLabel(d.status)}</Badge>
+                <StatusBadge status={d.status} />
                 {d.barcodeVerified && (
                   <Badge variant="secondary">
                     <ScanLine className="h-3 w-3" /> Barcode verified

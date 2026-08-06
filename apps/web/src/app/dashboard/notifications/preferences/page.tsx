@@ -8,10 +8,10 @@ import {
   type UpdateNotificationPreferenceDto,
 } from '@medicore/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, BellRing, Info, Loader2, MonitorSmartphone, Trash2 } from 'lucide-react'
-import Link from 'next/link'
+import { BellRing, Info, Loader2, MonitorSmartphone, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { humanCategory, relativeTime } from '@/components/notifications/notification-bell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -83,7 +83,15 @@ export default function NotificationPreferencesPage() {
   })
 
   if (isLoading || !data) {
-    return <p className="p-6 text-sm text-muted-foreground">Loading your preferences…</p>
+    return (
+      <PageLayout
+        breadcrumbs={[{ label: 'Notifications', href: '/dashboard/notifications' }, { label: 'Preferences' }]}
+        title="Notification preferences"
+        loading
+      >
+        <div />
+      </PageLayout>
+    )
   }
 
   const value = { ...data, ...draft }
@@ -101,21 +109,11 @@ export default function NotificationPreferencesPage() {
   }
 
   return (
-    <div className="space-y-4 p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <Link
-            href="/dashboard/notifications"
-            className="mb-1 inline-flex items-center text-xs text-muted-foreground hover:underline"
-          >
-            <ArrowLeft className="mr-1 h-3 w-3" />
-            Back to notifications
-          </Link>
-          <h1 className="text-xl font-semibold">Notification preferences</h1>
-          <p className="text-sm text-muted-foreground">
-            These apply to you only. Critical notifications always reach you regardless of what is set here.
-          </p>
-        </div>
+    <PageLayout
+      breadcrumbs={[{ label: 'Notifications', href: '/dashboard/notifications' }, { label: 'Preferences' }]}
+      title="Notification preferences"
+      description="These apply to you only. Critical notifications always reach you regardless of what is set here."
+      actions={
         <Button
           disabled={!isDirty || save.isPending}
           onClick={() => save.mutate({ ...draft, categoryPreferences: categories })}
@@ -123,12 +121,12 @@ export default function NotificationPreferencesPage() {
           {save.isPending && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
           Save preferences
         </Button>
-      </div>
-
-      <Card className="flex items-start gap-2 border-primary/30 bg-primary/5 p-3 text-sm">
-        <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
-        <p className="text-muted-foreground">
-          <strong className="text-foreground">Critical priority overrides every setting on this page</strong> —
+      }
+    >
+      <Card className="flex items-start gap-2 border-info-border bg-info-subtle p-3 text-sm">
+        <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-info-subtle-foreground" />
+        <p className="text-info-subtle-foreground">
+          <strong>Critical priority overrides every setting on this page</strong> —
           quiet hours, muted categories and disabled channels included. A critical lab value or a rejected claim
           reaching nobody because it was 23:00 is not an acceptable outcome in a hospital.
         </p>
@@ -293,13 +291,13 @@ export default function NotificationPreferencesPage() {
         </div>
 
         {push.config && !push.config.configured && (
-          <p className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 text-xs text-amber-900 dark:text-amber-200">
+          <p className="rounded-md border border-warning-border bg-warning-subtle p-2.5 text-xs text-warning-subtle-foreground">
             {push.config.reason}
           </p>
         )}
 
         {push.error && (
-          <p className="rounded-md border border-destructive/40 bg-destructive/10 p-2.5 text-xs text-destructive">
+          <p className="rounded-md border border-danger-border bg-danger-subtle p-2.5 text-xs text-danger-subtle-foreground">
             {push.error}
           </p>
         )}
@@ -327,6 +325,6 @@ export default function NotificationPreferencesPage() {
           </div>
         ))}
       </Card>
-    </div>
+    </PageLayout>
   )
 }

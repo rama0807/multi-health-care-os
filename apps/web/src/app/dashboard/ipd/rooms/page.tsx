@@ -6,12 +6,23 @@ import { Loader2, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 
-import { Badge } from '@/components/ui/badge'
+import { PageLayout } from '@/components/layout/page-layout'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
 import { createRoom, deactivateRoom, listRooms, listWards, updateRoom } from '@/lib/api/ipd'
 import { useAuth } from '@/lib/auth/auth-context'
@@ -19,16 +30,6 @@ import { useAuth } from '@/lib/auth/auth-context'
 function getErrorMessage(error: unknown): string {
   const axiosError = error as { response?: { data?: { error?: { message?: string } } } }
   return axiosError?.response?.data?.error?.message ?? 'Something went wrong. Please try again.'
-}
-
-function formatEnumLabel(value: string): string {
-  return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
-}
-
-const ROOM_STATUS_BADGE: Record<RoomStatus, 'success' | 'secondary' | 'warning'> = {
-  ACTIVE: 'success',
-  INACTIVE: 'secondary',
-  MAINTENANCE: 'warning',
 }
 
 export default function RoomsPage() {
@@ -49,20 +50,19 @@ export default function RoomsPage() {
   const rooms = roomsQuery.data?.data ?? []
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Rooms</h1>
-          <p className="text-sm text-muted-foreground">Room inventory — capacity, per-day charges, and bed occupancy.</p>
-        </div>
-        {canCreate && (
+    <PageLayout
+      breadcrumbs={[{ label: 'IPD', href: '/dashboard/ipd' }, { label: 'Rooms' }]}
+      title="Rooms"
+      description="Room inventory — capacity, per-day charges, and bed occupancy."
+      actions={
+        canCreate && (
           <Button onClick={() => setDialogOpen(true)}>
             <Plus className="h-4 w-4" />
             Add room
           </Button>
-        )}
-      </div>
-
+        )
+      }
+    >
       <Select value={wardId} onValueChange={setWardId}>
         <SelectTrigger className="w-56">
           <SelectValue placeholder="Filter by ward" />
@@ -77,46 +77,42 @@ export default function RoomsPage() {
         </SelectContent>
       </Select>
 
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Room</TableHead>
-              <TableHead>Ward</TableHead>
-              <TableHead>Capacity</TableHead>
-              <TableHead>Charges/day</TableHead>
-              <TableHead>Beds</TableHead>
-              <TableHead>Status</TableHead>
-              {(canUpdate || canDelete) && <TableHead>Actions</TableHead>}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {roomsQuery.isLoading ? (
+      {roomsQuery.isLoading ? (
+        <TableSkeleton rows={6} columns={canUpdate || canDelete ? 7 : 6} />
+      ) : rooms.length === 0 ? (
+        <EmptyState
+          variant={wardId === 'all' ? 'empty' : 'search'}
+          title="No rooms yet"
+          action={canCreate ? { label: 'Add room', onClick: () => setDialogOpen(true) } : undefined}
+        />
+      ) : (
+        <TableContainer className="max-h-[70vh]">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Room</TableHead>
+                <TableHead>Ward</TableHead>
+                <TableHead align="right">Capacity</TableHead>
+                <TableHead align="right">Charges/day</TableHead>
+                <TableHead>Beds</TableHead>
+                <TableHead>Status</TableHead>
+                {(canUpdate || canDelete) && <TableHead className="w-32" />}
               </TableRow>
-            ) : rooms.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                  No rooms yet.
-                </TableCell>
-              </TableRow>
-            ) : (
-              rooms.map((r) => (
+            </TableHeader>
+            <TableBody>
+              {rooms.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell className="font-medium">{r.roomNumber}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{r.ward.name}</TableCell>
-                  <TableCell>{r.capacity}</TableCell>
-                  <TableCell>₹{r.chargesPerDay}</TableCell>
+                  <TableCell align="right">{r.capacity}</TableCell>
+                  <TableCell align="right">₹{r.chargesPerDay}</TableCell>
                   <TableCell>
                     <Link href={`/dashboard/ipd/beds?roomId=${r.id}`} className="text-xs text-primary hover:underline">
                       {r.occupiedBedCount}/{r.bedCount} occupied
                     </Link>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={ROOM_STATUS_BADGE[r.status]}>{formatEnumLabel(r.status)}</Badge>
+                    <StatusBadge status={r.status} />
                   </TableCell>
                   {(canUpdate || canDelete) && (
                     <TableCell className="flex gap-1">
@@ -129,11 +125,11 @@ export default function RoomsPage() {
                     </TableCell>
                   )}
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       <RoomDialog open={dialogOpen} onOpenChange={setDialogOpen} wards={wardsQuery.data?.data ?? []} />
       {editing && (
@@ -144,7 +140,7 @@ export default function RoomsPage() {
           wards={wardsQuery.data?.data ?? []}
         />
       )}
-    </div>
+    </PageLayout>
   )
 }
 

@@ -5,13 +5,17 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
 import { useState } from 'react'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/ui/pagination'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { correctAttendance, listAttendance } from '@/lib/api/attendance'
@@ -24,16 +28,6 @@ function getErrorMessage(error: unknown): string {
 
 function formatEnumLabel(value: string): string {
   return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
-}
-
-const STATUS_BADGE: Record<AttendanceStatus, 'success' | 'secondary' | 'destructive' | 'outline'> = {
-  PRESENT: 'success',
-  LATE: 'outline',
-  HALF_DAY: 'outline',
-  ABSENT: 'destructive',
-  ON_LEAVE: 'secondary',
-  HOLIDAY: 'secondary',
-  WEEK_OFF: 'secondary',
 }
 
 export default function AttendancePage() {
@@ -61,13 +55,10 @@ export default function AttendancePage() {
   const rows = attendanceQuery.data?.data ?? []
   const pagination = attendanceQuery.data?.pagination
 
-  return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Attendance</h1>
-        <p className="text-sm text-muted-foreground">Daily attendance across all staff, with corrections.</p>
-      </div>
+  const hasFilters = status !== 'ALL' || Boolean(from) || Boolean(to)
 
+  return (
+    <PageLayout title="Attendance" description="Daily attendance across all staff, with corrections.">
       <div className="flex flex-wrap gap-2">
         <Select value={status} onValueChange={(v) => { setStatus(v as AttendanceStatus | 'ALL'); setPage(1) }}>
           <SelectTrigger className="w-44">
@@ -86,64 +77,56 @@ export default function AttendancePage() {
         <Input type="date" value={to} onChange={(e) => { setTo(e.target.value); setPage(1) }} className="w-40" />
       </div>
 
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Staff</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Clock in</TableHead>
-              <TableHead>Clock out</TableHead>
-              <TableHead>Worked (mins)</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {attendanceQuery.isLoading ? (
+      {attendanceQuery.isLoading ? (
+        <TableSkeleton rows={8} columns={7} />
+      ) : rows.length === 0 ? (
+        <EmptyState variant={hasFilters ? 'search' : 'empty'} title="No attendance records found" />
+      ) : (
+        <TableContainer className="max-h-[65vh]">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Staff</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Clock in</TableHead>
+                <TableHead>Clock out</TableHead>
+                <TableHead align="right">Worked (mins)</TableHead>
+                {canCorrect && <TableHead />}
               </TableRow>
-            ) : rows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                  No attendance records found.
-                </TableCell>
-              </TableRow>
-            ) : (
-              rows.map((row) => (
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => (
                 <TableRow key={row.id}>
                   <TableCell className="font-medium">{row.staff?.fullName ?? row.staffId}</TableCell>
                   <TableCell>{row.date}</TableCell>
                   <TableCell>
-                    <Badge variant={STATUS_BADGE[row.status]}>{formatEnumLabel(row.status)}</Badge>
+                    <StatusBadge status={row.status} />
                     {row.isCorrected && <Badge variant="outline" className="ml-1">Corrected</Badge>}
                   </TableCell>
                   <TableCell>{row.clockInAt ? new Date(row.clockInAt).toLocaleTimeString('en-IN') : '—'}</TableCell>
                   <TableCell>{row.clockOutAt ? new Date(row.clockOutAt).toLocaleTimeString('en-IN') : '—'}</TableCell>
-                  <TableCell>{row.workedMinutes ?? '—'}</TableCell>
-                  <TableCell>
-                    {canCorrect && (
+                  <TableCell align="right">{row.workedMinutes ?? '—'}</TableCell>
+                  {canCorrect && (
+                    <TableCell>
                       <Button variant="ghost" size="sm" onClick={() => setCorrecting(row)}>
                         Correct
                       </Button>
-                    )}
-                  </TableCell>
+                    </TableCell>
+                  )}
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       {pagination && pagination.totalPages > 1 && (
         <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={setPage} />
       )}
 
       {correcting && <CorrectDialog attendance={correcting} onOpenChange={(open) => !open && setCorrecting(null)} />}
-    </div>
+    </PageLayout>
   )
 }
 

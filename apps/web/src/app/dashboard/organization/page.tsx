@@ -5,6 +5,8 @@ import { Building2 } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { Suspense, useState } from 'react'
 
+import { PageLayout } from '@/components/layout/page-layout'
+import { PageHeaderMeta } from '@/components/ui/page-header'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getOrganization } from '@/lib/api/organization'
 
@@ -41,40 +43,36 @@ function OrganizationDashboard() {
   const org = orgQuery.data
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-md bg-primary/10 text-primary">
-          {org?.logo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={org.logo} alt="" className="h-full w-full object-contain" />
-          ) : (
-            <Building2 className="h-5 w-5" />
-          )}
-        </div>
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">
-            {orgQuery.isLoading ? 'Loading…' : (org?.name ?? 'Organization')}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {org
-              ? `${org.slug} · ${org.type.replace(/_/g, ' ').toLowerCase()}`
-              : 'Organization administration'}
-          </p>
-        </div>
-      </div>
-
-      <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
-        <TabsList className="flex-wrap">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="hospitals">Hospitals</TabsTrigger>
-          <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="subscription">Subscription</TabsTrigger>
-          <TabsTrigger value="usage">Usage</TabsTrigger>
-          <TabsTrigger value="branding">Branding</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
-          <TabsTrigger value="audit">Audit Logs</TabsTrigger>
-        </TabsList>
-
+    <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
+      <PageLayout
+        title={orgQuery.isLoading ? 'Loading…' : (org?.name ?? 'Organization')}
+        loading={orgQuery.isLoading}
+        badge={
+          !orgQuery.isLoading && org?.logo ? (
+            <span className="flex h-6 w-6 items-center justify-center overflow-hidden rounded bg-primary-subtle">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={org.logo} alt="" className="h-full w-full object-contain" />
+            </span>
+          ) : !orgQuery.isLoading && !org?.logo ? (
+            <span className="flex h-6 w-6 items-center justify-center rounded bg-primary-subtle text-primary-subtle-foreground">
+              <Building2 className="h-3.5 w-3.5" />
+            </span>
+          ) : undefined
+        }
+        meta={org && <PageHeaderMeta>{org.slug} · {org.type.replace(/_/g, ' ').toLowerCase()}</PageHeaderMeta>}
+        toolbar={
+          <TabsList className="flex-wrap">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="hospitals">Hospitals</TabsTrigger>
+            <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="subscription">Subscription</TabsTrigger>
+            <TabsTrigger value="usage">Usage</TabsTrigger>
+            <TabsTrigger value="branding">Branding</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
+            <TabsTrigger value="audit">Audit Logs</TabsTrigger>
+          </TabsList>
+        }
+      >
         <TabsContent value="overview">
           <OverviewTab />
         </TabsContent>
@@ -99,8 +97,8 @@ function OrganizationDashboard() {
         <TabsContent value="audit">
           <AuditLogsTab />
         </TabsContent>
-      </Tabs>
-    </div>
+      </PageLayout>
+    </Tabs>
   )
 }
 

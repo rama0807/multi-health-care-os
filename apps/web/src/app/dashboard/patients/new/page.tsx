@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useForm, type FieldPath } from 'react-hook-form'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -162,14 +163,12 @@ export default function NewPatientPage() {
   const canSubmit = !hasBlockingDuplicates || duplicateConfirmed
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Register New Patient</h1>
-        <p className="text-sm text-muted-foreground">
-          Step {step + 1} of {STEPS.length} — {STEPS[step].title}
-        </p>
-      </div>
-
+    <PageLayout
+      breadcrumbs={[{ label: 'Patients', href: '/dashboard/patients' }, { label: 'New' }]}
+      title="Register new patient"
+      description={`Step ${step + 1} of ${STEPS.length} — ${STEPS[step].title}`}
+      width="narrow"
+    >
       {draftRestored && (
         <Alert>
           <AlertTitle>Draft restored</AlertTitle>
@@ -454,7 +453,7 @@ export default function NewPatientPage() {
           </div>
         </form>
       </Form>
-    </div>
+    </PageLayout>
   )
 }
 

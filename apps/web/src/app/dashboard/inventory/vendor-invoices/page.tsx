@@ -5,13 +5,24 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2, Plus } from 'lucide-react'
 import { useState } from 'react'
 
-import { Badge } from '@/components/ui/badge'
+import { PageLayout } from '@/components/layout/page-layout'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/ui/pagination'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { listVendors } from '@/lib/api/inventory'
@@ -30,14 +41,6 @@ function getErrorMessage(error: unknown): string {
 
 function formatEnumLabel(value: string): string {
   return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
-}
-
-const STATUS_BADGE: Record<VendorInvoiceStatus, 'secondary' | 'outline' | 'success' | 'destructive'> = {
-  [VendorInvoiceStatus.PENDING]: 'secondary',
-  [VendorInvoiceStatus.VERIFIED]: 'outline',
-  [VendorInvoiceStatus.PAID]: 'success',
-  [VendorInvoiceStatus.DISPUTED]: 'destructive',
-  [VendorInvoiceStatus.CANCELLED]: 'destructive',
 }
 
 export default function VendorInvoicesPage() {
@@ -69,20 +72,18 @@ export default function VendorInvoicesPage() {
   const pagination = query.data?.pagination
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Vendor Invoices</h1>
-          <p className="text-sm text-muted-foreground">The final step of the procurement chain — billed against a PO/GRN, recorded payments.</p>
-        </div>
-        {canManage && (
+    <PageLayout
+      title="Vendor Invoices"
+      description="The final step of the procurement chain — billed against a PO/GRN, recorded payments."
+      actions={
+        canManage && (
           <Button onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />
             New invoice
           </Button>
-        )}
-      </div>
-
+        )
+      }
+    >
       <Select
         value={status}
         onValueChange={(v) => {
@@ -103,45 +104,41 @@ export default function VendorInvoicesPage() {
         </SelectContent>
       </Select>
 
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Invoice #</TableHead>
-              <TableHead>Vendor</TableHead>
-              <TableHead>Total</TableHead>
-              <TableHead>Paid</TableHead>
-              <TableHead>Balance</TableHead>
-              <TableHead>Status</TableHead>
-              {canManage && <TableHead>Actions</TableHead>}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {query.isLoading ? (
+      {query.isLoading ? (
+        <TableSkeleton rows={8} columns={canManage ? 7 : 6} />
+      ) : invoices.length === 0 ? (
+        <EmptyState
+          variant={status === 'ALL' ? 'empty' : 'search'}
+          title="No vendor invoices yet"
+          action={canManage ? { label: 'New invoice', onClick: () => setCreateOpen(true) } : undefined}
+        />
+      ) : (
+        <TableContainer className="max-h-[65vh]">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Invoice #</TableHead>
+                <TableHead>Vendor</TableHead>
+                <TableHead align="right">Total</TableHead>
+                <TableHead align="right">Paid</TableHead>
+                <TableHead align="right">Balance</TableHead>
+                <TableHead>Status</TableHead>
+                {canManage && <TableHead className="w-40" />}
               </TableRow>
-            ) : invoices.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                  No vendor invoices yet.
-                </TableCell>
-              </TableRow>
-            ) : (
-              invoices.map((inv) => {
+            </TableHeader>
+            <TableBody>
+              {invoices.map((inv) => {
                 const balance = Number(inv.totalAmount) - Number(inv.paidAmount)
                 const canPay = inv.status !== VendorInvoiceStatus.PAID && inv.status !== VendorInvoiceStatus.CANCELLED
                 return (
                   <TableRow key={inv.id}>
                     <TableCell className="font-mono text-xs">{inv.invoiceNumber}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{inv.vendor.name}</TableCell>
-                    <TableCell className="text-xs">₹{Number(inv.totalAmount).toLocaleString('en-IN')}</TableCell>
-                    <TableCell className="text-xs">₹{Number(inv.paidAmount).toLocaleString('en-IN')}</TableCell>
-                    <TableCell className="text-xs">₹{balance.toLocaleString('en-IN')}</TableCell>
+                    <TableCell align="right" className="text-xs">₹{Number(inv.totalAmount).toLocaleString('en-IN')}</TableCell>
+                    <TableCell align="right" className="text-xs">₹{Number(inv.paidAmount).toLocaleString('en-IN')}</TableCell>
+                    <TableCell align="right" className="text-xs">₹{balance.toLocaleString('en-IN')}</TableCell>
                     <TableCell>
-                      <Badge variant={STATUS_BADGE[inv.status]}>{formatEnumLabel(inv.status)}</Badge>
+                      <StatusBadge status={inv.status} />
                     </TableCell>
                     {canManage && (
                       <TableCell className="flex flex-wrap gap-1">
@@ -172,11 +169,11 @@ export default function VendorInvoicesPage() {
                     )}
                   </TableRow>
                 )
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       {pagination && pagination.totalPages > 1 && (
         <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={setPage} />
@@ -184,7 +181,7 @@ export default function VendorInvoicesPage() {
 
       <CreateInvoiceDialog open={createOpen} onOpenChange={setCreateOpen} />
       {payingId && <PayInvoiceDialog invoiceId={payingId} onOpenChange={(open) => !open && setPayingId(null)} />}
-    </div>
+    </PageLayout>
   )
 }
 

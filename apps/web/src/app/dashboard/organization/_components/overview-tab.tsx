@@ -5,8 +5,10 @@ import { Building2, HardDrive, Stethoscope, UserCog, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { StatCard, StatCardGrid } from '@/components/ui/stat-card'
 import { useToast } from '@/hooks/use-toast'
 import { getOrganization, getOrganizationStats, updateOrganization } from '@/lib/api/organization'
 import { useAuth } from '@/lib/auth/auth-context'
@@ -103,79 +105,54 @@ export function OverviewTab() {
 
   return (
     <div className="space-y-4 pt-4">
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+      <StatCardGrid columns={5}>
         {tiles.map((tile) => (
-          <div
-            key={tile.key}
-            className="flex items-center gap-3 rounded-lg border bg-card p-4 shadow-sm"
-          >
-            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
-              <tile.icon className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-lg font-semibold text-foreground">
-                {statsQuery.isLoading ? '—' : (tile.value ?? 0)}
-              </p>
-              <p className="text-xs text-muted-foreground">{tile.label}</p>
-            </div>
-          </div>
+          <StatCard key={tile.key} icon={tile.icon} label={tile.label} value={tile.value} loading={statsQuery.isLoading} />
         ))}
-      </div>
+      </StatCardGrid>
 
       {stats && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <SummaryCard
-            label="Active users (last 30 days)"
-            value={`${stats.users.activeLast30Days} of ${stats.users.total}`}
-          />
-          <SummaryCard
-            label="Appointments (last 30 days)"
-            value={String(stats.appointmentsLast30Days)}
-          />
-          <SummaryCard
-            label="Admissions (last 30 days)"
-            value={String(stats.admissionsLast30Days)}
-          />
-        </div>
+        <StatCardGrid columns={3}>
+          <StatCard label="Active users (last 30 days)" value={`${stats.users.activeLast30Days} of ${stats.users.total}`} />
+          <StatCard label="Appointments (last 30 days)" value={stats.appointmentsLast30Days} />
+          <StatCard label="Admissions (last 30 days)" value={stats.admissionsLast30Days} />
+        </StatCardGrid>
       )}
 
-      <form onSubmit={handleSubmit} className="rounded-lg border bg-card p-4">
-        <h3 className="mb-3 text-sm font-semibold text-foreground">Organization profile</h3>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {PROFILE_FIELDS.map((field) => (
-            <div key={field.key} className="space-y-1">
-              <Label htmlFor={`org-${field.key}`}>{field.label}</Label>
-              <Input
-                id={`org-${field.key}`}
-                value={form[field.key] ?? ''}
-                disabled={!canEdit || orgQuery.isLoading}
-                onChange={(e) => setForm((prev) => ({ ...prev, [field.key]: e.target.value }))}
-              />
+      <Card>
+        <CardHeader>
+          <CardTitle>Organization profile</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit}>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {PROFILE_FIELDS.map((field) => (
+                <div key={field.key} className="space-y-1">
+                  <Label htmlFor={`org-${field.key}`}>{field.label}</Label>
+                  <Input
+                    id={`org-${field.key}`}
+                    value={form[field.key] ?? ''}
+                    disabled={!canEdit || orgQuery.isLoading}
+                    onChange={(e) => setForm((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                  />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        {canEdit ? (
-          <div className="mt-4 flex justify-end">
-            <Button type="submit" disabled={saveMutation.isPending}>
-              {saveMutation.isPending ? 'Saving…' : 'Save profile'}
-            </Button>
-          </div>
-        ) : (
-          <p className="mt-3 text-xs text-muted-foreground">
-            You have read-only access to the organization profile.
-          </p>
-        )}
-      </form>
-    </div>
-  )
-}
-
-function SummaryCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border bg-card p-4">
-      <p className="text-lg font-semibold text-foreground">{value}</p>
-      <p className="text-xs text-muted-foreground">{label}</p>
+            {canEdit ? (
+              <div className="mt-4 flex justify-end">
+                <Button type="submit" disabled={saveMutation.isPending}>
+                  {saveMutation.isPending ? 'Saving…' : 'Save profile'}
+                </Button>
+              </div>
+            ) : (
+              <p className="mt-3 text-xs text-muted-foreground">
+                You have read-only access to the organization profile.
+              </p>
+            )}
+          </form>
+        </CardContent>
+      </Card>
     </div>
   )
 }

@@ -8,12 +8,23 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
-import { Badge } from '@/components/ui/badge'
+import { PageLayout } from '@/components/layout/page-layout'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
 import { createInvoice, listCharges, listInvoices } from '@/lib/api/billing'
 import { listPatients } from '@/lib/api/patients'
@@ -26,16 +37,6 @@ function getErrorMessage(error: unknown): string {
 
 function formatEnumLabel(value: string): string {
   return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
-}
-
-const STATUS_BADGE: Record<string, 'secondary' | 'success' | 'destructive' | 'outline'> = {
-  DRAFT: 'secondary',
-  ISSUED: 'outline',
-  PARTIALLY_PAID: 'outline',
-  PAID: 'success',
-  OVERDUE: 'destructive',
-  CANCELLED: 'destructive',
-  REFUNDED: 'destructive',
 }
 
 export default function InvoicesListPage() {
@@ -60,24 +61,24 @@ export default function InvoicesListPage() {
   const invoices = invoicesQuery.data?.data ?? []
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Invoices</h1>
-          <p className="text-sm text-muted-foreground">
-            {invoicesQuery.data ? `${invoicesQuery.data.pagination.total} invoice${invoicesQuery.data.pagination.total === 1 ? '' : 's'}` : 'Loading...'}
-          </p>
-        </div>
-        {canCreate && (
+    <PageLayout
+      title="Invoices"
+      description={
+        invoicesQuery.data
+          ? `${invoicesQuery.data.pagination.total} invoice${invoicesQuery.data.pagination.total === 1 ? '' : 's'}`
+          : undefined
+      }
+      actions={
+        canCreate && (
           <Button onClick={() => setDialogOpen(true)}>
             <Plus className="h-4 w-4" />
             New invoice
           </Button>
-        )}
-      </div>
-
+        )
+      }
+    >
       <Select value={status} onValueChange={setStatus}>
-        <SelectTrigger className="sm:w-48">
+        <SelectTrigger className="w-48">
           <SelectValue placeholder="Status" />
         </SelectTrigger>
         <SelectContent>
@@ -90,39 +91,27 @@ export default function InvoicesListPage() {
         </SelectContent>
       </Select>
 
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Invoice #</TableHead>
-              <TableHead>Patient</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Total</TableHead>
-              <TableHead>Balance due</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {invoicesQuery.isLoading ? (
+      {invoicesQuery.isLoading ? (
+        <TableSkeleton rows={8} columns={6} />
+      ) : invoicesQuery.isError ? (
+        <EmptyState variant="error" title="Couldn't load invoices" description={getErrorMessage(invoicesQuery.error)} />
+      ) : invoices.length === 0 ? (
+        <EmptyState variant="search" title="No invoices found" description="Try a different status filter." />
+      ) : (
+        <TableContainer className="max-h-[65vh]">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Invoice #</TableHead>
+                <TableHead>Patient</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead align="right">Total</TableHead>
+                <TableHead align="right">Balance due</TableHead>
+                <TableHead className="w-24" />
               </TableRow>
-            ) : invoicesQuery.isError ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  Couldn&apos;t load invoices. {getErrorMessage(invoicesQuery.error)}
-                </TableCell>
-              </TableRow>
-            ) : invoices.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  No invoices found.
-                </TableCell>
-              </TableRow>
-            ) : (
-              invoices.map((invoice) => (
+            </TableHeader>
+            <TableBody>
+              {invoices.map((invoice) => (
                 <TableRow key={invoice.id}>
                   <TableCell>
                     <Link
@@ -135,28 +124,28 @@ export default function InvoicesListPage() {
                   </TableCell>
                   <TableCell>{invoice.patient.fullName}</TableCell>
                   <TableCell>
-                    <Badge variant={STATUS_BADGE[invoice.status]}>{formatEnumLabel(invoice.status)}</Badge>
+                    <StatusBadge status={invoice.status} />
                   </TableCell>
-                  <TableCell>₹{invoice.totalAmount}</TableCell>
-                  <TableCell>₹{invoice.balanceDue}</TableCell>
+                  <TableCell align="right">₹{invoice.totalAmount}</TableCell>
+                  <TableCell align="right">₹{invoice.balanceDue}</TableCell>
                   <TableCell>
                     <Button asChild variant="ghost" size="sm">
                       <Link href={`/dashboard/billing/invoices/${invoice.id}`}>Open</Link>
                     </Button>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       <NewInvoiceDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onCreated={() => void queryClient.invalidateQueries({ queryKey: ['billing', 'invoices', 'list'] })}
       />
-    </div>
+    </PageLayout>
   )
 }
 

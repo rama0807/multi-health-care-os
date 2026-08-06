@@ -2,18 +2,13 @@
 
 import { useQuery } from '@tanstack/react-query'
 
-import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { EmptyState } from '@/components/ui/empty-state'
+import { StatCard, StatCardGrid } from '@/components/ui/stat-card'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { getSubscription } from '@/lib/api/organization'
 
 import { formatDate } from './format'
-
-const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'destructive'> = {
-  ACTIVE: 'default',
-  TRIALING: 'secondary',
-  PAST_DUE: 'destructive',
-  CANCELLED: 'destructive',
-  EXPIRED: 'destructive',
-}
 
 export function SubscriptionTab() {
   const query = useQuery({ queryKey: ['organization', 'subscription'], queryFn: getSubscription })
@@ -24,7 +19,7 @@ export function SubscriptionTab() {
   }
 
   if (!subscription) {
-    return <p className="pt-4 text-sm text-muted-foreground">No subscription information.</p>
+    return <EmptyState compact title="No subscription information" />
   }
 
   const limits = [
@@ -36,54 +31,55 @@ export function SubscriptionTab() {
 
   return (
     <div className="space-y-4 pt-4">
-      <div className="rounded-lg border bg-card p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Current plan</p>
-            <p className="text-2xl font-semibold text-foreground">{subscription.plan}</p>
-          </div>
-          <Badge variant={STATUS_VARIANT[subscription.status] ?? 'secondary'}>
-            {subscription.status.replace(/_/g, ' ').toLowerCase()}
-          </Badge>
-        </div>
-
-        <dl className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Field label="Started" value={formatDate(subscription.startsAt)} />
-          <Field
-            label="Renews / ends"
-            value={subscription.endsAt ? formatDate(subscription.endsAt) : 'No end date'}
-          />
-          <Field
-            label="Monthly price"
-            value={
-              subscription.monthlyPrice
-                ? `${subscription.currency} ${subscription.monthlyPrice}`
-                : 'Not set'
-            }
-          />
-          <Field label="Currency" value={subscription.currency} />
-        </dl>
-      </div>
-
-      <div className="rounded-lg border bg-card p-4">
-        <h3 className="mb-3 text-sm font-semibold text-foreground">Plan limits</h3>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {limits.map((limit) => (
-            <div key={limit.label}>
-              <p className="text-lg font-semibold text-foreground">
-                {limit.value === null ? 'Unlimited' : `${limit.value}${limit.suffix}`}
-              </p>
-              <p className="text-xs text-muted-foreground">{limit.label}</p>
+      <Card>
+        <CardContent className="pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Current plan</p>
+              <p className="text-2xl font-semibold text-foreground">{subscription.plan}</p>
             </div>
-          ))}
-        </div>
-      </div>
+            <StatusBadge status={subscription.status} />
+          </div>
+
+          <dl className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <Field label="Started" value={formatDate(subscription.startsAt)} />
+            <Field
+              label="Renews / ends"
+              value={subscription.endsAt ? formatDate(subscription.endsAt) : 'No end date'}
+            />
+            <Field
+              label="Monthly price"
+              value={
+                subscription.monthlyPrice
+                  ? `${subscription.currency} ${subscription.monthlyPrice}`
+                  : 'Not set'
+              }
+            />
+            <Field label="Currency" value={subscription.currency} />
+          </dl>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Plan limits</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <StatCardGrid columns={4}>
+            {limits.map((limit) => (
+              <StatCard key={limit.label} label={limit.label} value={limit.value === null ? 'Unlimited' : `${limit.value}${limit.suffix}`} />
+            ))}
+          </StatCardGrid>
+        </CardContent>
+      </Card>
 
       {subscription.notes && (
-        <div className="rounded-lg border bg-card p-4">
-          <h3 className="mb-1 text-sm font-semibold text-foreground">Notes</h3>
-          <p className="text-sm text-muted-foreground">{subscription.notes}</p>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Notes</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 text-sm text-muted-foreground">{subscription.notes}</CardContent>
+        </Card>
       )}
 
       <p className="text-xs text-muted-foreground">

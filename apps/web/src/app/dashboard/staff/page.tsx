@@ -15,7 +15,10 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { StatCard, StatCardGrid } from '@/components/ui/stat-card'
 import { useToast } from '@/hooks/use-toast'
 import { clockIn, clockOut } from '@/lib/api/attendance'
 import { getMyStaffProfile, getStaffDashboardStats } from '@/lib/api/staff'
@@ -62,24 +65,12 @@ export default function StaffDashboardPage() {
     onError: (error) => toast({ variant: 'destructive', title: 'Could not clock out', description: getErrorMessage(error) }),
   })
 
-  const tiles = [
-    { key: 'totalStaff', label: 'Total staff', icon: Users, value: stats?.totalStaff },
-    { key: 'activeStaff', label: 'Active staff', icon: UserCheck, value: stats?.activeStaff },
-    { key: 'presentToday', label: 'Present today', icon: UserCheck, value: stats?.presentToday },
-    { key: 'lateToday', label: 'Late today', icon: Clock, value: stats?.lateToday },
-    { key: 'absentToday', label: 'Absent today', icon: UserMinus, value: stats?.absentToday },
-    { key: 'onLeaveToday', label: 'On leave today', icon: CalendarClock, value: stats?.onLeaveToday },
-    { key: 'pendingLeaveApprovals', label: 'Pending leave approvals', icon: CalendarClock, value: stats?.pendingLeaveApprovals },
-  ] as const
-
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Staff & Attendance</h1>
-          <p className="text-sm text-muted-foreground">Staff directory, attendance, leave, shifts, and payroll prep.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+    <PageLayout
+      title="Staff & Attendance"
+      description="Staff directory, attendance, leave, shifts, and payroll prep."
+      actions={
+        <>
           <Button asChild variant="outline">
             <Link href="/dashboard/staff/directory">
               <Users className="h-4 w-4" />
@@ -124,60 +115,69 @@ export default function StaffDashboardPage() {
               </Link>
             </Button>
           )}
-        </div>
-      </div>
-
+        </>
+      }
+    >
       {myProfileQuery.data && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card p-4 shadow-sm">
-          <div>
-            <p className="text-sm font-medium text-foreground">Your attendance today</p>
-            <p className="text-xs text-muted-foreground">{myProfileQuery.data.fullName} — {myProfileQuery.data.designation}</p>
-          </div>
-          <div className="flex gap-2">
-            <Button size="sm" onClick={() => clockInMutation.mutate()} disabled={clockInMutation.isPending}>
-              {clockInMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogIn className="h-3.5 w-3.5" />}
-              Clock in
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => clockOutMutation.mutate()} disabled={clockOutMutation.isPending}>
-              {clockOutMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogOut className="h-3.5 w-3.5" />}
-              Clock out
-            </Button>
-          </div>
-        </div>
+        <Card>
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+            <div>
+              <p className="text-sm font-medium text-foreground">Your attendance today</p>
+              <p className="text-xs text-muted-foreground">{myProfileQuery.data.fullName} — {myProfileQuery.data.designation}</p>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={() => clockInMutation.mutate()} disabled={clockInMutation.isPending}>
+                {clockInMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogIn className="h-3.5 w-3.5" />}
+                Clock in
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => clockOutMutation.mutate()} disabled={clockOutMutation.isPending}>
+                {clockOutMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogOut className="h-3.5 w-3.5" />}
+                Clock out
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-        {tiles.map((tile) => (
-          <div key={tile.key} className="flex items-center gap-3 rounded-lg border bg-card p-4 shadow-sm">
-            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
-              <tile.icon className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-lg font-semibold text-foreground">{statsQuery.isLoading ? '—' : (tile.value ?? 0)}</p>
-              <p className="text-xs text-muted-foreground">{tile.label}</p>
-            </div>
-          </div>
-        ))}
-      </div>
+      <StatCardGrid columns={4}>
+        <StatCard icon={Users} label="Total staff" value={stats?.totalStaff} loading={statsQuery.isLoading} href="/dashboard/staff/directory" />
+        <StatCard icon={UserCheck} label="Active staff" value={stats?.activeStaff} loading={statsQuery.isLoading} tone="success" href="/dashboard/staff/directory" />
+        <StatCard icon={UserCheck} label="Present today" value={stats?.presentToday} loading={statsQuery.isLoading} href="/dashboard/staff/attendance" />
+        <StatCard icon={Clock} label="Late today" value={stats?.lateToday} loading={statsQuery.isLoading} tone="warning" href="/dashboard/staff/attendance" />
+        <StatCard icon={UserMinus} label="Absent today" value={stats?.absentToday} loading={statsQuery.isLoading} tone="danger" href="/dashboard/staff/attendance" />
+        <StatCard icon={CalendarClock} label="On leave today" value={stats?.onLeaveToday} loading={statsQuery.isLoading} href="/dashboard/staff/leave" />
+        <StatCard
+          icon={CalendarClock}
+          label="Pending leave approvals"
+          value={stats?.pendingLeaveApprovals}
+          loading={statsQuery.isLoading}
+          tone={stats?.pendingLeaveApprovals ? 'warning' : 'default'}
+          href="/dashboard/staff/leave"
+        />
+      </StatCardGrid>
 
       {stats && stats.byDepartment.length > 0 && (
-        <div className="rounded-lg border bg-card p-4">
-          <h2 className="mb-3 text-sm font-semibold text-foreground">Staff by department</h2>
-          <div className="space-y-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Staff by department</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
             {stats.byDepartment.map((d) => (
               <div key={d.departmentId} className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">{d.departmentName}</span>
                 <span className="font-medium text-foreground">{d.count}</span>
               </div>
             ))}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {stats && stats.shiftCoverageToday.length > 0 && (
-        <div className="rounded-lg border bg-card p-4">
-          <h2 className="mb-3 text-sm font-semibold text-foreground">Shift coverage today</h2>
-          <div className="space-y-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Shift coverage today</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
             {stats.shiftCoverageToday.map((s) => (
               <div key={s.shiftId} className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">{s.shiftName}</span>
@@ -186,8 +186,8 @@ export default function StaffDashboardPage() {
                 </span>
               </div>
             ))}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       <div className="flex justify-end">
@@ -198,6 +198,6 @@ export default function StaffDashboardPage() {
           </Link>
         </Button>
       </div>
-    </div>
+    </PageLayout>
   )
 }

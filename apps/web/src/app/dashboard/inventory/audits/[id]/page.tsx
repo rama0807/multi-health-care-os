@@ -2,15 +2,17 @@
 
 import { StockAuditStatus } from '@medicore/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Loader2 } from 'lucide-react'
-import { useParams, useRouter } from 'next/navigation'
+import { Loader2 } from 'lucide-react'
+import { useParams } from 'next/navigation'
 import { useState } from 'react'
 
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
+import { PageLayout } from '@/components/layout/page-layout'
 import { Button } from '@/components/ui/button'
+import { Card, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
 import { cancelStockAudit, completeStockAudit, getStockAudit, recordStockAuditCounts, startStockAudit } from '@/lib/api/procurement'
 import { useAuth } from '@/lib/auth/auth-context'
@@ -20,20 +22,8 @@ function getErrorMessage(error: unknown): string {
   return axiosError?.response?.data?.error?.message ?? 'Something went wrong. Please try again.'
 }
 
-function formatEnumLabel(value: string): string {
-  return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
-}
-
-const STATUS_BADGE: Record<StockAuditStatus, 'secondary' | 'outline' | 'success' | 'destructive'> = {
-  [StockAuditStatus.DRAFT]: 'secondary',
-  [StockAuditStatus.IN_PROGRESS]: 'outline',
-  [StockAuditStatus.COMPLETED]: 'success',
-  [StockAuditStatus.CANCELLED]: 'destructive',
-}
-
 export default function StockAuditDetailPage() {
   const params = useParams<{ id: string }>()
-  const router = useRouter()
   const { hasPermission } = useAuth()
   const { toast } = useToast()
   const queryClient = useQueryClient()
@@ -85,24 +75,31 @@ export default function StockAuditDetailPage() {
 
   if (auditQuery.isLoading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
+      <PageLayout
+        breadcrumbs={[{ label: 'Inventory', href: '/dashboard/inventory' }, { label: 'Stock Audits', href: '/dashboard/inventory/audits' }, { label: '…' }]}
+        title="…"
+        loading
+      >
+        <div className="flex h-64 items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </PageLayout>
     )
   }
 
   if (auditQuery.isError || !auditQuery.data) {
     return (
-      <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Stock audit not found</AlertTitle>
-        <AlertDescription>
-          {getErrorMessage(auditQuery.error)}{' '}
-          <Button variant="link" className="h-auto p-0" onClick={() => router.push('/dashboard/inventory/audits')}>
-            Back to list
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <PageLayout
+        breadcrumbs={[{ label: 'Inventory', href: '/dashboard/inventory' }, { label: 'Stock Audits', href: '/dashboard/inventory/audits' }, { label: 'Not found' }]}
+        title="Stock audit not found"
+      >
+        <EmptyState
+          variant="error"
+          title="Stock audit not found"
+          description={getErrorMessage(auditQuery.error)}
+          action={{ label: 'Back to list', href: '/dashboard/inventory/audits' }}
+        />
+      </PageLayout>
     )
   }
 
@@ -112,16 +109,17 @@ export default function StockAuditDetailPage() {
   const canCancel = audit.status === StockAuditStatus.DRAFT || audit.status === StockAuditStatus.IN_PROGRESS
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="font-mono text-lg font-semibold text-foreground">{audit.auditNumber}</h1>
-            <Badge variant={STATUS_BADGE[audit.status]}>{formatEnumLabel(audit.status)}</Badge>
-          </div>
-          <p className="text-sm text-muted-foreground">Store: {audit.store.name}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+    <PageLayout
+      breadcrumbs={[
+        { label: 'Inventory', href: '/dashboard/inventory' },
+        { label: 'Stock Audits', href: '/dashboard/inventory/audits' },
+        { label: audit.auditNumber },
+      ]}
+      title={audit.auditNumber}
+      badge={<StatusBadge status={audit.status} />}
+      meta={<span>Store: {audit.store.name}</span>}
+      actions={
+        <>
           {canUpdate && audit.status === StockAuditStatus.DRAFT && (
             <Button size="sm" onClick={() => startMutation.mutate()} disabled={startMutation.isPending}>
               Start count
@@ -138,58 +136,60 @@ export default function StockAuditDetailPage() {
               Cancel
             </Button>
           )}
-        </div>
-      </div>
-
-      <div className="rounded-lg border bg-card">
-        <div className="border-b p-3">
-          <h3 className="text-sm font-semibold text-foreground">Items</h3>
-        </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Item</TableHead>
-              <TableHead>System qty</TableHead>
-              <TableHead>Counted qty</TableHead>
-              <TableHead>Variance</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {audit.items.map((item) => {
-              const variance =
-                item.countedQuantity !== null
-                  ? item.varianceQuantity
-                  : counts[item.id] !== undefined
-                    ? Number(counts[item.id]) - item.systemQuantity
-                    : null
-              return (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    {item.item.name} <span className="font-mono text-xs text-muted-foreground">({item.item.code})</span>
-                  </TableCell>
-                  <TableCell>{item.systemQuantity}</TableCell>
-                  <TableCell>
-                    {canRecord && item.countedQuantity === null ? (
-                      <Input
-                        className="h-8 w-24"
-                        type="number"
-                        value={counts[item.id] ?? ''}
-                        onChange={(e) => setCounts((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                      />
-                    ) : (
-                      (item.countedQuantity ?? '—')
-                    )}
-                  </TableCell>
-                  <TableCell className={variance !== null && variance !== 0 ? 'font-medium text-destructive' : 'text-muted-foreground'}>
-                    {variance ?? '—'}
-                  </TableCell>
-                </TableRow>
-              )
-            })}
-          </TableBody>
-        </Table>
+        </>
+      }
+    >
+      <Card>
+        <CardHeader>
+          <CardTitle>Items</CardTitle>
+        </CardHeader>
+        <TableContainer className="rounded-none border-0 border-y">
+          <Table density="compact" container={false}>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Item</TableHead>
+                <TableHead align="right">System qty</TableHead>
+                <TableHead align="right">Counted qty</TableHead>
+                <TableHead align="right">Variance</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {audit.items.map((item) => {
+                const variance =
+                  item.countedQuantity !== null
+                    ? item.varianceQuantity
+                    : counts[item.id] !== undefined
+                      ? Number(counts[item.id]) - item.systemQuantity
+                      : null
+                return (
+                  <TableRow key={item.id}>
+                    <TableCell>
+                      {item.item.name} <span className="font-mono text-xs text-muted-foreground">({item.item.code})</span>
+                    </TableCell>
+                    <TableCell align="right">{item.systemQuantity}</TableCell>
+                    <TableCell align="right">
+                      {canRecord && item.countedQuantity === null ? (
+                        <Input
+                          className="h-8 w-24"
+                          type="number"
+                          value={counts[item.id] ?? ''}
+                          onChange={(e) => setCounts((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                        />
+                      ) : (
+                        (item.countedQuantity ?? '—')
+                      )}
+                    </TableCell>
+                    <TableCell align="right" className={variance !== null && variance !== 0 ? 'font-medium text-danger' : 'text-muted-foreground'}>
+                      {variance ?? '—'}
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
         {canRecord && Object.keys(counts).length > 0 && (
-          <div className="flex justify-end border-t p-3">
+          <CardFooter className="justify-end">
             <Button
               size="sm"
               onClick={() =>
@@ -205,16 +205,16 @@ export default function StockAuditDetailPage() {
               {recordMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               Save counts
             </Button>
-          </div>
+          </CardFooter>
         )}
-      </div>
+      </Card>
 
       {audit.notes && (
-        <div className="rounded-lg border bg-card p-3 text-sm">
+        <Card className="p-3 text-sm">
           <span className="font-semibold text-foreground">Notes: </span>
           {audit.notes}
-        </div>
+        </Card>
       )}
-    </div>
+    </PageLayout>
   )
 }

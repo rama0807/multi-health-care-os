@@ -15,7 +15,6 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Activity,
-  AlertTriangle,
   Building2,
   Calendar,
   FileText,
@@ -41,8 +40,8 @@ import { useParams, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -52,9 +51,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { PageHeaderMeta } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
 import { createPatientCoverage, listInsurancePlans, listInsuranceProviders, listPatientCoverages } from '@/lib/api/insurance'
@@ -130,92 +132,101 @@ export default function PatientDetailPage() {
 
   if (patientQuery.isLoading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
+      <PageLayout
+        breadcrumbs={[{ label: 'Patients', href: '/dashboard/patients' }, { label: '…' }]}
+        title="…"
+        loading
+      >
+        <div className="flex h-64 items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </PageLayout>
     )
   }
 
   if (patientQuery.isError || !patientQuery.data) {
     return (
-      <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Patient not found</AlertTitle>
-        <AlertDescription>
-          {getErrorMessage(patientQuery.error)}{' '}
-          <Button variant="link" className="h-auto p-0" onClick={() => router.push('/dashboard/patients')}>
-            Back to patients
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <PageLayout breadcrumbs={[{ label: 'Patients', href: '/dashboard/patients' }, { label: 'Not found' }]} title="Patient not found">
+        <EmptyState
+          variant="error"
+          title="Patient not found"
+          description={getErrorMessage(patientQuery.error)}
+          action={{ label: 'Back to patients', href: '/dashboard/patients' }}
+        />
+      </PageLayout>
     )
   }
 
   const patient = patientQuery.data
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-semibold text-foreground">{patient.fullName}</h1>
-            <Badge variant={patient.isActive ? 'success' : 'secondary'}>
-              {patient.isActive ? 'Active' : 'Deactivated'}
-            </Badge>
-          </div>
-          <p className="font-mono text-sm text-muted-foreground">
-            {patient.uhid} · {patient.age}y · {formatEnumLabel(patient.gender)}
-            {patient.bloodGroup ? ` · ${patient.bloodGroup.replace('_POSITIVE', '+').replace('_NEGATIVE', '-')}` : ''}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {patient.isActive && canManage && (
-            <Button variant="outline" size="sm" onClick={() => setMergeDialogOpen(true)}>
-              <GitMerge />
-              Merge
-            </Button>
-          )}
-          {patient.isActive && canDelete && (
-            <Button variant="destructive" size="sm" onClick={() => setConfirmDeactivate(true)}>
-              <Trash2 />
-              Deactivate
-            </Button>
-          )}
-          {!patient.isActive && canUpdate && (
-            <Button size="sm" onClick={() => restoreMutation.mutate()} disabled={restoreMutation.isPending}>
-              {restoreMutation.isPending ? <Loader2 className="animate-spin" /> : <RotateCcw />}
-              Restore
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {patient.mergedIntoId && (
-        <Alert>
-          <GitMerge className="h-4 w-4" />
-          <AlertTitle>This record was merged</AlertTitle>
-          <AlertDescription>
-            All linked records were moved to another patient profile.{' '}
-            <Link href={`/dashboard/patients/${patient.mergedIntoId}`} className="underline">
-              View the surviving record
-            </Link>
-            .
-          </AlertDescription>
-        </Alert>
-      )}
-
-      <Tabs defaultValue="profile">
-        <TabsList className="flex-wrap">
-          <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="medical">Medical Summary</TabsTrigger>
-          <TabsTrigger value="insurance">Insurance</TabsTrigger>
-          <TabsTrigger value="admissions">Admissions</TabsTrigger>
-          <TabsTrigger value="family">Family</TabsTrigger>
-          <TabsTrigger value="emergency">Emergency Contact</TabsTrigger>
-          <TabsTrigger value="documents">Documents</TabsTrigger>
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
-          <TabsTrigger value="audit">Audit</TabsTrigger>
-        </TabsList>
+    <Tabs defaultValue="profile">
+      <PageLayout
+        breadcrumbs={[{ label: 'Patients', href: '/dashboard/patients' }, { label: patient.fullName }]}
+        title={patient.fullName}
+        badge={<StatusBadge status={patient.isActive ? 'ACTIVE' : 'INACTIVE'} label={patient.isActive ? 'Active' : 'Deactivated'} />}
+        meta={
+          <>
+            <PageHeaderMeta label="UHID">{patient.uhid}</PageHeaderMeta>
+            <PageHeaderMeta label="Age">
+              {patient.age}y · {formatEnumLabel(patient.gender)}
+            </PageHeaderMeta>
+            {patient.bloodGroup && (
+              <PageHeaderMeta label="Blood group">
+                {patient.bloodGroup.replace('_POSITIVE', '+').replace('_NEGATIVE', '-')}
+              </PageHeaderMeta>
+            )}
+          </>
+        }
+        actions={
+          <>
+            {patient.isActive && canManage && (
+              <Button variant="outline" size="sm" onClick={() => setMergeDialogOpen(true)}>
+                <GitMerge />
+                Merge
+              </Button>
+            )}
+            {patient.isActive && canDelete && (
+              <Button variant="destructive" size="sm" onClick={() => setConfirmDeactivate(true)}>
+                <Trash2 />
+                Deactivate
+              </Button>
+            )}
+            {!patient.isActive && canUpdate && (
+              <Button size="sm" onClick={() => restoreMutation.mutate()} disabled={restoreMutation.isPending}>
+                {restoreMutation.isPending ? <Loader2 className="animate-spin" /> : <RotateCcw />}
+                Restore
+              </Button>
+            )}
+          </>
+        }
+        toolbar={
+          <TabsList className="flex-wrap">
+            <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="medical">Medical Summary</TabsTrigger>
+            <TabsTrigger value="insurance">Insurance</TabsTrigger>
+            <TabsTrigger value="admissions">Admissions</TabsTrigger>
+            <TabsTrigger value="family">Family</TabsTrigger>
+            <TabsTrigger value="emergency">Emergency Contact</TabsTrigger>
+            <TabsTrigger value="documents">Documents</TabsTrigger>
+            <TabsTrigger value="timeline">Timeline</TabsTrigger>
+            <TabsTrigger value="audit">Audit</TabsTrigger>
+          </TabsList>
+        }
+      >
+        {patient.mergedIntoId && (
+          <Alert>
+            <GitMerge className="h-4 w-4" />
+            <AlertTitle>This record was merged</AlertTitle>
+            <AlertDescription>
+              All linked records were moved to another patient profile.{' '}
+              <Link href={`/dashboard/patients/${patient.mergedIntoId}`} className="underline">
+                View the surviving record
+              </Link>
+              .
+            </AlertDescription>
+          </Alert>
+        )}
 
         <TabsContent value="profile">
           <ProfileTab patient={patient} canUpdate={canUpdate} />
@@ -254,43 +265,43 @@ export default function PatientDetailPage() {
         <TabsContent value="audit">
           <TimelineTab patientId={patientId} onlyType="AUDIT" />
         </TabsContent>
-      </Tabs>
 
-      <Dialog open={confirmDeactivate} onOpenChange={setConfirmDeactivate}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Deactivate {patient.fullName}?</DialogTitle>
-            <DialogDescription>
-              This soft-deletes the patient record. It can be restored later from the patient list.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmDeactivate(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => deactivateMutation.mutate()}
-              disabled={deactivateMutation.isPending}
-            >
-              {deactivateMutation.isPending && <Loader2 className="animate-spin" />}
-              Deactivate
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        <Dialog open={confirmDeactivate} onOpenChange={setConfirmDeactivate}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Deactivate {patient.fullName}?</DialogTitle>
+              <DialogDescription>
+                This soft-deletes the patient record. It can be restored later from the patient list.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setConfirmDeactivate(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => deactivateMutation.mutate()}
+                disabled={deactivateMutation.isPending}
+              >
+                {deactivateMutation.isPending && <Loader2 className="animate-spin" />}
+                Deactivate
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-      <MergeDialog
-        open={mergeDialogOpen}
-        onOpenChange={setMergeDialogOpen}
-        patient={patient}
-        onMerged={(survivorId) => {
-          setMergeDialogOpen(false)
-          if (survivorId !== patient.id) router.push(`/dashboard/patients/${survivorId}`)
-          else void queryClient.invalidateQueries({ queryKey: ['patients'] })
-        }}
-      />
-    </div>
+        <MergeDialog
+          open={mergeDialogOpen}
+          onOpenChange={setMergeDialogOpen}
+          patient={patient}
+          onMerged={(survivorId) => {
+            setMergeDialogOpen(false)
+            if (survivorId !== patient.id) router.push(`/dashboard/patients/${survivorId}`)
+            else void queryClient.invalidateQueries({ queryKey: ['patients'] })
+          }}
+        />
+      </PageLayout>
+    </Tabs>
   )
 }
 
@@ -955,12 +966,6 @@ function DocumentsTab({ patientId, canUpdate }: { patientId: string; canUpdate: 
   )
 }
 
-const COVERAGE_STATUS_BADGE: Record<string, 'secondary' | 'success' | 'destructive'> = {
-  ACTIVE: 'success',
-  EXPIRED: 'secondary',
-  INACTIVE: 'destructive',
-}
-
 function PatientInsuranceTab({ patientId, canUpdate }: { patientId: string; canUpdate: boolean }) {
   const queryClient = useQueryClient()
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -1003,7 +1008,7 @@ function PatientInsuranceTab({ patientId, canUpdate }: { patientId: string; canU
                     {new Date(c.effectiveDate).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
                     {c.expiryDate ? ` – ${new Date(c.expiryDate).toLocaleDateString('en-IN', { dateStyle: 'medium' })}` : ''}
                   </span>
-                  <Badge variant={COVERAGE_STATUS_BADGE[c.status]}>{formatEnumLabel(c.status)}</Badge>
+                  <StatusBadge status={c.status} />
                 </div>
               </li>
             ))}
@@ -1145,13 +1150,6 @@ function AddCoverageDialog({
   )
 }
 
-const ADMISSION_STATUS_BADGE: Record<AdmissionStatus, 'success' | 'secondary' | 'destructive' | 'outline'> = {
-  ADMITTED: 'success',
-  DISCHARGED: 'secondary',
-  ABSCONDED: 'destructive',
-  CANCELLED: 'outline',
-}
-
 function PatientAdmissionsTab({ patientId }: { patientId: string }) {
   const admissionsQuery = useQuery({
     queryKey: ['ipd', 'admissions', 'list', 'patient', patientId],
@@ -1204,7 +1202,7 @@ function PatientAdmissionsTab({ patientId }: { patientId: string }) {
                 </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <span>{new Date(a.admittedAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}</span>
-                  <Badge variant={ADMISSION_STATUS_BADGE[a.status]}>{formatEnumLabel(a.status)}</Badge>
+                  <StatusBadge status={a.status} />
                 </div>
               </li>
             ))}

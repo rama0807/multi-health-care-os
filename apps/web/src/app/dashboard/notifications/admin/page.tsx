@@ -10,12 +10,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, Clock, Loader2, RefreshCw, Send } from 'lucide-react'
 import { useState } from 'react'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { humanCategory, relativeTime } from '@/components/notifications/notification-bell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Pagination } from '@/components/ui/pagination'
 import {
   Select,
   SelectContent,
@@ -23,6 +26,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { StatCard, StatCardGrid } from '@/components/ui/stat-card'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
@@ -74,36 +80,24 @@ export default function NotificationAdminPage() {
   })
 
   return (
-    <div className="space-y-4 p-6">
-      <div>
-        <h1 className="text-xl font-semibold">Notification console</h1>
-        <p className="text-sm text-muted-foreground">
-          Delivery history, failures, schedules, templates and statistics for your organization.
-        </p>
-      </div>
-
+    <PageLayout
+      title="Notification console"
+      description="Delivery history, failures, schedules, templates and statistics for your organization."
+    >
       {queue && !queue.workerEnabled && (
-        <Card className="flex items-start gap-2 border-amber-500/40 bg-amber-500/10 p-3 text-sm">
-          <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
-          <p className="text-amber-900 dark:text-amber-200">{queue.workerDisabledReason}</p>
+        <Card className="flex items-start gap-2 border-warning-border bg-warning-subtle p-3 text-sm">
+          <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-warning-subtle-foreground" />
+          <p className="text-warning-subtle-foreground">{queue.workerDisabledReason}</p>
         </Card>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <Stat label="Sent (30 days)" value={stats ? String(stats.total) : '—'} />
-        <Stat
-          label="Success rate"
-          value={stats?.successRate ? `${stats.successRate}%` : 'Not measured'}
-          muted={!stats?.successRate}
-        />
-        <Stat
-          label="Failure rate"
-          value={stats?.failureRate ? `${stats.failureRate}%` : 'Not measured'}
-          muted={!stats?.failureRate}
-        />
-        <Stat label="In queue" value={queue ? String(queue.pending + queue.queued) : '—'} />
-        <Stat label="Failed" value={queue ? String(queue.failed) : '—'} />
-      </div>
+      <StatCardGrid columns={5}>
+        <StatCard label="Sent (30 days)" value={stats ? stats.total : undefined} />
+        <StatCard label="Success rate" value={stats?.successRate ? `${stats.successRate}%` : 'Not measured'} />
+        <StatCard label="Failure rate" value={stats?.failureRate ? `${stats.failureRate}%` : 'Not measured'} />
+        <StatCard label="In queue" value={queue ? queue.pending + queue.queued : undefined} />
+        <StatCard label="Failed" value={queue ? queue.failed : undefined} tone={queue?.failed ? 'danger' : 'default'} />
+      </StatCardGrid>
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
@@ -116,69 +110,75 @@ export default function NotificationAdminPage() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-3">
-          <Card className="p-4">
-            <h2 className="mb-3 text-sm font-semibold">By channel</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="text-left text-xs uppercase tracking-wide text-muted-foreground">
-                  <tr>
-                    <th className="pb-2">Channel</th>
-                    <th className="pb-2">Attempted</th>
-                    <th className="pb-2">Sent</th>
-                    <th className="pb-2">Failed</th>
-                    <th className="pb-2">Suppressed</th>
-                    <th className="pb-2">Success</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stats?.byChannel.map((row) => (
-                    <tr key={row.channel} className="border-t">
-                      <td className="py-2 font-medium">{humanCategory(row.channel)}</td>
-                      <td className="py-2">{row.attempted}</td>
-                      <td className="py-2">{row.sent}</td>
-                      <td className="py-2">{row.failed}</td>
-                      <td className="py-2 text-muted-foreground">{row.skipped}</td>
-                      <td className="py-2">
-                        {row.successRate ? (
-                          `${row.successRate}%`
-                        ) : (
-                          <span className="text-muted-foreground">Not measured</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <p className="mt-3 text-xs text-muted-foreground">
-              &ldquo;Suppressed&rdquo; means a channel was skipped before any attempt — muted category, quiet
-              hours, or no address on file. It is deliberately excluded from the success rate.
-            </p>
+          <Card>
+            <CardContent className="pt-4">
+              <h2 className="mb-3 text-sm font-semibold">By channel</h2>
+              <TableContainer className="rounded-none border-0">
+                <Table density="compact" container={false}>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Channel</TableHead>
+                      <TableHead align="right">Attempted</TableHead>
+                      <TableHead align="right">Sent</TableHead>
+                      <TableHead align="right">Failed</TableHead>
+                      <TableHead align="right">Suppressed</TableHead>
+                      <TableHead align="right">Success</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {stats?.byChannel.map((row) => (
+                      <TableRow key={row.channel}>
+                        <TableCell className="font-medium">{humanCategory(row.channel)}</TableCell>
+                        <TableCell align="right">{row.attempted}</TableCell>
+                        <TableCell align="right">{row.sent}</TableCell>
+                        <TableCell align="right">{row.failed}</TableCell>
+                        <TableCell align="right" className="text-muted-foreground">
+                          {row.skipped}
+                        </TableCell>
+                        <TableCell align="right">
+                          {row.successRate ? (
+                            `${row.successRate}%`
+                          ) : (
+                            <span className="text-muted-foreground">Not measured</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              <p className="mt-3 text-xs text-muted-foreground">
+                &ldquo;Suppressed&rdquo; means a channel was skipped before any attempt — muted category, quiet
+                hours, or no address on file. It is deliberately excluded from the success rate.
+              </p>
+            </CardContent>
           </Card>
 
-          <Card className="p-4">
-            <h2 className="mb-3 text-sm font-semibold">Providers</h2>
-            <div className="space-y-2">
-              {providers?.map((provider) => (
-                <div
-                  key={provider.channel}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2.5"
-                >
-                  <div>
-                    <p className="text-sm font-medium">
-                      {humanCategory(provider.channel)}{' '}
-                      <span className="text-xs text-muted-foreground">({provider.providerName})</span>
-                    </p>
-                    {provider.reason && (
-                      <p className="text-xs text-muted-foreground">{provider.reason}</p>
-                    )}
+          <Card>
+            <CardContent className="pt-4">
+              <h2 className="mb-3 text-sm font-semibold">Providers</h2>
+              <div className="space-y-2">
+                {providers?.map((provider) => (
+                  <div
+                    key={provider.channel}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-2.5"
+                  >
+                    <div>
+                      <p className="text-sm font-medium">
+                        {humanCategory(provider.channel)}{' '}
+                        <span className="text-xs text-muted-foreground">({provider.providerName})</span>
+                      </p>
+                      {provider.reason && (
+                        <p className="text-xs text-muted-foreground">{provider.reason}</p>
+                      )}
+                    </div>
+                    <Badge variant={provider.configured ? 'success' : 'neutral'}>
+                      {provider.configured ? 'Configured' : 'Not configured'}
+                    </Badge>
                   </div>
-                  <Badge variant={provider.configured ? 'default' : 'outline'}>
-                    {provider.configured ? 'Configured' : 'Not configured'}
-                  </Badge>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </CardContent>
           </Card>
         </TabsContent>
 
@@ -212,16 +212,7 @@ export default function NotificationAdminPage() {
           <SendTab />
         </TabsContent>
       </Tabs>
-    </div>
-  )
-}
-
-function Stat({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
-  return (
-    <Card className="p-3">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={`text-lg font-semibold ${muted ? 'text-muted-foreground' : ''}`}>{value}</p>
-    </Card>
+    </PageLayout>
   )
 }
 
@@ -254,7 +245,7 @@ function HistoryTable({
 
   if (isLoading) return <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>
   if (!data?.data.length) {
-    return <Card className="py-12 text-center text-sm text-muted-foreground">Nothing to show.</Card>
+    return <EmptyState compact title="Nothing to show" />
   }
 
   return (
@@ -265,9 +256,10 @@ function HistoryTable({
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm font-medium">{notification.title}</span>
               <Badge variant="outline">{humanCategory(notification.category)}</Badge>
-              <Badge variant={notification.deliveryStatus === NotificationStatus.FAILED ? 'destructive' : 'secondary'}>
-                {humanCategory(notification.deliveryStatus)}
-              </Badge>
+              <StatusBadge
+                status={notification.deliveryStatus}
+                tone={notification.deliveryStatus === NotificationStatus.FAILED ? 'danger' : 'neutral'}
+              />
               {notification.scheduleAt && (
                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Clock className="h-3 w-3" />
@@ -285,7 +277,7 @@ function HistoryTable({
 
             {showDeliveries &&
               notification.deliveries?.map((delivery) => (
-                <p key={delivery.id} className="text-xs text-destructive">
+                <p key={delivery.id} className="text-xs text-danger">
                   {humanCategory(delivery.channel)} — {delivery.failureReason} (attempt {delivery.attempts})
                 </p>
               ))}
@@ -300,29 +292,7 @@ function HistoryTable({
       </Card>
 
       {data.pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">
-            Page {data.pagination.page} of {data.pagination.totalPages}
-          </p>
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={!data.pagination.hasPrev}
-              onClick={() => setPage((p) => p - 1)}
-            >
-              Previous
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={!data.pagination.hasNext}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
+        <Pagination page={data.pagination.page} totalPages={data.pagination.totalPages} onPageChange={setPage} />
       )}
     </div>
   )
@@ -363,7 +333,7 @@ function TemplatesTab() {
               <span className="text-sm font-medium">{template.name}</span>
               <Badge variant="outline">{humanCategory(template.channel)}</Badge>
               {template.isDefault ? (
-                <Badge variant="secondary">Bundled default</Badge>
+                <Badge variant="neutral">Bundled default</Badge>
               ) : (
                 <Badge>v{template.version}</Badge>
               )}

@@ -6,8 +6,10 @@ import { Loader2, Plus } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { Suspense, useState } from 'react'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -15,8 +17,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { StatusBadge, statusTone } from '@/components/ui/status-badge'
 import { useToast } from '@/hooks/use-toast'
 import { createBed, deactivateBed, listBeds, listRooms, listWards, updateBed } from '@/lib/api/ipd'
 import { useAuth } from '@/lib/auth/auth-context'
@@ -30,13 +34,17 @@ function formatEnumLabel(value: string): string {
   return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
 }
 
-const BED_STATUS_STYLE: Record<BedStatus, string> = {
-  AVAILABLE: 'border-success bg-success-subtle text-success',
-  RESERVED: 'border-warning bg-warning-subtle text-warning',
-  OCCUPIED: 'border-primary bg-primary/10 text-primary',
-  CLEANING: 'border-muted-foreground/40 bg-muted text-muted-foreground',
-  MAINTENANCE: 'border-warning bg-warning-subtle text-warning',
-  BLOCKED: 'border-destructive bg-destructive/10 text-destructive',
+/** Same tone semantics as `<StatusBadge>`, rendered as a filled swatch instead of a pill. */
+const TONE_SWATCH: Record<string, string> = {
+  success: 'border-success-border bg-success-subtle text-success-subtle-foreground',
+  info: 'border-info-border bg-info-subtle text-info-subtle-foreground',
+  warning: 'border-warning-border bg-warning-subtle text-warning-subtle-foreground',
+  danger: 'border-danger-border bg-danger-subtle text-danger-subtle-foreground',
+  neutral: 'border-neutral-border bg-neutral-subtle text-neutral-subtle-foreground',
+}
+
+function bedSwatchClass(status: BedStatus): string {
+  return TONE_SWATCH[statusTone(status)]
 }
 
 export default function BedsPage() {
@@ -82,20 +90,19 @@ function BedGrid() {
   }, {})
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Bed Grid</h1>
-          <p className="text-sm text-muted-foreground">Live bed status across every ward and room.</p>
-        </div>
-        {canCreate && (
+    <PageLayout
+      breadcrumbs={[{ label: 'IPD', href: '/dashboard/ipd' }, { label: 'Bed Grid' }]}
+      title="Bed Grid"
+      description="Live bed status across every ward and room."
+      actions={
+        canCreate && (
           <Button onClick={() => setDialogOpen(true)}>
             <Plus className="h-4 w-4" />
             Add bed
           </Button>
-        )}
-      </div>
-
+        )
+      }
+    >
       <div className="flex flex-wrap gap-2">
         <Select
           value={wardId}
@@ -134,7 +141,7 @@ function BedGrid() {
       <div className="flex flex-wrap gap-3 text-xs">
         {Object.values(BedStatus).map((s) => (
           <div key={s} className="flex items-center gap-1.5">
-            <span className={`h-3 w-3 rounded-sm border ${BED_STATUS_STYLE[s]}`} />
+            <span className={`h-3 w-3 rounded-sm border ${bedSwatchClass(s)}`} />
             {formatEnumLabel(s)}
           </div>
         ))}
@@ -145,11 +152,11 @@ function BedGrid() {
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : beds.length === 0 ? (
-        <div className="rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">No beds found.</div>
+        <EmptyState variant="search" title="No beds found" description="Try a different ward or room filter." />
       ) : (
         <div className="space-y-4">
           {Object.entries(grouped).map(([groupLabel, groupBeds]) => (
-            <div key={groupLabel} className="rounded-lg border bg-card p-4">
+            <Card key={groupLabel} className="p-4">
               <h3 className="mb-3 text-sm font-semibold text-foreground">{groupLabel}</h3>
               <div className="flex flex-wrap gap-2">
                 {groupBeds.map((bed) => (
@@ -157,7 +164,7 @@ function BedGrid() {
                     key={bed.id}
                     type="button"
                     onClick={() => setSelectedBed(bed)}
-                    className={`flex w-28 flex-col items-start rounded-md border-2 p-2 text-left text-xs transition-opacity hover:opacity-80 ${BED_STATUS_STYLE[bed.status]}`}
+                    className={`flex w-28 flex-col items-start rounded-md border-2 p-2 text-left text-xs transition-opacity duration-fast hover:opacity-80 ${bedSwatchClass(bed.status)}`}
                   >
                     <span className="font-semibold">{bed.bedNumber}</span>
                     <span>{formatEnumLabel(bed.type)}</span>
@@ -166,7 +173,7 @@ function BedGrid() {
                   </button>
                 ))}
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       )}
@@ -180,7 +187,7 @@ function BedGrid() {
           canDelete={canDelete}
         />
       )}
-    </div>
+    </PageLayout>
   )
 }
 
@@ -315,7 +322,7 @@ function BedDetailDialog({
             Type: <Badge variant="outline">{formatEnumLabel(bed.type)}</Badge>
           </p>
           <p>
-            Status: <Badge variant="outline">{formatEnumLabel(bed.status)}</Badge>
+            Status: <StatusBadge status={bed.status} />
           </p>
           <p className="text-xs text-muted-foreground">Charges: ₹{bed.room.chargesPerDay}/day</p>
           {bed.currentAdmission ? (

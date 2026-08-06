@@ -4,6 +4,135 @@
 > after every completed task. Pair with `CHANGELOG.md` (human-facing summary)
 > and `MODULE_STATUS.md` (per-module state).
 
+## 2026-08-06 — Design System V2, Phase 2: every feature page migrated — complete
+
+Instruction: redesign the frontend into a premium enterprise-SaaS look, in two
+mandatory phases. **Phase 1** (a same-day earlier session) was audit-only and
+built the reusable primitives — see the entry below and ADR-0031. **Phase 2**
+is this entry: migrate every existing feature page onto those primitives,
+module by module, continuing automatically after each module's own
+lint→typecheck→build verification passed, with explicit hard constraints —
+**UI/UX only**: no backend, API, route, business logic, permission, workflow
+or Prisma-schema change; no browser testing, screenshots or image generation;
+no `.ai/` documentation update until every module was done (this entry is that
+update).
+
+### Scope covered
+
+All 18 frontend modules, ~90 files: Dashboard home, Patients, Doctors,
+Appointments, Medical Records, Laboratory, Radiology, Pharmacy, Billing,
+Insurance, IPD, Nursing, Inventory (largest — 20 routes), Staff, Organization
+(9 tabs), Reports, Notifications, AI.
+
+### What changed, mechanically
+
+Every page's header became a `<PageLayout>` (breadcrumbs, title, status
+badge, meta row, description, actions, tab/filter toolbar). Every hand-rolled
+`Record<Status, BadgeVariant>` map — there were roughly 20 of them, one per
+module, each independently guessing at colour — was deleted in favour of the
+single `<StatusBadge status={…} />` that Phase 1 built but nothing had adopted
+yet. Every `rounded-lg border bg-card p-4` div became `<Card>`/`<CardHeader>`/
+`<CardContent>`/`<CardFooter>`. Every raw `<table>` or manually-scrolled table
+became `<TableContainer>` + `<Table density="compact"|"comfortable">` with
+`align="right"` on numeric columns and `<TableRowActions>` for hover-revealed
+row buttons. Every "Loading…"/"No data" string became `<TableSkeleton>` /
+`<EmptyState>` (which distinguishes an empty list from a filtered-empty one,
+and never renders a missing measurement as `0`). Every hand-rolled KPI tile
+became `<StatCard>`/`<StatCardGrid>`. Every hand-drawn bar "chart" (a div
+whose height came from an inline `style`) became a real `recharts`
+`<BarChart>`. Every bespoke search-plus-filter row became `<FilterBar>` +
+`<SearchInput>`.
+
+### Real bugs found and fixed as a direct consequence — not scope creep
+
+Centralizing on `StatusBadge` required auditing every local status map against
+the shared `STATUS_TONES` vocabulary, which surfaced genuine, pre-existing
+inconsistencies:
+
+- "Cancelled" rendered **red** in Appointments and in Doctors' leave, and
+  **grey** everywhere else — now uniformly neutral (a cancellation is a normal
+  administrative event, not a failure).
+- "In Consultation" rendered **green** in Appointments (a terminal-success
+  colour for an in-progress state) — now `info`.
+- Dispense/order "Completed" was green in some modules, grey in others — now
+  uniformly `success`.
+- Pharmacy low-stock/expiring badges rendered **red** (`destructive`) instead
+  of amber — now `warning`, matching the rest of the system's "waiting on a
+  human" vocabulary.
+- An IPD bed-grid colour helper (`BED_STATUS_STYLE`) paired
+  `bg-success-subtle` with `text-success` instead of
+  `text-success-subtle-foreground`, silently violating the token system's own
+  WCAG-derived subtle/subtle-foreground contrast pairing rule; replaced with a
+  helper (`bedSwatchClass`) that reuses the exported `statusTone()` function so
+  the pairing cannot drift again.
+
+Five status keys were added to the shared `STATUS_TONES` map — additive only,
+nothing existing changed — to cover vocabularies Phase 1 had not encountered:
+`UNDER_RENOVATION`/`ADMINISTERED` (IPD ward/MAR), `TRIALING`/`PAST_DUE`
+(subscription status), `SUCCEEDED` (AI usage log).
+
+**One genuine ambiguity, handled via the sanctioned override rather than by
+corrupting the shared map:** in IPD's nursing-assessment tab, `LOW`/`HIGH`
+means opposite things for a fall-risk level (low is good) versus a lab
+abnormal flag (low is bad). `StatusBadge`'s `tone` prop exists precisely for
+this; a local `RISK_TONE: Record<string, StatusTone>` with an inline comment
+explains why it diverges from the shared map, rather than silently reusing
+`HIGH: "danger"` for a risk level where high-risk genuinely is dangerous but
+low-risk is not "danger" either.
+
+### Verification
+
+Ran the full triad after every one of the 18 modules
+(`pnpm --filter @medicore/web typecheck/lint/build`), then the full-repo suite
+at the end: `pnpm lint`, `pnpm typecheck`, `pnpm test` (**785 API unit tests
+across 96 suites, 49 web unit tests across 3 suites — unchanged from Phase
+1**, zero failures), `pnpm build` (all 5 packages) — all clean.
+
+`pnpm test:e2e` **could not be run** — it fails with `expected 201, got 500` on
+the very first `register` call in every suite, which is the pre-existing,
+already-documented **TD-0004**: `medicore_test`/`medicore_dev` need a running,
+migrated Postgres + Redis that this session's environment did not have set up.
+Confirmed unrelated to this work: zero backend, API, database or Prisma-schema
+files were touched (`git status` on `apps/api` and `packages/database` shows
+no change from this session).
+
+**Not browser-verified; no screenshots captured** — both by the same explicit
+instruction that started Phase 2, which said not to, consistent with how
+Phase 1 handled the same instruction.
+
+### Files modified
+
+~90 files under `apps/web/src/app/dashboard/**`, plus `components/ui/
+status-badge.tsx` (five additive `STATUS_TONES` entries) and this file's
+sibling `.ai/` docs. No file outside `apps/web` changed.
+
+### Documentation
+
+`TD-0077` (feature-page migration) closed. `TD-0074` (branding reach) and
+`TD-0075` (hospital selector doesn't filter data) intentionally left open —
+both need a backend/query change, which stayed correctly out of scope for a
+UI-only pass; `TD-0075`'s entry now says so explicitly rather than implying
+Phase 2 should have closed it.
+
+### Recommended next task
+
+Nothing is queued automatically — see `NEXT.md`. The two realistic next steps
+are: (1) close `TD-0074` (a small backend change — include `branding` in the
+login/refresh payload so it reaches every role, not just `organizations.read`
+holders) and `TD-0075` (wire `activeHospitalId` into each module's list
+queries), or (2) resume the explicitly-paused AI roadmap (Checkpoints
+15.2–15.5) if given a fresh instruction to do so. Neither should be started
+without that fresh instruction, per `CLAUDE.md`.
+
+### Estimated project completion
+
+Unchanged in feature terms — this work added no HMS functionality and changed
+no business rule. Frontend presentation layer moves from **"Design System V2,
+Phase 1 of 2"** to **Design System V2 complete (100%, both phases)** — every
+page in every module now renders through the same primitives.
+
+---
+
 ## 2026-08-06 — Milestone 18 (Communication & Notification Platform) — complete
 
 Instruction: build Milestone 18 in full (Checkpoints 18.1–18.7), audit

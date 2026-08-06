@@ -6,11 +6,23 @@ import { Loader2, Pill, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 
-import { Badge } from '@/components/ui/badge'
+import { PageLayout } from '@/components/layout/page-layout'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableRowActions,
+} from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
 import { createDispenseOrder, dispenseComplete, listDispenseOrders } from '@/lib/api/pharmacy'
 import { listPrescriptions } from '@/lib/api/prescriptions'
@@ -23,15 +35,6 @@ function getErrorMessage(error: unknown): string {
 
 function formatEnumLabel(value: string): string {
   return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
-}
-
-const STATUS_BADGE: Record<DispenseStatus, 'secondary' | 'success' | 'destructive' | 'outline'> = {
-  [DispenseStatus.PENDING]: 'secondary',
-  [DispenseStatus.PREPARING]: 'outline',
-  [DispenseStatus.READY]: 'outline',
-  [DispenseStatus.DISPENSED]: 'success',
-  [DispenseStatus.CANCELLED]: 'destructive',
-  [DispenseStatus.RETURNED]: 'destructive',
 }
 
 export default function PharmacyDispenseQueuePage() {
@@ -72,24 +75,25 @@ export default function PharmacyDispenseQueuePage() {
   const orders = ordersQuery.data?.data ?? []
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Dispensing Queue</h1>
-          <p className="text-sm text-muted-foreground">
-            {ordersQuery.data ? `${ordersQuery.data.pagination.total} order${ordersQuery.data.pagination.total === 1 ? '' : 's'}` : 'Loading...'}
-          </p>
-        </div>
-        {canCreate && (
+    <PageLayout
+      breadcrumbs={[{ label: 'Pharmacy', href: '/dashboard/pharmacy' }, { label: 'Dispensing Queue' }]}
+      title="Dispensing Queue"
+      description={
+        ordersQuery.data
+          ? `${ordersQuery.data.pagination.total} order${ordersQuery.data.pagination.total === 1 ? '' : 's'}`
+          : undefined
+      }
+      actions={
+        canCreate && (
           <Button onClick={() => setDialogOpen(true)}>
             <Plus className="h-4 w-4" />
             New dispense
           </Button>
-        )}
-      </div>
-
+        )
+      }
+    >
       <Select value={status} onValueChange={setStatus}>
-        <SelectTrigger className="sm:w-48">
+        <SelectTrigger className="w-48">
           <SelectValue placeholder="Status" />
         </SelectTrigger>
         <SelectContent>
@@ -102,39 +106,27 @@ export default function PharmacyDispenseQueuePage() {
         </SelectContent>
       </Select>
 
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Dispense #</TableHead>
-              <TableHead>Patient</TableHead>
-              <TableHead>Prescription</TableHead>
-              <TableHead>Prescribing doctor</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {ordersQuery.isLoading ? (
+      {ordersQuery.isLoading ? (
+        <TableSkeleton rows={8} columns={6} />
+      ) : ordersQuery.isError ? (
+        <EmptyState variant="error" title="Couldn't load dispense orders" description={getErrorMessage(ordersQuery.error)} />
+      ) : orders.length === 0 ? (
+        <EmptyState variant="search" title="No dispense orders found" description="Try a different status filter." />
+      ) : (
+        <TableContainer className="max-h-[65vh]">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Dispense #</TableHead>
+                <TableHead>Patient</TableHead>
+                <TableHead>Prescription</TableHead>
+                <TableHead>Prescribing doctor</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-40" />
               </TableRow>
-            ) : ordersQuery.isError ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  Couldn&apos;t load dispense orders. {getErrorMessage(ordersQuery.error)}
-                </TableCell>
-              </TableRow>
-            ) : orders.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  No dispense orders found.
-                </TableCell>
-              </TableRow>
-            ) : (
-              orders.map((order) => (
+            </TableHeader>
+            <TableBody>
+              {orders.map((order) => (
                 <TableRow key={order.id}>
                   <TableCell>
                     <Link href={`/dashboard/pharmacy/${order.id}`} className="flex items-center gap-1.5 font-mono text-xs hover:underline">
@@ -146,10 +138,10 @@ export default function PharmacyDispenseQueuePage() {
                   <TableCell className="font-mono text-xs text-muted-foreground">{order.prescription.prescriptionNumber}</TableCell>
                   <TableCell>Dr. {order.prescription.doctorFullName}</TableCell>
                   <TableCell>
-                    <Badge variant={STATUS_BADGE[order.status]}>{formatEnumLabel(order.status)}</Badge>
+                    <StatusBadge status={order.status} />
                   </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap items-center gap-2">
+                  <TableCell align="right">
+                    <TableRowActions>
                       {canUpdate && order.status === DispenseStatus.READY && (
                         <Button variant="outline" size="sm" onClick={() => completeMutation.mutate(order.id)} disabled={completeMutation.isPending}>
                           Dispense
@@ -158,17 +150,17 @@ export default function PharmacyDispenseQueuePage() {
                       <Button asChild variant="ghost" size="sm">
                         <Link href={`/dashboard/pharmacy/${order.id}`}>Open</Link>
                       </Button>
-                    </div>
+                    </TableRowActions>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       <NewDispenseDialog open={dialogOpen} onOpenChange={setDialogOpen} onCreated={invalidateOrders} />
-    </div>
+    </PageLayout>
   )
 }
 

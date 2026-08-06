@@ -3,8 +3,6 @@
 import {
   EncounterStatus,
   EncounterType,
-  LabTestStatus,
-  PrescriptionStatus,
   type CreateEncounterDto,
   type Patient,
 } from '@medicore/types'
@@ -22,7 +20,7 @@ import {
   YAxis,
 } from 'recharts'
 
-import { Badge } from '@/components/ui/badge'
+import { PageLayout } from '@/components/layout/page-layout'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -32,10 +30,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
+import { FilterBar } from '@/components/ui/toolbar'
 import { useToast } from '@/hooks/use-toast'
 import { listDoctors } from '@/lib/api/doctors'
 import { listLabOrders } from '@/lib/api/laboratory'
@@ -52,37 +62,6 @@ function getErrorMessage(error: unknown): string {
 
 function formatEnumLabel(value: string): string {
   return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
-}
-
-const STATUS_BADGE: Record<EncounterStatus, 'success' | 'secondary' | 'destructive'> = {
-  [EncounterStatus.IN_PROGRESS]: 'secondary',
-  [EncounterStatus.COMPLETED]: 'success',
-  [EncounterStatus.AMENDED]: 'destructive',
-}
-
-const PRESCRIPTION_STATUS_BADGE: Record<PrescriptionStatus, 'secondary' | 'success' | 'destructive'> = {
-  [PrescriptionStatus.ACTIVE]: 'secondary',
-  [PrescriptionStatus.COMPLETED]: 'success',
-  [PrescriptionStatus.DISCONTINUED]: 'destructive',
-}
-
-const LAB_STATUS_BADGE: Record<LabTestStatus, 'secondary' | 'success' | 'destructive' | 'outline'> = {
-  [LabTestStatus.ORDERED]: 'secondary',
-  [LabTestStatus.SAMPLE_COLLECTED]: 'outline',
-  [LabTestStatus.IN_PROGRESS]: 'outline',
-  [LabTestStatus.COMPLETED]: 'success',
-  [LabTestStatus.REPORTED]: 'success',
-  [LabTestStatus.CANCELLED]: 'destructive',
-}
-
-const RADIOLOGY_STATUS_BADGE: Record<string, 'secondary' | 'success' | 'destructive' | 'outline'> = {
-  ORDERED: 'secondary',
-  SCHEDULED: 'outline',
-  IN_PROGRESS: 'outline',
-  COMPLETED: 'success',
-  REPORTED: 'success',
-  CANCELLED: 'destructive',
-  REJECTED: 'destructive',
 }
 
 export default function MedicalRecordsPage() {
@@ -139,30 +118,28 @@ export default function MedicalRecordsPage() {
     .map((v) => ({ date: new Date(v.recordedAt).toLocaleDateString('en-IN', { dateStyle: 'short' }), weight: v.weightKg }))
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Medical Records</h1>
-          <p className="text-sm text-muted-foreground">
-            {encountersQuery.data
-              ? `${encountersQuery.data.pagination.total} encounter${encountersQuery.data.pagination.total === 1 ? '' : 's'}`
-              : 'Loading...'}
-          </p>
-        </div>
-        {canCreate && (
+    <PageLayout
+      title="Medical Records"
+      description={
+        encountersQuery.data
+          ? `${encountersQuery.data.pagination.total} encounter${encountersQuery.data.pagination.total === 1 ? '' : 's'}`
+          : undefined
+      }
+      actions={
+        canCreate && (
           <Button onClick={() => setCreating(true)}>
             <ClipboardPlus />
             New encounter
           </Button>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <div className="sm:max-w-xs sm:flex-1">
+        )
+      }
+    >
+      <FilterBar>
+        <div className="max-w-xs flex-1">
           <PatientFilterPicker selected={patientFilter} onSelect={setPatientFilter} />
         </div>
         <Select value={doctorId} onValueChange={setDoctorId}>
-          <SelectTrigger className="sm:w-56">
+          <SelectTrigger className="w-56">
             <SelectValue placeholder="Doctor" />
           </SelectTrigger>
           <SelectContent>
@@ -175,7 +152,7 @@ export default function MedicalRecordsPage() {
           </SelectContent>
         </Select>
         <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger className="sm:w-44">
+          <SelectTrigger className="w-44">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -187,7 +164,7 @@ export default function MedicalRecordsPage() {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </FilterBar>
 
       {patientFilter &&
         (weightSeries.length > 1 ||
@@ -227,7 +204,7 @@ export default function MedicalRecordsPage() {
                     >
                       <Pill className="h-3.5 w-3.5 text-muted-foreground" />
                       <span className="font-mono text-xs text-muted-foreground">{rx.prescriptionNumber}</span>
-                      <Badge variant={PRESCRIPTION_STATUS_BADGE[rx.status]}>{formatEnumLabel(rx.status)}</Badge>
+                      <StatusBadge status={rx.status} />
                       <span className="text-xs text-muted-foreground">
                         {rx.items.map((i) => i.medicationName).join(', ')}
                       </span>
@@ -252,7 +229,7 @@ export default function MedicalRecordsPage() {
                     >
                       <FlaskConical className="h-3.5 w-3.5 text-muted-foreground" />
                       <span className="font-mono text-xs text-muted-foreground">{order.labOrderNumber}</span>
-                      <Badge variant={LAB_STATUS_BADGE[order.status]}>{formatEnumLabel(order.status)}</Badge>
+                      <StatusBadge status={order.status} />
                       <span className="text-xs text-muted-foreground">
                         {order.items.map((i) => i.testName).join(', ')}
                       </span>
@@ -277,7 +254,7 @@ export default function MedicalRecordsPage() {
                     >
                       <Scan className="h-3.5 w-3.5 text-muted-foreground" />
                       <span className="font-mono text-xs text-muted-foreground">{order.orderNumber}</span>
-                      <Badge variant={RADIOLOGY_STATUS_BADGE[order.status]}>{formatEnumLabel(order.status)}</Badge>
+                      <StatusBadge status={order.status} />
                       <span className="text-xs text-muted-foreground">
                         {order.modality} — {order.bodyPart}
                       </span>
@@ -290,39 +267,35 @@ export default function MedicalRecordsPage() {
         </div>
       )}
 
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Patient</TableHead>
-              <TableHead>Doctor</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {encountersQuery.isLoading ? (
+      {encountersQuery.isLoading ? (
+        <TableSkeleton rows={8} columns={5} />
+      ) : encountersQuery.isError ? (
+        <EmptyState variant="error" title="Couldn't load encounters" description={getErrorMessage(encountersQuery.error)} />
+      ) : encounters.length === 0 ? (
+        <EmptyState
+          variant="search"
+          title="No encounters found"
+          description="Try a different patient, doctor, or status filter."
+        />
+      ) : (
+        <TableContainer className="max-h-[65vh]">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Date</TableHead>
+                <TableHead>Patient</TableHead>
+                <TableHead>Doctor</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Status</TableHead>
               </TableRow>
-            ) : encountersQuery.isError ? (
-              <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                  Couldn&apos;t load encounters. {getErrorMessage(encountersQuery.error)}
-                </TableCell>
-              </TableRow>
-            ) : encounters.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                  No encounters found.
-                </TableCell>
-              </TableRow>
-            ) : (
-              encounters.map((enc) => (
-                <TableRow key={enc.id} className="cursor-pointer" onClick={() => router.push(`/dashboard/medical-records/${enc.id}`)}>
+            </TableHeader>
+            <TableBody>
+              {encounters.map((enc) => (
+                <TableRow
+                  key={enc.id}
+                  interactive
+                  onClick={() => router.push(`/dashboard/medical-records/${enc.id}`)}
+                >
                   <TableCell className="font-medium">
                     {new Date(enc.encounterDate).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
                   </TableCell>
@@ -339,14 +312,14 @@ export default function MedicalRecordsPage() {
                   <TableCell>Dr. {enc.doctor.fullName}</TableCell>
                   <TableCell>{formatEnumLabel(enc.type)}</TableCell>
                   <TableCell>
-                    <Badge variant={STATUS_BADGE[enc.status]}>{formatEnumLabel(enc.status)}</Badge>
+                    <StatusBadge status={enc.status} />
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       {canCreate && (
         <NewEncounterDialog
@@ -356,7 +329,7 @@ export default function MedicalRecordsPage() {
           onCreated={(encounterId) => router.push(`/dashboard/medical-records/${encounterId}`)}
         />
       )}
-    </div>
+    </PageLayout>
   )
 }
 

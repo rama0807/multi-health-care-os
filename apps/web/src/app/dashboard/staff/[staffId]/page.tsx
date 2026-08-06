@@ -6,11 +6,17 @@ import { Loader2, Trash2, Upload } from 'lucide-react'
 import { useParams } from 'next/navigation'
 import { useState } from 'react'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
+import { PageHeaderMeta } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { StatCard, StatCardGrid } from '@/components/ui/stat-card'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
@@ -26,14 +32,6 @@ function getErrorMessage(error: unknown): string {
 
 function formatEnumLabel(value: string): string {
   return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
-}
-
-const STATUS_BADGE: Record<EmploymentStatus, 'success' | 'secondary' | 'destructive' | 'outline'> = {
-  ACTIVE: 'success',
-  ON_LEAVE: 'outline',
-  SUSPENDED: 'destructive',
-  TERMINATED: 'secondary',
-  RESIGNED: 'secondary',
 }
 
 export default function StaffProfilePage() {
@@ -59,28 +57,37 @@ export default function StaffProfilePage() {
 
   if (staffQuery.isLoading || !staff) {
     return (
-      <div className="flex h-48 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
+      <PageLayout
+        breadcrumbs={[{ label: 'Staff', href: '/dashboard/staff/directory' }, { label: '…' }]}
+        title="…"
+        loading
+      >
+        <div className="flex h-48 items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </PageLayout>
     )
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">{staff.fullName}</h1>
-          <p className="text-sm text-muted-foreground">
-            {staff.designation} · {staff.employeeId} · {staff.department?.name ?? 'No department'}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant={STATUS_BADGE[staff.employmentStatus]}>{formatEnumLabel(staff.employmentStatus)}</Badge>
-          {canUpdate && (
-            <Select
-              value={staff.employmentStatus}
-              onValueChange={(v) => statusMutation.mutate(v as EmploymentStatus)}
-            >
+    <Tabs defaultValue="overview">
+      <PageLayout
+        breadcrumbs={[
+          { label: 'Staff', href: '/dashboard/staff/directory' },
+          { label: staff.fullName },
+        ]}
+        title={staff.fullName}
+        badge={<StatusBadge status={staff.employmentStatus} />}
+        meta={
+          <>
+            <PageHeaderMeta label="Designation">{staff.designation}</PageHeaderMeta>
+            <PageHeaderMeta label="Employee ID">{staff.employeeId}</PageHeaderMeta>
+            <PageHeaderMeta label="Department">{staff.department?.name}</PageHeaderMeta>
+          </>
+        }
+        actions={
+          canUpdate && (
+            <Select value={staff.employmentStatus} onValueChange={(v) => statusMutation.mutate(v as EmploymentStatus)}>
               <SelectTrigger className="w-40">
                 <SelectValue />
               </SelectTrigger>
@@ -92,65 +99,66 @@ export default function StaffProfilePage() {
                 ))}
               </SelectContent>
             </Select>
-          )}
-        </div>
-      </div>
-
-      <Tabs defaultValue="overview">
-        <TabsList className="flex-wrap">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="documents">Documents</TabsTrigger>
-          <TabsTrigger value="attendance">Attendance</TabsTrigger>
-          <TabsTrigger value="leave">Leave</TabsTrigger>
-        </TabsList>
-
+          )
+        }
+        toolbar={
+          <TabsList className="flex-wrap">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="documents">Documents</TabsTrigger>
+            <TabsTrigger value="attendance">Attendance</TabsTrigger>
+            <TabsTrigger value="leave">Leave</TabsTrigger>
+          </TabsList>
+        }
+      >
         <TabsContent value="overview" className="space-y-4">
-          <div className="rounded-lg border bg-card p-4">
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-              <div className="contents">
-                <dt className="text-muted-foreground">Email</dt>
-                <dd className="font-medium text-foreground">{staff.email}</dd>
-              </div>
-              <div className="contents">
-                <dt className="text-muted-foreground">Phone</dt>
-                <dd className="font-medium text-foreground">{staff.phone ?? '—'}</dd>
-              </div>
-              <div className="contents">
-                <dt className="text-muted-foreground">Hospital</dt>
-                <dd className="font-medium text-foreground">{staff.hospital?.name ?? '—'}</dd>
-              </div>
-              <div className="contents">
-                <dt className="text-muted-foreground">Department</dt>
-                <dd className="font-medium text-foreground">{staff.department?.name ?? '—'}</dd>
-              </div>
-              <div className="contents">
-                <dt className="text-muted-foreground">Employment type</dt>
-                <dd className="font-medium text-foreground">{formatEnumLabel(staff.employmentType)}</dd>
-              </div>
-              <div className="contents">
-                <dt className="text-muted-foreground">Reports to</dt>
-                <dd className="font-medium text-foreground">
-                  {staff.reportsTo ? `${staff.reportsTo.fullName} (${staff.reportsTo.designation})` : '—'}
-                </dd>
-              </div>
-              <div className="contents">
-                <dt className="text-muted-foreground">Joining date</dt>
-                <dd className="font-medium text-foreground">{new Date(staff.joiningDate).toLocaleDateString('en-IN')}</dd>
-              </div>
-              <div className="contents">
-                <dt className="text-muted-foreground">Date of leaving</dt>
-                <dd className="font-medium text-foreground">
-                  {staff.dateOfLeaving ? new Date(staff.dateOfLeaving).toLocaleDateString('en-IN') : '—'}
-                </dd>
-              </div>
-              <div className="contents">
-                <dt className="text-muted-foreground">Monthly salary</dt>
-                <dd className="font-medium text-foreground">
-                  {staff.monthlySalary ? `₹${staff.monthlySalary.toLocaleString('en-IN')}` : '—'}
-                </dd>
-              </div>
-            </dl>
-          </div>
+          <Card>
+            <CardContent className="pt-4">
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                <div className="contents">
+                  <dt className="text-muted-foreground">Email</dt>
+                  <dd className="font-medium text-foreground">{staff.email}</dd>
+                </div>
+                <div className="contents">
+                  <dt className="text-muted-foreground">Phone</dt>
+                  <dd className="font-medium text-foreground">{staff.phone ?? '—'}</dd>
+                </div>
+                <div className="contents">
+                  <dt className="text-muted-foreground">Hospital</dt>
+                  <dd className="font-medium text-foreground">{staff.hospital?.name ?? '—'}</dd>
+                </div>
+                <div className="contents">
+                  <dt className="text-muted-foreground">Department</dt>
+                  <dd className="font-medium text-foreground">{staff.department?.name ?? '—'}</dd>
+                </div>
+                <div className="contents">
+                  <dt className="text-muted-foreground">Employment type</dt>
+                  <dd className="font-medium text-foreground">{formatEnumLabel(staff.employmentType)}</dd>
+                </div>
+                <div className="contents">
+                  <dt className="text-muted-foreground">Reports to</dt>
+                  <dd className="font-medium text-foreground">
+                    {staff.reportsTo ? `${staff.reportsTo.fullName} (${staff.reportsTo.designation})` : '—'}
+                  </dd>
+                </div>
+                <div className="contents">
+                  <dt className="text-muted-foreground">Joining date</dt>
+                  <dd className="font-medium text-foreground">{new Date(staff.joiningDate).toLocaleDateString('en-IN')}</dd>
+                </div>
+                <div className="contents">
+                  <dt className="text-muted-foreground">Date of leaving</dt>
+                  <dd className="font-medium text-foreground">
+                    {staff.dateOfLeaving ? new Date(staff.dateOfLeaving).toLocaleDateString('en-IN') : '—'}
+                  </dd>
+                </div>
+                <div className="contents">
+                  <dt className="text-muted-foreground">Monthly salary</dt>
+                  <dd className="font-medium text-foreground">
+                    {staff.monthlySalary ? `₹${staff.monthlySalary.toLocaleString('en-IN')}` : '—'}
+                  </dd>
+                </div>
+              </dl>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="documents">
@@ -164,8 +172,8 @@ export default function StaffProfilePage() {
         <TabsContent value="leave">
           <LeaveTab staffId={staffId} />
         </TabsContent>
-      </Tabs>
-    </div>
+      </PageLayout>
+    </Tabs>
   )
 }
 
@@ -220,31 +228,33 @@ function DocumentsTab({ staffId }: { staffId: string }) {
         </div>
       )}
 
-      <div className="divide-y rounded-lg border bg-card">
-        {documentsQuery.isLoading ? (
-          <div className="flex h-16 items-center justify-center">
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-          </div>
-        ) : documentsQuery.data?.length ? (
-          documentsQuery.data.map((doc) => (
-            <div key={doc.id} className="flex items-center justify-between gap-2 p-3 text-sm">
-              <div>
-                <a href={doc.fileUrl} target="_blank" rel="noreferrer" className="font-medium hover:underline">
-                  {doc.fileName}
-                </a>
-                <span className="ml-2 text-xs text-muted-foreground">{formatEnumLabel(doc.documentType)}</span>
-              </div>
-              {canManage && (
-                <Button variant="ghost" size="sm" onClick={() => deleteMutation.mutate(doc.id)} disabled={deleteMutation.isPending}>
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              )}
-            </div>
-          ))
-        ) : (
-          <p className="p-4 text-sm text-muted-foreground">No documents uploaded yet.</p>
-        )}
-      </div>
+      {documentsQuery.isLoading ? (
+        <div className="flex h-16 items-center justify-center">
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        </div>
+      ) : documentsQuery.data?.length ? (
+        <Card>
+          <ul className="divide-y">
+            {documentsQuery.data.map((doc) => (
+              <li key={doc.id} className="flex items-center justify-between gap-2 p-3 text-sm">
+                <div>
+                  <a href={doc.fileUrl} target="_blank" rel="noreferrer" className="font-medium hover:underline">
+                    {doc.fileName}
+                  </a>
+                  <span className="ml-2 text-xs text-muted-foreground">{formatEnumLabel(doc.documentType)}</span>
+                </div>
+                {canManage && (
+                  <Button variant="ghost" size="sm" onClick={() => deleteMutation.mutate(doc.id)} disabled={deleteMutation.isPending}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : (
+        <EmptyState compact title="No documents uploaded yet" />
+      )}
     </div>
   )
 }
@@ -260,26 +270,24 @@ function AttendanceTab({ staffId }: { staffId: string }) {
   return (
     <div className="space-y-4">
       <Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="w-44" />
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Clock in</TableHead>
-              <TableHead>Clock out</TableHead>
-              <TableHead>Worked (mins)</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {calendarQuery.isLoading ? (
+      {calendarQuery.isLoading ? (
+        <div className="flex h-24 items-center justify-center">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : calendarQuery.data?.length ? (
+        <TableContainer>
+          <Table container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Date</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Clock in</TableHead>
+                <TableHead>Clock out</TableHead>
+                <TableHead align="right">Worked (mins)</TableHead>
               </TableRow>
-            ) : calendarQuery.data?.length ? (
-              calendarQuery.data.map((day) => (
+            </TableHeader>
+            <TableBody>
+              {calendarQuery.data.map((day) => (
                 <TableRow key={day.date}>
                   <TableCell>{day.date}</TableCell>
                   <TableCell>
@@ -287,19 +295,15 @@ function AttendanceTab({ staffId }: { staffId: string }) {
                   </TableCell>
                   <TableCell>{day.clockInAt ? new Date(day.clockInAt).toLocaleTimeString('en-IN') : '—'}</TableCell>
                   <TableCell>{day.clockOutAt ? new Date(day.clockOutAt).toLocaleTimeString('en-IN') : '—'}</TableCell>
-                  <TableCell>{day.workedMinutes ?? '—'}</TableCell>
+                  <TableCell align="right">{day.workedMinutes ?? '—'}</TableCell>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                  No attendance recorded this month.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      ) : (
+        <EmptyState compact title="No attendance recorded this month" />
+      )}
     </div>
   )
 }
@@ -332,16 +336,11 @@ function LeaveTab({ staffId }: { staffId: string }) {
   return (
     <div className="space-y-4">
       {balanceQuery.data && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatCardGrid columns={4}>
           {balanceQuery.data.map((b) => (
-            <div key={b.leaveType} className="rounded-lg border bg-card p-3">
-              <p className="text-xs text-muted-foreground">{formatEnumLabel(b.leaveType)}</p>
-              <p className="text-lg font-semibold text-foreground">
-                {b.remainingDays} / {b.annualDays}
-              </p>
-            </div>
+            <StatCard key={b.leaveType} label={formatEnumLabel(b.leaveType)} value={`${b.remainingDays} / ${b.annualDays}`} />
           ))}
-        </div>
+        </StatCardGrid>
       )}
 
       <div className="flex flex-wrap items-end gap-2 rounded-lg border bg-card p-4">
@@ -369,46 +368,40 @@ function LeaveTab({ staffId }: { staffId: string }) {
         </Button>
       </div>
 
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Type</TableHead>
-              <TableHead>Dates</TableHead>
-              <TableHead>Days</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {leaveQuery.isLoading ? (
+      {leaveQuery.isLoading ? (
+        <div className="flex h-24 items-center justify-center">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : leaveQuery.data?.data.length ? (
+        <TableContainer>
+          <Table container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Type</TableHead>
+                <TableHead>Dates</TableHead>
+                <TableHead align="right">Days</TableHead>
+                <TableHead>Status</TableHead>
               </TableRow>
-            ) : leaveQuery.data?.data.length ? (
-              leaveQuery.data.data.map((leave) => (
+            </TableHeader>
+            <TableBody>
+              {leaveQuery.data.data.map((leave) => (
                 <TableRow key={leave.id}>
                   <TableCell>{formatEnumLabel(leave.leaveType)}</TableCell>
                   <TableCell>
                     {leave.startDate} → {leave.endDate}
                   </TableCell>
-                  <TableCell>{leave.days}</TableCell>
+                  <TableCell align="right">{leave.days}</TableCell>
                   <TableCell>
-                    <Badge variant="outline">{formatEnumLabel(leave.status)}</Badge>
+                    <StatusBadge status={leave.status} />
                   </TableCell>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
-                  No leave requests yet.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      ) : (
+        <EmptyState compact title="No leave requests yet" />
+      )}
     </div>
   )
 }

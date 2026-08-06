@@ -2,17 +2,20 @@
 
 import { DispenseStatus } from '@medicore/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Loader2 } from 'lucide-react'
-import { useParams, useRouter } from 'next/navigation'
+import { Loader2 } from 'lucide-react'
+import { useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
+import { PageLayout } from '@/components/layout/page-layout'
 import { Button } from '@/components/ui/button'
+import { Card, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
+import { PageHeaderMeta } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -33,23 +36,9 @@ function getErrorMessage(error: unknown): string {
   return axiosError?.response?.data?.error?.message ?? 'Something went wrong. Please try again.'
 }
 
-function formatEnumLabel(value: string): string {
-  return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
-}
-
-const STATUS_BADGE: Record<DispenseStatus, 'secondary' | 'success' | 'destructive' | 'outline'> = {
-  [DispenseStatus.PENDING]: 'secondary',
-  [DispenseStatus.PREPARING]: 'outline',
-  [DispenseStatus.READY]: 'outline',
-  [DispenseStatus.DISPENSED]: 'success',
-  [DispenseStatus.CANCELLED]: 'destructive',
-  [DispenseStatus.RETURNED]: 'destructive',
-}
-
 export default function DispenseOrderDetailPage() {
   const params = useParams<{ dispenseId: string }>()
   const dispenseId = params.dispenseId
-  const router = useRouter()
   const { hasPermission } = useAuth()
   const { toast } = useToast()
   const queryClient = useQueryClient()
@@ -160,24 +149,31 @@ export default function DispenseOrderDetailPage() {
 
   if (orderQuery.isLoading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
+      <PageLayout
+        breadcrumbs={[{ label: 'Pharmacy', href: '/dashboard/pharmacy' }, { label: 'Dispensing Queue', href: '/dashboard/pharmacy/dispense' }, { label: '…' }]}
+        title="…"
+        loading
+      >
+        <div className="flex h-64 items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </PageLayout>
     )
   }
 
   if (orderQuery.isError || !orderQuery.data) {
     return (
-      <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Dispense order not found</AlertTitle>
-        <AlertDescription>
-          {getErrorMessage(orderQuery.error)}{' '}
-          <Button variant="link" className="h-auto p-0" onClick={() => router.push('/dashboard/pharmacy/dispense')}>
-            Back to queue
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <PageLayout
+        breadcrumbs={[{ label: 'Pharmacy', href: '/dashboard/pharmacy' }, { label: 'Dispensing Queue', href: '/dashboard/pharmacy/dispense' }, { label: 'Not found' }]}
+        title="Dispense order not found"
+      >
+        <EmptyState
+          variant="error"
+          title="Dispense order not found"
+          description={getErrorMessage(orderQuery.error)}
+          action={{ label: 'Back to queue', href: '/dashboard/pharmacy/dispense' }}
+        />
+      </PageLayout>
     )
   }
 
@@ -193,93 +189,99 @@ export default function DispenseOrderDetailPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="font-mono text-lg font-semibold text-foreground">{order.dispenseNumber}</h1>
-            <Badge variant={STATUS_BADGE[order.status]}>{formatEnumLabel(order.status)}</Badge>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {order.patient.fullName} ({order.patient.uhid}) · Prescription {order.prescription.prescriptionNumber} by Dr.{' '}
-            {order.prescription.doctorFullName}
-          </p>
-        </div>
-        {canUpdate && canCancelOrReject && (
-          <div className="flex gap-2">
+    <PageLayout
+      breadcrumbs={[
+        { label: 'Pharmacy', href: '/dashboard/pharmacy' },
+        { label: 'Dispensing Queue', href: '/dashboard/pharmacy/dispense' },
+        { label: order.dispenseNumber },
+      ]}
+      title={order.dispenseNumber}
+      badge={<StatusBadge status={order.status} />}
+      meta={
+        <PageHeaderMeta label="Patient">
+          {order.patient.fullName} ({order.patient.uhid}) · Prescription {order.prescription.prescriptionNumber} by Dr.{' '}
+          {order.prescription.doctorFullName}
+        </PageHeaderMeta>
+      }
+      actions={
+        canUpdate &&
+        canCancelOrReject && (
+          <>
             <Button variant="outline" size="sm" onClick={() => setReasonDialog('reject')}>
               Reject
             </Button>
             <Button variant="outline" size="sm" onClick={() => setReasonDialog('cancel')}>
               Cancel
             </Button>
-          </div>
-        )}
-      </div>
-
-      <div className="rounded-lg border bg-card">
-        <div className="border-b p-3">
-          <h3 className="text-sm font-semibold text-foreground">Items</h3>
-        </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Medication</TableHead>
-              <TableHead>Requested</TableHead>
-              <TableHead>Dispensed</TableHead>
-              <TableHead>Batch</TableHead>
-              {order.status === DispenseStatus.READY && <TableHead>Dispense now</TableHead>}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {order.items.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell>{item.medicationName}</TableCell>
-                <TableCell>{item.quantityRequested}</TableCell>
-                <TableCell>{item.quantityDispensed}</TableCell>
-                <TableCell>
-                  {canEditBatches && canUpdate ? (
-                    <Select
-                      value={selectedDrug[item.id] ?? ''}
-                      onValueChange={(value) => setSelectedDrug((prev) => ({ ...prev, [item.id]: value }))}
-                    >
-                      <SelectTrigger className="w-56">
-                        <SelectValue placeholder="Select a batch" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {catalogQuery.data?.data.map((drug) => (
-                          <SelectItem key={drug.id} value={drug.id}>
-                            {drug.genericName} · {drug.batchNumber} (avail {drug.availableStock})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : item.drug ? (
-                    <span className="text-xs text-muted-foreground">
-                      {item.drug.genericName} · Batch {item.drug.batchNumber}
-                    </span>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">Not selected</span>
-                  )}
-                </TableCell>
-                {order.status === DispenseStatus.READY && (
-                  <TableCell>
-                    <Input
-                      className="h-8 w-20"
-                      type="number"
-                      placeholder="Qty"
-                      value={partialQty[item.id] ?? ''}
-                      onChange={(e) => setPartialQty((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                    />
-                  </TableCell>
-                )}
+          </>
+        )
+      }
+    >
+      <Card>
+        <CardHeader>
+          <CardTitle>Items</CardTitle>
+        </CardHeader>
+        <TableContainer className="rounded-none border-0 border-y">
+          <Table density="compact" container={false}>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Medication</TableHead>
+                <TableHead>Requested</TableHead>
+                <TableHead>Dispensed</TableHead>
+                <TableHead>Batch</TableHead>
+                {order.status === DispenseStatus.READY && <TableHead>Dispense now</TableHead>}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {order.items.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell>{item.medicationName}</TableCell>
+                  <TableCell>{item.quantityRequested}</TableCell>
+                  <TableCell>{item.quantityDispensed}</TableCell>
+                  <TableCell>
+                    {canEditBatches && canUpdate ? (
+                      <Select
+                        value={selectedDrug[item.id] ?? ''}
+                        onValueChange={(value) => setSelectedDrug((prev) => ({ ...prev, [item.id]: value }))}
+                      >
+                        <SelectTrigger className="w-56">
+                          <SelectValue placeholder="Select a batch" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {catalogQuery.data?.data.map((drug) => (
+                            <SelectItem key={drug.id} value={drug.id}>
+                              {drug.genericName} · {drug.batchNumber} (avail {drug.availableStock})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : item.drug ? (
+                      <span className="text-xs text-muted-foreground">
+                        {item.drug.genericName} · Batch {item.drug.batchNumber}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Not selected</span>
+                    )}
+                  </TableCell>
+                  {order.status === DispenseStatus.READY && (
+                    <TableCell>
+                      <Input
+                        className="h-8 w-20"
+                        type="number"
+                        placeholder="Qty"
+                        value={partialQty[item.id] ?? ''}
+                        onChange={(e) => setPartialQty((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                      />
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
 
         {canEditBatches && canUpdate && (
-          <div className="flex justify-end gap-2 border-t p-3">
+          <CardFooter className="justify-end">
             <Button
               size="sm"
               variant="outline"
@@ -300,11 +302,11 @@ export default function DispenseOrderDetailPage() {
                 Mark ready
               </Button>
             )}
-          </div>
+          </CardFooter>
         )}
 
         {order.status === DispenseStatus.READY && canUpdate && (
-          <div className="flex justify-end gap-2 border-t p-3">
+          <CardFooter className="justify-end">
             <Button
               size="sm"
               variant="outline"
@@ -323,15 +325,15 @@ export default function DispenseOrderDetailPage() {
               {completeMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               Complete dispense
             </Button>
-          </div>
+          </CardFooter>
         )}
-      </div>
+      </Card>
 
       {canReturn && (
-        <div className="rounded-lg border bg-card">
-          <div className="border-b p-3">
-            <h3 className="text-sm font-semibold text-foreground">Returns</h3>
-          </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Returns</CardTitle>
+          </CardHeader>
           {order.returns.length > 0 && (
             <ul className="divide-y">
               {order.returns.map((r) => (
@@ -371,7 +373,7 @@ export default function DispenseOrderDetailPage() {
               </Button>
             </div>
           )}
-        </div>
+        </Card>
       )}
 
       <Dialog open={reasonDialog !== null} onOpenChange={(open) => !open && setReasonDialog(null)}>
@@ -395,6 +397,6 @@ export default function DispenseOrderDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageLayout>
   )
 }

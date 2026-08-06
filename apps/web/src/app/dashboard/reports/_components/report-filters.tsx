@@ -2,15 +2,16 @@
 
 import type { DashboardKpi, DashboardTable, ReportFilterQuery, ReportGroupBy } from '@medicore/types'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowDown, ArrowUp, Minus } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { StatCard } from '@/components/ui/stat-card'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { listDoctors } from '@/lib/api/doctors'
-import { cn } from '@/lib/utils'
 
 /** Sentinel for "no filter" — Radix Select cannot hold an empty-string value. */
 const ANY = '__any__'
@@ -61,7 +62,7 @@ export function ReportFilters({ value, onChange, show = ['groupBy'], children }:
   const applyPreset = (days: number) => onChange({ ...value, ...defaultFilters(days), groupBy: value.groupBy })
 
   return (
-    <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-card p-3 shadow-sm">
+    <Card className="flex flex-wrap items-end gap-3 p-3">
       <div className="space-y-1">
         <Label htmlFor="report-from" className="text-xs">
           From
@@ -138,7 +139,7 @@ export function ReportFilters({ value, onChange, show = ['groupBy'], children }:
       )}
 
       <div className="ml-auto flex gap-2">{children}</div>
-    </div>
+    </Card>
   )
 }
 
@@ -163,71 +164,65 @@ export function KpiTile({ kpi }: { kpi: DashboardKpi }) {
 
   const change = kpi.changePercent
   const improving = change === null ? null : kpi.higherIsBetter === change >= 0
-  const Icon = change === null ? Minus : change >= 0 ? ArrowUp : ArrowDown
-  const tone =
-    improving === null ? 'text-muted-foreground' : improving ? 'text-emerald-600' : 'text-red-600'
 
   return (
-    <div className="rounded-lg border bg-card p-4 shadow-sm">
-      <p className="truncate text-xs text-muted-foreground" title={kpi.label}>
-        {kpi.label}
-      </p>
-      <p className="mt-1 text-xl font-semibold text-foreground">{value}</p>
-      <div className="mt-1 flex items-center gap-1 text-xs">
-        <Icon className={cn('h-3 w-3', tone)} />
-        <span className={tone}>
-          {change === null ? 'vs previous period' : `${change > 0 ? '+' : ''}${change}% vs previous`}
-        </span>
-      </div>
-      {kpi.hint && <p className="mt-1 text-[11px] text-muted-foreground">{kpi.hint}</p>}
-    </div>
+    <StatCard
+      label={kpi.label}
+      value={value}
+      hint={kpi.hint}
+      trend={{
+        value: change === null ? '—' : `${change > 0 ? '+' : ''}${change}%`,
+        direction: change === null ? 'flat' : change >= 0 ? 'up' : 'down',
+        intent: improving === null ? 'neutral' : improving ? 'positive' : 'negative',
+        label: 'vs previous',
+      }}
+    />
   )
 }
 
 /** Renders a `DashboardTable` verbatim — the API owns the columns and order. */
 export function DashboardDataTable({ table }: { table: DashboardTable }) {
   return (
-    <div className="rounded-lg border bg-card shadow-sm">
-      <div className="border-b p-4">
-        <h3 className="text-sm font-semibold text-foreground">{table.title}</h3>
+    <Card>
+      <CardHeader>
+        <CardTitle>{table.title}</CardTitle>
         {table.note && <p className="mt-0.5 text-xs text-muted-foreground">{table.note}</p>}
-      </div>
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {table.columns.map((column) => (
-                <TableHead key={column.key} className={column.align === 'right' ? 'text-right' : undefined}>
-                  {column.label}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {table.rows.length === 0 ? (
+      </CardHeader>
+      {table.rows.length === 0 ? (
+        <CardContent>
+          <EmptyState compact title="No data for the selected period" />
+        </CardContent>
+      ) : (
+        <TableContainer className="rounded-none border-0 border-y">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={table.columns.length} className="text-center text-sm text-muted-foreground">
-                  No data for the selected period
-                </TableCell>
+                {table.columns.map((column) => (
+                  <TableHead key={column.key} align={column.align === 'right' ? 'right' : undefined}>
+                    {column.label}
+                  </TableHead>
+                ))}
               </TableRow>
-            ) : (
-              table.rows.map((row, index) => (
+            </TableHeader>
+            <TableBody>
+              {table.rows.map((row, index) => (
                 <TableRow key={index}>
                   {table.columns.map((column) => (
                     <TableCell
                       key={column.key}
-                      className={column.align === 'right' ? 'text-right tabular-nums' : undefined}
+                      align={column.align === 'right' ? 'right' : undefined}
+                      className={column.align === 'right' ? 'tabular-nums' : undefined}
                     >
                       {/* An absent measurement prints as a dash, never as 0. */}
                       {row[column.key] === null || row[column.key] === undefined ? '—' : String(row[column.key])}
                     </TableCell>
                   ))}
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+    </Card>
   )
 }

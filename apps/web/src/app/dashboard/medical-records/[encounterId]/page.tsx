@@ -8,7 +8,6 @@ import {
   MedicationRoute,
   Priority,
   PrescriptionStatus,
-  RadiologyStatus,
   type CreateClinicalNoteDto,
   type CreatePrescriptionItemDto,
   type LabTestCatalogItem,
@@ -46,6 +45,7 @@ import {
 } from 'recharts'
 
 import { AiAssistButton } from '@/components/ai/ai-assist-button'
+import { PageLayout } from '@/components/layout/page-layout'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -56,8 +56,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
+import { PageHeaderMeta } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
@@ -114,12 +117,6 @@ function formatEnumLabel(value: string): string {
   return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
 }
 
-const STATUS_BADGE: Record<EncounterStatus, 'success' | 'secondary' | 'destructive'> = {
-  [EncounterStatus.IN_PROGRESS]: 'secondary',
-  [EncounterStatus.COMPLETED]: 'success',
-  [EncounterStatus.AMENDED]: 'destructive',
-}
-
 const FORWARD_TRANSITION: Partial<Record<EncounterStatus, EncounterStatus>> = {
   [EncounterStatus.IN_PROGRESS]: EncounterStatus.COMPLETED,
   [EncounterStatus.COMPLETED]: EncounterStatus.AMENDED,
@@ -129,7 +126,6 @@ const FORWARD_TRANSITION: Partial<Record<EncounterStatus, EncounterStatus>> = {
 export default function EncounterDetailPage() {
   const params = useParams<{ encounterId: string }>()
   const encounterId = params.encounterId
-  const router = useRouter()
   const { hasPermission } = useAuth()
   const { toast } = useToast()
   const queryClient = useQueryClient()
@@ -160,24 +156,31 @@ export default function EncounterDetailPage() {
 
   if (encounterQuery.isLoading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
+      <PageLayout
+        breadcrumbs={[{ label: 'Medical Records', href: '/dashboard/medical-records' }, { label: '…' }]}
+        title="…"
+        loading
+      >
+        <div className="flex h-64 items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </PageLayout>
     )
   }
 
   if (encounterQuery.isError || !encounterQuery.data) {
     return (
-      <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Encounter not found</AlertTitle>
-        <AlertDescription>
-          {getErrorMessage(encounterQuery.error)}{' '}
-          <Button variant="link" className="h-auto p-0" onClick={() => router.push('/dashboard/medical-records')}>
-            Back to medical records
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <PageLayout
+        breadcrumbs={[{ label: 'Medical Records', href: '/dashboard/medical-records' }, { label: 'Not found' }]}
+        title="Encounter not found"
+      >
+        <EmptyState
+          variant="error"
+          title="Encounter not found"
+          description={getErrorMessage(encounterQuery.error)}
+          action={{ label: 'Back to medical records', href: '/dashboard/medical-records' }}
+        />
+      </PageLayout>
     )
   }
 
@@ -185,54 +188,66 @@ export default function EncounterDetailPage() {
   const forward = FORWARD_TRANSITION[encounter.status]
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-semibold text-foreground">{encounter.patient.fullName}</h1>
-            <Badge variant={STATUS_BADGE[encounter.status]}>{formatEnumLabel(encounter.status)}</Badge>
+    <Tabs defaultValue="subjective">
+      <PageLayout
+        breadcrumbs={[
+          { label: 'Medical Records', href: '/dashboard/medical-records' },
+          { label: encounter.patient.fullName },
+        ]}
+        title={encounter.patient.fullName}
+        badge={
+          <>
+            <StatusBadge status={encounter.status} />
             <Badge variant="outline">{formatEnumLabel(encounter.type)}</Badge>
-          </div>
-          <p className="font-mono text-sm text-muted-foreground">
-            {encounter.patient.uhid} · Dr. {encounter.doctor.fullName} ({encounter.doctor.specialization}) ·{' '}
-            {new Date(encounter.encounterDate).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Drafts only — the dialog hands text back for review, it never writes to the chart. */}
-          <AiAssistButton feature="SOAP_NOTE" contextRefs={{ encounterId }} label="AI SOAP note" />
-          <AiAssistButton
-            feature="CLINICAL_NOTE_SUMMARY"
-            contextRefs={{ encounterId }}
-            label="AI summary"
-            variant="ghost"
-          />
-          {canUpdate && forward && (
-            <Button
-              size="sm"
-              onClick={() => statusMutation.mutate(forward)}
-              disabled={statusMutation.isPending}
-            >
-              {statusMutation.isPending ? <Loader2 className="animate-spin" /> : <Check />}
-              Mark {formatEnumLabel(forward)}
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <Tabs defaultValue="subjective">
-        <TabsList className="flex-wrap">
-          <TabsTrigger value="subjective">Subjective</TabsTrigger>
-          <TabsTrigger value="objective">Objective</TabsTrigger>
-          <TabsTrigger value="assessment">Assessment</TabsTrigger>
-          <TabsTrigger value="plan">Plan</TabsTrigger>
-          <TabsTrigger value="prescriptions">Prescriptions</TabsTrigger>
-          <TabsTrigger value="lab-orders">Lab Orders</TabsTrigger>
-          <TabsTrigger value="radiology">Radiology</TabsTrigger>
-          <TabsTrigger value="attachments">Attachments</TabsTrigger>
-          <TabsTrigger value="insurance">Insurance</TabsTrigger>
-        </TabsList>
-
+          </>
+        }
+        meta={
+          <>
+            <PageHeaderMeta label="UHID">{encounter.patient.uhid}</PageHeaderMeta>
+            <PageHeaderMeta label="Doctor">
+              Dr. {encounter.doctor.fullName} ({encounter.doctor.specialization})
+            </PageHeaderMeta>
+            <PageHeaderMeta label="Date">
+              {new Date(encounter.encounterDate).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+            </PageHeaderMeta>
+          </>
+        }
+        actions={
+          <>
+            {/* Drafts only — the dialog hands text back for review, it never writes to the chart. */}
+            <AiAssistButton feature="SOAP_NOTE" contextRefs={{ encounterId }} label="AI SOAP note" />
+            <AiAssistButton
+              feature="CLINICAL_NOTE_SUMMARY"
+              contextRefs={{ encounterId }}
+              label="AI summary"
+              variant="ghost"
+            />
+            {canUpdate && forward && (
+              <Button
+                size="sm"
+                onClick={() => statusMutation.mutate(forward)}
+                disabled={statusMutation.isPending}
+              >
+                {statusMutation.isPending ? <Loader2 className="animate-spin" /> : <Check />}
+                Mark {formatEnumLabel(forward)}
+              </Button>
+            )}
+          </>
+        }
+        toolbar={
+          <TabsList className="flex-wrap">
+            <TabsTrigger value="subjective">Subjective</TabsTrigger>
+            <TabsTrigger value="objective">Objective</TabsTrigger>
+            <TabsTrigger value="assessment">Assessment</TabsTrigger>
+            <TabsTrigger value="plan">Plan</TabsTrigger>
+            <TabsTrigger value="prescriptions">Prescriptions</TabsTrigger>
+            <TabsTrigger value="lab-orders">Lab Orders</TabsTrigger>
+            <TabsTrigger value="radiology">Radiology</TabsTrigger>
+            <TabsTrigger value="attachments">Attachments</TabsTrigger>
+            <TabsTrigger value="insurance">Insurance</TabsTrigger>
+          </TabsList>
+        }
+      >
         <TabsContent value="subjective">
           <ClinicalNotesTab encounterId={encounterId} canUpdate={canUpdate} />
         </TabsContent>
@@ -260,8 +275,8 @@ export default function EncounterDetailPage() {
         <TabsContent value="insurance">
           <EncounterInsuranceTab encounterId={encounterId} patientId={encounter.patientId} canCreate={canRequestPreAuth} />
         </TabsContent>
-      </Tabs>
-    </div>
+      </PageLayout>
+    </Tabs>
   )
 }
 
@@ -883,28 +898,6 @@ function AttachmentsTab({ encounterId, canUpdate }: { encounterId: string; canUp
   )
 }
 
-const PREAUTH_STATUS_BADGE: Record<string, 'secondary' | 'success' | 'destructive' | 'warning' | 'outline'> = {
-  DRAFT: 'secondary',
-  SUBMITTED: 'outline',
-  UNDER_REVIEW: 'warning',
-  APPROVED: 'success',
-  PARTIALLY_APPROVED: 'warning',
-  REJECTED: 'destructive',
-  CANCELLED: 'secondary',
-}
-
-const CLAIM_STATUS_BADGE: Record<string, 'secondary' | 'success' | 'destructive' | 'warning' | 'outline'> = {
-  DRAFT: 'secondary',
-  SUBMITTED: 'outline',
-  UNDER_REVIEW: 'warning',
-  APPROVED: 'warning',
-  PARTIALLY_APPROVED: 'warning',
-  REJECTED: 'destructive',
-  SETTLED: 'success',
-  PARTIALLY_SETTLED: 'success',
-  CLOSED: 'secondary',
-}
-
 function EncounterInsuranceTab({
   encounterId,
   patientId,
@@ -963,7 +956,7 @@ function EncounterInsuranceTab({
               <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
                 <span className="font-mono text-xs text-muted-foreground">{p.authNumber}</span>
                 <span>₹{p.requestedAmount}</span>
-                <Badge variant={PREAUTH_STATUS_BADGE[p.status]}>{formatEnumLabel(p.status)}</Badge>
+                <StatusBadge status={p.status} />
                 <Link href="/dashboard/insurance/preauth" className="text-xs text-primary hover:underline">
                   View queue
                 </Link>
@@ -995,7 +988,7 @@ function EncounterInsuranceTab({
                   {c.claimNumber}
                 </Link>
                 <span>₹{c.claimedAmount}</span>
-                <Badge variant={CLAIM_STATUS_BADGE[c.status]}>{formatEnumLabel(c.status)}</Badge>
+                <StatusBadge status={c.status} />
               </li>
             ))}
           </ul>
@@ -1169,12 +1162,6 @@ function FileClaimDialog({
       </DialogContent>
     </Dialog>
   )
-}
-
-const PRESCRIPTION_STATUS_BADGE: Record<PrescriptionStatus, 'secondary' | 'success' | 'destructive'> = {
-  [PrescriptionStatus.ACTIVE]: 'secondary',
-  [PrescriptionStatus.COMPLETED]: 'success',
-  [PrescriptionStatus.DISCONTINUED]: 'destructive',
 }
 
 interface ItemDraft {
@@ -1421,7 +1408,7 @@ function PrescriptionsTab({
                   <div className="flex items-center gap-2">
                     <Pill className="h-4 w-4 text-muted-foreground" />
                     <span className="font-mono text-xs text-muted-foreground">{rx.prescriptionNumber}</span>
-                    <Badge variant={PRESCRIPTION_STATUS_BADGE[rx.status]}>{formatEnumLabel(rx.status)}</Badge>
+                    <StatusBadge status={rx.status} />
                     <span className="text-xs text-muted-foreground">
                       {new Date(rx.prescribedAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
                     </span>
@@ -1490,15 +1477,6 @@ function PrescriptionsTab({
       </div>
     </div>
   )
-}
-
-const LAB_STATUS_BADGE: Record<LabTestStatus, 'secondary' | 'success' | 'destructive' | 'outline'> = {
-  [LabTestStatus.ORDERED]: 'secondary',
-  [LabTestStatus.SAMPLE_COLLECTED]: 'outline',
-  [LabTestStatus.IN_PROGRESS]: 'outline',
-  [LabTestStatus.COMPLETED]: 'success',
-  [LabTestStatus.REPORTED]: 'success',
-  [LabTestStatus.CANCELLED]: 'destructive',
 }
 
 interface LabItemDraft {
@@ -1747,7 +1725,7 @@ function LabOrdersTab({
                   <div className="flex items-center gap-2">
                     <FlaskConical className="h-4 w-4 text-muted-foreground" />
                     <span className="font-mono text-xs text-muted-foreground">{order.labOrderNumber}</span>
-                    <Badge variant={LAB_STATUS_BADGE[order.status]}>{formatEnumLabel(order.status)}</Badge>
+                    <StatusBadge status={order.status} />
                     <Badge variant="outline">{formatEnumLabel(order.priority)}</Badge>
                     <span className="text-xs text-muted-foreground">
                       {new Date(order.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
@@ -1899,16 +1877,6 @@ function LabOrdersTab({
   )
 }
 
-const RADIOLOGY_STATUS_BADGE: Record<RadiologyStatus, 'secondary' | 'success' | 'destructive' | 'outline'> = {
-  [RadiologyStatus.ORDERED]: 'secondary',
-  [RadiologyStatus.SCHEDULED]: 'outline',
-  [RadiologyStatus.IN_PROGRESS]: 'outline',
-  [RadiologyStatus.COMPLETED]: 'success',
-  [RadiologyStatus.REPORTED]: 'success',
-  [RadiologyStatus.CANCELLED]: 'destructive',
-  [RadiologyStatus.REJECTED]: 'destructive',
-}
-
 function RadiologyTab({ encounterId, canOrder }: { encounterId: string; canOrder: boolean }) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
@@ -2020,7 +1988,7 @@ function RadiologyTab({ encounterId, canOrder }: { encounterId: string; canOrder
                 >
                   <Scan className="h-4 w-4 text-muted-foreground" />
                   <span className="font-mono text-xs text-muted-foreground">{order.orderNumber}</span>
-                  <Badge variant={RADIOLOGY_STATUS_BADGE[order.status]}>{formatEnumLabel(order.status)}</Badge>
+                  <StatusBadge status={order.status} />
                   <Badge variant="outline">{formatEnumLabel(order.priority)}</Badge>
                   <span>
                     {order.modality} — {order.bodyPart}

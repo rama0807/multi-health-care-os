@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useForm, type FieldPath } from 'react-hook-form'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
@@ -161,14 +162,12 @@ export default function NewDoctorPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Register New Doctor</h1>
-        <p className="text-sm text-muted-foreground">
-          Step {step + 1} of {STEPS.length} — {STEPS[step].title}
-        </p>
-      </div>
-
+    <PageLayout
+      breadcrumbs={[{ label: 'Doctors', href: '/dashboard/doctors' }, { label: 'New' }]}
+      title="Register new doctor"
+      description={`Step ${step + 1} of ${STEPS.length} — ${STEPS[step].title}`}
+      width="narrow"
+    >
       {draftRestored && (
         <Alert>
           <AlertTitle>Draft restored</AlertTitle>
@@ -508,7 +507,7 @@ export default function NewDoctorPage() {
           </div>
         </form>
       </Form>
-    </div>
+    </PageLayout>
   )
 }
 

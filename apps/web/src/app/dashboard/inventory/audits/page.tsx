@@ -6,13 +6,24 @@ import { Loader2, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 
-import { Badge } from '@/components/ui/badge'
+import { PageLayout } from '@/components/layout/page-layout'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/ui/pagination'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { listInventoryStores } from '@/lib/api/inventory'
@@ -26,13 +37,6 @@ function getErrorMessage(error: unknown): string {
 
 function formatEnumLabel(value: string): string {
   return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
-}
-
-const STATUS_BADGE: Record<StockAuditStatus, 'secondary' | 'outline' | 'success' | 'destructive'> = {
-  [StockAuditStatus.DRAFT]: 'secondary',
-  [StockAuditStatus.IN_PROGRESS]: 'outline',
-  [StockAuditStatus.COMPLETED]: 'success',
-  [StockAuditStatus.CANCELLED]: 'destructive',
 }
 
 export default function StockAuditsPage() {
@@ -52,20 +56,18 @@ export default function StockAuditsPage() {
   const pagination = query.data?.pagination
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Stock Audits</h1>
-          <p className="text-sm text-muted-foreground">Cycle counting / physical verification against system stock, per store.</p>
-        </div>
-        {canCreate && (
+    <PageLayout
+      title="Stock Audits"
+      description="Cycle counting / physical verification against system stock, per store."
+      actions={
+        canCreate && (
           <Button onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />
             New audit
           </Button>
-        )}
-      </div>
-
+        )
+      }
+    >
       <Select
         value={status}
         onValueChange={(v) => {
@@ -86,32 +88,28 @@ export default function StockAuditsPage() {
         </SelectContent>
       </Select>
 
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Audit #</TableHead>
-              <TableHead>Store</TableHead>
-              <TableHead>Items</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Scheduled</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {query.isLoading ? (
+      {query.isLoading ? (
+        <TableSkeleton rows={6} columns={5} />
+      ) : audits.length === 0 ? (
+        <EmptyState
+          variant={status === 'ALL' ? 'empty' : 'search'}
+          title="No stock audits yet"
+          action={canCreate ? { label: 'New audit', onClick: () => setCreateOpen(true) } : undefined}
+        />
+      ) : (
+        <TableContainer className="max-h-[65vh]">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Audit #</TableHead>
+                <TableHead>Store</TableHead>
+                <TableHead>Items</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Scheduled</TableHead>
               </TableRow>
-            ) : audits.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                  No stock audits yet.
-                </TableCell>
-              </TableRow>
-            ) : (
-              audits.map((a) => (
+            </TableHeader>
+            <TableBody>
+              {audits.map((a) => (
                 <TableRow key={a.id}>
                   <TableCell className="font-mono text-xs">
                     <Link href={`/dashboard/inventory/audits/${a.id}`} className="text-primary hover:underline">
@@ -121,24 +119,24 @@ export default function StockAuditsPage() {
                   <TableCell className="text-xs text-muted-foreground">{a.store.name}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{a.items.length} item(s)</TableCell>
                   <TableCell>
-                    <Badge variant={STATUS_BADGE[a.status]}>{formatEnumLabel(a.status)}</Badge>
+                    <StatusBadge status={a.status} />
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     {a.scheduledDate ? new Date(a.scheduledDate).toLocaleDateString('en-IN') : '—'}
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       {pagination && pagination.totalPages > 1 && (
         <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={setPage} />
       )}
 
       <CreateAuditDialog open={createOpen} onOpenChange={setCreateOpen} />
-    </div>
+    </PageLayout>
   )
 }
 

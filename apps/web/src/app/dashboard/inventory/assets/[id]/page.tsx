@@ -1,18 +1,21 @@
 'use client'
 
-import { AssetMaintenanceStatus, AssetMaintenanceType, AssetStatus } from '@medicore/types'
+import { AssetMaintenanceStatus, AssetMaintenanceType } from '@medicore/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Loader2 } from 'lucide-react'
-import { useParams, useRouter } from 'next/navigation'
+import { Loader2 } from 'lucide-react'
+import { useParams } from 'next/navigation'
 import { useState } from 'react'
 
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { PageLayout } from '@/components/layout/page-layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { listDepartments } from '@/lib/api/hospitals'
@@ -36,24 +39,8 @@ function formatEnumLabel(value: string): string {
   return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
 }
 
-const STATUS_BADGE: Record<AssetStatus, 'secondary' | 'outline' | 'success' | 'destructive'> = {
-  [AssetStatus.IN_USE]: 'success',
-  [AssetStatus.IN_STORE]: 'secondary',
-  [AssetStatus.UNDER_MAINTENANCE]: 'outline',
-  [AssetStatus.BREAKDOWN]: 'destructive',
-  [AssetStatus.DECOMMISSIONED]: 'destructive',
-}
-
-const MAINTENANCE_STATUS_BADGE: Record<AssetMaintenanceStatus, 'secondary' | 'outline' | 'success' | 'destructive'> = {
-  [AssetMaintenanceStatus.SCHEDULED]: 'secondary',
-  [AssetMaintenanceStatus.IN_PROGRESS]: 'outline',
-  [AssetMaintenanceStatus.COMPLETED]: 'success',
-  [AssetMaintenanceStatus.CANCELLED]: 'destructive',
-}
-
 export default function AssetDetailPage() {
   const params = useParams<{ id: string }>()
-  const router = useRouter()
   const { hasPermission } = useAuth()
   const canUpdate = hasPermission('inventory.assets.update')
 
@@ -73,59 +60,69 @@ export default function AssetDetailPage() {
 
   if (assetQuery.isLoading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
+      <PageLayout
+        breadcrumbs={[{ label: 'Inventory', href: '/dashboard/inventory' }, { label: 'Assets', href: '/dashboard/inventory/assets' }, { label: '…' }]}
+        title="…"
+        loading
+      >
+        <div className="flex h-64 items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </PageLayout>
     )
   }
 
   if (assetQuery.isError || !assetQuery.data) {
     return (
-      <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Asset not found</AlertTitle>
-        <AlertDescription>
-          {getErrorMessage(assetQuery.error)}{' '}
-          <Button variant="link" className="h-auto p-0" onClick={() => router.push('/dashboard/inventory/assets')}>
-            Back to list
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <PageLayout
+        breadcrumbs={[{ label: 'Inventory', href: '/dashboard/inventory' }, { label: 'Assets', href: '/dashboard/inventory/assets' }, { label: 'Not found' }]}
+        title="Asset not found"
+      >
+        <EmptyState
+          variant="error"
+          title="Asset not found"
+          description={getErrorMessage(assetQuery.error)}
+          action={{ label: 'Back to list', href: '/dashboard/inventory/assets' }}
+        />
+      </PageLayout>
     )
   }
 
   const asset = assetQuery.data
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="font-mono text-lg font-semibold text-foreground">{asset.assetTag}</h1>
-            <Badge variant={STATUS_BADGE[asset.status]}>{formatEnumLabel(asset.status)}</Badge>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {asset.item.name} · Store: {asset.store.name}
-            {asset.serialNumber && <> · S/N {asset.serialNumber}</>}
-          </p>
-        </div>
-        {canUpdate && (
-          <div className="flex flex-wrap gap-2">
+    <PageLayout
+      breadcrumbs={[
+        { label: 'Inventory', href: '/dashboard/inventory' },
+        { label: 'Assets', href: '/dashboard/inventory/assets' },
+        { label: asset.assetTag },
+      ]}
+      title={<span className="font-mono">{asset.assetTag}</span>}
+      badge={<StatusBadge status={asset.status} />}
+      meta={
+        <span>
+          {asset.item.name} · Store: {asset.store.name}
+          {asset.serialNumber && <> · S/N {asset.serialNumber}</>}
+        </span>
+      }
+      actions={
+        canUpdate && (
+          <>
             <Button size="sm" variant="outline" onClick={() => setAssignOpen(true)}>
               Assign
             </Button>
             <Button size="sm" onClick={() => setMaintenanceOpen(true)}>
               Log maintenance
             </Button>
-          </div>
-        )}
-      </div>
-
+          </>
+        )
+      }
+    >
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="rounded-lg border bg-card">
-          <div className="border-b p-3">
-            <h3 className="text-sm font-semibold text-foreground">Assignment history</h3>
-          </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Assignment history</CardTitle>
+          </CardHeader>
           {assignmentsQuery.data?.length ? (
             <ul className="divide-y">
               {assignmentsQuery.data.map((a) => (
@@ -142,55 +139,57 @@ export default function AssetDetailPage() {
               ))}
             </ul>
           ) : (
-            <p className="p-4 text-sm text-muted-foreground">Never assigned — currently in store.</p>
+            <EmptyState compact title="Never assigned" description="Currently in store." />
           )}
-        </div>
+        </Card>
 
-        <div className="rounded-lg border bg-card">
-          <div className="border-b p-3">
-            <h3 className="text-sm font-semibold text-foreground">Maintenance records</h3>
-          </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Maintenance records</CardTitle>
+          </CardHeader>
           {maintenanceQuery.data?.length ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Cost</TableHead>
-                  {canUpdate && <TableHead />}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {maintenanceQuery.data.map((m) => (
-                  <TableRow key={m.id}>
-                    <TableCell className="text-xs">{formatEnumLabel(m.type)}</TableCell>
-                    <TableCell>
-                      <Badge variant={MAINTENANCE_STATUS_BADGE[m.status]}>{formatEnumLabel(m.status)}</Badge>
-                    </TableCell>
-                    <TableCell className="text-xs">{m.cost ? `₹${m.cost}` : '—'}</TableCell>
-                    {canUpdate && (
-                      <TableCell>
-                        {(m.status === AssetMaintenanceStatus.SCHEDULED || m.status === AssetMaintenanceStatus.IN_PROGRESS) && (
-                          <Button variant="ghost" size="sm" onClick={() => setCompleting(m.id)}>
-                            Complete
-                          </Button>
-                        )}
-                      </TableCell>
-                    )}
+            <TableContainer className="rounded-none border-0 border-y">
+              <Table density="compact" container={false}>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Cost</TableHead>
+                    {canUpdate && <TableHead />}
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {maintenanceQuery.data.map((m) => (
+                    <TableRow key={m.id}>
+                      <TableCell className="text-xs">{formatEnumLabel(m.type)}</TableCell>
+                      <TableCell>
+                        <StatusBadge status={m.status} />
+                      </TableCell>
+                      <TableCell className="text-xs">{m.cost ? `₹${m.cost}` : '—'}</TableCell>
+                      {canUpdate && (
+                        <TableCell>
+                          {(m.status === AssetMaintenanceStatus.SCHEDULED || m.status === AssetMaintenanceStatus.IN_PROGRESS) && (
+                            <Button variant="ghost" size="sm" onClick={() => setCompleting(m.id)}>
+                              Complete
+                            </Button>
+                          )}
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
           ) : (
-            <p className="p-4 text-sm text-muted-foreground">No maintenance records yet.</p>
+            <EmptyState compact title="No maintenance records yet" />
           )}
-        </div>
+        </Card>
       </div>
 
       {assignOpen && <AssignDialog assetId={asset.id} currentStoreId={asset.storeId} onOpenChange={setAssignOpen} />}
       {maintenanceOpen && <MaintenanceDialog assetId={asset.id} onOpenChange={setMaintenanceOpen} />}
       {completing && <CompleteMaintenanceDialog assetId={asset.id} recordId={completing} onOpenChange={(open) => !open && setCompleting(null)} />}
-    </div>
+    </PageLayout>
   )
 }
 

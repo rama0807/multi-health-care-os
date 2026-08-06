@@ -31,6 +31,7 @@ const STATUS_TONES: Record<string, StatusTone> = {
   // ── Terminal, good ──────────────────────────────────────────────────────
   COMPLETED: "success",
   COMPLETE: "success",
+  SUCCEEDED: "success",
   ACTIVE: "success",
   APPROVED: "success",
   PAID: "success",
@@ -47,6 +48,7 @@ const STATUS_TONES: Record<string, StatusTone> = {
   NORMAL: "success",
   RESOLVED: "success",
   DELIVERED: "success",
+  ADMINISTERED: "success",
   SENT: "success",
 
   // ── In flight ───────────────────────────────────────────────────────────
@@ -68,6 +70,7 @@ const STATUS_TONES: Record<string, StatusTone> = {
   RESERVED: "info",
   ON_LEAVE: "info",
   AMENDED: "info",
+  TRIALING: "info",
 
   // ── Waiting on a human ──────────────────────────────────────────────────
   PENDING: "warning",
@@ -86,6 +89,7 @@ const STATUS_TONES: Record<string, StatusTone> = {
   HELD: "warning",
   DISPUTED: "warning",
   MAINTENANCE: "warning",
+  UNDER_RENOVATION: "warning",
   CLEANING: "warning",
   QUEUED: "warning",
   RETRYING: "warning",
@@ -111,6 +115,7 @@ const STATUS_TONES: Record<string, StatusTone> = {
   OUT_OF_STOCK: "danger",
   BREAKDOWN: "danger",
   ESCALATED: "danger",
+  PAST_DUE: "danger",
 
   // ── Inert ───────────────────────────────────────────────────────────────
   DRAFT: "neutral",

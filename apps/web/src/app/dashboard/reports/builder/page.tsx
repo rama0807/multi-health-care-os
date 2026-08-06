@@ -6,8 +6,10 @@ import { Bookmark, Download, Loader2, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -16,9 +18,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -156,31 +160,27 @@ export default function ReportBuilderPage() {
   )
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Report Builder</h1>
-          <p className="text-sm text-muted-foreground">
-            Pick a report, set filters, then export or save it for reuse.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+    <PageLayout
+      title="Report Builder"
+      description="Pick a report, set filters, then export or save it for reuse."
+      actions={
+        <>
           <Button asChild variant="outline">
             <Link href="/dashboard/reports">Dashboards</Link>
           </Button>
           <Button asChild variant="outline">
             <Link href="/dashboard/reports/operational">Operational reports</Link>
           </Button>
-        </div>
-      </div>
-
+        </>
+      }
+    >
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">
         {/* ── Catalog + saved reports ─────────────────────────────────────── */}
         <div className="space-y-4">
-          <div className="rounded-lg border bg-card shadow-sm">
-            <div className="border-b p-3">
-              <h2 className="text-sm font-semibold text-foreground">Reports</h2>
-            </div>
+          <Card>
+            <CardHeader className="border-b border-border p-3">
+              <CardTitle>Reports</CardTitle>
+            </CardHeader>
             <div className="max-h-[420px] overflow-y-auto p-2">
               {definitionsQuery.isLoading ? (
                 <p className="p-2 text-xs text-muted-foreground">Loading…</p>
@@ -212,12 +212,12 @@ export default function ReportBuilderPage() {
                 ))
               )}
             </div>
-          </div>
+          </Card>
 
-          <div className="rounded-lg border bg-card shadow-sm">
-            <div className="border-b p-3">
-              <h2 className="text-sm font-semibold text-foreground">Saved reports</h2>
-            </div>
+          <Card>
+            <CardHeader className="border-b border-border p-3">
+              <CardTitle>Saved reports</CardTitle>
+            </CardHeader>
             <div className="max-h-[260px] overflow-y-auto p-2">
               {saved.length === 0 ? (
                 <p className="p-2 text-xs text-muted-foreground">
@@ -256,18 +256,16 @@ export default function ReportBuilderPage() {
                 </ul>
               )}
             </div>
-          </div>
+          </Card>
         </div>
 
         {/* ── Selected report ─────────────────────────────────────────────── */}
         <div className="space-y-4">
           {!selected ? (
-            <div className="rounded-lg border border-dashed p-10 text-center text-sm text-muted-foreground">
-              Select a report from the catalog to begin.
-            </div>
+            <EmptyState compact title="Select a report from the catalog to begin" />
           ) : (
             <>
-              <div className="rounded-lg border bg-card p-4 shadow-sm">
+              <Card className="p-4">
                 <h2 className="text-base font-semibold text-foreground">{selected.label}</h2>
                 <p className="mt-0.5 text-sm text-muted-foreground">{selected.description}</p>
                 {selected.filters.length === 0 && (
@@ -275,7 +273,7 @@ export default function ReportBuilderPage() {
                     Point-in-time report — date filters do not apply
                   </Badge>
                 )}
-              </div>
+              </Card>
 
               {/* Only the filters this report declares are offered. */}
               {selected.filters.length > 0 ? (
@@ -296,63 +294,47 @@ export default function ReportBuilderPage() {
               )}
 
               {resultQuery.isLoading ? (
-                <div className="flex items-center justify-center gap-2 rounded-lg border p-10 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Running report…
-                </div>
+                <TableSkeleton rows={8} columns={5} />
               ) : resultQuery.isError ? (
-                <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-6 text-sm text-destructive">
-                  Could not run this report. {resultQuery.error.message}
-                </div>
+                <EmptyState variant="error" title="Could not run this report" description={resultQuery.error.message} />
               ) : result ? (
-                <div className="rounded-lg border bg-card shadow-sm">
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b p-3">
+                <Card>
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border p-3">
                     <p className="text-xs text-muted-foreground">
                       {result.period.from} to {result.period.to} · {result.totalRows} row
                       {result.totalRows === 1 ? '' : 's'}
                     </p>
                     {result.truncated && (
-                      <Badge variant="outline" className="border-amber-500/50 text-amber-700">
+                      <Badge variant="warning">
                         Showing the first {result.rows.length} of {result.totalRows} rows
                       </Badge>
                     )}
                   </div>
-                  <div className="max-h-[520px] overflow-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          {result.definition.columns.map((column) => (
-                            <TableHead
-                              key={column.key}
-                              className={
-                                column.type === 'string' || column.type === 'date' ? undefined : 'text-right'
-                              }
-                            >
-                              {column.label}
-                            </TableHead>
-                          ))}
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {result.rows.length === 0 ? (
+                  {result.rows.length === 0 ? (
+                    <EmptyState compact title="No data for the selected period" />
+                  ) : (
+                    <TableContainer className="max-h-[520px] rounded-none border-0">
+                      <Table density="compact" container={false}>
+                        <TableHeader>
                           <TableRow>
-                            <TableCell
-                              colSpan={result.definition.columns.length}
-                              className="text-center text-sm text-muted-foreground"
-                            >
-                              No data for the selected period
-                            </TableCell>
+                            {result.definition.columns.map((column) => (
+                              <TableHead
+                                key={column.key}
+                                align={column.type === 'string' || column.type === 'date' ? undefined : 'right'}
+                              >
+                                {column.label}
+                              </TableHead>
+                            ))}
                           </TableRow>
-                        ) : (
-                          result.rows.map((row, index) => (
+                        </TableHeader>
+                        <TableBody>
+                          {result.rows.map((row, index) => (
                             <TableRow key={index}>
                               {result.definition.columns.map((column) => (
                                 <TableCell
                                   key={column.key}
-                                  className={
-                                    column.type === 'string' || column.type === 'date'
-                                      ? undefined
-                                      : 'text-right tabular-nums'
-                                  }
+                                  align={column.type === 'string' || column.type === 'date' ? undefined : 'right'}
+                                  className={column.type === 'string' || column.type === 'date' ? undefined : 'tabular-nums'}
                                 >
                                   {row[column.key] === null || row[column.key] === undefined
                                     ? '—'
@@ -360,12 +342,12 @@ export default function ReportBuilderPage() {
                                 </TableCell>
                               ))}
                             </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+                </Card>
               ) : null}
             </>
           )}
@@ -411,6 +393,6 @@ export default function ReportBuilderPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageLayout>
   )
 }

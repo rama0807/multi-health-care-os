@@ -5,12 +5,23 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2, Plus } from 'lucide-react'
 import { useState } from 'react'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
 import { createInsurancePlan, listInsurancePlans, listInsuranceProviders, updateInsurancePlan } from '@/lib/api/insurance'
 import { useAuth } from '@/lib/auth/auth-context'
@@ -36,58 +47,52 @@ export default function InsurancePlansPage() {
   const plans = plansQuery.data?.data ?? []
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Insurance Plans</h1>
-          <p className="text-sm text-muted-foreground">Coverage, co-pay, deductible, and limits per provider.</p>
-        </div>
-        {canCreate && (
+    <PageLayout
+      breadcrumbs={[{ label: 'Insurance', href: '/dashboard/insurance' }, { label: 'Plans' }]}
+      title="Insurance Plans"
+      description="Coverage, co-pay, deductible, and limits per provider."
+      actions={
+        canCreate && (
           <Button onClick={() => setDialogOpen(true)}>
             <Plus className="h-4 w-4" />
             Add plan
           </Button>
-        )}
-      </div>
-
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Plan</TableHead>
-              <TableHead>Provider</TableHead>
-              <TableHead>Coverage</TableHead>
-              <TableHead>Co-pay</TableHead>
-              <TableHead>Deductible</TableHead>
-              <TableHead>Annual limit</TableHead>
-              <TableHead>Network</TableHead>
-              {canUpdate && <TableHead>Actions</TableHead>}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {plansQuery.isLoading ? (
+        )
+      }
+    >
+      {plansQuery.isLoading ? (
+        <TableSkeleton rows={6} columns={canUpdate ? 8 : 7} />
+      ) : plans.length === 0 ? (
+        <EmptyState
+          title="No insurance plans yet"
+          action={canCreate ? { label: 'Add plan', onClick: () => setDialogOpen(true) } : undefined}
+        />
+      ) : (
+        <TableContainer className="max-h-[70vh]">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Plan</TableHead>
+                <TableHead>Provider</TableHead>
+                <TableHead align="right">Coverage</TableHead>
+                <TableHead align="right">Co-pay</TableHead>
+                <TableHead align="right">Deductible</TableHead>
+                <TableHead align="right">Annual limit</TableHead>
+                <TableHead>Network</TableHead>
+                {canUpdate && <TableHead className="w-20" />}
               </TableRow>
-            ) : plans.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                  No insurance plans yet.
-                </TableCell>
-              </TableRow>
-            ) : (
-              plans.map((p) => (
+            </TableHeader>
+            <TableBody>
+              {plans.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell className="font-medium">
                     {p.name} <span className="font-mono text-xs text-muted-foreground">({p.code})</span>
                   </TableCell>
                   <TableCell className="text-sm">{p.provider.name}</TableCell>
-                  <TableCell>{p.coveragePercent}%</TableCell>
-                  <TableCell>{p.coPayPercent}%</TableCell>
-                  <TableCell>₹{p.deductible}</TableCell>
-                  <TableCell>{p.annualLimit ? `₹${p.annualLimit}` : '—'}</TableCell>
+                  <TableCell align="right">{p.coveragePercent}%</TableCell>
+                  <TableCell align="right">{p.coPayPercent}%</TableCell>
+                  <TableCell align="right">₹{p.deductible}</TableCell>
+                  <TableCell align="right">{p.annualLimit ? `₹${p.annualLimit}` : '—'}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{formatEnumLabel(p.networkType)}</Badge>
                   </TableCell>
@@ -99,17 +104,17 @@ export default function InsurancePlansPage() {
                     </TableCell>
                   )}
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       <PlanDialog open={dialogOpen} onOpenChange={setDialogOpen} />
       {editing && (
         <PlanDialog open onOpenChange={(open) => !open && setEditing(null)} plan={plans.find((p) => p.id === editing)} />
       )}
-    </div>
+    </PageLayout>
   )
 }
 

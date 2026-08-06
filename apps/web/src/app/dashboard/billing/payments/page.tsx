@@ -1,12 +1,23 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { Download, Loader2 } from 'lucide-react'
+import { Download } from 'lucide-react'
 import Link from 'next/link'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { EmptyState } from '@/components/ui/empty-state'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { downloadReceiptPdf, listPayments } from '@/lib/api/billing'
 
 function getErrorMessage(error: unknown): string {
@@ -27,54 +38,42 @@ export default function PaymentsListPage() {
   const payments = paymentsQuery.data?.data ?? []
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Payments</h1>
-        <p className="text-sm text-muted-foreground">
-          {paymentsQuery.data ? `${paymentsQuery.data.pagination.total} payment${paymentsQuery.data.pagination.total === 1 ? '' : 's'}` : 'Loading...'}
-        </p>
-      </div>
-
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Receipt #</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Mode</TableHead>
-              <TableHead>Reference</TableHead>
-              <TableHead>Paid at</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {paymentsQuery.isLoading ? (
+    <PageLayout
+      title="Payments"
+      description={
+        paymentsQuery.data
+          ? `${paymentsQuery.data.pagination.total} payment${paymentsQuery.data.pagination.total === 1 ? '' : 's'}`
+          : undefined
+      }
+    >
+      {paymentsQuery.isLoading ? (
+        <TableSkeleton rows={8} columns={6} />
+      ) : paymentsQuery.isError ? (
+        <EmptyState variant="error" title="Couldn't load payments" description={getErrorMessage(paymentsQuery.error)} />
+      ) : payments.length === 0 ? (
+        <EmptyState title="No payments recorded yet" />
+      ) : (
+        <TableContainer className="max-h-[70vh]">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Receipt #</TableHead>
+                <TableHead align="right">Amount</TableHead>
+                <TableHead>Mode</TableHead>
+                <TableHead>Reference</TableHead>
+                <TableHead>Paid at</TableHead>
+                <TableHead className="w-28" />
               </TableRow>
-            ) : paymentsQuery.isError ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  Couldn&apos;t load payments. {getErrorMessage(paymentsQuery.error)}
-                </TableCell>
-              </TableRow>
-            ) : payments.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  No payments recorded yet.
-                </TableCell>
-              </TableRow>
-            ) : (
-              payments.map((p) => (
+            </TableHeader>
+            <TableBody>
+              {payments.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell>
                     <Link href={`/dashboard/billing/invoices/${p.invoiceId}`} className="font-mono text-xs hover:underline">
                       {p.paymentNumber}
                     </Link>
                   </TableCell>
-                  <TableCell>₹{p.amount}</TableCell>
+                  <TableCell align="right">₹{p.amount}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{formatEnumLabel(p.paymentMode)}</Badge>
                   </TableCell>
@@ -87,11 +86,11 @@ export default function PaymentsListPage() {
                     </Button>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+    </PageLayout>
   )
 }

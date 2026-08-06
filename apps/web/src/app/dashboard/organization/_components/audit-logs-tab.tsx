@@ -3,11 +3,14 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 
-import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Pagination } from '@/components/ui/pagination'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { getAuditFilterOptions, listAuditLogs } from '@/lib/api/organization'
 
 import { formatDateTime, humanizeAction } from './format'
@@ -43,6 +46,7 @@ export function AuditLogsTab() {
 
   const rows = logsQuery.data?.data ?? []
   const pagination = logsQuery.data?.pagination
+  const hasFilters = search.trim() !== '' || action !== ANY || resource !== ANY || from !== '' || to !== ''
 
   function onFilterChange<T>(setter: (value: T) => void) {
     return (value: T) => {
@@ -53,7 +57,7 @@ export function AuditLogsTab() {
 
   return (
     <div className="space-y-4 pt-4">
-      <div className="grid grid-cols-1 gap-3 rounded-lg border bg-card p-4 sm:grid-cols-2 lg:grid-cols-5">
+      <Card className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-5">
         <div className="space-y-1">
           <Label htmlFor="audit-search">Search</Label>
           <Input
@@ -113,78 +117,48 @@ export function AuditLogsTab() {
             onChange={(e) => onFilterChange(setTo)(e.target.value)}
           />
         </div>
-      </div>
+      </Card>
 
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>When</TableHead>
-              <TableHead>Action</TableHead>
-              <TableHead>Resource</TableHead>
-              <TableHead>By</TableHead>
-              <TableHead>IP</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {logsQuery.isLoading && (
+      {logsQuery.isLoading ? (
+        <TableSkeleton rows={8} columns={5} />
+      ) : rows.length === 0 ? (
+        <EmptyState variant={hasFilters ? 'search' : 'empty'} title="No audit entries match these filters" />
+      ) : (
+        <TableContainer>
+          <Table container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
-                  Loading audit log…
-                </TableCell>
+                <TableHead>When</TableHead>
+                <TableHead>Action</TableHead>
+                <TableHead>Resource</TableHead>
+                <TableHead>By</TableHead>
+                <TableHead>IP</TableHead>
               </TableRow>
-            )}
-            {!logsQuery.isLoading && rows.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
-                  No audit entries match these filters.
-                </TableCell>
-              </TableRow>
-            )}
-            {rows.map((row) => (
-              <TableRow key={row.id}>
-                <TableCell className="whitespace-nowrap">{formatDateTime(row.createdAt)}</TableCell>
-                <TableCell className="font-medium">{humanizeAction(row.action)}</TableCell>
-                <TableCell>
-                  {row.resource}
-                  {row.resourceId && (
-                    <span className="ml-1 text-xs text-muted-foreground">{row.resourceId}</span>
-                  )}
-                </TableCell>
-                <TableCell>{row.userName ?? row.userEmail ?? 'System'}</TableCell>
-                <TableCell className="text-xs text-muted-foreground">
-                  {row.ipAddress ?? '—'}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell className="whitespace-nowrap">{formatDateTime(row.createdAt)}</TableCell>
+                  <TableCell className="font-medium">{humanizeAction(row.action)}</TableCell>
+                  <TableCell>
+                    {row.resource}
+                    {row.resourceId && (
+                      <span className="ml-1 text-xs text-muted-foreground">{row.resourceId}</span>
+                    )}
+                  </TableCell>
+                  <TableCell>{row.userName ?? row.userEmail ?? 'System'}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {row.ipAddress ?? '—'}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
-      {pagination && pagination.total > 0 && (
-        <div className="flex items-center justify-between text-sm">
-          <p className="text-muted-foreground">
-            Page {pagination.page} of {pagination.totalPages} · {pagination.total} entries
-          </p>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!pagination.hasPrev}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!pagination.hasNext}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
+      {pagination && pagination.totalPages > 1 && (
+        <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={setPage} />
       )}
 
       <p className="text-xs text-muted-foreground">

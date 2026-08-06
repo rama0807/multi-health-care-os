@@ -5,13 +5,17 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2, Plus } from 'lucide-react'
 import { useState } from 'react'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/ui/pagination'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
@@ -41,34 +45,27 @@ function formatEnumLabel(value: string): string {
 
 const NO_STORE = '__all__'
 
-const TRANSFER_STATUS_BADGE: Record<StockTransferStatus, 'secondary' | 'outline' | 'success' | 'destructive'> = {
-  [StockTransferStatus.DRAFT]: 'secondary',
-  [StockTransferStatus.IN_TRANSIT]: 'outline',
-  [StockTransferStatus.COMPLETED]: 'success',
-  [StockTransferStatus.CANCELLED]: 'destructive',
-}
-
 export default function InventoryStockPage() {
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Stock</h1>
-        <p className="text-sm text-muted-foreground">Per-store stock levels, batches, adjustments, and store-to-store transfers.</p>
-      </div>
-
-      <Tabs defaultValue="levels">
-        <TabsList>
-          <TabsTrigger value="levels">Stock levels</TabsTrigger>
-          <TabsTrigger value="transfers">Transfers</TabsTrigger>
-        </TabsList>
+    <Tabs defaultValue="levels">
+      <PageLayout
+        title="Stock"
+        description="Per-store stock levels, batches, adjustments, and store-to-store transfers."
+        toolbar={
+          <TabsList>
+            <TabsTrigger value="levels">Stock levels</TabsTrigger>
+            <TabsTrigger value="transfers">Transfers</TabsTrigger>
+          </TabsList>
+        }
+      >
         <TabsContent value="levels">
           <StockLevelsTab />
         </TabsContent>
         <TabsContent value="transfers">
           <TransfersTab />
         </TabsContent>
-      </Tabs>
-    </div>
+      </PageLayout>
+    </Tabs>
   )
 }
 
@@ -156,50 +153,48 @@ function StockLevelsTab() {
         )}
       </div>
 
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Item</TableHead>
-              <TableHead>Store</TableHead>
-              <TableHead>Current</TableHead>
-              <TableHead>Reserved</TableHead>
-              <TableHead>Available</TableHead>
-              <TableHead>Reorder level</TableHead>
-              <TableHead>Nearest expiry</TableHead>
-              {canUpdate && <TableHead>Actions</TableHead>}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {stockQuery.isLoading ? (
+      {stockQuery.isLoading ? (
+        <TableSkeleton rows={8} columns={8} />
+      ) : stock.length === 0 ? (
+        <EmptyState
+          variant={storeId === NO_STORE && !lowStockOnly && !expiringOnly ? 'empty' : 'search'}
+          title="No stock records found"
+          action={canCreate ? { label: 'Set opening stock', onClick: () => setOpeningDialogOpen(true) } : undefined}
+        />
+      ) : (
+        <TableContainer className="max-h-[65vh]">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Item</TableHead>
+                <TableHead>Store</TableHead>
+                <TableHead align="right">Current</TableHead>
+                <TableHead align="right">Reserved</TableHead>
+                <TableHead align="right">Available</TableHead>
+                <TableHead align="right">Reorder level</TableHead>
+                <TableHead>Nearest expiry</TableHead>
+                {canUpdate && <TableHead />}
               </TableRow>
-            ) : stock.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                  No stock records found.
-                </TableCell>
-              </TableRow>
-            ) : (
-              stock.map((s) => (
+            </TableHeader>
+            <TableBody>
+              {stock.map((s) => (
                 <TableRow key={s.id}>
                   <TableCell>
                     <div className="font-medium">{s.item.name}</div>
                     <div className="font-mono text-xs text-muted-foreground">{s.item.code}</div>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">{s.store.name}</TableCell>
-                  <TableCell>{s.currentStock}</TableCell>
-                  <TableCell>{s.reservedStock}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1.5">
+                  <TableCell align="right">{s.currentStock}</TableCell>
+                  <TableCell align="right">{s.reservedStock}</TableCell>
+                  <TableCell align="right">
+                    <div className="flex items-center justify-end gap-1.5">
                       {s.availableStock}
-                      {s.currentStock <= s.reorderLevel && <Badge variant="destructive">Low</Badge>}
+                      {s.currentStock <= s.reorderLevel && <Badge variant="warning">Low</Badge>}
                     </div>
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{s.reorderLevel}</TableCell>
+                  <TableCell align="right" className="text-xs text-muted-foreground">
+                    {s.reorderLevel}
+                  </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     {s.batches[0]?.expiryDate ? new Date(s.batches[0].expiryDate).toLocaleDateString('en-IN') : '—'}
                   </TableCell>
@@ -214,11 +209,11 @@ function StockLevelsTab() {
                     </TableCell>
                   )}
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       {pagination && pagination.totalPages > 1 && (
         <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={setPage} />
@@ -523,38 +518,34 @@ function TransfersTab() {
         )}
       </div>
 
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Transfer #</TableHead>
-              <TableHead>Route</TableHead>
-              <TableHead>Items</TableHead>
-              <TableHead>Status</TableHead>
-              {canUpdate && <TableHead>Actions</TableHead>}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {transfersQuery.isLoading ? (
+      {transfersQuery.isLoading ? (
+        <TableSkeleton rows={8} columns={5} />
+      ) : transfers.length === 0 ? (
+        <EmptyState
+          variant={status === 'ALL' ? 'empty' : 'search'}
+          title="No transfers yet"
+          action={canCreate ? { label: 'New transfer', onClick: () => setCreateOpen(true) } : undefined}
+        />
+      ) : (
+        <TableContainer className="max-h-[65vh]">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Transfer #</TableHead>
+                <TableHead>Route</TableHead>
+                <TableHead>Items</TableHead>
+                <TableHead>Status</TableHead>
+                {canUpdate && <TableHead />}
               </TableRow>
-            ) : transfers.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                  No transfers yet.
-                </TableCell>
-              </TableRow>
-            ) : (
-              transfers.map((t) => (
+            </TableHeader>
+            <TableBody>
+              {transfers.map((t) => (
                 <TableRow key={t.id}>
                   <TableCell className="font-mono text-xs">{t.transferNumber}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">Store-to-store</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{t.items.length} item(s)</TableCell>
                   <TableCell>
-                    <Badge variant={TRANSFER_STATUS_BADGE[t.status]}>{formatEnumLabel(t.status)}</Badge>
+                    <StatusBadge status={t.status} />
                   </TableCell>
                   {canUpdate && (
                     <TableCell className="flex flex-wrap gap-1">
@@ -581,11 +572,11 @@ function TransfersTab() {
                     </TableCell>
                   )}
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       {pagination && pagination.totalPages > 1 && (
         <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={setPage} />

@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { StatusBadge, type StatusTone } from '@/components/ui/status-badge'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -36,12 +37,17 @@ function formatEnumLabel(value: string): string {
   return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
 }
 
-const RISK_BADGE: Record<string, 'success' | 'secondary' | 'destructive' | 'outline'> = {
+/**
+ * A risk *level* reads the opposite way "LOW"/"HIGH" do as clinical lab
+ * flags (where LOW/HIGH mean an abnormal value, i.e. danger) — so this is
+ * exactly the sanctioned `tone` override case, not a shared-map fix.
+ */
+const RISK_TONE: Record<string, StatusTone> = {
   LOW: 'success',
-  MEDIUM: 'secondary',
-  MODERATE: 'secondary',
-  HIGH: 'destructive',
-  SEVERE: 'destructive',
+  MEDIUM: 'warning',
+  MODERATE: 'warning',
+  HIGH: 'danger',
+  SEVERE: 'danger',
 }
 
 export function NursingTab({ admissionId, canCreate }: { admissionId: string; canCreate: boolean }) {
@@ -259,10 +265,10 @@ function NursingAssessmentsSection({ admissionId, canCreate }: { admissionId: st
               <div className="flex flex-wrap items-center gap-2">
                 {a.painScore !== null && <Badge variant="outline">Pain {a.painScore}/10</Badge>}
                 {a.fallRiskLevel && (
-                  <Badge variant={RISK_BADGE[a.fallRiskLevel]}>Fall risk: {formatEnumLabel(a.fallRiskLevel)}</Badge>
+                  <StatusBadge status={a.fallRiskLevel} tone={RISK_TONE[a.fallRiskLevel]} label={`Fall risk: ${formatEnumLabel(a.fallRiskLevel)}`} />
                 )}
                 {a.bradenRiskLevel && (
-                  <Badge variant={RISK_BADGE[a.bradenRiskLevel]}>Pressure ulcer: {formatEnumLabel(a.bradenRiskLevel)}</Badge>
+                  <StatusBadge status={a.bradenRiskLevel} tone={RISK_TONE[a.bradenRiskLevel]} label={`Pressure ulcer: ${formatEnumLabel(a.bradenRiskLevel)}`} />
                 )}
                 {a.gcsTotal !== null && <Badge variant="outline">GCS {a.gcsTotal}/15</Badge>}
                 <span className="ml-auto text-xs text-muted-foreground">{formatDateTime(a.assessedAt)}</span>

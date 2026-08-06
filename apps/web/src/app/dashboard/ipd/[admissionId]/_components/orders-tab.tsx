@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -32,26 +33,6 @@ function formatDateTime(value: string | Date): string {
 
 function formatEnumLabel(value: string): string {
   return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
-}
-
-const ORDER_STATUS_BADGE: Record<string, 'success' | 'secondary' | 'destructive'> = {
-  ACTIVE: 'success',
-  COMPLETED: 'secondary',
-  DISCONTINUED: 'destructive',
-}
-
-const TASK_STATUS_BADGE: Record<string, 'success' | 'secondary' | 'destructive' | 'outline'> = {
-  PENDING: 'outline',
-  IN_PROGRESS: 'secondary',
-  COMPLETED: 'success',
-  MISSED: 'destructive',
-  CANCELLED: 'destructive',
-}
-
-const TASK_PRIORITY_BADGE: Record<string, 'destructive' | 'secondary' | 'outline'> = {
-  STAT: 'destructive',
-  URGENT: 'secondary',
-  ROUTINE: 'outline',
 }
 
 export function OrdersTab({
@@ -128,7 +109,7 @@ function IpdOrdersSection({ admissionId, canOrder }: { admissionId: string; canO
             <li key={o.id} className="rounded-md border p-3 text-sm">
               <div className="flex items-center gap-2">
                 <Badge variant="outline">{formatEnumLabel(o.category)}</Badge>
-                <Badge variant={ORDER_STATUS_BADGE[o.status]}>{formatEnumLabel(o.status)}</Badge>
+                <StatusBadge status={o.status} />
                 <span className="ml-auto text-xs text-muted-foreground">{formatDateTime(o.startedAt)}</span>
               </div>
               <p className="mt-1 text-foreground">{o.instructions}</p>
@@ -243,8 +224,8 @@ function NursingTasksSection({ admissionId, canManageTasks }: { admissionId: str
             <li key={t.id} className="flex items-start justify-between gap-3 rounded-md border p-3 text-sm">
               <div>
                 <div className="flex items-center gap-2">
-                  <Badge variant={TASK_PRIORITY_BADGE[t.priority]}>{formatEnumLabel(t.priority)}</Badge>
-                  <Badge variant={TASK_STATUS_BADGE[t.status]}>{formatEnumLabel(t.status)}</Badge>
+                  <StatusBadge status={t.priority} />
+                  <StatusBadge status={t.status} />
                 </div>
                 <p className="mt-1 font-medium text-foreground">{t.title}</p>
                 {t.description && <p className="text-muted-foreground">{t.description}</p>}

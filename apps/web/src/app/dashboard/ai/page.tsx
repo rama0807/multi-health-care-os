@@ -7,13 +7,17 @@ import { AlertTriangle, Loader2, Sparkles } from 'lucide-react'
 import { useState } from 'react'
 
 import { AiAssistDialog } from '@/components/ai/ai-assist-dialog'
+import { PageLayout } from '@/components/layout/page-layout'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { StatCard, StatCardGrid } from '@/components/ui/stat-card'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getAiStatus, getAiUsageSummary, listAiConversations, listAiUsage } from '@/lib/api/ai'
 import { useAuth } from '@/lib/auth/auth-context'
@@ -45,16 +49,14 @@ export default function AiPage() {
   const canGenerate = recordId.trim().length > 0 && (!isReferral || (specialty.trim() && reason.trim()))
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="flex items-center gap-2 text-xl font-semibold text-foreground">
+    <PageLayout
+      title={
+        <span className="flex items-center gap-2">
           <Sparkles className="h-5 w-5" /> AI Clinical Assistant
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Drafts clinical documents from records already in the system. Every output is a draft for clinician review.
-        </p>
-      </div>
-
+        </span>
+      }
+      description="Drafts clinical documents from records already in the system. Every output is a draft for clinician review."
+    >
       {statusLoading ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Checking AI availability…
@@ -66,10 +68,10 @@ export default function AiPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex flex-wrap items-center gap-2 text-sm">
-              <Badge variant={status?.enabled ? 'default' : 'secondary'}>
+              <Badge variant={status?.enabled ? 'success' : 'neutral'}>
                 {status?.enabled ? 'Enabled' : 'Disabled'}
               </Badge>
-              <Badge variant={status?.configured ? 'default' : 'destructive'}>
+              <Badge variant={status?.configured ? 'success' : 'danger'}>
                 {status?.configured ? 'Configured' : 'Not configured'}
               </Badge>
               <Badge variant="outline">{status?.provider}</Badge>
@@ -88,7 +90,7 @@ export default function AiPage() {
             )}
             <div className="flex flex-wrap gap-1">
               {status?.features.map((entry) => (
-                <Badge key={entry.feature} variant={entry.enabled ? 'outline' : 'secondary'}>
+                <Badge key={entry.feature} variant={entry.enabled ? 'outline' : 'neutral'}>
                   {entry.label}
                 </Badge>
               ))}
@@ -191,7 +193,7 @@ export default function AiPage() {
           </TabsContent>
         )}
       </Tabs>
-    </div>
+    </PageLayout>
   )
 }
 
@@ -207,20 +209,20 @@ function ConversationsTab() {
   }
 
   if (!data?.data.length) {
-    return <p className="py-6 text-sm text-muted-foreground">No AI generations yet.</p>
+    return <EmptyState compact title="No AI generations yet" />
   }
 
   return (
     <Card>
-      <CardContent className="p-0">
-        <Table>
+      <TableContainer className="rounded-none border-0">
+        <Table density="compact" container={false}>
           <TableHeader>
             <TableRow>
               <TableHead>Generated</TableHead>
               <TableHead>Feature</TableHead>
               <TableHead>Subject</TableHead>
               <TableHead>Patient</TableHead>
-              <TableHead className="text-right">Tokens</TableHead>
+              <TableHead align="right">Tokens</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -237,12 +239,12 @@ function ConversationsTab() {
                 </TableCell>
                 <TableCell className="text-sm">{conversation.title}</TableCell>
                 <TableCell className="text-sm">{conversation.patientName ?? '—'}</TableCell>
-                <TableCell className="text-right font-mono text-sm">{conversation.totalTokens}</TableCell>
+                <TableCell align="right" className="font-mono text-sm">{conversation.totalTokens}</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-      </CardContent>
+      </TableContainer>
     </Card>
   )
 }
@@ -261,66 +263,66 @@ function UsageTab() {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile label="Requests" value={String(summary.totalRequests)} hint={`${summary.failedRequests} failed`} />
-        <StatTile
+      <StatCardGrid columns={4}>
+        <StatCard label="Requests" value={summary.totalRequests} hint={`${summary.failedRequests} failed`} />
+        <StatCard
           label="Total tokens"
           value={summary.totalTokens.toLocaleString('en-IN')}
           hint={summary.containsEstimatedTokens ? 'Includes estimated counts' : 'All metered'}
         />
-        <StatTile
+        <StatCard
           label="Estimated cost (USD)"
           value={summary.estimatedCostUsd.toFixed(4)}
           hint={summary.estimatedCostUsd === 0 ? 'No per-token price configured' : `${summary.from} → ${summary.to}`}
         />
-        <StatTile label="Avg latency" value={`${summary.averageLatencyMs} ms`} hint={`${summary.from} → ${summary.to}`} />
-      </div>
+        <StatCard label="Avg latency" value={`${summary.averageLatencyMs} ms`} hint={`${summary.from} → ${summary.to}`} />
+      </StatCardGrid>
 
       {summary.byFeature.length > 0 && (
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">By feature</CardTitle>
+          <CardHeader>
+            <CardTitle>By feature</CardTitle>
           </CardHeader>
-          <CardContent className="p-0">
-            <Table>
+          <TableContainer className="rounded-none border-0 border-y">
+            <Table density="compact" container={false}>
               <TableHeader>
                 <TableRow>
                   <TableHead>Feature</TableHead>
-                  <TableHead className="text-right">Requests</TableHead>
-                  <TableHead className="text-right">Tokens</TableHead>
-                  <TableHead className="text-right">Cost (USD)</TableHead>
+                  <TableHead align="right">Requests</TableHead>
+                  <TableHead align="right">Tokens</TableHead>
+                  <TableHead align="right">Cost (USD)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {summary.byFeature.map((row) => (
                   <TableRow key={row.feature}>
                     <TableCell>{row.featureLabel}</TableCell>
-                    <TableCell className="text-right font-mono">{row.requests}</TableCell>
-                    <TableCell className="text-right font-mono">{row.totalTokens.toLocaleString('en-IN')}</TableCell>
-                    <TableCell className="text-right font-mono">{row.estimatedCostUsd.toFixed(4)}</TableCell>
+                    <TableCell align="right" className="font-mono">{row.requests}</TableCell>
+                    <TableCell align="right" className="font-mono">{row.totalTokens.toLocaleString('en-IN')}</TableCell>
+                    <TableCell align="right" className="font-mono">{row.estimatedCostUsd.toFixed(4)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
+          </TableContainer>
         </Card>
       )}
 
       {entries && entries.data.length > 0 && (
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Recent requests</CardTitle>
+          <CardHeader>
+            <CardTitle>Recent requests</CardTitle>
           </CardHeader>
-          <CardContent className="p-0">
-            <Table>
+          <TableContainer className="rounded-none border-0 border-y">
+            <Table density="compact" container={false}>
               <TableHeader>
                 <TableRow>
                   <TableHead>When</TableHead>
                   <TableHead>Feature</TableHead>
                   <TableHead>Model</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Tokens</TableHead>
-                  <TableHead className="text-right">Latency</TableHead>
+                  <TableHead align="right">Tokens</TableHead>
+                  <TableHead align="right">Latency</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -332,38 +334,24 @@ function UsageTab() {
                     <TableCell className="text-sm">{entry.featureLabel}</TableCell>
                     <TableCell className="font-mono text-xs">{entry.model}</TableCell>
                     <TableCell>
-                      <Badge variant={entry.status === 'SUCCEEDED' ? 'default' : 'destructive'}>
-                        {entry.status}
-                      </Badge>
+                      <StatusBadge status={entry.status} />
                       {entry.errorCode && (
                         <span className="ml-2 text-xs text-muted-foreground">{entry.errorCode}</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-right font-mono text-sm">
+                    <TableCell align="right" className="font-mono text-sm">
                       {entry.totalTokens}
                       {entry.tokensEstimated ? '*' : ''}
                     </TableCell>
-                    <TableCell className="text-right font-mono text-sm">{entry.latencyMs} ms</TableCell>
+                    <TableCell align="right" className="font-mono text-sm">{entry.latencyMs} ms</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
+          </TableContainer>
         </Card>
       )}
       <p className="text-xs text-muted-foreground">* Token count estimated, not reported by the provider.</p>
     </div>
-  )
-}
-
-function StatTile({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <Card>
-      <CardContent className="pt-6">
-        <p className="text-sm text-muted-foreground">{label}</p>
-        <p className="text-2xl font-semibold text-foreground">{value}</p>
-        {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
-      </CardContent>
-    </Card>
   )
 }

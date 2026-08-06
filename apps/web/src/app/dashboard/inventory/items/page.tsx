@@ -6,13 +6,25 @@ import { Loader2, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/ui/pagination'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
 import {
   createInventoryItem,
@@ -65,13 +77,11 @@ export default function InventoryItemsPage() {
   const pagination = itemsQuery.data?.pagination
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Item Master</h1>
-          <p className="text-sm text-muted-foreground">Non-drug inventory catalog — equipment, consumables, and supplies.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+    <PageLayout
+      title="Item Master"
+      description="Non-drug inventory catalog — equipment, consumables, and supplies."
+      actions={
+        <>
           <Button asChild variant="outline">
             <Link href="/dashboard/inventory/lookups">Categories & lookups</Link>
           </Button>
@@ -81,9 +91,9 @@ export default function InventoryItemsPage() {
               Add item
             </Button>
           )}
-        </div>
-      </div>
-
+        </>
+      }
+    >
       <div className="flex flex-wrap gap-2">
         <Input
           placeholder="Search by name, code, or barcode"
@@ -115,35 +125,31 @@ export default function InventoryItemsPage() {
         </Select>
       </div>
 
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Code</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Unit</TableHead>
-              <TableHead>Unit cost</TableHead>
-              <TableHead>Status</TableHead>
-              {canUpdate && <TableHead>Actions</TableHead>}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {itemsQuery.isLoading ? (
+      {itemsQuery.isLoading ? (
+        <TableSkeleton rows={8} columns={canUpdate ? 8 : 7} />
+      ) : items.length === 0 ? (
+        <EmptyState
+          variant={search || itemType !== 'ALL' ? 'search' : 'empty'}
+          title="No items yet"
+          action={canCreate ? { label: 'Add item', onClick: () => setDialogOpen(true) } : undefined}
+        />
+      ) : (
+        <TableContainer className="max-h-[65vh]">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Name</TableHead>
+                <TableHead>Code</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Unit</TableHead>
+                <TableHead align="right">Unit cost</TableHead>
+                <TableHead>Status</TableHead>
+                {canUpdate && <TableHead className="w-20" />}
               </TableRow>
-            ) : items.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                  No items yet.
-                </TableCell>
-              </TableRow>
-            ) : (
-              items.map((item) => (
+            </TableHeader>
+            <TableBody>
+              {items.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.name}</TableCell>
                   <TableCell className="font-mono text-xs">{item.code}</TableCell>
@@ -152,9 +158,9 @@ export default function InventoryItemsPage() {
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">{item.category?.name ?? '—'}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{item.unit?.symbol ?? '—'}</TableCell>
-                  <TableCell className="text-xs">₹{item.unitCost}</TableCell>
+                  <TableCell align="right" className="text-xs">₹{item.unitCost}</TableCell>
                   <TableCell>
-                    <Badge variant={item.isActive ? 'success' : 'secondary'}>{item.isActive ? 'Active' : 'Inactive'}</Badge>
+                    <StatusBadge status={item.isActive ? 'ACTIVE' : 'INACTIVE'} />
                   </TableCell>
                   {canUpdate && (
                     <TableCell>
@@ -164,11 +170,11 @@ export default function InventoryItemsPage() {
                     </TableCell>
                   )}
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       {pagination && pagination.totalPages > 1 && (
         <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={setPage} />
@@ -176,7 +182,7 @@ export default function InventoryItemsPage() {
 
       <ItemDialog open={dialogOpen} onOpenChange={setDialogOpen} />
       {editing && <ItemDialog open onOpenChange={(open) => !open && setEditing(null)} item={editing} />}
-    </div>
+    </PageLayout>
   )
 }
 

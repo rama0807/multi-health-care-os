@@ -6,10 +6,15 @@ import { CheckCircle2, Download, FileText, Loader2, Upload, XCircle } from 'luci
 import { useParams } from 'next/navigation'
 import { useState } from 'react'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle, CardToolbar } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
+import { PageHeaderMeta } from '@/components/ui/page-header'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -30,18 +35,6 @@ function getErrorMessage(error: unknown): string {
 
 function formatEnumLabel(value: string): string {
   return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
-}
-
-const STATUS_BADGE: Record<string, 'secondary' | 'success' | 'destructive' | 'warning' | 'outline'> = {
-  DRAFT: 'secondary',
-  SUBMITTED: 'outline',
-  UNDER_REVIEW: 'warning',
-  APPROVED: 'warning',
-  PARTIALLY_APPROVED: 'warning',
-  REJECTED: 'destructive',
-  SETTLED: 'success',
-  PARTIALLY_SETTLED: 'success',
-  CLOSED: 'secondary',
 }
 
 export default function InsuranceClaimDetailPage() {
@@ -148,9 +141,33 @@ export default function InsuranceClaimDetailPage() {
     onError: (error) => toast({ variant: 'destructive', title: 'Upload failed', description: getErrorMessage(error) }),
   })
 
-  if (claimQuery.isLoading) return <p className="text-sm text-muted-foreground">Loading...</p>
+  if (claimQuery.isLoading) {
+    return (
+      <PageLayout
+        breadcrumbs={[{ label: 'Insurance', href: '/dashboard/insurance' }, { label: 'Claims', href: '/dashboard/insurance/claims' }, { label: '…' }]}
+        title="…"
+        loading
+      >
+        <div className="flex h-64 items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </PageLayout>
+    )
+  }
   if (claimQuery.isError || !claim) {
-    return <p className="text-sm text-muted-foreground">Couldn&apos;t load this claim. {getErrorMessage(claimQuery.error)}</p>
+    return (
+      <PageLayout
+        breadcrumbs={[{ label: 'Insurance', href: '/dashboard/insurance' }, { label: 'Claims', href: '/dashboard/insurance/claims' }, { label: 'Not found' }]}
+        title="Claim not found"
+      >
+        <EmptyState
+          variant="error"
+          title="Couldn't load this claim"
+          description={getErrorMessage(claimQuery.error)}
+          action={{ label: 'Back to claims', href: '/dashboard/insurance/claims' }}
+        />
+      </PageLayout>
+    )
   }
 
   const timeline = [
@@ -161,18 +178,21 @@ export default function InsuranceClaimDetailPage() {
   ].filter((t) => t.at)
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-        <div>
-          <h1 className="flex items-center gap-2 text-xl font-semibold text-foreground">
-            {claim.claimNumber}
-            <Badge variant={STATUS_BADGE[claim.status]}>{formatEnumLabel(claim.status)}</Badge>
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {claim.patient.fullName} · {claim.patient.uhid} · {claim.insuranceProvider} ({claim.policyNumber})
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+    <PageLayout
+      breadcrumbs={[
+        { label: 'Insurance', href: '/dashboard/insurance' },
+        { label: 'Claims', href: '/dashboard/insurance/claims' },
+        { label: claim.claimNumber },
+      ]}
+      title={claim.claimNumber}
+      badge={<StatusBadge status={claim.status} />}
+      meta={
+        <PageHeaderMeta label="Patient">
+          {claim.patient.fullName} · {claim.patient.uhid} · {claim.insuranceProvider} ({claim.policyNumber})
+        </PageHeaderMeta>
+      }
+      actions={
+        <>
           {canCreate && claim.status === InsuranceClaimStatus.DRAFT && (
             <Button onClick={() => submitMutation.mutate()} disabled={submitMutation.isPending}>
               {submitMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
@@ -211,43 +231,51 @@ export default function InsuranceClaimDetailPage() {
               Close
             </Button>
           )}
-        </div>
-      </div>
-
+        </>
+      }
+    >
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="space-y-2 rounded-lg border bg-card p-4 text-sm lg:col-span-2">
-          <h3 className="mb-2 text-sm font-semibold text-foreground">Settlement</h3>
-          <Row label="Claimed amount" value={`₹${claim.claimedAmount}`} bold />
-          <Row label="Approved amount" value={claim.approvedAmount ? `₹${claim.approvedAmount}` : '—'} />
-          <Row label="Rejected amount" value={claim.rejectedAmount ? `₹${claim.rejectedAmount}` : '—'} />
-          <Row label="Insurance share" value={claim.insuranceShare ? `₹${claim.insuranceShare}` : '—'} />
-          <Row label="Patient share" value={claim.patientShare ? `₹${claim.patientShare}` : '—'} />
-          <Row label="Adjustment" value={`₹${claim.adjustmentAmount}`} />
-          <Row label="Write-off" value={`₹${claim.writeOffAmount}`} />
-          <Row label="Outstanding" value={claim.outstandingAmount ? `₹${claim.outstandingAmount}` : '—'} bold />
-          <Row label="Payment status" value={formatEnumLabel(claim.paymentStatus)} />
-          {claim.rejectionReason && <Row label="Rejection reason" value={claim.rejectionReason} />}
-          <div className="border-t pt-2 text-xs text-muted-foreground">
-            Invoice {claim.invoice.invoiceNumber} · Total ₹{claim.invoice.totalAmount} · Balance due ₹{claim.invoice.balanceDue}
-          </div>
-        </div>
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Settlement</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 pt-0">
+            <Row label="Claimed amount" value={`₹${claim.claimedAmount}`} bold />
+            <Row label="Approved amount" value={claim.approvedAmount ? `₹${claim.approvedAmount}` : '—'} />
+            <Row label="Rejected amount" value={claim.rejectedAmount ? `₹${claim.rejectedAmount}` : '—'} />
+            <Row label="Insurance share" value={claim.insuranceShare ? `₹${claim.insuranceShare}` : '—'} />
+            <Row label="Patient share" value={claim.patientShare ? `₹${claim.patientShare}` : '—'} />
+            <Row label="Adjustment" value={`₹${claim.adjustmentAmount}`} />
+            <Row label="Write-off" value={`₹${claim.writeOffAmount}`} />
+            <Row label="Outstanding" value={claim.outstandingAmount ? `₹${claim.outstandingAmount}` : '—'} bold />
+            <Row label="Payment status" value={formatEnumLabel(claim.paymentStatus)} />
+            {claim.rejectionReason && <Row label="Rejection reason" value={claim.rejectionReason} />}
+            <div className="border-t pt-2 text-xs text-muted-foreground">
+              Invoice {claim.invoice.invoiceNumber} · Total ₹{claim.invoice.totalAmount} · Balance due ₹{claim.invoice.balanceDue}
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="rounded-lg border bg-card p-4">
-          <h3 className="mb-2 text-sm font-semibold text-foreground">Timeline</h3>
-          <ul className="space-y-2 text-sm">
-            {timeline.map((t) => (
-              <li key={t.label} className="flex justify-between text-muted-foreground">
-                <span>{t.label}</span>
-                <span>{new Date(t.at as Date).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Timeline</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <ul className="space-y-2 text-sm">
+              {timeline.map((t) => (
+                <li key={t.label} className="flex justify-between text-muted-foreground">
+                  <span>{t.label}</span>
+                  <span>{new Date(t.at as Date).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="rounded-lg border bg-card">
-        <div className="flex items-center justify-between border-b p-3">
-          <h3 className="text-sm font-semibold text-foreground">Documents</h3>
+      <Card>
+        <CardToolbar>
+          <CardTitle>Documents</CardTitle>
           {canUpdate && (
             <div className="flex items-center gap-2">
               <Input
@@ -262,18 +290,18 @@ export default function InsuranceClaimDetailPage() {
               </Button>
             </div>
           )}
-        </div>
+        </CardToolbar>
         {claim.documents.length === 0 ? (
-          <p className="p-4 text-sm text-muted-foreground">No documents attached yet.</p>
+          <EmptyState compact title="No documents attached yet" />
         ) : (
-          <ul className="divide-y">
+          <ul className="divide-y border-t">
             {claim.documents.map((d) => (
               <li key={d.id} className="flex items-center justify-between gap-3 p-3 text-sm">
                 <div className="flex items-center gap-2">
                   <FileText className="h-4 w-4 text-muted-foreground" />
                   <span>{d.fileName}</span>
                   <Badge variant="outline">{formatEnumLabel(d.type)}</Badge>
-                  {d.autoAttached && <Badge variant="secondary">Auto-attached</Badge>}
+                  {d.autoAttached && <Badge variant="neutral">Auto-attached</Badge>}
                 </div>
                 <a href={d.fileUrl} target="_blank" rel="noreferrer">
                   <Button variant="ghost" size="sm">
@@ -284,7 +312,7 @@ export default function InsuranceClaimDetailPage() {
             ))}
           </ul>
         )}
-      </div>
+      </Card>
 
       <Dialog open={Boolean(decideOpen)} onOpenChange={(open) => !open && setDecideOpen(null)}>
         <DialogContent>
@@ -339,7 +367,7 @@ export default function InsuranceClaimDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageLayout>
   )
 }
 

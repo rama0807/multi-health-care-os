@@ -5,12 +5,24 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2, Plus, Users } from 'lucide-react'
 import { useState } from 'react'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
 import {
   assignStoreManager,
@@ -53,47 +65,37 @@ export default function InventoryStoresPage() {
   })
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Stores</h1>
-          <p className="text-sm text-muted-foreground">Central, ward, ICU, OT, and other stock-holding locations.</p>
-        </div>
-        {canCreate && (
+    <PageLayout
+      title="Stores"
+      description="Central, ward, ICU, OT, and other stock-holding locations."
+      actions={
+        canCreate && (
           <Button onClick={() => setDialogOpen(true)}>
             <Plus className="h-4 w-4" />
             Add store
           </Button>
-        )}
-      </div>
-
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Code</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {storesQuery.isLoading ? (
+        )
+      }
+    >
+      {storesQuery.isLoading ? (
+        <TableSkeleton rows={6} columns={6} />
+      ) : stores.length === 0 ? (
+        <EmptyState title="No stores yet" action={canCreate ? { label: 'Add store', onClick: () => setDialogOpen(true) } : undefined} />
+      ) : (
+        <TableContainer className="max-h-[70vh]">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Name</TableHead>
+                <TableHead>Code</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Location</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-48" />
               </TableRow>
-            ) : stores.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  No stores yet.
-                </TableCell>
-              </TableRow>
-            ) : (
-              stores.map((store) => (
+            </TableHeader>
+            <TableBody>
+              {stores.map((store) => (
                 <TableRow key={store.id}>
                   <TableCell className="font-medium">{store.name}</TableCell>
                   <TableCell className="font-mono text-xs">{store.code}</TableCell>
@@ -102,7 +104,7 @@ export default function InventoryStoresPage() {
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">{store.location ?? '—'}</TableCell>
                   <TableCell>
-                    <Badge variant={store.isActive ? 'success' : 'secondary'}>{store.isActive ? 'Active' : 'Inactive'}</Badge>
+                    <StatusBadge status={store.isActive ? 'ACTIVE' : 'INACTIVE'} />
                   </TableCell>
                   <TableCell className="flex flex-wrap gap-1">
                     <Button variant="ghost" size="sm" onClick={() => setManagersFor(store)}>
@@ -126,16 +128,16 @@ export default function InventoryStoresPage() {
                     )}
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       <StoreDialog open={dialogOpen} onOpenChange={setDialogOpen} />
       {editing && <StoreDialog open onOpenChange={(open) => !open && setEditing(null)} store={editing} />}
       {managersFor && <ManagersDialog store={managersFor} onOpenChange={(open) => !open && setManagersFor(null)} />}
-    </div>
+    </PageLayout>
   )
 }
 

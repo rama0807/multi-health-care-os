@@ -3,11 +3,13 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { CreateStaffSchema, EmploymentStatus, EmploymentType, type CreateStaffDto } from '@medicore/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Loader2, Plus, Search } from 'lucide-react'
+import { Loader2, Plus } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -18,11 +20,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/ui/pagination'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { FilterBar, SearchInput } from '@/components/ui/toolbar'
 import { useToast } from '@/hooks/use-toast'
 import { listDepartments, listHospitals } from '@/lib/api/hospitals'
 import { createStaff, listStaff } from '@/lib/api/staff'
@@ -49,6 +55,7 @@ function formatEnumLabel(value: string): string {
 }
 
 export default function StaffDirectoryPage() {
+  const router = useRouter()
   const { hasPermission } = useAuth()
   const canCreate = hasPermission('staff.create')
 
@@ -65,35 +72,37 @@ export default function StaffDirectoryPage() {
 
   const staff = staffQuery.data?.data ?? []
   const pagination = staffQuery.data?.pagination
+  const activeFilterCount = (q ? 1 : 0) + (status !== 'ALL' ? 1 : 0)
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Staff Directory</h1>
-          <p className="text-sm text-muted-foreground">Employee records, departments, designations, and employment status.</p>
-        </div>
-        {canCreate && (
+    <PageLayout
+      title="Staff Directory"
+      description="Employee records, departments, designations, and employment status."
+      actions={
+        canCreate && (
           <Button onClick={() => setDialogOpen(true)}>
             <Plus className="h-4 w-4" />
             Add staff member
           </Button>
-        )}
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <div className="relative max-w-xs flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            className="pl-8"
-            placeholder="Search by name, employee ID, designation"
-            value={q}
-            onChange={(e) => {
-              setQ(e.target.value)
-              setPage(1)
-            }}
-          />
-        </div>
+        )
+      }
+    >
+      <FilterBar
+        activeCount={activeFilterCount}
+        onClear={() => {
+          setQ('')
+          setStatus('ALL')
+          setPage(1)
+        }}
+      >
+        <SearchInput
+          value={q}
+          onValueChange={(v) => {
+            setQ(v)
+            setPage(1)
+          }}
+          placeholder="Search by name, employee ID, designation"
+        />
         <Select
           value={status}
           onValueChange={(v) => {
@@ -113,69 +122,59 @@ export default function StaffDirectoryPage() {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </FilterBar>
 
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Employee ID</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Designation</TableHead>
-              <TableHead>Department</TableHead>
-              <TableHead>Employment</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {staffQuery.isLoading ? (
+      {staffQuery.isLoading ? (
+        <TableSkeleton rows={8} columns={6} />
+      ) : staff.length === 0 ? (
+        <EmptyState
+          variant={activeFilterCount > 0 ? 'search' : 'empty'}
+          title={activeFilterCount > 0 ? 'No staff match these filters' : 'No staff members yet'}
+          action={canCreate && activeFilterCount === 0 ? { label: 'Add staff member', onClick: () => setDialogOpen(true) } : undefined}
+        />
+      ) : (
+        <TableContainer>
+          <Table container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Employee ID</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Designation</TableHead>
+                <TableHead>Department</TableHead>
+                <TableHead>Employment</TableHead>
+                <TableHead>Status</TableHead>
               </TableRow>
-            ) : staff.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  No staff members yet.
-                </TableCell>
-              </TableRow>
-            ) : (
-              staff.map((s) => (
-                <TableRow key={s.id} className="cursor-pointer">
+            </TableHeader>
+            <TableBody>
+              {staff.map((s) => (
+                <TableRow key={s.id} interactive onClick={() => router.push(`/dashboard/staff/${s.id}`)}>
                   <TableCell className="font-mono text-xs">
-                    <Link href={`/dashboard/staff/${s.id}`} className="hover:underline">
+                    <Link href={`/dashboard/staff/${s.id}`} className="text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
                       {s.employeeId}
                     </Link>
                   </TableCell>
-                  <TableCell className="font-medium">
-                    <Link href={`/dashboard/staff/${s.id}`} className="hover:underline">
-                      {s.fullName}
-                    </Link>
-                  </TableCell>
+                  <TableCell className="font-medium">{s.fullName}</TableCell>
                   <TableCell>{s.designation}</TableCell>
                   <TableCell className="text-muted-foreground">{s.department?.name ?? '—'}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{formatEnumLabel(s.employmentType)}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={s.employmentStatus === EmploymentStatus.ACTIVE ? 'success' : 'secondary'}>
-                      {formatEnumLabel(s.employmentStatus)}
-                    </Badge>
+                    <StatusBadge status={s.employmentStatus} />
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       {pagination && pagination.totalPages > 1 && (
         <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={setPage} />
       )}
 
       <AddStaffDialog open={dialogOpen} onOpenChange={setDialogOpen} />
-    </div>
+    </PageLayout>
   )
 }
 

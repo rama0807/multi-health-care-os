@@ -1,12 +1,22 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 
+import { PageLayout } from '@/components/layout/page-layout'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { listAdmissions } from '@/lib/api/ipd'
 
 function formatDateTime(value: string | Date): string {
@@ -29,40 +39,30 @@ export default function AssignedPatientsPage() {
   const admissions = admissionsQuery.data?.data ?? []
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Assigned Patients — Patient Census</h1>
-        <p className="text-sm text-muted-foreground">Every currently admitted patient, across all wards.</p>
-      </div>
-
+    <PageLayout
+      title="Assigned Patients — Patient Census"
+      description="Every currently admitted patient, across all wards."
+    >
       <Input placeholder="Search by admission number…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-72" />
 
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Patient</TableHead>
-              <TableHead>Ward / Bed</TableHead>
-              <TableHead>Attending doctor</TableHead>
-              <TableHead>Admitted</TableHead>
-              <TableHead>Diagnosis</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {admissionsQuery.isLoading ? (
+      {admissionsQuery.isLoading ? (
+        <TableSkeleton rows={8} columns={5} />
+      ) : admissions.length === 0 ? (
+        <EmptyState variant={search ? 'search' : 'empty'} title="No inpatients currently admitted" />
+      ) : (
+        <TableContainer className="max-h-[70vh]">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Patient</TableHead>
+                <TableHead>Ward / Bed</TableHead>
+                <TableHead>Attending doctor</TableHead>
+                <TableHead>Admitted</TableHead>
+                <TableHead>Diagnosis</TableHead>
               </TableRow>
-            ) : admissions.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                  No inpatients currently admitted.
-                </TableCell>
-              </TableRow>
-            ) : (
-              admissions.map((a) => (
+            </TableHeader>
+            <TableBody>
+              {admissions.map((a) => (
                 <TableRow key={a.id}>
                   <TableCell className="text-sm">
                     <Link href={`/dashboard/ipd/${a.id}`} className="text-primary hover:underline">
@@ -77,11 +77,11 @@ export default function AssignedPatientsPage() {
                   <TableCell className="text-sm">{formatDateTime(a.admittedAt)}</TableCell>
                   <TableCell className="text-sm">{a.diagnosis ?? '—'}</TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+    </PageLayout>
   )
 }

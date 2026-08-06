@@ -5,13 +5,17 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2, Plus } from 'lucide-react'
 import { useState } from 'react'
 
-import { Badge } from '@/components/ui/badge'
+import { PageLayout } from '@/components/layout/page-layout'
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -36,18 +40,18 @@ function formatEnumLabel(value: string): string {
 
 export default function LeavePage() {
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Leave Management</h1>
-        <p className="text-sm text-muted-foreground">Leave requests, leave type quotas, and the holiday calendar.</p>
-      </div>
-
-      <Tabs defaultValue="requests">
-        <TabsList>
-          <TabsTrigger value="requests">Requests</TabsTrigger>
-          <TabsTrigger value="types">Leave types</TabsTrigger>
-          <TabsTrigger value="holidays">Holidays</TabsTrigger>
-        </TabsList>
+    <Tabs defaultValue="requests">
+      <PageLayout
+        title="Leave Management"
+        description="Leave requests, leave type quotas, and the holiday calendar."
+        toolbar={
+          <TabsList>
+            <TabsTrigger value="requests">Requests</TabsTrigger>
+            <TabsTrigger value="types">Leave types</TabsTrigger>
+            <TabsTrigger value="holidays">Holidays</TabsTrigger>
+          </TabsList>
+        }
+      >
         <TabsContent value="requests">
           <RequestsTab />
         </TabsContent>
@@ -57,8 +61,8 @@ export default function LeavePage() {
         <TabsContent value="holidays">
           <HolidaysTab />
         </TabsContent>
-      </Tabs>
-    </div>
+      </PageLayout>
+    </Tabs>
   )
 }
 
@@ -109,61 +113,55 @@ function RequestsTab() {
         </SelectContent>
       </Select>
 
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Staff</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Dates</TableHead>
-              <TableHead>Days</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {leaveQuery.isLoading ? (
+      {leaveQuery.isLoading ? (
+        <TableSkeleton rows={6} columns={6} />
+      ) : leaveQuery.data?.data.length ? (
+        <TableContainer>
+          <Table container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Staff</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Dates</TableHead>
+                <TableHead align="right">Days</TableHead>
+                <TableHead>Status</TableHead>
+                {canApprove && <TableHead />}
               </TableRow>
-            ) : leaveQuery.data?.data.length ? (
-              leaveQuery.data.data.map((leave) => (
+            </TableHeader>
+            <TableBody>
+              {leaveQuery.data.data.map((leave) => (
                 <TableRow key={leave.id}>
                   <TableCell className="font-medium">{leave.staff?.fullName ?? leave.staffId}</TableCell>
                   <TableCell>{formatEnumLabel(leave.leaveType)}</TableCell>
                   <TableCell>
                     {leave.startDate} → {leave.endDate}
                   </TableCell>
-                  <TableCell>{leave.days}</TableCell>
+                  <TableCell align="right">{leave.days}</TableCell>
                   <TableCell>
-                    <Badge variant="outline">{formatEnumLabel(leave.status)}</Badge>
+                    <StatusBadge status={leave.status} />
                   </TableCell>
-                  <TableCell className="flex gap-1">
-                    {canApprove && leave.status === LeaveStatus.PENDING && (
-                      <>
-                        <Button variant="ghost" size="sm" onClick={() => approveMutation.mutate(leave.id)}>
-                          Approve
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => rejectMutation.mutate(leave.id)}>
-                          Reject
-                        </Button>
-                      </>
-                    )}
-                  </TableCell>
+                  {canApprove && (
+                    <TableCell className="flex gap-1">
+                      {leave.status === LeaveStatus.PENDING && (
+                        <>
+                          <Button variant="ghost" size="sm" onClick={() => approveMutation.mutate(leave.id)}>
+                            Approve
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => rejectMutation.mutate(leave.id)}>
+                            Reject
+                          </Button>
+                        </>
+                      )}
+                    </TableCell>
+                  )}
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  No leave requests found.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      ) : (
+        <EmptyState variant={status === 'ALL' ? 'empty' : 'search'} title="No leave requests found" />
+      )}
     </div>
   )
 }
@@ -175,30 +173,32 @@ function LeaveTypesTab() {
   const typesQuery = useQuery({ queryKey: ['leave', 'types'], queryFn: listLeaveTypes })
 
   return (
-    <div className="rounded-lg border bg-card">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Leave type</TableHead>
-            <TableHead>Annual days</TableHead>
-            <TableHead>Paid</TableHead>
-            <TableHead>Active</TableHead>
-            {canManage && <TableHead>Actions</TableHead>}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {typesQuery.isLoading ? (
+    <Card className="mt-3">
+      <TableContainer className="rounded-none border-0">
+        <Table density="compact" container={false}>
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-              </TableCell>
+              <TableHead>Leave type</TableHead>
+              <TableHead>Annual days</TableHead>
+              <TableHead>Paid</TableHead>
+              <TableHead>Active</TableHead>
+              {canManage && <TableHead />}
             </TableRow>
-          ) : (
-            typesQuery.data?.map((config) => <LeaveTypeRow key={config.leaveType} config={config} canManage={canManage} />)
-          )}
-        </TableBody>
-      </Table>
-    </div>
+          </TableHeader>
+          <TableBody>
+            {typesQuery.isLoading ? (
+              <TableRow>
+                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+                </TableCell>
+              </TableRow>
+            ) : (
+              typesQuery.data?.map((config) => <LeaveTypeRow key={config.leaveType} config={config} canManage={canManage} />)
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Card>
   )
 }
 
@@ -266,40 +266,32 @@ function HolidaysTab() {
           </Button>
         )}
       </div>
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Optional</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {holidaysQuery.isLoading ? (
+      {holidaysQuery.isLoading ? (
+        <TableSkeleton rows={5} columns={3} />
+      ) : holidaysQuery.data?.length ? (
+        <TableContainer>
+          <Table container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Name</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Optional</TableHead>
               </TableRow>
-            ) : holidaysQuery.data?.length ? (
-              holidaysQuery.data.map((h) => (
+            </TableHeader>
+            <TableBody>
+              {holidaysQuery.data.map((h) => (
                 <TableRow key={h.id}>
                   <TableCell className="font-medium">{h.name}</TableCell>
                   <TableCell>{h.date}</TableCell>
                   <TableCell>{h.isOptional ? 'Yes' : 'No'}</TableCell>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
-                  No holidays configured for {year} yet.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      ) : (
+        <EmptyState title={`No holidays configured for ${year} yet`} action={canManage ? { label: 'Add holiday', onClick: () => setDialogOpen(true) } : undefined} />
+      )}
 
       <AddHolidayDialog open={dialogOpen} onOpenChange={setDialogOpen} />
     </div>

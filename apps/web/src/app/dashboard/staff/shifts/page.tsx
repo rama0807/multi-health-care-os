@@ -5,12 +5,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2, Moon, Plus } from 'lucide-react'
 import { useState } from 'react'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
 import { createShift, deactivateShift, listShifts, updateShift } from '@/lib/api/shifts'
 import { useAuth } from '@/lib/auth/auth-context'
@@ -39,48 +42,38 @@ export default function ShiftsPage() {
   })
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Shifts</h1>
-          <p className="text-sm text-muted-foreground">Shift definitions used by the weekly roster and attendance rules.</p>
-        </div>
-        {canCreate && (
+    <PageLayout
+      title="Shifts"
+      description="Shift definitions used by the weekly roster and attendance rules."
+      actions={
+        canCreate && (
           <Button onClick={() => setDialogOpen(true)}>
             <Plus className="h-4 w-4" />
             Add shift
           </Button>
-        )}
-      </div>
-
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Code</TableHead>
-              <TableHead>Timing</TableHead>
-              <TableHead>Break</TableHead>
-              <TableHead>Grace</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {shiftsQuery.isLoading ? (
+        )
+      }
+    >
+      {shiftsQuery.isLoading ? (
+        <TableSkeleton rows={6} columns={7} />
+      ) : shifts.length === 0 ? (
+        <EmptyState title="No shifts defined yet" action={canCreate ? { label: 'Add shift', onClick: () => setDialogOpen(true) } : undefined} />
+      ) : (
+        <TableContainer>
+          <Table container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Name</TableHead>
+                <TableHead>Code</TableHead>
+                <TableHead>Timing</TableHead>
+                <TableHead>Break</TableHead>
+                <TableHead>Grace</TableHead>
+                <TableHead>Status</TableHead>
+                {(canUpdate || canDelete) && <TableHead />}
               </TableRow>
-            ) : shifts.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                  No shifts defined yet.
-                </TableCell>
-              </TableRow>
-            ) : (
-              shifts.map((shift) => (
+            </TableHeader>
+            <TableBody>
+              {shifts.map((shift) => (
                 <TableRow key={shift.id}>
                   <TableCell className="font-medium">
                     <span className="flex items-center gap-1.5">
@@ -95,35 +88,37 @@ export default function ShiftsPage() {
                   <TableCell>{shift.breakMinutes} min</TableCell>
                   <TableCell>{shift.gracePeriodMinutes} min</TableCell>
                   <TableCell>
-                    <Badge variant={shift.isActive ? 'success' : 'secondary'}>{shift.isActive ? 'Active' : 'Inactive'}</Badge>
+                    <Badge variant={shift.isActive ? 'success' : 'neutral'}>{shift.isActive ? 'Active' : 'Inactive'}</Badge>
                   </TableCell>
-                  <TableCell className="flex gap-1">
-                    {canUpdate && (
-                      <Button variant="ghost" size="sm" onClick={() => setEditing(shift)}>
-                        Edit
-                      </Button>
-                    )}
-                    {canDelete && shift.isActive && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => deactivateMutation.mutate(shift.id)}
-                        disabled={deactivateMutation.isPending}
-                      >
-                        Deactivate
-                      </Button>
-                    )}
-                  </TableCell>
+                  {(canUpdate || canDelete) && (
+                    <TableCell className="flex gap-1">
+                      {canUpdate && (
+                        <Button variant="ghost" size="sm" onClick={() => setEditing(shift)}>
+                          Edit
+                        </Button>
+                      )}
+                      {canDelete && shift.isActive && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deactivateMutation.mutate(shift.id)}
+                          disabled={deactivateMutation.isPending}
+                        >
+                          Deactivate
+                        </Button>
+                      )}
+                    </TableCell>
+                  )}
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       <ShiftDialog open={dialogOpen} onOpenChange={setDialogOpen} />
       {editing && <ShiftDialog open onOpenChange={(open) => !open && setEditing(null)} shift={editing} />}
-    </div>
+    </PageLayout>
   )
 }
 

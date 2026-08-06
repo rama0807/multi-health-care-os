@@ -6,6 +6,7 @@ import { FlaskConical, Loader2, Settings, TestTube } from 'lucide-react'
 import Link from 'next/link'
 import { Fragment, useState } from 'react'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -15,9 +16,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { FilterBar } from '@/components/ui/toolbar'
 import { useToast } from '@/hooks/use-toast'
 import { listDoctors } from '@/lib/api/doctors'
 import {
@@ -37,15 +50,6 @@ function getErrorMessage(error: unknown): string {
 
 function formatEnumLabel(value: string): string {
   return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
-}
-
-const LAB_STATUS_BADGE: Record<LabTestStatus, 'secondary' | 'success' | 'destructive' | 'outline'> = {
-  [LabTestStatus.ORDERED]: 'secondary',
-  [LabTestStatus.SAMPLE_COLLECTED]: 'outline',
-  [LabTestStatus.IN_PROGRESS]: 'outline',
-  [LabTestStatus.COMPLETED]: 'success',
-  [LabTestStatus.REPORTED]: 'success',
-  [LabTestStatus.CANCELLED]: 'destructive',
 }
 
 export default function LaboratoryPage() {
@@ -119,25 +123,25 @@ export default function LaboratoryPage() {
   const orders = ordersQuery.data?.data ?? []
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Laboratory</h1>
-          <p className="text-sm text-muted-foreground">
-            {ordersQuery.data ? `${ordersQuery.data.pagination.total} lab order${ordersQuery.data.pagination.total === 1 ? '' : 's'}` : 'Loading...'}
-          </p>
-        </div>
-        {canManageCatalog && (
+    <PageLayout
+      title="Laboratory"
+      description={
+        ordersQuery.data
+          ? `${ordersQuery.data.pagination.total} lab order${ordersQuery.data.pagination.total === 1 ? '' : 's'}`
+          : undefined
+      }
+      actions={
+        canManageCatalog && (
           <Button variant="outline" onClick={() => setManagingCatalog(true)}>
             <Settings className="h-4 w-4" />
             Manage catalog
           </Button>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        )
+      }
+    >
+      <FilterBar>
         <Select value={doctorId} onValueChange={setDoctorId}>
-          <SelectTrigger className="sm:w-56">
+          <SelectTrigger className="w-56">
             <SelectValue placeholder="Doctor" />
           </SelectTrigger>
           <SelectContent>
@@ -150,7 +154,7 @@ export default function LaboratoryPage() {
           </SelectContent>
         </Select>
         <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger className="sm:w-44">
+          <SelectTrigger className="w-44">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -163,7 +167,7 @@ export default function LaboratoryPage() {
           </SelectContent>
         </Select>
         <Select value={priority} onValueChange={setPriority}>
-          <SelectTrigger className="sm:w-40">
+          <SelectTrigger className="w-40">
             <SelectValue placeholder="Priority" />
           </SelectTrigger>
           <SelectContent>
@@ -175,42 +179,30 @@ export default function LaboratoryPage() {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </FilterBar>
 
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Order #</TableHead>
-              <TableHead>Patient</TableHead>
-              <TableHead>Doctor</TableHead>
-              <TableHead>Tests</TableHead>
-              <TableHead>Priority</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {ordersQuery.isLoading ? (
+      {ordersQuery.isLoading ? (
+        <TableSkeleton rows={8} columns={7} />
+      ) : ordersQuery.isError ? (
+        <EmptyState variant="error" title="Couldn't load lab orders" description={getErrorMessage(ordersQuery.error)} />
+      ) : orders.length === 0 ? (
+        <EmptyState variant="search" title="No lab orders found" description="Try a different doctor, status, or priority filter." />
+      ) : (
+        <TableContainer className="max-h-[65vh]">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Order #</TableHead>
+                <TableHead>Patient</TableHead>
+                <TableHead>Doctor</TableHead>
+                <TableHead>Tests</TableHead>
+                <TableHead>Priority</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
-            ) : ordersQuery.isError ? (
-              <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                  Couldn&apos;t load lab orders. {getErrorMessage(ordersQuery.error)}
-                </TableCell>
-              </TableRow>
-            ) : orders.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                  No lab orders found.
-                </TableCell>
-              </TableRow>
-            ) : (
-              orders.map((order) => (
+            </TableHeader>
+            <TableBody>
+              {orders.map((order) => (
                 <Fragment key={order.id}>
                   <TableRow>
                     <TableCell>
@@ -238,7 +230,7 @@ export default function LaboratoryPage() {
                       <Badge variant="outline">{formatEnumLabel(order.priority)}</Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={LAB_STATUS_BADGE[order.status]}>{formatEnumLabel(order.status)}</Badge>
+                      <StatusBadge status={order.status} />
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap items-center gap-2">
@@ -319,14 +311,14 @@ export default function LaboratoryPage() {
                     </TableRow>
                   )}
                 </Fragment>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       <CatalogDialog open={managingCatalog} onOpenChange={setManagingCatalog} canManage={canManageCatalog} />
-    </div>
+    </PageLayout>
   )
 }
 
@@ -446,7 +438,7 @@ function CatalogDialog({
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Badge variant={item.isActive ? 'success' : 'secondary'}>{item.isActive ? 'Active' : 'Inactive'}</Badge>
+                <StatusBadge status={item.isActive ? 'ACTIVE' : 'INACTIVE'} />
                 {canManage && (
                   <Button
                     variant="outline"

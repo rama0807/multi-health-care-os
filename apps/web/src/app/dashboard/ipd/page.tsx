@@ -4,7 +4,9 @@ import { useQuery } from '@tanstack/react-query'
 import { Activity, ArrowLeftRight, BedDouble, Building2, ClipboardList, HeartPulse, LogOut, Users } from 'lucide-react'
 import Link from 'next/link'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { Button } from '@/components/ui/button'
+import { StatCard, StatCardGrid } from '@/components/ui/stat-card'
 import { getIpdDashboardStats } from '@/lib/api/ipd'
 
 export default function IpdDashboardPage() {
@@ -33,13 +35,11 @@ export default function IpdDashboardPage() {
   ] as const
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">IPD & Bed Management</h1>
-          <p className="text-sm text-muted-foreground">Wards, rooms, beds, and admissions.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+    <PageLayout
+      title="IPD & Bed Management"
+      description="Wards, rooms, beds, and admissions."
+      actions={
+        <>
           <Button asChild variant="outline">
             <Link href="/dashboard/ipd/wards">
               <Building2 className="h-3.5 w-3.5" />
@@ -64,22 +64,14 @@ export default function IpdDashboardPage() {
           <Button asChild variant="outline">
             <Link href="/dashboard/nursing">Nursing</Link>
           </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        </>
+      }
+    >
+      <StatCardGrid columns={4}>
         {tiles.map((tile) => (
-          <div key={tile.key} className="flex items-center gap-3 rounded-lg border bg-card p-4 shadow-sm">
-            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
-              <tile.icon className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-lg font-semibold text-foreground">{statsQuery.isLoading ? '—' : (tile.value ?? 0)}</p>
-              <p className="text-xs text-muted-foreground">{tile.label}</p>
-            </div>
-          </div>
+          <StatCard key={tile.key} icon={tile.icon} label={tile.label} value={tile.value} loading={statsQuery.isLoading} />
         ))}
-      </div>
-    </div>
+      </StatCardGrid>
+    </PageLayout>
   )
 }

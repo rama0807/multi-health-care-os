@@ -15,7 +15,6 @@ import {
   MailOpen,
   Pin,
   PinOff,
-  Search,
   Settings2,
   Trash2,
 } from 'lucide-react'
@@ -23,11 +22,13 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { humanCategory, relativeTime } from '@/components/notifications/notification-bell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+import { EmptyState } from '@/components/ui/empty-state'
+import { Pagination } from '@/components/ui/pagination'
 import {
   Select,
   SelectContent,
@@ -36,6 +37,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { FilterBar, SearchInput } from '@/components/ui/toolbar'
 import { useToast } from '@/hooks/use-toast'
 import {
   archiveNotification,
@@ -128,15 +130,11 @@ export default function NotificationCentrePage() {
   }
 
   return (
-    <div className="space-y-4 p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">Notifications</h1>
-          <p className="text-sm text-muted-foreground">
-            Everything MediCore has sent you, newest first. Pinned items stay on top.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+    <PageLayout
+      title="Notifications"
+      description="Everything MediCore has sent you, newest first. Pinned items stay on top."
+      actions={
+        <>
           <Button
             variant="outline"
             size="sm"
@@ -156,72 +154,67 @@ export default function NotificationCentrePage() {
               Preferences
             </Link>
           </Button>
-        </div>
-      </div>
+        </>
+      }
+    >
+      <Tabs
+        value={filter}
+        onValueChange={(value) => {
+          setFilter(value as NotificationInboxFilter)
+          setPage(1)
+        }}
+      >
+        <TabsList>
+          {FILTERS.map((entry) => (
+            <TabsTrigger key={entry.value} value={entry.value}>
+              {entry.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
-      <Card className="p-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <Tabs
-            value={filter}
-            onValueChange={(value) => {
-              setFilter(value as NotificationInboxFilter)
-              setPage(1)
-            }}
-          >
-            <TabsList>
-              {FILTERS.map((entry) => (
-                <TabsTrigger key={entry.value} value={entry.value}>
-                  {entry.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+      <FilterBar>
+        <SearchInput
+          value={search}
+          onValueChange={(value) => {
+            setSearch(value)
+            setPage(1)
+          }}
+          placeholder="Search title or message"
+        />
 
-          <div className="relative min-w-[14rem] flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value)
-                setPage(1)
-              }}
-              placeholder="Search title or message"
-              className="pl-8"
-            />
-          </div>
-
-          <Select
-            value={category}
-            onValueChange={(value) => {
-              setCategory(value)
-              setPage(1)
-            }}
-          >
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="All categories" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All categories</SelectItem>
-              {Object.values(NotificationCategory).map((value) => (
-                <SelectItem key={value} value={value}>
-                  {humanCategory(value)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </Card>
+        <Select
+          value={category}
+          onValueChange={(value) => {
+            setCategory(value)
+            setPage(1)
+          }}
+        >
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="All categories" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All categories</SelectItem>
+            {Object.values(NotificationCategory).map((value) => (
+              <SelectItem key={value} value={value}>
+                {humanCategory(value)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FilterBar>
 
       {isLoading && <p className="py-12 text-center text-sm text-muted-foreground">Loading…</p>}
 
       {!isLoading && notifications.length === 0 && (
-        <Card className="py-16 text-center">
-          <p className="text-sm text-muted-foreground">
-            {filter === 'all'
-              ? 'Nothing here yet. Notifications appear as appointments, results, invoices and other activity happen.'
-              : `No ${filter} notifications.`}
-          </p>
-        </Card>
+        <EmptyState
+          title={filter === 'all' ? 'Nothing here yet' : `No ${filter} notifications`}
+          description={
+            filter === 'all'
+              ? 'Notifications appear as appointments, results, invoices and other activity happen.'
+              : undefined
+          }
+        />
       )}
 
       {groups.map(([day, items]) => (
@@ -247,10 +240,10 @@ export default function NotificationCentrePage() {
                       {notification.title}
                     </span>
                     {notification.priority === NotificationPriority.CRITICAL && (
-                      <Badge variant="destructive">Critical</Badge>
+                      <Badge variant="danger">Critical</Badge>
                     )}
                     {notification.priority === NotificationPriority.HIGH && (
-                      <Badge variant="secondary">High</Badge>
+                      <Badge variant="neutral">High</Badge>
                     )}
                     <Badge variant="outline">{humanCategory(notification.category)}</Badge>
                   </div>
@@ -304,31 +297,9 @@ export default function NotificationCentrePage() {
       ))}
 
       {data && data.pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between pt-2">
-          <p className="text-xs text-muted-foreground">
-            Page {data.pagination.page} of {data.pagination.totalPages} · {data.pagination.total} total
-          </p>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!data.pagination.hasPrev}
-              onClick={() => setPage((current) => current - 1)}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!data.pagination.hasNext}
-              onClick={() => setPage((current) => current + 1)}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
+        <Pagination page={data.pagination.page} totalPages={data.pagination.totalPages} onPageChange={setPage} />
       )}
-    </div>
+    </PageLayout>
   )
 }
 

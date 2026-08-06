@@ -2,12 +2,15 @@
 
 import type { ExecutiveDashboardKey, ReportFilterQuery } from '@medicore/types'
 import { useQuery } from '@tanstack/react-query'
-import { Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { StatCardSkeleton } from '@/components/ui/skeleton'
+import { StatCardGrid } from '@/components/ui/stat-card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { listDepartments } from '@/lib/api/hospitals'
 import { getExecutiveDashboard } from '@/lib/api/reports'
@@ -53,24 +56,20 @@ export default function ReportsDashboardPage() {
   const dashboard = dashboardQuery.data
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Reports &amp; Analytics</h1>
-          <p className="text-sm text-muted-foreground">
-            Executive dashboards built from live operational data.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+    <PageLayout
+      title="Reports & Analytics"
+      description="Executive dashboards built from live operational data."
+      actions={
+        <>
           <Button asChild variant="outline">
             <Link href="/dashboard/reports/operational">Operational reports</Link>
           </Button>
           <Button asChild>
             <Link href="/dashboard/reports/builder">Report builder</Link>
           </Button>
-        </div>
-      </div>
-
+        </>
+      }
+    >
       <Tabs value={active} onValueChange={(next) => setActive(next as ExecutiveDashboardKey)}>
         <TabsList>
           {DASHBOARDS.map((dash) => (
@@ -102,17 +101,11 @@ export default function ReportsDashboardPage() {
       </ReportFilters>
 
       {!ready ? (
-        <div className="rounded-lg border border-dashed p-10 text-center text-sm text-muted-foreground">
-          Select a department to view its dashboard.
-        </div>
+        <EmptyState compact title="Select a department to view its dashboard" />
       ) : dashboardQuery.isLoading ? (
-        <div className="flex items-center justify-center gap-2 rounded-lg border p-10 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading dashboard…
-        </div>
+        <StatCardSkeleton count={4} />
       ) : dashboardQuery.isError ? (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-6 text-sm text-destructive">
-          Could not load this dashboard. {dashboardQuery.error.message}
-        </div>
+        <EmptyState variant="error" title="Could not load this dashboard" description={dashboardQuery.error.message} />
       ) : dashboard ? (
         <div className="space-y-4">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -123,11 +116,11 @@ export default function ReportsDashboardPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatCardGrid columns={4}>
             {dashboard.kpis.map((kpi) => (
               <KpiTile key={kpi.key} kpi={kpi} />
             ))}
-          </div>
+          </StatCardGrid>
 
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             {dashboard.charts.map((chart) => (
@@ -142,6 +135,6 @@ export default function ReportsDashboardPage() {
           </div>
         </div>
       ) : null}
-    </div>
+    </PageLayout>
   )
 }

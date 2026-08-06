@@ -2,16 +2,18 @@
 
 import { RequisitionStatus } from '@medicore/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Loader2 } from 'lucide-react'
-import { useParams, useRouter } from 'next/navigation'
+import { Loader2 } from 'lucide-react'
+import { useParams } from 'next/navigation'
 import { useState } from 'react'
 
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
+import { PageLayout } from '@/components/layout/page-layout'
 import { Button } from '@/components/ui/button'
+import { Card, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -33,19 +35,8 @@ function formatEnumLabel(value: string): string {
   return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
 }
 
-const STATUS_BADGE: Record<RequisitionStatus, 'secondary' | 'outline' | 'success' | 'destructive'> = {
-  [RequisitionStatus.REQUESTED]: 'secondary',
-  [RequisitionStatus.APPROVED]: 'outline',
-  [RequisitionStatus.REJECTED]: 'destructive',
-  [RequisitionStatus.ISSUED]: 'outline',
-  [RequisitionStatus.PARTIALLY_ISSUED]: 'outline',
-  [RequisitionStatus.RECEIVED]: 'success',
-  [RequisitionStatus.CANCELLED]: 'destructive',
-}
-
 export default function StoreRequisitionDetailPage() {
   const params = useParams<{ id: string }>()
-  const router = useRouter()
   const { hasPermission } = useAuth()
   const { toast } = useToast()
   const queryClient = useQueryClient()
@@ -115,24 +106,31 @@ export default function StoreRequisitionDetailPage() {
 
   if (reqQuery.isLoading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
+      <PageLayout
+        breadcrumbs={[{ label: 'Inventory', href: '/dashboard/inventory' }, { label: 'Requisitions', href: '/dashboard/inventory/requisitions' }, { label: '…' }]}
+        title="…"
+        loading
+      >
+        <div className="flex h-64 items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </PageLayout>
     )
   }
 
   if (reqQuery.isError || !reqQuery.data) {
     return (
-      <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Requisition not found</AlertTitle>
-        <AlertDescription>
-          {getErrorMessage(reqQuery.error)}{' '}
-          <Button variant="link" className="h-auto p-0" onClick={() => router.push('/dashboard/inventory/requisitions')}>
-            Back to list
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <PageLayout
+        breadcrumbs={[{ label: 'Inventory', href: '/dashboard/inventory' }, { label: 'Requisitions', href: '/dashboard/inventory/requisitions' }, { label: 'Not found' }]}
+        title="Requisition not found"
+      >
+        <EmptyState
+          variant="error"
+          title="Requisition not found"
+          description={getErrorMessage(reqQuery.error)}
+          action={{ label: 'Back to list', href: '/dashboard/inventory/requisitions' }}
+        />
+      </PageLayout>
     )
   }
 
@@ -142,19 +140,18 @@ export default function StoreRequisitionDetailPage() {
   const canCancel = req.status === RequisitionStatus.REQUESTED || req.status === RequisitionStatus.APPROVED
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="font-mono text-lg font-semibold text-foreground">{req.requisitionNumber}</h1>
-            <Badge variant={STATUS_BADGE[req.status]}>{formatEnumLabel(req.status)}</Badge>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {req.fromStore.name} → {req.toStore.name} · {formatEnumLabel(req.priority)} priority
-          </p>
-          {req.rejectionReason && <p className="text-xs text-destructive">Rejected: {req.rejectionReason}</p>}
-        </div>
-        <div className="flex flex-wrap gap-2">
+    <PageLayout
+      breadcrumbs={[
+        { label: 'Inventory', href: '/dashboard/inventory' },
+        { label: 'Requisitions', href: '/dashboard/inventory/requisitions' },
+        { label: req.requisitionNumber },
+      ]}
+      title={req.requisitionNumber}
+      badge={<StatusBadge status={req.status} />}
+      description={req.rejectionReason ? `Rejected: ${req.rejectionReason}` : undefined}
+      meta={<span>{req.fromStore.name} → {req.toStore.name} · {formatEnumLabel(req.priority)} priority</span>}
+      actions={
+        <>
           {canUpdate && canApprove && req.status === RequisitionStatus.REQUESTED && (
             <>
               <Button size="sm" onClick={() => approveMutation.mutate()} disabled={approveMutation.isPending}>
@@ -170,66 +167,68 @@ export default function StoreRequisitionDetailPage() {
               Cancel
             </Button>
           )}
-        </div>
-      </div>
-
-      <div className="rounded-lg border bg-card">
-        <div className="border-b p-3">
-          <h3 className="text-sm font-semibold text-foreground">Items</h3>
-        </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Item</TableHead>
-              <TableHead>Requested</TableHead>
-              <TableHead>Issued</TableHead>
-              <TableHead>Received</TableHead>
-              {canUpdate && canIssue && <TableHead>Issue now</TableHead>}
-              {canUpdate && canReceive && <TableHead>Receive now</TableHead>}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {req.items.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell>
-                  {item.item.name} <span className="font-mono text-xs text-muted-foreground">({item.item.code})</span>
-                </TableCell>
-                <TableCell>{item.quantityRequested}</TableCell>
-                <TableCell>{item.quantityIssued}</TableCell>
-                <TableCell>{item.quantityReceived}</TableCell>
-                {canUpdate && canIssue && (
-                  <TableCell>
-                    {item.quantityIssued < item.quantityRequested && (
-                      <Input
-                        className="h-8 w-20"
-                        type="number"
-                        placeholder={`≤${item.quantityRequested - item.quantityIssued}`}
-                        value={issueQty[item.id] ?? ''}
-                        onChange={(e) => setIssueQty((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                      />
-                    )}
-                  </TableCell>
-                )}
-                {canUpdate && canReceive && (
-                  <TableCell>
-                    {item.quantityReceived < item.quantityIssued && (
-                      <Input
-                        className="h-8 w-20"
-                        type="number"
-                        placeholder={`≤${item.quantityIssued - item.quantityReceived}`}
-                        value={receiveQty[item.id] ?? ''}
-                        onChange={(e) => setReceiveQty((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                      />
-                    )}
-                  </TableCell>
-                )}
+        </>
+      }
+    >
+      <Card>
+        <CardHeader>
+          <CardTitle>Items</CardTitle>
+        </CardHeader>
+        <TableContainer className="rounded-none border-0 border-y">
+          <Table density="compact" container={false}>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Item</TableHead>
+                <TableHead align="right">Requested</TableHead>
+                <TableHead align="right">Issued</TableHead>
+                <TableHead align="right">Received</TableHead>
+                {canUpdate && canIssue && <TableHead>Issue now</TableHead>}
+                {canUpdate && canReceive && <TableHead>Receive now</TableHead>}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {req.items.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell>
+                    {item.item.name} <span className="font-mono text-xs text-muted-foreground">({item.item.code})</span>
+                  </TableCell>
+                  <TableCell align="right">{item.quantityRequested}</TableCell>
+                  <TableCell align="right">{item.quantityIssued}</TableCell>
+                  <TableCell align="right">{item.quantityReceived}</TableCell>
+                  {canUpdate && canIssue && (
+                    <TableCell>
+                      {item.quantityIssued < item.quantityRequested && (
+                        <Input
+                          className="h-8 w-20"
+                          type="number"
+                          placeholder={`≤${item.quantityRequested - item.quantityIssued}`}
+                          value={issueQty[item.id] ?? ''}
+                          onChange={(e) => setIssueQty((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                        />
+                      )}
+                    </TableCell>
+                  )}
+                  {canUpdate && canReceive && (
+                    <TableCell>
+                      {item.quantityReceived < item.quantityIssued && (
+                        <Input
+                          className="h-8 w-20"
+                          type="number"
+                          placeholder={`≤${item.quantityIssued - item.quantityReceived}`}
+                          value={receiveQty[item.id] ?? ''}
+                          onChange={(e) => setReceiveQty((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                        />
+                      )}
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
 
         {canUpdate && canIssue && (
-          <div className="flex justify-end border-t p-3">
+          <CardFooter className="justify-end">
             <Button
               size="sm"
               onClick={() =>
@@ -244,10 +243,10 @@ export default function StoreRequisitionDetailPage() {
               {issueMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               Issue selected
             </Button>
-          </div>
+          </CardFooter>
         )}
         {canUpdate && canReceive && (
-          <div className="flex justify-end border-t p-3">
+          <CardFooter className="justify-end">
             <Button
               size="sm"
               onClick={() =>
@@ -262,15 +261,15 @@ export default function StoreRequisitionDetailPage() {
               {receiveMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               Receive selected
             </Button>
-          </div>
+          </CardFooter>
         )}
-      </div>
+      </Card>
 
       {req.notes && (
-        <div className="rounded-lg border bg-card p-3 text-sm">
+        <Card className="p-3 text-sm">
           <span className="font-semibold text-foreground">Notes: </span>
           {req.notes}
-        </div>
+        </Card>
       )}
 
       <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
@@ -291,6 +290,6 @@ export default function StoreRequisitionDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageLayout>
   )
 }

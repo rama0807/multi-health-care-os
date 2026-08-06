@@ -6,13 +6,24 @@ import { Loader2, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 
-import { Badge } from '@/components/ui/badge'
+import { PageLayout } from '@/components/layout/page-layout'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/ui/pagination'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
 import { listInventoryItems, listInventoryStores } from '@/lib/api/inventory'
 import { createAsset, listAssets } from '@/lib/api/procurement'
@@ -25,14 +36,6 @@ function getErrorMessage(error: unknown): string {
 
 function formatEnumLabel(value: string): string {
   return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
-}
-
-const STATUS_BADGE: Record<AssetStatus, 'secondary' | 'outline' | 'success' | 'destructive'> = {
-  [AssetStatus.IN_USE]: 'success',
-  [AssetStatus.IN_STORE]: 'secondary',
-  [AssetStatus.UNDER_MAINTENANCE]: 'outline',
-  [AssetStatus.BREAKDOWN]: 'destructive',
-  [AssetStatus.DECOMMISSIONED]: 'destructive',
 }
 
 export default function AssetsPage() {
@@ -53,20 +56,18 @@ export default function AssetsPage() {
   const pagination = query.data?.pagination
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Assets & Maintenance</h1>
-          <p className="text-sm text-muted-foreground">Biomedical/equipment assets — assignment, calibration, and maintenance history.</p>
-        </div>
-        {canCreate && (
+    <PageLayout
+      title="Assets & Maintenance"
+      description="Biomedical/equipment assets — assignment, calibration, and maintenance history."
+      actions={
+        canCreate && (
           <Button onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />
             Register asset
           </Button>
-        )}
-      </div>
-
+        )
+      }
+    >
       <div className="flex flex-wrap gap-2">
         <Input
           placeholder="Search by tag or serial number"
@@ -98,33 +99,29 @@ export default function AssetsPage() {
         </Select>
       </div>
 
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Asset tag</TableHead>
-              <TableHead>Item</TableHead>
-              <TableHead>Store</TableHead>
-              <TableHead>Serial #</TableHead>
-              <TableHead>Warranty expiry</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {query.isLoading ? (
+      {query.isLoading ? (
+        <TableSkeleton rows={8} columns={6} />
+      ) : assets.length === 0 ? (
+        <EmptyState
+          variant={search || status !== 'ALL' ? 'search' : 'empty'}
+          title="No assets registered yet"
+          action={canCreate ? { label: 'Register asset', onClick: () => setCreateOpen(true) } : undefined}
+        />
+      ) : (
+        <TableContainer className="max-h-[65vh]">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Asset tag</TableHead>
+                <TableHead>Item</TableHead>
+                <TableHead>Store</TableHead>
+                <TableHead>Serial #</TableHead>
+                <TableHead>Warranty expiry</TableHead>
+                <TableHead>Status</TableHead>
               </TableRow>
-            ) : assets.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  No assets registered yet.
-                </TableCell>
-              </TableRow>
-            ) : (
-              assets.map((a) => (
+            </TableHeader>
+            <TableBody>
+              {assets.map((a) => (
                 <TableRow key={a.id}>
                   <TableCell className="font-mono text-xs">
                     <Link href={`/dashboard/inventory/assets/${a.id}`} className="text-primary hover:underline">
@@ -138,21 +135,21 @@ export default function AssetsPage() {
                     {a.warrantyExpiryDate ? new Date(a.warrantyExpiryDate).toLocaleDateString('en-IN') : '—'}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={STATUS_BADGE[a.status]}>{formatEnumLabel(a.status)}</Badge>
+                    <StatusBadge status={a.status} />
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       {pagination && pagination.totalPages > 1 && (
         <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={setPage} />
       )}
 
       <CreateAssetDialog open={createOpen} onOpenChange={setCreateOpen} />
-    </div>
+    </PageLayout>
   )
 }
 

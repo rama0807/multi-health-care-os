@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -40,10 +41,23 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableRowActions,
+} from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
+import { FilterBar } from '@/components/ui/toolbar'
 import { useToast } from '@/hooks/use-toast'
 import {
   createAppointment,
@@ -93,16 +107,6 @@ const FORWARD_TRANSITION: Partial<Record<AppointmentStatus, AppointmentStatus>> 
   [AppointmentStatus.IN_CONSULTATION]: AppointmentStatus.COMPLETED,
 }
 
-const STATUS_BADGE: Record<AppointmentStatus, 'success' | 'secondary' | 'destructive'> = {
-  [AppointmentStatus.SCHEDULED]: 'secondary',
-  [AppointmentStatus.CONFIRMED]: 'secondary',
-  [AppointmentStatus.ARRIVED]: 'secondary',
-  [AppointmentStatus.IN_CONSULTATION]: 'success',
-  [AppointmentStatus.COMPLETED]: 'success',
-  [AppointmentStatus.CANCELLED]: 'destructive',
-  [AppointmentStatus.NO_SHOW]: 'destructive',
-}
-
 export default function AppointmentsPage() {
   const { hasPermission } = useAuth()
   const { toast } = useToast()
@@ -143,20 +147,19 @@ export default function AppointmentsPage() {
   })
 
   const appointments = appointmentsQuery.data?.data ?? []
+  const columnCount = 6
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Appointments</h1>
-          <p className="text-sm text-muted-foreground">
-            {appointmentsQuery.data
-              ? `${appointmentsQuery.data.pagination.total} appointment${appointmentsQuery.data.pagination.total === 1 ? '' : 's'} on ${new Date(date).toLocaleDateString('en-IN', { dateStyle: 'medium' })}`
-              : 'Loading...'}
-          </p>
-        </div>
-        {canCreate && (
-          <div className="flex items-center gap-2">
+    <PageLayout
+      title="Appointments"
+      description={
+        appointmentsQuery.data
+          ? `${appointmentsQuery.data.pagination.total} appointment${appointmentsQuery.data.pagination.total === 1 ? '' : 's'} on ${new Date(date).toLocaleDateString('en-IN', { dateStyle: 'medium' })}`
+          : undefined
+      }
+      actions={
+        canCreate && (
+          <>
             <Button variant="outline" onClick={() => setWalkingIn(true)}>
               <UserPlus />
               Walk-in
@@ -165,11 +168,11 @@ export default function AppointmentsPage() {
               <CalendarPlus />
               Book appointment
             </Button>
-          </div>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+          </>
+        )
+      }
+    >
+      <FilterBar>
         <div className="flex items-center gap-1 rounded-md border bg-card p-1">
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDate((d) => addDays(d, -1))}>
             <ChevronLeft className="h-4 w-4" />
@@ -189,7 +192,7 @@ export default function AppointmentsPage() {
           Today
         </Button>
         <Select value={doctorId} onValueChange={setDoctorId}>
-          <SelectTrigger className="sm:w-56">
+          <SelectTrigger className="w-56">
             <SelectValue placeholder="Doctor" />
           </SelectTrigger>
           <SelectContent>
@@ -202,7 +205,7 @@ export default function AppointmentsPage() {
           </SelectContent>
         </Select>
         <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger className="sm:w-44">
+          <SelectTrigger className="w-44">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -214,41 +217,37 @@ export default function AppointmentsPage() {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </FilterBar>
 
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Time</TableHead>
-              <TableHead>Patient</TableHead>
-              <TableHead>Doctor</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="w-32" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {appointmentsQuery.isLoading ? (
+      {appointmentsQuery.isLoading ? (
+        <TableSkeleton rows={8} columns={columnCount} />
+      ) : appointmentsQuery.isError ? (
+        <EmptyState
+          variant="error"
+          title="Couldn't load appointments"
+          description={getErrorMessage(appointmentsQuery.error)}
+        />
+      ) : appointments.length === 0 ? (
+        <EmptyState
+          variant="search"
+          title="No appointments on this date"
+          description="Try a different date, or clear the doctor/status filters."
+        />
+      ) : (
+        <TableContainer className="max-h-[65vh]">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Time</TableHead>
+                <TableHead>Patient</TableHead>
+                <TableHead>Doctor</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-32" />
               </TableRow>
-            ) : appointmentsQuery.isError ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  Couldn&apos;t load appointments. {getErrorMessage(appointmentsQuery.error)}
-                </TableCell>
-              </TableRow>
-            ) : appointments.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  No appointments on this date.
-                </TableCell>
-              </TableRow>
-            ) : (
-              appointments.map((appt) => {
+            </TableHeader>
+            <TableBody>
+              {appointments.map((appt) => {
                 const forward = FORWARD_TRANSITION[appt.status]
                 return (
                   <TableRow key={appt.id}>
@@ -264,13 +263,13 @@ export default function AppointmentsPage() {
                       <div className="flex items-center gap-1.5">
                         {formatEnumLabel(appt.type)}
                         {appt.isWalkIn && (
-                          <Badge variant="secondary" className="gap-1">
+                          <Badge variant="neutral" className="gap-1">
                             <UserPlus className="h-3 w-3" />
                             Walk-in
                           </Badge>
                         )}
                         {appt.recurrenceGroupId && (
-                          <Badge variant="secondary" className="gap-1">
+                          <Badge variant="neutral" className="gap-1">
                             <Repeat className="h-3 w-3" />
                             Recurring
                           </Badge>
@@ -278,11 +277,11 @@ export default function AppointmentsPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={STATUS_BADGE[appt.status]}>{formatEnumLabel(appt.status)}</Badge>
+                      <StatusBadge status={appt.status} />
                     </TableCell>
-                    <TableCell>
+                    <TableCell align="right">
                       {canUpdate && (
-                        <div className="flex items-center justify-end gap-1">
+                        <TableRowActions className="justify-end">
                           {forward && (
                             <Button
                               size="sm"
@@ -319,16 +318,16 @@ export default function AppointmentsPage() {
                               </DropdownMenuContent>
                             </DropdownMenu>
                           )}
-                        </div>
+                        </TableRowActions>
                       )}
                     </TableCell>
                   </TableRow>
                 )
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       {canCreate && (
         <>
@@ -345,7 +344,7 @@ export default function AppointmentsPage() {
           />
         </>
       )}
-    </div>
+    </PageLayout>
   )
 }
 

@@ -4,9 +4,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
 import { useState } from 'react'
 
-import { Badge } from '@/components/ui/badge'
+import { PageLayout } from '@/components/layout/page-layout'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
+import { SkeletonText } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { useToast } from '@/hooks/use-toast'
 import { createDrug, listDrugCatalog, updateDrug } from '@/lib/api/pharmacy'
 import { useAuth } from '@/lib/auth/auth-context'
@@ -89,15 +93,17 @@ export default function PharmacyCatalogPage() {
   const canSubmit = Boolean(genericName && dosageForm && batchNumber && expiryDate && price)
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Drug Catalog</h1>
-        <p className="text-sm text-muted-foreground">One row per batch — restocking a drug adds a new batch row.</p>
-      </div>
-
+    <PageLayout
+      breadcrumbs={[{ label: 'Pharmacy', href: '/dashboard/pharmacy' }, { label: 'Catalog' }]}
+      title="Drug Catalog"
+      description="One row per batch — restocking a drug adds a new batch row."
+    >
       {canManage && (
-        <div className="space-y-2 rounded-lg border bg-card p-4">
-          <h3 className="text-sm font-semibold text-foreground">New batch</h3>
+        <Card>
+          <CardHeader>
+            <CardTitle>New batch</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <Input placeholder="Generic name *" value={genericName} onChange={(e) => setGenericName(e.target.value)} />
             <Input placeholder="Brand name" value={brandName} onChange={(e) => setBrandName(e.target.value)} />
@@ -115,51 +121,53 @@ export default function PharmacyCatalogPage() {
             {createMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             Add batch
           </Button>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
-      <div className="rounded-lg border bg-card">
-        <div className="border-b p-3">
-          <h3 className="text-sm font-semibold text-foreground">Catalog</h3>
-        </div>
-        {catalogQuery.isLoading ? (
-          <div className="flex h-16 items-center justify-center">
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-          </div>
-        ) : (
-          <div className="divide-y">
-            {catalogQuery.data?.data.map((drug) => (
-              <div key={drug.id} className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
-                <div>
-                  <span className="font-medium">{drug.genericName}</span>{' '}
-                  {drug.brandName && <span className="text-muted-foreground">({drug.brandName})</span>}
-                  <div className="text-xs text-muted-foreground">
-                    {drug.strength ?? '—'} · {drug.dosageForm} · Batch {drug.batchNumber} · ₹{drug.price} + {drug.taxPercent}% tax
+      <Card>
+        <CardHeader>
+          <CardTitle>Catalog</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {catalogQuery.isLoading ? (
+            <SkeletonText lines={4} />
+          ) : catalogQuery.data?.data.length === 0 ? (
+            <EmptyState compact title="No drugs in the catalog yet" />
+          ) : (
+            <div className="-mx-4 divide-y">
+              {catalogQuery.data?.data.map((drug) => (
+                <div key={drug.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+                  <div>
+                    <span className="font-medium">{drug.genericName}</span>{' '}
+                    {drug.brandName && <span className="text-muted-foreground">({drug.brandName})</span>}
+                    <div className="text-xs text-muted-foreground">
+                      {drug.strength ?? '—'} · {drug.dosageForm} · Batch {drug.batchNumber} · ₹{drug.price} + {drug.taxPercent}% tax
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Stock: {drug.currentStock} (reserved {drug.reservedStock}, available {drug.availableStock})
+                    </div>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    Stock: {drug.currentStock} (reserved {drug.reservedStock}, available {drug.availableStock})
+                  <div className="flex items-center gap-2">
+                    {drug.currentStock <= drug.reorderLevel && <StatusBadge status="LOW_STOCK" />}
+                    {isExpiringSoon(drug.expiryDate) && <StatusBadge status="EXPIRING" />}
+                    <StatusBadge status={drug.isActive ? 'ACTIVE' : 'INACTIVE'} />
+                    {canManage && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => toggleActiveMutation.mutate({ id: drug.id, isActive: !drug.isActive })}
+                      >
+                        {drug.isActive ? 'Deactivate' : 'Activate'}
+                      </Button>
+                    )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {drug.currentStock <= drug.reorderLevel && <Badge variant="destructive">Low stock</Badge>}
-                  {isExpiringSoon(drug.expiryDate) && <Badge variant="destructive">Expiring soon</Badge>}
-                  <Badge variant={drug.isActive ? 'success' : 'secondary'}>{drug.isActive ? 'Active' : 'Inactive'}</Badge>
-                  {canManage && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => toggleActiveMutation.mutate({ id: drug.id, isActive: !drug.isActive })}
-                    >
-                      {drug.isActive ? 'Deactivate' : 'Activate'}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-            {catalogQuery.data?.data.length === 0 && <p className="p-4 text-sm text-muted-foreground">No drugs in the catalog yet.</p>}
-          </div>
-        )}
-      </div>
-    </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </PageLayout>
   )
 }

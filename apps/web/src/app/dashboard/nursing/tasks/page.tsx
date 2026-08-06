@@ -2,14 +2,25 @@
 
 import { NursingTaskPriority, NursingTaskStatus } from '@medicore/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, Loader2 } from 'lucide-react'
+import { CheckCircle2 } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 
-import { Badge } from '@/components/ui/badge'
+import { PageLayout } from '@/components/layout/page-layout'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
 import { listNursingTaskQueue, updateNursingTaskStatus } from '@/lib/api/nursing'
 import { useAuth } from '@/lib/auth/auth-context'
@@ -25,20 +36,6 @@ function formatEnumLabel(value: string): string {
 
 function formatDateTime(value: string | Date): string {
   return new Date(value).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
-}
-
-const TASK_STATUS_BADGE: Record<string, 'success' | 'secondary' | 'destructive' | 'outline'> = {
-  PENDING: 'outline',
-  IN_PROGRESS: 'secondary',
-  COMPLETED: 'success',
-  MISSED: 'destructive',
-  CANCELLED: 'destructive',
-}
-
-const TASK_PRIORITY_BADGE: Record<string, 'destructive' | 'secondary' | 'outline'> = {
-  STAT: 'destructive',
-  URGENT: 'secondary',
-  ROUTINE: 'outline',
 }
 
 export default function NursingTasksQueuePage() {
@@ -71,12 +68,7 @@ export default function NursingTasksQueuePage() {
   })
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Nursing Tasks</h1>
-        <p className="text-sm text-muted-foreground">Org-wide nursing task queue across all wards.</p>
-      </div>
-
+    <PageLayout title="Nursing Tasks" description="Org-wide nursing task queue across all wards.">
       <div className="flex flex-wrap gap-2">
         <Select value={status} onValueChange={setStatus}>
           <SelectTrigger className="w-48">
@@ -106,34 +98,26 @@ export default function NursingTasksQueuePage() {
         </Select>
       </div>
 
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Patient</TableHead>
-              <TableHead>Ward</TableHead>
-              <TableHead>Task</TableHead>
-              <TableHead>Priority</TableHead>
-              <TableHead>Due</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {tasksQuery.isLoading ? (
+      {tasksQuery.isLoading ? (
+        <TableSkeleton rows={8} columns={7} />
+      ) : tasks.length === 0 ? (
+        <EmptyState variant="search" title="No nursing tasks found" description="Try a different status or priority filter." />
+      ) : (
+        <TableContainer className="max-h-[65vh]">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Patient</TableHead>
+                <TableHead>Ward</TableHead>
+                <TableHead>Task</TableHead>
+                <TableHead>Priority</TableHead>
+                <TableHead>Due</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-28" />
               </TableRow>
-            ) : tasks.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                  No nursing tasks found.
-                </TableCell>
-              </TableRow>
-            ) : (
-              tasks.map((t) => (
+            </TableHeader>
+            <TableBody>
+              {tasks.map((t) => (
                 <TableRow key={t.id}>
                   <TableCell className="text-sm">
                     <Link href={`/dashboard/ipd/${t.admission.id}`} className="text-primary hover:underline">
@@ -143,11 +127,11 @@ export default function NursingTasksQueuePage() {
                   <TableCell className="text-sm">{t.admission.wardName}</TableCell>
                   <TableCell className="text-sm">{t.title}</TableCell>
                   <TableCell>
-                    <Badge variant={TASK_PRIORITY_BADGE[t.priority]}>{formatEnumLabel(t.priority)}</Badge>
+                    <StatusBadge status={t.priority} />
                   </TableCell>
                   <TableCell className="text-sm">{t.dueAt ? formatDateTime(t.dueAt) : '—'}</TableCell>
                   <TableCell>
-                    <Badge variant={TASK_STATUS_BADGE[t.status]}>{formatEnumLabel(t.status)}</Badge>
+                    <StatusBadge status={t.status} />
                   </TableCell>
                   <TableCell>
                     {canManage && t.status !== NursingTaskStatus.COMPLETED && t.status !== NursingTaskStatus.CANCELLED && (
@@ -158,11 +142,11 @@ export default function NursingTasksQueuePage() {
                     )}
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+    </PageLayout>
   )
 }

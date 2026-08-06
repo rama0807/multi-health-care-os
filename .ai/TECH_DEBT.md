@@ -2121,6 +2121,13 @@ list query and invalidate on change. The API side already supports hospital
 scoping in the modules whose tables carry a `hospitalId`; the ones that do not
 should keep ignoring it rather than pretending.
 
+**Still open after Phase 2 (2026-08-06).** Phase 2 was scoped to presentation —
+layout, tokens, tables, badges, empty/loading states — under an explicit
+instruction not to touch data-fetching, query parameters or any business logic.
+Wiring `activeHospitalId` into each module's query is exactly that kind of
+change, so it was correctly left untouched. This remains open for a future,
+explicitly-scoped task.
+
 ---
 
 ## TD-0076: `/dashboard/settings` does not exist — the sidebar and profile menu link to a 404
@@ -2147,21 +2154,40 @@ than duplicate them.
 ## TD-0077: Feature pages have not been migrated to the V2 primitives
 
 **Recorded:** 2026-08-06 (Design System V2, Phase 1 — ADR-0031)
-**Severity:** None — this is the planned Phase 2, recorded so the state is not
-mistaken for an oversight.
+**Resolved:** 2026-08-06 (Design System V2, Phase 2 — same day, later session).
+See `PROGRESS.md` and `CHANGELOG.md` for the full module-by-module record.
+**Severity:** None — this was the planned Phase 2, recorded so the state was not
+mistaken for an oversight in the interim.
 
 Phase 1 was explicitly instructed not to redesign pages. Every existing page
-therefore still renders through the pre-V2 call shapes. They all work — the
+therefore still rendered through the pre-V2 call shapes. They all worked — the
 primitives kept their old exports, variants and prop names, which is why lint,
-typecheck, build, 785 API unit tests, 49 web unit tests and 431 e2e tests are
-all green — and they inherit the new token layer, density, typography, focus
+typecheck, build, 785 API unit tests, 49 web unit tests and 431 e2e tests were
+all green — and they inherited the new token layer, density, typography, focus
 treatment and branding automatically.
 
-What they do **not** yet use: `PageLayout`/`PageHeader`/breadcrumbs,
-`StatusBadge` (each page still maps its own status colours), `DataTable`
-affordances (sticky headers, `TableRowActions`, `BulkActionBar`), `EmptyState`'s
-empty-vs-filtered-empty distinction, `EntityCell`, `StatCard`, and
-`useChartTheme`.
+What they did **not** yet use: `PageLayout`/`PageHeader`/breadcrumbs,
+`StatusBadge` (each page mapped its own status colours), table affordances
+(sticky headers, `TableRowActions`, `BulkActionBar`, `FilterBar`/`SearchInput`),
+`EmptyState`'s empty-vs-filtered-empty distinction, `StatCard`/`StatCardGrid`,
+and real `recharts` charts in place of hand-drawn divs.
 
-**Fix:** Phase 2, module by module. `StatusBadge` first — it removes the largest
-source of cross-module inconsistency for the least code.
+**Resolution:** every dashboard, list, detail and dialog page across all 18
+feature modules (Dashboard home, Patients, Doctors, Appointments, Medical
+Records, Laboratory, Radiology, Pharmacy, Billing, Insurance, IPD, Nursing,
+Inventory, Staff, Organization, Reports, Notifications, AI) now uses
+`PageLayout`/`StatusBadge`/`Card`/`TableContainer`+`Table`/`EmptyState`/
+`StatCardGrid`/`FilterBar`, migrated module by module with a
+lint→typecheck→build verification gate at every module boundary. In the
+process this also **fixed real, pre-existing status-colour bugs** that
+per-module local maps had introduced independently (e.g. "Cancelled" rendering
+red in Appointments and Doctors' leave, "In Consultation" rendering green,
+pharmacy low-stock/expiring badges rendering red instead of amber, an IPD
+bed-grid colour pair violating the system's own subtle/subtle-foreground
+contrast rule) — these were corrected as a direct consequence of centralizing
+on `StatusBadge`, not scope creep. Three status keys were added to the shared
+`STATUS_TONES` map to cover cases Phase 1 had not encountered yet:
+`UNDER_RENOVATION`, `ADMINISTERED`, `TRIALING`, `PAST_DUE`, `SUCCEEDED`.
+No backend/API/route/business-logic/Prisma-schema file was touched, and no
+browser verification or screenshots were taken — both by the same explicit
+instruction that started Phase 2, consistent with Phase 1's precedent.

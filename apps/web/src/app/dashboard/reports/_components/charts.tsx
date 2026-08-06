@@ -19,6 +19,9 @@ import {
   YAxis,
 } from 'recharts'
 
+import { Card, CardHeader, CardTitle } from '@/components/ui/card'
+import { EmptyState } from '@/components/ui/empty-state'
+
 /**
  * Chart primitives for the reports module (Milestone 17 Checkpoint 17.4).
  *
@@ -80,18 +83,15 @@ export function ChartCard({ chart, height = 240 }: ChartCardProps) {
     chart.data.length > 0 && chart.data.some((row) => chart.series.some((s) => Number(row[s.key]) !== 0))
 
   return (
-    <div className="rounded-lg border bg-card p-4 shadow-sm">
-      <div className="mb-3">
-        <h3 className="text-sm font-semibold text-foreground">{chart.title}</h3>
+    <Card className="p-4">
+      <CardHeader className="mb-3 p-0">
+        <CardTitle>{chart.title}</CardTitle>
         {chart.note && <p className="mt-0.5 text-xs text-muted-foreground">{chart.note}</p>}
-      </div>
+      </CardHeader>
 
       {!hasData ? (
-        <div
-          className="flex items-center justify-center rounded-md border border-dashed text-xs text-muted-foreground"
-          style={{ height }}
-        >
-          No data for the selected period
+        <div style={{ height }} className="flex items-center">
+          <EmptyState compact title="No data for the selected period" className="w-full" />
         </div>
       ) : chart.type === 'heatmap' ? (
         <Heatmap chart={chart} />
@@ -102,7 +102,7 @@ export function ChartCard({ chart, height = 240 }: ChartCardProps) {
           </ResponsiveContainer>
         </div>
       )}
-    </div>
+    </Card>
   )
 }
 

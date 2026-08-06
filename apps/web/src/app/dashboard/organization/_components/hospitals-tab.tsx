@@ -5,7 +5,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -15,9 +14,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
 import {
   activateHospital,
@@ -340,78 +342,72 @@ export function HospitalsTab() {
         )}
       </div>
 
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Hospital</TableHead>
-              <TableHead>Code</TableHead>
-              <TableHead>City</TableHead>
-              <TableHead className="text-right">Departments</TableHead>
-              <TableHead className="text-right">Doctors</TableHead>
-              <TableHead className="text-right">Staff</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {hospitalsQuery.isLoading && (
+      {hospitalsQuery.isLoading ? (
+        <TableSkeleton rows={5} columns={9} />
+      ) : hospitals.length === 0 ? (
+        <EmptyState
+          title="No hospitals yet"
+          description="Use “Onboard hospital” to add the first one."
+          action={canCreate ? { label: 'Onboard hospital', onClick: () => setWizardOpen(true) } : undefined}
+        />
+      ) : (
+        <TableContainer>
+          <Table container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={9} className="text-center text-sm text-muted-foreground">
-                  Loading hospitals…
-                </TableCell>
+                <TableHead>Hospital</TableHead>
+                <TableHead>Code</TableHead>
+                <TableHead>City</TableHead>
+                <TableHead align="right">Departments</TableHead>
+                <TableHead align="right">Doctors</TableHead>
+                <TableHead align="right">Staff</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead align="right" />
               </TableRow>
-            )}
-            {!hospitalsQuery.isLoading && hospitals.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={9} className="text-center text-sm text-muted-foreground">
-                  No hospitals yet. Use “Onboard hospital” to add the first one.
-                </TableCell>
-              </TableRow>
-            )}
-            {hospitals.map((hospital) => (
-              <TableRow key={hospital.id}>
-                <TableCell className="font-medium">{hospital.name}</TableCell>
-                <TableCell>{hospital.code}</TableCell>
-                <TableCell>{hospital.city ?? '—'}</TableCell>
-                <TableCell className="text-right">{hospital._count.departments}</TableCell>
-                <TableCell className="text-right">{hospital._count.doctors}</TableCell>
-                <TableCell className="text-right">{hospital._count.staff}</TableCell>
-                <TableCell>{formatDate(hospital.createdAt)}</TableCell>
-                <TableCell>
-                  <Badge variant={hospital.isActive ? 'default' : 'secondary'}>
-                    {hospital.isActive ? 'Active' : 'Inactive'}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  {hospital.isActive
-                    ? canDeactivate && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={toggleMutation.isPending}
-                          onClick={() => toggleMutation.mutate({ id: hospital.id, activate: false })}
-                        >
-                          Deactivate
-                        </Button>
-                      )
-                    : canUpdate && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={toggleMutation.isPending}
-                          onClick={() => toggleMutation.mutate({ id: hospital.id, activate: true })}
-                        >
-                          Activate
-                        </Button>
-                      )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+            </TableHeader>
+            <TableBody>
+              {hospitals.map((hospital) => (
+                <TableRow key={hospital.id}>
+                  <TableCell className="font-medium">{hospital.name}</TableCell>
+                  <TableCell>{hospital.code}</TableCell>
+                  <TableCell>{hospital.city ?? '—'}</TableCell>
+                  <TableCell align="right">{hospital._count.departments}</TableCell>
+                  <TableCell align="right">{hospital._count.doctors}</TableCell>
+                  <TableCell align="right">{hospital._count.staff}</TableCell>
+                  <TableCell>{formatDate(hospital.createdAt)}</TableCell>
+                  <TableCell>
+                    <StatusBadge status={hospital.isActive ? 'ACTIVE' : 'INACTIVE'} />
+                  </TableCell>
+                  <TableCell align="right">
+                    {hospital.isActive
+                      ? canDeactivate && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={toggleMutation.isPending}
+                            onClick={() => toggleMutation.mutate({ id: hospital.id, activate: false })}
+                          >
+                            Deactivate
+                          </Button>
+                        )
+                      : canUpdate && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={toggleMutation.isPending}
+                            onClick={() => toggleMutation.mutate({ id: hospital.id, activate: true })}
+                          >
+                            Activate
+                          </Button>
+                        )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       <p className="text-xs text-muted-foreground">
         Deactivating a hospital hides it from pickers and blocks new activity. It deliberately does

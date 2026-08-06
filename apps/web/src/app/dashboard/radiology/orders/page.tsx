@@ -2,14 +2,28 @@
 
 import { Priority, RadiologyStatus } from '@medicore/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Loader2, Scan } from 'lucide-react'
+import { Scan } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableRowActions,
+} from '@/components/ui/table'
+import { FilterBar } from '@/components/ui/toolbar'
 import { useToast } from '@/hooks/use-toast'
 import { listDoctors } from '@/lib/api/doctors'
 import { completeRadiologyStudy, listRadiologyOrders, startRadiologyStudy } from '@/lib/api/radiology'
@@ -22,16 +36,6 @@ function getErrorMessage(error: unknown): string {
 
 function formatEnumLabel(value: string): string {
   return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
-}
-
-const STATUS_BADGE: Record<RadiologyStatus, 'secondary' | 'success' | 'destructive' | 'outline'> = {
-  [RadiologyStatus.ORDERED]: 'secondary',
-  [RadiologyStatus.SCHEDULED]: 'outline',
-  [RadiologyStatus.IN_PROGRESS]: 'outline',
-  [RadiologyStatus.COMPLETED]: 'success',
-  [RadiologyStatus.REPORTED]: 'success',
-  [RadiologyStatus.CANCELLED]: 'destructive',
-  [RadiologyStatus.REJECTED]: 'destructive',
 }
 
 export default function RadiologyOrdersPage() {
@@ -85,17 +89,18 @@ export default function RadiologyOrdersPage() {
   const orders = ordersQuery.data?.data ?? []
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Radiology Orders</h1>
-        <p className="text-sm text-muted-foreground">
-          {ordersQuery.data ? `${ordersQuery.data.pagination.total} order${ordersQuery.data.pagination.total === 1 ? '' : 's'}` : 'Loading...'}
-        </p>
-      </div>
-
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+    <PageLayout
+      breadcrumbs={[{ label: 'Radiology', href: '/dashboard/radiology' }, { label: 'Orders' }]}
+      title="Radiology Orders"
+      description={
+        ordersQuery.data
+          ? `${ordersQuery.data.pagination.total} order${ordersQuery.data.pagination.total === 1 ? '' : 's'}`
+          : undefined
+      }
+    >
+      <FilterBar>
         <Select value={doctorId} onValueChange={setDoctorId}>
-          <SelectTrigger className="sm:w-56">
+          <SelectTrigger className="w-56">
             <SelectValue placeholder="Doctor" />
           </SelectTrigger>
           <SelectContent>
@@ -108,7 +113,7 @@ export default function RadiologyOrdersPage() {
           </SelectContent>
         </Select>
         <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger className="sm:w-44">
+          <SelectTrigger className="w-44">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -121,7 +126,7 @@ export default function RadiologyOrdersPage() {
           </SelectContent>
         </Select>
         <Select value={priority} onValueChange={setPriority}>
-          <SelectTrigger className="sm:w-40">
+          <SelectTrigger className="w-40">
             <SelectValue placeholder="Priority" />
           </SelectTrigger>
           <SelectContent>
@@ -133,43 +138,31 @@ export default function RadiologyOrdersPage() {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </FilterBar>
 
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Order #</TableHead>
-              <TableHead>Patient</TableHead>
-              <TableHead>Doctor</TableHead>
-              <TableHead>Study</TableHead>
-              <TableHead>Scheduled</TableHead>
-              <TableHead>Priority</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {ordersQuery.isLoading ? (
+      {ordersQuery.isLoading ? (
+        <TableSkeleton rows={8} columns={8} />
+      ) : ordersQuery.isError ? (
+        <EmptyState variant="error" title="Couldn't load radiology orders" description={getErrorMessage(ordersQuery.error)} />
+      ) : orders.length === 0 ? (
+        <EmptyState variant="search" title="No radiology orders found" description="Try a different doctor, status, or priority filter." />
+      ) : (
+        <TableContainer className="max-h-[65vh]">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Order #</TableHead>
+                <TableHead>Patient</TableHead>
+                <TableHead>Doctor</TableHead>
+                <TableHead>Study</TableHead>
+                <TableHead>Scheduled</TableHead>
+                <TableHead>Priority</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-40" />
               </TableRow>
-            ) : ordersQuery.isError ? (
-              <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                  Couldn&apos;t load radiology orders. {getErrorMessage(ordersQuery.error)}
-                </TableCell>
-              </TableRow>
-            ) : orders.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                  No radiology orders found.
-                </TableCell>
-              </TableRow>
-            ) : (
-              orders.map((order) => (
+            </TableHeader>
+            <TableBody>
+              {orders.map((order) => (
                 <TableRow key={order.id}>
                   <TableCell>
                     <Link
@@ -195,10 +188,10 @@ export default function RadiologyOrdersPage() {
                     <Badge variant="outline">{formatEnumLabel(order.priority)}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={STATUS_BADGE[order.status]}>{formatEnumLabel(order.status)}</Badge>
+                    <StatusBadge status={order.status} />
                   </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap items-center gap-2">
+                  <TableCell align="right">
+                    <TableRowActions>
                       {canUpdate && order.status === RadiologyStatus.SCHEDULED && (
                         <Button
                           variant="outline"
@@ -222,14 +215,14 @@ export default function RadiologyOrdersPage() {
                       <Button asChild variant="ghost" size="sm">
                         <Link href={`/dashboard/radiology/${order.id}`}>Open</Link>
                       </Button>
-                    </div>
+                    </TableRowActions>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+    </PageLayout>
   )
 }

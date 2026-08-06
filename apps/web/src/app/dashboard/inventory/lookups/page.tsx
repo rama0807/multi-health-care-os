@@ -11,10 +11,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
 import { useState } from 'react'
 
-import { Badge } from '@/components/ui/badge'
+import { PageLayout } from '@/components/layout/page-layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -45,12 +46,11 @@ const NO_MANUFACTURER = '__none__'
 
 export default function InventoryLookupsPage() {
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Categories & Lookups</h1>
-        <p className="text-sm text-muted-foreground">Shared item master reference data used across the inventory catalog.</p>
-      </div>
-
+    <PageLayout
+      breadcrumbs={[{ label: 'Inventory', href: '/dashboard/inventory' }, { label: 'Categories & Lookups' }]}
+      title="Categories & Lookups"
+      description="Shared item master reference data used across the inventory catalog."
+    >
       <Tabs defaultValue="categories">
         <TabsList>
           <TabsTrigger value="categories">Categories</TabsTrigger>
@@ -75,7 +75,7 @@ export default function InventoryLookupsPage() {
           <BrandsTab />
         </TabsContent>
       </Tabs>
-    </div>
+    </PageLayout>
   )
 }
 
@@ -102,7 +102,7 @@ function LookupRow({
         {subtitle && <span className="ml-2 text-xs text-muted-foreground">{subtitle}</span>}
       </div>
       <div className="flex items-center gap-2">
-        <Badge variant={isActive ? 'success' : 'secondary'}>{isActive ? 'Active' : 'Inactive'}</Badge>
+        <StatusBadge status={isActive ? 'ACTIVE' : 'INACTIVE'} />
         {canManage && (
           <Button variant="outline" size="sm" onClick={onToggle} disabled={toggling}>
             {isActive ? 'Deactivate' : 'Activate'}

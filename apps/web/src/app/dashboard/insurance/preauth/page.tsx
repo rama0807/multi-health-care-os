@@ -5,12 +5,24 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
 import { useState } from 'react'
 
-import { Badge } from '@/components/ui/badge'
+import { PageLayout } from '@/components/layout/page-layout'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableRowActions,
+} from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
 import {
   cancelPreAuthorization,
@@ -28,16 +40,6 @@ function getErrorMessage(error: unknown): string {
 
 function formatEnumLabel(value: string): string {
   return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
-}
-
-const STATUS_BADGE: Record<string, 'secondary' | 'success' | 'destructive' | 'warning' | 'outline'> = {
-  DRAFT: 'secondary',
-  SUBMITTED: 'outline',
-  UNDER_REVIEW: 'warning',
-  APPROVED: 'success',
-  PARTIALLY_APPROVED: 'warning',
-  REJECTED: 'destructive',
-  CANCELLED: 'secondary',
 }
 
 export default function PreAuthorizationQueuePage() {
@@ -109,12 +111,11 @@ export default function PreAuthorizationQueuePage() {
   })
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Pre-Authorizations</h1>
-          <p className="text-sm text-muted-foreground">Cashless/TPA pre-authorization requests.</p>
-        </div>
+    <PageLayout
+      breadcrumbs={[{ label: 'Insurance', href: '/dashboard/insurance' }, { label: 'Pre-Authorizations' }]}
+      title="Pre-Authorizations"
+      description="Cashless/TPA pre-authorization requests."
+      actions={
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as PreAuthorizationStatus | 'ALL')}>
           <SelectTrigger className="w-48">
             <SelectValue />
@@ -128,50 +129,46 @@ export default function PreAuthorizationQueuePage() {
             ))}
           </SelectContent>
         </Select>
-      </div>
-
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Auth #</TableHead>
-              <TableHead>Patient</TableHead>
-              <TableHead>Insurer</TableHead>
-              <TableHead>Requested</TableHead>
-              <TableHead>Approved</TableHead>
-              <TableHead>Status</TableHead>
-              {canUpdate && <TableHead>Actions</TableHead>}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {preAuthQuery.isLoading ? (
+      }
+    >
+      {preAuthQuery.isLoading ? (
+        <TableSkeleton rows={8} columns={canUpdate ? 7 : 6} />
+      ) : preAuths.length === 0 ? (
+        <EmptyState
+          variant={statusFilter === 'ALL' ? 'empty' : 'search'}
+          title="No pre-authorizations yet"
+          description={canCreate ? 'Start one from a patient encounter.' : undefined}
+        />
+      ) : (
+        <TableContainer className="max-h-[65vh]">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Auth #</TableHead>
+                <TableHead>Patient</TableHead>
+                <TableHead>Insurer</TableHead>
+                <TableHead align="right">Requested</TableHead>
+                <TableHead align="right">Approved</TableHead>
+                <TableHead>Status</TableHead>
+                {canUpdate && <TableHead className="w-56" />}
               </TableRow>
-            ) : preAuths.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                  {canCreate ? 'No pre-authorizations yet — start one from a patient encounter.' : 'No pre-authorizations yet.'}
-                </TableCell>
-              </TableRow>
-            ) : (
-              preAuths.map((p) => (
+            </TableHeader>
+            <TableBody>
+              {preAuths.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell className="font-mono text-xs">{p.authNumber}</TableCell>
                   <TableCell className="text-sm">
                     {p.patient.fullName} <span className="text-xs text-muted-foreground">({p.patient.uhid})</span>
                   </TableCell>
                   <TableCell className="text-sm">{p.patientInsurance.provider.name}</TableCell>
-                  <TableCell>₹{p.requestedAmount}</TableCell>
-                  <TableCell>{p.approvedAmount ? `₹${p.approvedAmount}` : '—'}</TableCell>
+                  <TableCell align="right">₹{p.requestedAmount}</TableCell>
+                  <TableCell align="right">{p.approvedAmount ? `₹${p.approvedAmount}` : '—'}</TableCell>
                   <TableCell>
-                    <Badge variant={STATUS_BADGE[p.status]}>{formatEnumLabel(p.status)}</Badge>
+                    <StatusBadge status={p.status} />
                   </TableCell>
                   {canUpdate && (
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1.5">
+                    <TableCell align="right">
+                      <TableRowActions>
                         {p.status === PreAuthorizationStatus.DRAFT && (
                           <>
                             <Button size="sm" variant="outline" onClick={() => submitMutation.mutate(p.id)}>
@@ -197,15 +194,15 @@ export default function PreAuthorizationQueuePage() {
                             </Button>
                           </>
                         )}
-                      </div>
+                      </TableRowActions>
                     </TableCell>
                   )}
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       <Dialog open={Boolean(decideTarget)} onOpenChange={(open) => !open && setDecideTarget(null)}>
         <DialogContent>
@@ -240,6 +237,6 @@ export default function PreAuthorizationQueuePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageLayout>
   )
 }

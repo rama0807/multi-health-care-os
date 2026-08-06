@@ -7,12 +7,24 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { listDoctors } from '@/lib/api/doctors'
@@ -31,13 +43,6 @@ function formatEnumLabel(value: string): string {
   return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
 }
 
-const ADMISSION_STATUS_BADGE: Record<AdmissionStatus, 'success' | 'secondary' | 'destructive' | 'outline'> = {
-  ADMITTED: 'success',
-  DISCHARGED: 'secondary',
-  ABSCONDED: 'destructive',
-  CANCELLED: 'outline',
-}
-
 export default function AdmissionsPage() {
   const { hasPermission } = useAuth()
   const canCreate = hasPermission('ipd.admissions.create')
@@ -54,20 +59,18 @@ export default function AdmissionsPage() {
   const admissions = admissionsQuery.data?.data ?? []
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Admissions</h1>
-          <p className="text-sm text-muted-foreground">In-patient admission queue.</p>
-        </div>
-        {canCreate && (
+    <PageLayout
+      title="Admissions"
+      description="In-patient admission queue."
+      actions={
+        canCreate && (
           <Button onClick={() => setWizardOpen(true)}>
             <Plus className="h-4 w-4" />
             Admit patient
           </Button>
-        )}
-      </div>
-
+        )
+      }
+    >
       <Select value={status} onValueChange={setStatus}>
         <SelectTrigger className="w-56">
           <SelectValue placeholder="Filter by status" />
@@ -82,34 +85,30 @@ export default function AdmissionsPage() {
         </SelectContent>
       </Select>
 
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Admission #</TableHead>
-              <TableHead>Patient</TableHead>
-              <TableHead>Attending doctor</TableHead>
-              <TableHead>Ward / Bed</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Admitted</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {admissionsQuery.isLoading ? (
+      {admissionsQuery.isLoading ? (
+        <TableSkeleton rows={8} columns={7} />
+      ) : admissions.length === 0 ? (
+        <EmptyState
+          variant={status === 'all' ? 'empty' : 'search'}
+          title="No admissions yet"
+          action={canCreate ? { label: 'Admit patient', onClick: () => setWizardOpen(true) } : undefined}
+        />
+      ) : (
+        <TableContainer className="max-h-[65vh]">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Admission #</TableHead>
+                <TableHead>Patient</TableHead>
+                <TableHead>Attending doctor</TableHead>
+                <TableHead>Ward / Bed</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Admitted</TableHead>
+                <TableHead>Status</TableHead>
               </TableRow>
-            ) : admissions.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                  No admissions yet.
-                </TableCell>
-              </TableRow>
-            ) : (
-              admissions.map((a) => (
+            </TableHeader>
+            <TableBody>
+              {admissions.map((a) => (
                 <TableRow key={a.id}>
                   <TableCell>
                     <Link href={`/dashboard/ipd/${a.id}`} className="font-mono text-xs text-primary hover:underline">
@@ -132,17 +131,17 @@ export default function AdmissionsPage() {
                     {new Date(a.admittedAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={ADMISSION_STATUS_BADGE[a.status]}>{formatEnumLabel(a.status)}</Badge>
+                    <StatusBadge status={a.status} />
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       <AdmitPatientWizard open={wizardOpen} onOpenChange={setWizardOpen} wards={wardsQuery.data?.data ?? []} />
-    </div>
+    </PageLayout>
   )
 }
 

@@ -5,13 +5,16 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
 import { assignShiftRoster, listShiftRoster, listShifts } from '@/lib/api/shifts'
 import { listStaff } from '@/lib/api/staff'
@@ -62,14 +65,15 @@ export default function RosterPage() {
     return map
   }, [rosterQuery.data])
 
+  const isLoading = staffQuery.isLoading || rosterQuery.isLoading
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Weekly Roster</h1>
-          <p className="text-sm text-muted-foreground">Shift assignments per staff member for the selected week.</p>
-        </div>
-        <div className="flex items-center gap-2">
+    <PageLayout
+      title="Weekly Roster"
+      description="Shift assignments per staff member for the selected week."
+      width="full"
+      actions={
+        <>
           <Button variant="outline" size="sm" onClick={() => setWeekStart((w) => new Date(w.getFullYear(), w.getMonth(), w.getDate() - 7))}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -85,36 +89,28 @@ export default function RosterPage() {
               Assign
             </Button>
           )}
-        </div>
-      </div>
-
-      <div className="overflow-x-auto rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="sticky left-0 bg-card">Staff</TableHead>
-              {weekDates.map((d) => (
-                <TableHead key={toDateString(d)} className="whitespace-nowrap text-center">
-                  {d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {staffQuery.isLoading || rosterQuery.isLoading ? (
+        </>
+      }
+    >
+      {isLoading ? (
+        <TableSkeleton rows={6} columns={8} />
+      ) : staff.length === 0 ? (
+        <EmptyState title="No staff members yet" />
+      ) : (
+        <TableContainer>
+          <Table container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead className="sticky left-0 bg-card">Staff</TableHead>
+                {weekDates.map((d) => (
+                  <TableHead key={toDateString(d)} className="whitespace-nowrap text-center">
+                    {d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}
+                  </TableHead>
+                ))}
               </TableRow>
-            ) : staff.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                  No staff members yet.
-                </TableCell>
-              </TableRow>
-            ) : (
-              staff.map((s) => (
+            </TableHeader>
+            <TableBody>
+              {staff.map((s) => (
                 <TableRow key={s.id}>
                   <TableCell className="sticky left-0 bg-card font-medium">{s.fullName}</TableCell>
                   {weekDates.map((d) => {
@@ -124,7 +120,7 @@ export default function RosterPage() {
                         {!entry ? (
                           <span className="text-muted-foreground">—</span>
                         ) : entry.isOff ? (
-                          <Badge variant="secondary">Off</Badge>
+                          <Badge variant="neutral">Off</Badge>
                         ) : (
                           <Badge variant="outline">{entry.shift?.code ?? '—'}</Badge>
                         )}
@@ -132,14 +128,14 @@ export default function RosterPage() {
                     )
                   })}
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       <AssignDialog open={dialogOpen} onOpenChange={setDialogOpen} />
-    </div>
+    </PageLayout>
   )
 }
 

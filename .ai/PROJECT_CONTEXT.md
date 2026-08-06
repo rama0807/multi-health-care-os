@@ -60,19 +60,24 @@ App Router structure under `apps/web/src/`: `app/`, `components/`, `hooks/`,
 surface is `apps/web/src/components/ui/` (primitives) and
 `apps/web/src/components/layout/` (app shell).
 
-**Design System V2 (Phase 1 complete, 2026-08-06 — ADR-0031)** is the design
-language every screen inherits. `apps/web/src/app/globals.css` is the semantic
-token layer and **the only place a colour is defined**; `tailwind.config.ts`
-contains token references and no colour values. An organization's branding is
-applied at runtime by `providers/branding-provider.tsx`, with
-`lib/branding/color.ts` deriving each brand role until it clears WCAG AA in both
-themes — so a tenant cannot render an unreadable UI. Status colour is fixed by
-clinical convention and is deliberately not brandable.
+**Design System V2 (both phases complete, 2026-08-06 — ADR-0031)** is the
+design language every screen inherits, and every screen now actually uses it.
+`apps/web/src/app/globals.css` is the semantic token layer and **the only
+place a colour is defined**; `tailwind.config.ts` contains token references
+and no colour values. An organization's branding is applied at runtime by
+`providers/branding-provider.tsx`, with `lib/branding/color.ts` deriving each
+brand role until it clears WCAG AA in both themes — so a tenant cannot render
+an unreadable UI. Status colour is fixed by clinical convention (via the
+single `<StatusBadge>` every page now uses) and is deliberately not
+brandable.
 
-Developer guide: **`docs/design-system.md`**. Feature pages have not yet been
-migrated onto the new primitives — that is Phase 2 (TD-0077); they work
-unchanged and inherit the new tokens, density, typography, focus treatment and
-branding automatically.
+Developer guide: **`docs/design-system.md`**. Phase 2 (2026-08-06, TD-0077,
+now resolved) migrated every feature page across all 18 modules onto
+`PageLayout`/`StatusBadge`/`Card`/`TableContainer`/`EmptyState`/
+`StatCard`/`StatCardGrid`/`FilterBar` — UI/UX only, no backend or business-logic
+change. Branding still reaches only `organizations.read` holders (TD-0074) and
+the hospital selector still filters no data (TD-0075) — both are backend/query
+changes, correctly left out of a presentation-only pass.
 
 ## Stack Summary
 

@@ -1,13 +1,23 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 
-import { Badge } from '@/components/ui/badge'
+import { PageLayout } from '@/components/layout/page-layout'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { listAdmissions } from '@/lib/api/ipd'
 
 function formatDateTime(value: string | Date): string {
@@ -29,12 +39,11 @@ export default function DischargesPage() {
   const admissions = admissionsQuery.data?.data ?? []
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Discharges</h1>
-        <p className="text-sm text-muted-foreground">Patients pending discharge and recently discharged.</p>
-      </div>
-
+    <PageLayout
+      breadcrumbs={[{ label: 'IPD', href: '/dashboard/ipd' }, { label: 'Discharges' }]}
+      title="Discharges"
+      description="Patients pending discharge and recently discharged."
+    >
       <Select value={filter} onValueChange={(v) => setFilter(v as Filter)}>
         <SelectTrigger className="w-56">
           <SelectValue />
@@ -45,33 +54,25 @@ export default function DischargesPage() {
         </SelectContent>
       </Select>
 
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Admission #</TableHead>
-              <TableHead>Patient</TableHead>
-              <TableHead>Attending doctor</TableHead>
-              <TableHead>Ward / Bed</TableHead>
-              <TableHead>{filter === 'pending' ? 'Approved at' : 'Discharged at'}</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {admissionsQuery.isLoading ? (
+      {admissionsQuery.isLoading ? (
+        <TableSkeleton rows={6} columns={6} />
+      ) : admissions.length === 0 ? (
+        <EmptyState title={filter === 'pending' ? 'No admissions pending discharge' : 'No discharges yet'} />
+      ) : (
+        <TableContainer className="max-h-[65vh]">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Admission #</TableHead>
+                <TableHead>Patient</TableHead>
+                <TableHead>Attending doctor</TableHead>
+                <TableHead>Ward / Bed</TableHead>
+                <TableHead>{filter === 'pending' ? 'Approved at' : 'Discharged at'}</TableHead>
+                <TableHead>Status</TableHead>
               </TableRow>
-            ) : admissions.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  {filter === 'pending' ? 'No admissions pending discharge.' : 'No discharges yet.'}
-                </TableCell>
-              </TableRow>
-            ) : (
-              admissions.map((a) => (
+            </TableHeader>
+            <TableBody>
+              {admissions.map((a) => (
                 <TableRow key={a.id}>
                   <TableCell>
                     <Link href={`/dashboard/ipd/${a.id}`} className="font-mono text-xs text-primary hover:underline">
@@ -91,16 +92,18 @@ export default function DischargesPage() {
                       : a.dischargedAt && formatDateTime(a.dischargedAt)}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={filter === 'pending' ? 'outline' : 'secondary'}>
-                      {filter === 'pending' ? 'Pending discharge' : 'Discharged'}
-                    </Badge>
+                    {filter === 'pending' ? (
+                      <StatusBadge status="PENDING" label="Pending discharge" />
+                    ) : (
+                      <StatusBadge status="DISCHARGED" />
+                    )}
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+    </PageLayout>
   )
 }

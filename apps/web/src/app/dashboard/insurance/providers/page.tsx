@@ -5,12 +5,24 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2, Plus } from 'lucide-react'
 import { useState } from 'react'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
 import { createInsuranceProvider, listInsuranceProviders, updateInsuranceProvider } from '@/lib/api/insurance'
 import { useAuth } from '@/lib/auth/auth-context'
@@ -39,47 +51,41 @@ export default function InsuranceProvidersPage() {
   const providers = providersQuery.data?.data ?? []
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Insurance Providers</h1>
-          <p className="text-sm text-muted-foreground">Insurance companies, TPAs, and corporate plan issuers.</p>
-        </div>
-        {canCreate && (
+    <PageLayout
+      breadcrumbs={[{ label: 'Insurance', href: '/dashboard/insurance' }, { label: 'Providers' }]}
+      title="Insurance Providers"
+      description="Insurance companies, TPAs, and corporate plan issuers."
+      actions={
+        canCreate && (
           <Button onClick={() => setDialogOpen(true)}>
             <Plus className="h-4 w-4" />
             Add provider
           </Button>
-        )}
-      </div>
-
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Code</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Contact</TableHead>
-              <TableHead>Status</TableHead>
-              {canUpdate && <TableHead>Actions</TableHead>}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {providersQuery.isLoading ? (
+        )
+      }
+    >
+      {providersQuery.isLoading ? (
+        <TableSkeleton rows={6} columns={canUpdate ? 6 : 5} />
+      ) : providers.length === 0 ? (
+        <EmptyState
+          title="No insurance providers yet"
+          action={canCreate ? { label: 'Add provider', onClick: () => setDialogOpen(true) } : undefined}
+        />
+      ) : (
+        <TableContainer className="max-h-[70vh]">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Name</TableHead>
+                <TableHead>Code</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Contact</TableHead>
+                <TableHead>Status</TableHead>
+                {canUpdate && <TableHead className="w-20" />}
               </TableRow>
-            ) : providers.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  No insurance providers yet.
-                </TableCell>
-              </TableRow>
-            ) : (
-              providers.map((p) => (
+            </TableHeader>
+            <TableBody>
+              {providers.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell className="font-medium">{p.name}</TableCell>
                   <TableCell className="font-mono text-xs">{p.code}</TableCell>
@@ -90,7 +96,7 @@ export default function InsuranceProvidersPage() {
                     {p.contactPerson ?? '—'} {p.phone ? `· ${p.phone}` : ''}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={p.isActive ? 'success' : 'secondary'}>{p.isActive ? 'Active' : 'Inactive'}</Badge>
+                    <StatusBadge status={p.isActive ? 'ACTIVE' : 'INACTIVE'} />
                   </TableCell>
                   {canUpdate && (
                     <TableCell>
@@ -100,11 +106,11 @@ export default function InsuranceProvidersPage() {
                     </TableCell>
                   )}
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       <ProviderDialog open={dialogOpen} onOpenChange={setDialogOpen} />
       {editing && (
@@ -114,7 +120,7 @@ export default function InsuranceProvidersPage() {
           provider={providers.find((p) => p.id === editing)}
         />
       )}
-    </div>
+    </PageLayout>
   )
 }
 

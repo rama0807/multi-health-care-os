@@ -4,15 +4,27 @@ import { PurchaseRequestStatus } from '@medicore/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2, Plus } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
-import { Badge } from '@/components/ui/badge'
+import { PageLayout } from '@/components/layout/page-layout'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/ui/pagination'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { listInventoryItems, listInventoryStores } from '@/lib/api/inventory'
@@ -28,16 +40,8 @@ function formatEnumLabel(value: string): string {
   return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
 }
 
-const STATUS_BADGE: Record<PurchaseRequestStatus, 'secondary' | 'outline' | 'success' | 'destructive'> = {
-  [PurchaseRequestStatus.DRAFT]: 'secondary',
-  [PurchaseRequestStatus.SUBMITTED]: 'outline',
-  [PurchaseRequestStatus.APPROVED]: 'success',
-  [PurchaseRequestStatus.REJECTED]: 'destructive',
-  [PurchaseRequestStatus.CONVERTED]: 'success',
-  [PurchaseRequestStatus.CANCELLED]: 'destructive',
-}
-
 export default function PurchaseRequestsPage() {
+  const router = useRouter()
   const { hasPermission } = useAuth()
   const canCreate = hasPermission('inventory.procurement.create')
 
@@ -54,20 +58,18 @@ export default function PurchaseRequestsPage() {
   const pagination = query.data?.pagination
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Purchase Requests</h1>
-          <p className="text-sm text-muted-foreground">The first step of the procurement chain — request, approve, convert to a PO.</p>
-        </div>
-        {canCreate && (
+    <PageLayout
+      title="Purchase Requests"
+      description="The first step of the procurement chain — request, approve, convert to a PO."
+      actions={
+        canCreate && (
           <Button onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />
             New request
           </Button>
-        )}
-      </div>
-
+        )
+      }
+    >
       <Select
         value={status}
         onValueChange={(v) => {
@@ -88,57 +90,57 @@ export default function PurchaseRequestsPage() {
         </SelectContent>
       </Select>
 
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Request #</TableHead>
-              <TableHead>Store</TableHead>
-              <TableHead>Items</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Created</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {query.isLoading ? (
+      {query.isLoading ? (
+        <TableSkeleton rows={8} columns={5} />
+      ) : requests.length === 0 ? (
+        <EmptyState
+          variant={status === 'ALL' ? 'empty' : 'search'}
+          title="No purchase requests yet"
+          action={canCreate ? { label: 'New request', onClick: () => setCreateOpen(true) } : undefined}
+        />
+      ) : (
+        <TableContainer className="max-h-[65vh]">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Request #</TableHead>
+                <TableHead>Store</TableHead>
+                <TableHead>Items</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Created</TableHead>
               </TableRow>
-            ) : requests.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                  No purchase requests yet.
-                </TableCell>
-              </TableRow>
-            ) : (
-              requests.map((r) => (
-                <TableRow key={r.id} className="cursor-pointer hover:bg-muted/50">
+            </TableHeader>
+            <TableBody>
+              {requests.map((r) => (
+                <TableRow key={r.id} interactive onClick={() => router.push(`/dashboard/inventory/purchase-requests/${r.id}`)}>
                   <TableCell className="font-mono text-xs">
-                    <Link href={`/dashboard/inventory/purchase-requests/${r.id}`} className="text-primary hover:underline">
+                    <Link
+                      href={`/dashboard/inventory/purchase-requests/${r.id}`}
+                      className="text-primary hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       {r.requestNumber}
                     </Link>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">{r.store.name}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{r.items.length} item(s)</TableCell>
                   <TableCell>
-                    <Badge variant={STATUS_BADGE[r.status]}>{formatEnumLabel(r.status)}</Badge>
+                    <StatusBadge status={r.status} />
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">{new Date(r.createdAt).toLocaleDateString('en-IN')}</TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       {pagination && pagination.totalPages > 1 && (
         <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={setPage} />
       )}
 
       <CreateRequestDialog open={createOpen} onOpenChange={setCreateOpen} />
-    </div>
+    </PageLayout>
   )
 }
 

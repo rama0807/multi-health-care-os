@@ -6,12 +6,17 @@ import { CheckCircle2, Download, Loader2, Plus, XCircle } from 'lucide-react'
 import { useParams } from 'next/navigation'
 import { useState } from 'react'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle, CardToolbar } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
+import { PageHeaderMeta } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -37,20 +42,6 @@ function getErrorMessage(error: unknown): string {
 
 function formatEnumLabel(value: string): string {
   return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
-}
-
-const STATUS_BADGE: Record<string, 'secondary' | 'success' | 'destructive' | 'outline'> = {
-  DRAFT: 'secondary',
-  ISSUED: 'outline',
-  PARTIALLY_PAID: 'outline',
-  PAID: 'success',
-  OVERDUE: 'destructive',
-  CANCELLED: 'destructive',
-  REFUNDED: 'destructive',
-  PENDING: 'secondary',
-  COMPLETED: 'success',
-  REJECTED: 'destructive',
-  APPROVED: 'success',
 }
 
 export default function InvoiceDetailPage() {
@@ -134,9 +125,33 @@ export default function InvoiceDetailPage() {
     onError: (error) => toast({ variant: 'destructive', title: 'Could not reject refund', description: getErrorMessage(error) }),
   })
 
-  if (invoiceQuery.isLoading) return <p className="text-sm text-muted-foreground">Loading...</p>
+  if (invoiceQuery.isLoading) {
+    return (
+      <PageLayout
+        breadcrumbs={[{ label: 'Billing', href: '/dashboard/billing' }, { label: 'Invoices', href: '/dashboard/billing/invoices' }, { label: '…' }]}
+        title="…"
+        loading
+      >
+        <div className="flex h-64 items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </PageLayout>
+    )
+  }
   if (invoiceQuery.isError || !invoice) {
-    return <p className="text-sm text-muted-foreground">Couldn&apos;t load this invoice. {getErrorMessage(invoiceQuery.error)}</p>
+    return (
+      <PageLayout
+        breadcrumbs={[{ label: 'Billing', href: '/dashboard/billing' }, { label: 'Invoices', href: '/dashboard/billing/invoices' }, { label: 'Not found' }]}
+        title="Invoice not found"
+      >
+        <EmptyState
+          variant="error"
+          title="Couldn't load this invoice"
+          description={getErrorMessage(invoiceQuery.error)}
+          action={{ label: 'Back to invoices', href: '/dashboard/billing/invoices' }}
+        />
+      </PageLayout>
+    )
   }
 
   const canPay = canCreate && (invoice.status === InvoiceStatus.ISSUED || invoice.status === InvoiceStatus.PARTIALLY_PAID)
@@ -147,18 +162,21 @@ export default function InvoiceDetailPage() {
       invoice.status === InvoiceStatus.REFUNDED)
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-        <div>
-          <h1 className="flex items-center gap-2 text-xl font-semibold text-foreground">
-            {invoice.invoiceNumber}
-            <Badge variant={STATUS_BADGE[invoice.status]}>{formatEnumLabel(invoice.status)}</Badge>
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {invoice.patient.fullName} · {invoice.patient.uhid}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+    <PageLayout
+      breadcrumbs={[
+        { label: 'Billing', href: '/dashboard/billing' },
+        { label: 'Invoices', href: '/dashboard/billing/invoices' },
+        { label: invoice.invoiceNumber },
+      ]}
+      title={invoice.invoiceNumber}
+      badge={<StatusBadge status={invoice.status} />}
+      meta={
+        <PageHeaderMeta label="Patient">
+          {invoice.patient.fullName} · {invoice.patient.uhid}
+        </PageHeaderMeta>
+      }
+      actions={
+        <>
           <Button variant="outline" onClick={() => void downloadInvoicePdf(invoice.id, invoice.invoiceNumber)}>
             <Download className="h-4 w-4" />
             PDF
@@ -181,11 +199,11 @@ export default function InvoiceDetailPage() {
               Cancel
             </Button>
           )}
-        </div>
-      </div>
-
+        </>
+      }
+    >
       {invoice.discountApprovalStatus === DiscountApprovalStatus.PENDING && (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-warning-border bg-warning-subtle p-3 text-sm text-warning-subtle-foreground">
           <span>
             Discount pending approval: {invoice.discountType === DiscountType.FLAT ? `₹${invoice.discountValue}` : `${invoice.discountValue}%`} —{' '}
             {invoice.discountReason}
@@ -206,63 +224,67 @@ export default function InvoiceDetailPage() {
       )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="rounded-lg border bg-card lg:col-span-2">
-          <div className="border-b p-3">
-            <h3 className="text-sm font-semibold text-foreground">Line items</h3>
-          </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Item</TableHead>
-                <TableHead>Qty</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Disc%</TableHead>
-                <TableHead>Tax%</TableHead>
-                <TableHead>Total</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {invoice.items.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    {item.itemName}
-                    <span className="ml-1 text-xs text-muted-foreground">({item.category})</span>
-                  </TableCell>
-                  <TableCell>{item.quantity}</TableCell>
-                  <TableCell>₹{item.unitPrice}</TableCell>
-                  <TableCell>{item.discountPercent}%</TableCell>
-                  <TableCell>{item.taxPercent}%</TableCell>
-                  <TableCell>₹{item.totalPrice}</TableCell>
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Line items</CardTitle>
+          </CardHeader>
+          <TableContainer className="rounded-none border-0 border-y">
+            <Table density="compact" container={false}>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Item</TableHead>
+                  <TableHead align="right">Qty</TableHead>
+                  <TableHead align="right">Price</TableHead>
+                  <TableHead align="right">Disc%</TableHead>
+                  <TableHead align="right">Tax%</TableHead>
+                  <TableHead align="right">Total</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {invoice.items.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>
+                      {item.itemName}
+                      <span className="ml-1 text-xs text-muted-foreground">({item.category})</span>
+                    </TableCell>
+                    <TableCell align="right">{item.quantity}</TableCell>
+                    <TableCell align="right">₹{item.unitPrice}</TableCell>
+                    <TableCell align="right">{item.discountPercent}%</TableCell>
+                    <TableCell align="right">{item.taxPercent}%</TableCell>
+                    <TableCell align="right">₹{item.totalPrice}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Card>
 
-        <div className="space-y-2 rounded-lg border bg-card p-4 text-sm">
-          <Row label="Subtotal" value={`₹${invoice.subtotal}`} />
-          <Row label="Discount" value={`-₹${invoice.discountAmount}`} />
-          <Row label="Tax" value={`₹${invoice.taxAmount}`} />
-          <Row label="Total" value={`₹${invoice.totalAmount}`} bold />
-          <Row label="Paid" value={`₹${invoice.paidAmount}`} />
-          <Row label="Balance due" value={`₹${invoice.balanceDue}`} bold />
-        </div>
+        <Card>
+          <CardContent className="space-y-2 pt-4 text-sm">
+            <Row label="Subtotal" value={`₹${invoice.subtotal}`} />
+            <Row label="Discount" value={`-₹${invoice.discountAmount}`} />
+            <Row label="Tax" value={`₹${invoice.taxAmount}`} />
+            <Row label="Total" value={`₹${invoice.totalAmount}`} bold />
+            <Row label="Paid" value={`₹${invoice.paidAmount}`} />
+            <Row label="Balance due" value={`₹${invoice.balanceDue}`} bold />
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="rounded-lg border bg-card">
-        <div className="flex items-center justify-between border-b p-3">
-          <h3 className="text-sm font-semibold text-foreground">Payments</h3>
+      <Card>
+        <CardToolbar>
+          <CardTitle>Payments</CardTitle>
           {canPay && (
             <Button size="sm" variant="outline" onClick={() => setPaymentDialogOpen(true)}>
               <Plus className="h-3.5 w-3.5" />
               Record payment
             </Button>
           )}
-        </div>
+        </CardToolbar>
         {invoice.payments.length === 0 ? (
-          <p className="p-4 text-sm text-muted-foreground">No payments recorded yet.</p>
+          <EmptyState compact title="No payments recorded yet" />
         ) : (
-          <ul className="divide-y">
+          <ul className="divide-y border-t">
             {invoice.payments.map((p) => (
               <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
                 <span className="font-mono text-xs text-muted-foreground">{p.paymentNumber}</span>
@@ -277,28 +299,28 @@ export default function InvoiceDetailPage() {
             ))}
           </ul>
         )}
-      </div>
+      </Card>
 
-      <div className="rounded-lg border bg-card">
-        <div className="flex items-center justify-between border-b p-3">
-          <h3 className="text-sm font-semibold text-foreground">Refunds</h3>
+      <Card>
+        <CardToolbar>
+          <CardTitle>Refunds</CardTitle>
           {canRefund && (
             <Button size="sm" variant="outline" onClick={() => setRefundDialogOpen(true)}>
               <Plus className="h-3.5 w-3.5" />
               Request refund
             </Button>
           )}
-        </div>
+        </CardToolbar>
         {invoice.refunds.length === 0 ? (
-          <p className="p-4 text-sm text-muted-foreground">No refunds recorded yet.</p>
+          <EmptyState compact title="No refunds recorded yet" />
         ) : (
-          <ul className="divide-y">
+          <ul className="divide-y border-t">
             {invoice.refunds.map((r) => (
               <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
                 <span className="font-mono text-xs text-muted-foreground">{r.refundNumber}</span>
                 <span>₹{r.amount}</span>
                 <span className="text-xs text-muted-foreground">{r.reason}</span>
-                <Badge variant={STATUS_BADGE[r.status]}>{formatEnumLabel(r.status)}</Badge>
+                <StatusBadge status={r.status} />
                 {canManage && r.status === RefundStatus.PENDING && (
                   <div className="ml-auto flex gap-2">
                     <Button size="sm" onClick={() => approveRefundMutation.mutate(r.id)} disabled={approveRefundMutation.isPending}>
@@ -313,7 +335,7 @@ export default function InvoiceDetailPage() {
             ))}
           </ul>
         )}
-      </div>
+      </Card>
 
       <RecordPaymentDialog
         open={paymentDialogOpen}
@@ -353,7 +375,7 @@ export default function InvoiceDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageLayout>
   )
 }
 

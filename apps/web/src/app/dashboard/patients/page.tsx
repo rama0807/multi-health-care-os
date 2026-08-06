@@ -16,6 +16,7 @@ import {
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -32,17 +33,22 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/ui/pagination'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { TableSkeleton } from '@/components/ui/skeleton'
 import {
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
   TableHeader,
   TableRow,
+  TableRowActions,
 } from '@/components/ui/table'
+import { BulkActionBar, FilterBar, SearchInput } from '@/components/ui/toolbar'
 import { useToast } from '@/hooks/use-toast'
 import { deletePatient, importPatientsCsv, listPatients, restorePatient } from '@/lib/api/patients'
 import { useAuth } from '@/lib/auth/auth-context'
@@ -167,16 +173,22 @@ export default function PatientsListPage() {
   const canDelete = hasPermission('patients.delete')
   const canManage = hasPermission('patients.manage')
 
+  const activeFilterCount = [qInput.length > 0, gender !== 'all', status !== 'active'].filter(Boolean).length
+
+  function clearFilters() {
+    setQInput('')
+    setGender('all')
+    setStatus('active')
+  }
+
+  const columnCount = canDelete ? 8 : 7
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Patients</h1>
-          <p className="text-sm text-muted-foreground">
-            {pagination ? `${pagination.total} registered patient${pagination.total === 1 ? '' : 's'}` : 'Loading...'}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+    <PageLayout
+      title="Patients"
+      description={pagination ? `${pagination.total} registered patient${pagination.total === 1 ? '' : 's'}` : undefined}
+      actions={
+        <>
           <Button variant="outline" disabled title="CSV export is coming soon">
             Export
           </Button>
@@ -194,18 +206,17 @@ export default function PatientsListPage() {
               </Link>
             </Button>
           )}
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <Input
-          placeholder="Search by name, UHID, or phone..."
+        </>
+      }
+    >
+      <FilterBar activeCount={activeFilterCount} onClear={clearFilters}>
+        <SearchInput
           value={qInput}
-          onChange={(e) => setQInput(e.target.value)}
-          className="sm:max-w-xs"
+          onValueChange={setQInput}
+          placeholder="Search by name, UHID, or phone..."
         />
         <Select value={gender} onValueChange={setGender}>
-          <SelectTrigger className="sm:w-40">
+          <SelectTrigger className="w-40">
             <SelectValue placeholder="Gender" />
           </SelectTrigger>
           <SelectContent>
@@ -218,7 +229,7 @@ export default function PatientsListPage() {
           </SelectContent>
         </Select>
         <Select value={status} onValueChange={(v) => setStatus(v as 'active' | 'inactive')}>
-          <SelectTrigger className="sm:w-40">
+          <SelectTrigger className="w-40">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -226,74 +237,62 @@ export default function PatientsListPage() {
             <SelectItem value="inactive">Deactivated</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </FilterBar>
 
-      {selected.size > 0 && canDelete && (
-        <div className="flex items-center justify-between rounded-md border bg-muted/40 px-4 py-2">
-          <span className="text-sm text-muted-foreground">{selected.size} selected</span>
-          <Button variant="destructive" size="sm" onClick={() => setConfirmBulkDeactivate(true)}>
-            <Trash2 />
-            Deactivate selected
-          </Button>
-        </div>
-      )}
-
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {canDelete && (
-                <TableHead className="w-10">
-                  <Checkbox
-                    checked={patients.length > 0 && selected.size === patients.length}
-                    onCheckedChange={(checked) => toggleSelectAll(Boolean(checked))}
-                    aria-label="Select all patients on this page"
-                  />
-                </TableHead>
-              )}
-              <SortableHead label="UHID" column="uhid" sortBy={sortBy} sortOrder={sortOrder} onSort={toggleSort} />
-              <SortableHead
-                label="Name"
-                column="firstName"
-                sortBy={sortBy}
-                sortOrder={sortOrder}
-                onSort={toggleSort}
-              />
-              <TableHead>Phone</TableHead>
-              <TableHead>Age / Gender</TableHead>
-              <TableHead>City</TableHead>
-              <SortableHead
-                label="Registered"
-                column="createdAt"
-                sortBy={sortBy}
-                sortOrder={sortOrder}
-                onSort={toggleSort}
-              />
-              <TableHead className="w-10" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {query.isLoading ? (
+      {query.isLoading ? (
+        <TableSkeleton rows={8} columns={columnCount} />
+      ) : query.isError ? (
+        <EmptyState variant="error" title="Couldn't load patients" description={getErrorMessage(query.error)} />
+      ) : patients.length === 0 && activeFilterCount > 0 ? (
+        <EmptyState
+          variant="search"
+          title="No patients match these filters"
+          secondaryAction={{ label: 'Clear filters', onClick: clearFilters }}
+        />
+      ) : patients.length === 0 ? (
+        <EmptyState
+          title={status === 'inactive' ? 'No deactivated patients' : 'No patients yet'}
+          description={status === 'inactive' ? undefined : 'Register the first one to get started.'}
+          action={canCreate && status === 'active' ? { label: 'Register patient', href: '/dashboard/patients/new' } : undefined}
+        />
+      ) : (
+        <TableContainer className="max-h-[65vh]">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                {canDelete && (
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={patients.length > 0 && selected.size === patients.length}
+                      onCheckedChange={(checked) => toggleSelectAll(Boolean(checked))}
+                      aria-label="Select all patients on this page"
+                    />
+                  </TableHead>
+                )}
+                <SortableHead label="UHID" column="uhid" sortBy={sortBy} sortOrder={sortOrder} onSort={toggleSort} />
+                <SortableHead
+                  label="Name"
+                  column="firstName"
+                  sortBy={sortBy}
+                  sortOrder={sortOrder}
+                  onSort={toggleSort}
+                />
+                <TableHead>Phone</TableHead>
+                <TableHead>Age / Gender</TableHead>
+                <TableHead>City</TableHead>
+                <SortableHead
+                  label="Registered"
+                  column="createdAt"
+                  sortBy={sortBy}
+                  sortOrder={sortOrder}
+                  onSort={toggleSort}
+                />
+                <TableHead className="w-10" />
               </TableRow>
-            ) : query.isError ? (
-              <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                  Couldn&apos;t load patients. {getErrorMessage(query.error)}
-                </TableCell>
-              </TableRow>
-            ) : patients.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                  No patients found.
-                </TableCell>
-              </TableRow>
-            ) : (
-              patients.map((patient) => (
-                <TableRow key={patient.id} data-state={selected.has(patient.id) ? 'selected' : undefined}>
+            </TableHeader>
+            <TableBody>
+              {patients.map((patient) => (
+                <TableRow key={patient.id} selected={selected.has(patient.id)}>
                   {canDelete && (
                     <TableCell>
                       <Checkbox
@@ -314,48 +313,57 @@ export default function PatientsListPage() {
                     {patient.age}y · {patient.gender.charAt(0) + patient.gender.slice(1).toLowerCase()}
                   </TableCell>
                   <TableCell>{patient.city ?? '—'}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+                  <TableCell className="text-muted-foreground">
                     {new Date(patient.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
                   </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild>
-                          <Link href={`/dashboard/patients/${patient.id}`}>View profile</Link>
-                        </DropdownMenuItem>
-                        {status === 'active' && canDelete && (
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={() => void handleDeactivate(patient.id)}
-                          >
-                            <Trash2 />
-                            Deactivate
+                  <TableCell align="right">
+                    <TableRowActions>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild>
+                            <Link href={`/dashboard/patients/${patient.id}`}>View profile</Link>
                           </DropdownMenuItem>
-                        )}
-                        {status === 'inactive' && canUpdate && (
-                          <DropdownMenuItem onClick={() => void handleRestore(patient.id)}>
-                            <RotateCcw />
-                            Restore
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                          {status === 'active' && canDelete && (
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => void handleDeactivate(patient.id)}
+                            >
+                              <Trash2 />
+                              Deactivate
+                            </DropdownMenuItem>
+                          )}
+                          {status === 'inactive' && canUpdate && (
+                            <DropdownMenuItem onClick={() => void handleRestore(patient.id)}>
+                              <RotateCcw />
+                              Restore
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableRowActions>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       {pagination && (
         <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={setPage} />
       )}
+
+      <BulkActionBar count={canDelete ? selected.size : 0} onClear={() => setSelected(new Set())} noun="patient">
+        <Button variant="destructive" size="sm" onClick={() => setConfirmBulkDeactivate(true)}>
+          <Trash2 />
+          Deactivate
+        </Button>
+      </BulkActionBar>
 
       <Dialog open={confirmBulkDeactivate} onOpenChange={setConfirmBulkDeactivate}>
         <DialogContent>
@@ -383,7 +391,7 @@ export default function PatientsListPage() {
         onOpenChange={setImportDialogOpen}
         onImported={() => void queryClient.invalidateQueries({ queryKey: ['patients'] })}
       />
-    </div>
+    </PageLayout>
   )
 }
 

@@ -2,16 +2,18 @@
 
 import { PurchaseRequestStatus } from '@medicore/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { useState } from 'react'
 
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
+import { PageLayout } from '@/components/layout/page-layout'
 import { Button } from '@/components/ui/button'
+import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { EmptyState } from '@/components/ui/empty-state'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -28,22 +30,8 @@ function getErrorMessage(error: unknown): string {
   return axiosError?.response?.data?.error?.message ?? 'Something went wrong. Please try again.'
 }
 
-function formatEnumLabel(value: string): string {
-  return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
-}
-
-const STATUS_BADGE: Record<PurchaseRequestStatus, 'secondary' | 'outline' | 'success' | 'destructive'> = {
-  [PurchaseRequestStatus.DRAFT]: 'secondary',
-  [PurchaseRequestStatus.SUBMITTED]: 'outline',
-  [PurchaseRequestStatus.APPROVED]: 'success',
-  [PurchaseRequestStatus.REJECTED]: 'destructive',
-  [PurchaseRequestStatus.CONVERTED]: 'success',
-  [PurchaseRequestStatus.CANCELLED]: 'destructive',
-}
-
 export default function PurchaseRequestDetailPage() {
   const params = useParams<{ id: string }>()
-  const router = useRouter()
   const { hasPermission } = useAuth()
   const { toast } = useToast()
   const queryClient = useQueryClient()
@@ -97,24 +85,31 @@ export default function PurchaseRequestDetailPage() {
 
   if (prQuery.isLoading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
+      <PageLayout
+        breadcrumbs={[{ label: 'Inventory', href: '/dashboard/inventory' }, { label: 'Purchase Requests', href: '/dashboard/inventory/purchase-requests' }, { label: '…' }]}
+        title="…"
+        loading
+      >
+        <div className="flex h-64 items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </PageLayout>
     )
   }
 
   if (prQuery.isError || !prQuery.data) {
     return (
-      <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Purchase request not found</AlertTitle>
-        <AlertDescription>
-          {getErrorMessage(prQuery.error)}{' '}
-          <Button variant="link" className="h-auto p-0" onClick={() => router.push('/dashboard/inventory/purchase-requests')}>
-            Back to list
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <PageLayout
+        breadcrumbs={[{ label: 'Inventory', href: '/dashboard/inventory' }, { label: 'Purchase Requests', href: '/dashboard/inventory/purchase-requests' }, { label: 'Not found' }]}
+        title="Purchase request not found"
+      >
+        <EmptyState
+          variant="error"
+          title="Purchase request not found"
+          description={getErrorMessage(prQuery.error)}
+          action={{ label: 'Back to list', href: '/dashboard/inventory/purchase-requests' }}
+        />
+      </PageLayout>
     )
   }
 
@@ -122,18 +117,19 @@ export default function PurchaseRequestDetailPage() {
   const canCancel = [PurchaseRequestStatus.DRAFT, PurchaseRequestStatus.SUBMITTED, PurchaseRequestStatus.APPROVED].includes(pr.status)
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="font-mono text-lg font-semibold text-foreground">{pr.requestNumber}</h1>
-            <Badge variant={STATUS_BADGE[pr.status]}>{formatEnumLabel(pr.status)}</Badge>
-          </div>
-          <p className="text-sm text-muted-foreground">Store: {pr.store.name}</p>
-          {pr.rejectionReason && <p className="text-xs text-destructive">Rejected: {pr.rejectionReason}</p>}
-        </div>
-        {canUpdate && (
-          <div className="flex flex-wrap gap-2">
+    <PageLayout
+      breadcrumbs={[
+        { label: 'Inventory', href: '/dashboard/inventory' },
+        { label: 'Purchase Requests', href: '/dashboard/inventory/purchase-requests' },
+        { label: pr.requestNumber },
+      ]}
+      title={pr.requestNumber}
+      badge={<StatusBadge status={pr.status} />}
+      description={pr.rejectionReason ? `Rejected: ${pr.rejectionReason}` : undefined}
+      meta={<span>Store: {pr.store.name}</span>}
+      actions={
+        canUpdate && (
+          <>
             {pr.status === PurchaseRequestStatus.DRAFT && (
               <Button size="sm" onClick={() => submitMutation.mutate()} disabled={submitMutation.isPending}>
                 Submit
@@ -159,41 +155,43 @@ export default function PurchaseRequestDetailPage() {
                 Cancel
               </Button>
             )}
-          </div>
-        )}
-      </div>
-
-      <div className="rounded-lg border bg-card">
-        <div className="border-b p-3">
-          <h3 className="text-sm font-semibold text-foreground">Items</h3>
-        </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Item</TableHead>
-              <TableHead>Quantity</TableHead>
-              <TableHead>Notes</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {pr.items.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell>
-                  {item.item.name} <span className="font-mono text-xs text-muted-foreground">({item.item.code})</span>
-                </TableCell>
-                <TableCell>{item.quantity}</TableCell>
-                <TableCell className="text-xs text-muted-foreground">{item.notes ?? '—'}</TableCell>
+          </>
+        )
+      }
+    >
+      <Card>
+        <CardHeader>
+          <CardTitle>Items</CardTitle>
+        </CardHeader>
+        <TableContainer className="rounded-none border-0 border-y">
+          <Table density="compact" container={false}>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Item</TableHead>
+                <TableHead align="right">Quantity</TableHead>
+                <TableHead>Notes</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+            </TableHeader>
+            <TableBody>
+              {pr.items.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell>
+                    {item.item.name} <span className="font-mono text-xs text-muted-foreground">({item.item.code})</span>
+                  </TableCell>
+                  <TableCell align="right">{item.quantity}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{item.notes ?? '—'}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Card>
 
       {pr.notes && (
-        <div className="rounded-lg border bg-card p-3 text-sm">
+        <Card className="p-3 text-sm">
           <span className="font-semibold text-foreground">Notes: </span>
           {pr.notes}
-        </div>
+        </Card>
       )}
 
       <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
@@ -214,6 +212,6 @@ export default function PurchaseRequestDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageLayout>
   )
 }

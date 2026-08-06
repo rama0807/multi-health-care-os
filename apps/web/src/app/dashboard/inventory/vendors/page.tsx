@@ -5,12 +5,23 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2, Plus, Star } from 'lucide-react'
 import { useState } from 'react'
 
-import { Badge } from '@/components/ui/badge'
+import { PageLayout } from '@/components/layout/page-layout'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/ui/pagination'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { createVendor, listVendors, rateVendor, updateVendor } from '@/lib/api/inventory'
@@ -41,20 +52,18 @@ export default function VendorsPage() {
   const pagination = vendorsQuery.data?.pagination
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Vendors</h1>
-          <p className="text-sm text-muted-foreground">Suppliers — contact details, GST/PAN, payment terms, ratings.</p>
-        </div>
-        {canCreate && (
+    <PageLayout
+      title="Vendors"
+      description="Suppliers — contact details, GST/PAN, payment terms, ratings."
+      actions={
+        canCreate && (
           <Button onClick={() => setDialogOpen(true)}>
             <Plus className="h-4 w-4" />
             Add vendor
           </Button>
-        )}
-      </div>
-
+        )
+      }
+    >
       <Input
         placeholder="Search by name, code, or GSTIN"
         value={search}
@@ -65,35 +74,31 @@ export default function VendorsPage() {
         className="max-w-xs"
       />
 
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Code</TableHead>
-              <TableHead>Contact</TableHead>
-              <TableHead>Payment terms</TableHead>
-              <TableHead>Rating</TableHead>
-              <TableHead>Outstanding</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {vendorsQuery.isLoading ? (
+      {vendorsQuery.isLoading ? (
+        <TableSkeleton rows={8} columns={8} />
+      ) : vendors.length === 0 ? (
+        <EmptyState
+          variant={search ? 'search' : 'empty'}
+          title="No vendors yet"
+          action={canCreate ? { label: 'Add vendor', onClick: () => setDialogOpen(true) } : undefined}
+        />
+      ) : (
+        <TableContainer className="max-h-[65vh]">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Name</TableHead>
+                <TableHead>Code</TableHead>
+                <TableHead>Contact</TableHead>
+                <TableHead>Payment terms</TableHead>
+                <TableHead>Rating</TableHead>
+                <TableHead align="right">Outstanding</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-32" />
               </TableRow>
-            ) : vendors.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                  No vendors yet.
-                </TableCell>
-              </TableRow>
-            ) : (
-              vendors.map((v) => (
+            </TableHeader>
+            <TableBody>
+              {vendors.map((v) => (
                 <TableRow key={v.id}>
                   <TableCell className="font-medium">{v.name}</TableCell>
                   <TableCell className="font-mono text-xs">{v.code}</TableCell>
@@ -109,9 +114,9 @@ export default function VendorsPage() {
                       <span className="text-xs text-muted-foreground">No ratings</span>
                     )}
                   </TableCell>
-                  <TableCell className="text-xs">₹{Number(v.outstandingBalance).toLocaleString('en-IN')}</TableCell>
+                  <TableCell align="right" className="text-xs">₹{Number(v.outstandingBalance).toLocaleString('en-IN')}</TableCell>
                   <TableCell>
-                    <Badge variant={v.isActive ? 'success' : 'secondary'}>{v.isActive ? 'Active' : 'Inactive'}</Badge>
+                    <StatusBadge status={v.isActive ? 'ACTIVE' : 'INACTIVE'} />
                   </TableCell>
                   <TableCell className="flex gap-1">
                     {canUpdate && (
@@ -126,11 +131,11 @@ export default function VendorsPage() {
                     )}
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       {pagination && pagination.totalPages > 1 && (
         <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={setPage} />
@@ -139,7 +144,7 @@ export default function VendorsPage() {
       <VendorDialog open={dialogOpen} onOpenChange={setDialogOpen} />
       {editing && <VendorDialog open onOpenChange={(open) => !open && setEditing(null)} vendor={editing} />}
       {rating && <RateVendorDialog vendor={rating} onOpenChange={(open) => !open && setRating(null)} />}
-    </div>
+    </PageLayout>
   )
 }
 

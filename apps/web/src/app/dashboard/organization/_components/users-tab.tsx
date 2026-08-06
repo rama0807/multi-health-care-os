@@ -3,7 +3,12 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { Badge } from '@/components/ui/badge'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { EmptyState } from '@/components/ui/empty-state'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { StatCard, StatCardGrid } from '@/components/ui/stat-card'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { getOrganizationAdmins, getOrganizationStats } from '@/lib/api/organization'
 
 import { formatDateTime } from './format'
@@ -31,81 +36,66 @@ export function UsersTab() {
   return (
     <div className="space-y-4 pt-4">
       {stats && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Stat label="Total users" value={stats.users.total} />
-          <Stat label="Active users" value={stats.users.active} />
-          <Stat label="Signed in (last 30 days)" value={stats.users.activeLast30Days} />
-        </div>
+        <StatCardGrid columns={3}>
+          <StatCard label="Total users" value={stats.users.total} />
+          <StatCard label="Active users" value={stats.users.active} />
+          <StatCard label="Signed in (last 30 days)" value={stats.users.activeLast30Days} />
+        </StatCardGrid>
       )}
 
-      <div className="rounded-lg border bg-card">
-        <div className="border-b px-4 py-3">
-          <h3 className="text-sm font-semibold text-foreground">Organization administrators</h3>
-          <p className="text-xs text-muted-foreground">
+      <Card>
+        <CardHeader>
+          <CardTitle>Organization administrators</CardTitle>
+          <CardDescription>
             Users holding an organization-admin role. Manage the wider staff directory under Staff.
-          </p>
-        </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Roles</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Last sign-in</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {adminsQuery.isLoading && (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
-                  Loading administrators…
-                </TableCell>
-              </TableRow>
-            )}
-            {!adminsQuery.isLoading && admins.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
-                  No administrators found.
-                </TableCell>
-              </TableRow>
-            )}
-            {admins.map((admin) => (
-              <TableRow key={admin.id}>
-                <TableCell className="font-medium">
-                  {admin.firstName} {admin.lastName}
-                </TableCell>
-                <TableCell>{admin.email}</TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-1">
-                    {admin.roles.map((role) => (
-                      <Badge key={role.roleId} variant="secondary">
-                        {role.roleName}
-                        {role.hospitalId ? ' (hospital-scoped)' : ''}
-                      </Badge>
-                    ))}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={admin.status === 'ACTIVE' ? 'default' : 'secondary'}>
-                    {admin.status.replace(/_/g, ' ').toLowerCase()}
-                  </Badge>
-                </TableCell>
-                <TableCell>{formatDateTime(admin.lastLoginAt)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
-  )
-}
-
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-lg border bg-card p-4">
-      <p className="text-lg font-semibold text-foreground">{value}</p>
-      <p className="text-xs text-muted-foreground">{label}</p>
+          </CardDescription>
+        </CardHeader>
+        {adminsQuery.isLoading ? (
+          <div className="p-4">
+            <TableSkeleton rows={4} columns={5} />
+          </div>
+        ) : admins.length === 0 ? (
+          <EmptyState compact title="No administrators found" />
+        ) : (
+          <TableContainer className="rounded-none border-0 border-y">
+            <Table density="compact" container={false}>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Roles</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Last sign-in</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {admins.map((admin) => (
+                  <TableRow key={admin.id}>
+                    <TableCell className="font-medium">
+                      {admin.firstName} {admin.lastName}
+                    </TableCell>
+                    <TableCell>{admin.email}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {admin.roles.map((role) => (
+                          <Badge key={role.roleId} variant="neutral">
+                            {role.roleName}
+                            {role.hospitalId ? ' (hospital-scoped)' : ''}
+                          </Badge>
+                        ))}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={admin.status} />
+                    </TableCell>
+                    <TableCell>{formatDateTime(admin.lastLoginAt)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Card>
     </div>
   )
 }

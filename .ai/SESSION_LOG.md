@@ -6,6 +6,97 @@
 
 ---
 
+## Session — 2026-08-06 — Design System V2, Phase 2: every feature page migrated
+
+### What was completed
+
+Phase 2 of the same-day redesign instruction: migrated **all 18 frontend
+modules** (Dashboard home, Patients, Doctors, Appointments, Medical Records,
+Laboratory, Radiology, Pharmacy, Billing, Insurance, IPD, Nursing, Inventory,
+Staff, Organization, Reports, Notifications, AI — ~90 files) onto the Phase 1
+primitives (`PageLayout`, `StatusBadge`, `Card`/`CardHeader`/`CardContent`/
+`CardFooter`, `TableContainer`+`Table`, `EmptyState`, `StatCard`/
+`StatCardGrid`, `FilterBar`/`SearchInput`, real `recharts` charts). Full detail
+in `PROGRESS.md` and `CHANGELOG.md`.
+
+**Executed strictly UI/UX-only**, per explicit instruction: no backend, API,
+route, business-logic, permission, workflow or Prisma-schema change; no
+browser testing, screenshots or image generation; docs updated only now, at
+the very end, not per-module.
+
+**Cadence:** one module = one checkpoint. For each: read every file, migrate
+header/table/badges/empty-states onto the primitives, then run
+`pnpm --filter @medicore/web typecheck`, `lint`, `build` in sequence before
+moving to the next module. All 18 passed clean before the full-repo
+verification at the end.
+
+**Centralizing `StatusBadge` surfaced real, pre-existing colour bugs** — not
+introduced by this work, but only visible once every module's independent
+status-colour guess was replaced by one shared map. See `CHANGELOG.md` for the
+full list (Cancelled rendering red in two modules, In Consultation rendering
+green, pharmacy low-stock rendering red instead of amber, an IPD bed-grid
+contrast-pairing bug). Five additive entries were added to the shared
+`STATUS_TONES` map (`UNDER_RENOVATION`, `ADMINISTERED`, `TRIALING`,
+`PAST_DUE`, `SUCCEEDED`) — nothing existing was changed. One genuine semantic
+ambiguity (nursing risk levels vs. lab abnormal flags both using `LOW`/`HIGH`
+with opposite meaning) was handled via `StatusBadge`'s sanctioned `tone`
+override, documented inline, rather than by corrupting the shared map.
+
+### Files modified
+
+~90 files under `apps/web/src/app/dashboard/**` (every module listed above),
+plus `apps/web/src/components/ui/status-badge.tsx` (5 additive map entries)
+and this session's `.ai/` doc updates (`PROGRESS.md`, `CHANGELOG.md`,
+`MODULE_STATUS.md`, `TECH_DEBT.md`, `NEXT.md`, this file). No file outside
+`apps/web` and `.ai/` changed.
+
+### Architectural decisions made
+
+None new — this executed the migration ADR-0031 already specified for Phase
+2. The bug fixes above are corrections against ADR-0031's own stated status
+vocabulary, not new decisions.
+
+### Known issues
+
+- **TD-0077 is now resolved.**
+- **TD-0074 — branding still reaches only `organizations.read` holders.**
+  Unchanged; needs a backend change, correctly out of scope for this pass.
+- **TD-0075 — the hospital selector still filters nothing.** Unchanged for
+  the same reason; its `.ai/TECH_DEBT.md` entry now says explicitly that Phase
+  2 did not close it, rather than leaving that implied.
+- **Not browser-verified. No screenshots** — both by the same explicit
+  instruction that started this phase.
+- **`pnpm test:e2e` could not be run** — pre-existing, documented local-infra
+  gap (TD-0004: `medicore_test`/`medicore_dev` need a running, migrated
+  Postgres + Redis this session's environment did not have). Confirmed
+  unrelated: `git status` on `apps/api`/`packages/database` shows zero change
+  from this session.
+
+### Verification
+
+`pnpm lint`, `pnpm typecheck`, `pnpm build` — clean across all 5 packages.
+`pnpm test` — **785 API unit tests across 96 suites** and **49 web unit tests
+across 3 suites**, zero failures (both unchanged from Phase 1 — this work
+added no new tests, by design, since it changed no behaviour to test).
+`pnpm test:e2e` — could not run; see above.
+
+### Recommended next task
+
+Nothing is queued automatically. The two realistic options, neither to be
+started without a fresh instruction: (1) close **TD-0074** (include
+`branding` in the login/refresh payload so every role sees tenant branding,
+not just `organizations.read` holders) and **TD-0075** (wire
+`activeHospitalId` into each module's queries) — both small, backend-touching
+fixes; or (2) resume the explicitly-paused AI roadmap (Checkpoints 15.2–15.5).
+
+### Estimated project completion
+
+Unchanged in feature terms. Frontend presentation layer: **Design System V2
+complete — both phases (100%)**. TD-0077 closed; TD-0074/TD-0075 remain open
+and are backend-touching, not presentation work.
+
+---
+
 ## Session — 2026-08-06 — Design System V2, Phase 1: the reusable UI foundation
 
 ### What was completed

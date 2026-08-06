@@ -3,7 +3,6 @@
 import { RadiologyAttachmentType, RadiologyStatus, type CreateRadiologyReportDto } from '@medicore/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  AlertTriangle,
   CheckCircle2,
   Download,
   FileImage,
@@ -14,14 +13,17 @@ import {
   Upload,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { useState } from 'react'
 
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { PageLayout } from '@/components/layout/page-layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
+import { PageHeaderMeta } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
@@ -51,20 +53,9 @@ function formatEnumLabel(value: string): string {
   return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
 }
 
-const STATUS_BADGE: Record<RadiologyStatus, 'secondary' | 'success' | 'destructive' | 'outline'> = {
-  [RadiologyStatus.ORDERED]: 'secondary',
-  [RadiologyStatus.SCHEDULED]: 'outline',
-  [RadiologyStatus.IN_PROGRESS]: 'outline',
-  [RadiologyStatus.COMPLETED]: 'success',
-  [RadiologyStatus.REPORTED]: 'success',
-  [RadiologyStatus.CANCELLED]: 'destructive',
-  [RadiologyStatus.REJECTED]: 'destructive',
-}
-
 export default function RadiologyOrderDetailPage() {
   const params = useParams<{ orderId: string }>()
   const orderId = params.orderId
-  const router = useRouter()
   const { hasPermission } = useAuth()
   const { toast } = useToast()
   const queryClient = useQueryClient()
@@ -116,24 +107,31 @@ export default function RadiologyOrderDetailPage() {
 
   if (orderQuery.isLoading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
+      <PageLayout
+        breadcrumbs={[{ label: 'Radiology', href: '/dashboard/radiology' }, { label: 'Orders', href: '/dashboard/radiology/orders' }, { label: '…' }]}
+        title="…"
+        loading
+      >
+        <div className="flex h-64 items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </PageLayout>
     )
   }
 
   if (orderQuery.isError || !orderQuery.data) {
     return (
-      <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Radiology order not found</AlertTitle>
-        <AlertDescription>
-          {getErrorMessage(orderQuery.error)}{' '}
-          <Button variant="link" className="h-auto p-0" onClick={() => router.push('/dashboard/radiology/orders')}>
-            Back to orders
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <PageLayout
+        breadcrumbs={[{ label: 'Radiology', href: '/dashboard/radiology' }, { label: 'Orders', href: '/dashboard/radiology/orders' }, { label: 'Not found' }]}
+        title="Radiology order not found"
+      >
+        <EmptyState
+          variant="error"
+          title="Radiology order not found"
+          description={getErrorMessage(orderQuery.error)}
+          action={{ label: 'Back to orders', href: '/dashboard/radiology/orders' }}
+        />
+      </PageLayout>
     )
   }
 
@@ -145,72 +143,85 @@ export default function RadiologyOrderDetailPage() {
   ].includes(order.status)
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="font-mono text-lg font-semibold text-foreground">{order.orderNumber}</h1>
-            <Badge variant={STATUS_BADGE[order.status]}>{formatEnumLabel(order.status)}</Badge>
+    <Tabs defaultValue={order.status === RadiologyStatus.ORDERED || order.status === RadiologyStatus.SCHEDULED ? 'scheduling' : 'report'}>
+      <PageLayout
+        breadcrumbs={[
+          { label: 'Radiology', href: '/dashboard/radiology' },
+          { label: 'Orders', href: '/dashboard/radiology/orders' },
+          { label: order.orderNumber },
+        ]}
+        title={order.orderNumber}
+        badge={
+          <>
+            <StatusBadge status={order.status} />
             <Badge variant="outline">{formatEnumLabel(order.priority)}</Badge>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {order.patient.fullName} ({order.patient.uhid}) · Dr. {order.doctor.fullName} ({order.doctor.specialization})
-          </p>
-          <p className="text-sm font-medium text-foreground">
-            {order.modality} — {order.bodyPart}
-          </p>
-          {order.encounterId && (
-            <Link href={`/dashboard/medical-records/${order.encounterId}`} className="text-xs text-muted-foreground hover:underline">
-              View originating encounter
-            </Link>
-          )}
-        </div>
-
-        {canUpdate && isNonTerminal && (
-          <div className="flex flex-wrap items-center gap-2">
-            {order.status === RadiologyStatus.SCHEDULED && (
-              <Button size="sm" onClick={() => startMutation.mutate()} disabled={startMutation.isPending}>
-                {startMutation.isPending ? <Loader2 className="animate-spin" /> : <Play />}
-                Start study
-              </Button>
+          </>
+        }
+        meta={
+          <>
+            <PageHeaderMeta label="Patient">
+              {order.patient.fullName} ({order.patient.uhid})
+            </PageHeaderMeta>
+            <PageHeaderMeta label="Doctor">
+              Dr. {order.doctor.fullName} ({order.doctor.specialization})
+            </PageHeaderMeta>
+            <PageHeaderMeta label="Study">
+              {order.modality} — {order.bodyPart}
+            </PageHeaderMeta>
+            {order.encounterId && (
+              <Link href={`/dashboard/medical-records/${order.encounterId}`} className="text-subtle-foreground hover:underline">
+                View originating encounter
+              </Link>
             )}
-            {order.status === RadiologyStatus.IN_PROGRESS && (
-              <Button size="sm" onClick={() => completeMutation.mutate()} disabled={completeMutation.isPending}>
-                {completeMutation.isPending ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}
-                Complete study
-              </Button>
-            )}
-            {order.status === RadiologyStatus.ORDERED && (
+          </>
+        }
+        actions={
+          canUpdate &&
+          isNonTerminal && (
+            <>
+              {order.status === RadiologyStatus.SCHEDULED && (
+                <Button size="sm" onClick={() => startMutation.mutate()} disabled={startMutation.isPending}>
+                  {startMutation.isPending ? <Loader2 className="animate-spin" /> : <Play />}
+                  Start study
+                </Button>
+              )}
+              {order.status === RadiologyStatus.IN_PROGRESS && (
+                <Button size="sm" onClick={() => completeMutation.mutate()} disabled={completeMutation.isPending}>
+                  {completeMutation.isPending ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}
+                  Complete study
+                </Button>
+              )}
+              {order.status === RadiologyStatus.ORDERED && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-destructive"
+                  onClick={() => rejectMutation.mutate('Rejected by radiology staff')}
+                  disabled={rejectMutation.isPending}
+                >
+                  Reject
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant="outline"
                 className="text-destructive"
-                onClick={() => rejectMutation.mutate('Rejected by radiology staff')}
-                disabled={rejectMutation.isPending}
+                onClick={() => cancelMutation.mutate()}
+                disabled={cancelMutation.isPending}
               >
-                Reject
+                Cancel
               </Button>
-            )}
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-destructive"
-              onClick={() => cancelMutation.mutate()}
-              disabled={cancelMutation.isPending}
-            >
-              Cancel
-            </Button>
-          </div>
-        )}
-      </div>
-
-      <Tabs defaultValue={order.status === RadiologyStatus.ORDERED || order.status === RadiologyStatus.SCHEDULED ? 'scheduling' : 'report'}>
-        <TabsList>
-          <TabsTrigger value="scheduling">Scheduling</TabsTrigger>
-          <TabsTrigger value="report">Report</TabsTrigger>
-          <TabsTrigger value="attachments">Attachments</TabsTrigger>
-        </TabsList>
-
+            </>
+          )
+        }
+        toolbar={
+          <TabsList>
+            <TabsTrigger value="scheduling">Scheduling</TabsTrigger>
+            <TabsTrigger value="report">Report</TabsTrigger>
+            <TabsTrigger value="attachments">Attachments</TabsTrigger>
+          </TabsList>
+        }
+      >
         <TabsContent value="scheduling">
           <SchedulingTab orderId={orderId} order={order} canUpdate={canUpdate} onSaved={invalidate} />
         </TabsContent>
@@ -220,8 +231,8 @@ export default function RadiologyOrderDetailPage() {
         <TabsContent value="attachments">
           <AttachmentsTab orderId={orderId} attachments={order.attachments} canUpdate={canUpdate} onSaved={invalidate} />
         </TabsContent>
-      </Tabs>
-    </div>
+      </PageLayout>
+    </Tabs>
   )
 }
 

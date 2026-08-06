@@ -7,13 +7,24 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useState } from 'react'
 
-import { Badge } from '@/components/ui/badge'
+import { PageLayout } from '@/components/layout/page-layout'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/ui/pagination'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { listInventoryItems, listInventoryStores, listVendors } from '@/lib/api/inventory'
@@ -27,16 +38,6 @@ function getErrorMessage(error: unknown): string {
 
 function formatEnumLabel(value: string): string {
   return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
-}
-
-const STATUS_BADGE: Record<PurchaseOrderStatus, 'secondary' | 'outline' | 'success' | 'destructive'> = {
-  [PurchaseOrderStatus.DRAFT]: 'secondary',
-  [PurchaseOrderStatus.SUBMITTED]: 'outline',
-  [PurchaseOrderStatus.APPROVED]: 'outline',
-  [PurchaseOrderStatus.SENT]: 'outline',
-  [PurchaseOrderStatus.PARTIALLY_RECEIVED]: 'outline',
-  [PurchaseOrderStatus.RECEIVED]: 'success',
-  [PurchaseOrderStatus.CANCELLED]: 'destructive',
 }
 
 export default function PurchaseOrdersPage() {
@@ -70,20 +71,18 @@ function PurchaseOrdersPageInner() {
   const pagination = query.data?.pagination
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Purchase Orders</h1>
-          <p className="text-sm text-muted-foreground">Orders placed with a vendor — optionally converted from an approved request.</p>
-        </div>
-        {canCreate && (
+    <PageLayout
+      title="Purchase Orders"
+      description="Orders placed with a vendor — optionally converted from an approved request."
+      actions={
+        canCreate && (
           <Button onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />
             New order
           </Button>
-        )}
-      </div>
-
+        )
+      }
+    >
       <Select
         value={status}
         onValueChange={(v) => {
@@ -104,33 +103,29 @@ function PurchaseOrdersPageInner() {
         </SelectContent>
       </Select>
 
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>PO #</TableHead>
-              <TableHead>Vendor</TableHead>
-              <TableHead>Store</TableHead>
-              <TableHead>Total</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Created</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {query.isLoading ? (
+      {query.isLoading ? (
+        <TableSkeleton rows={8} columns={6} />
+      ) : orders.length === 0 ? (
+        <EmptyState
+          variant={status === 'ALL' ? 'empty' : 'search'}
+          title="No purchase orders yet"
+          action={canCreate ? { label: 'New order', onClick: () => setCreateOpen(true) } : undefined}
+        />
+      ) : (
+        <TableContainer className="max-h-[65vh]">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>PO #</TableHead>
+                <TableHead>Vendor</TableHead>
+                <TableHead>Store</TableHead>
+                <TableHead align="right">Total</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Created</TableHead>
               </TableRow>
-            ) : orders.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  No purchase orders yet.
-                </TableCell>
-              </TableRow>
-            ) : (
-              orders.map((po) => (
+            </TableHeader>
+            <TableBody>
+              {orders.map((po) => (
                 <TableRow key={po.id}>
                   <TableCell className="font-mono text-xs">
                     <Link href={`/dashboard/inventory/purchase-orders/${po.id}`} className="text-primary hover:underline">
@@ -139,24 +134,24 @@ function PurchaseOrdersPageInner() {
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">{po.vendor.name}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{po.store.name}</TableCell>
-                  <TableCell className="text-xs">₹{Number(po.totalAmount).toLocaleString('en-IN')}</TableCell>
+                  <TableCell align="right" className="text-xs">₹{Number(po.totalAmount).toLocaleString('en-IN')}</TableCell>
                   <TableCell>
-                    <Badge variant={STATUS_BADGE[po.status]}>{formatEnumLabel(po.status)}</Badge>
+                    <StatusBadge status={po.status} />
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">{new Date(po.createdAt).toLocaleDateString('en-IN')}</TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       {pagination && pagination.totalPages > 1 && (
         <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={setPage} />
       )}
 
       <CreateOrderDialog open={createOpen} onOpenChange={setCreateOpen} fromPrId={fromPr} />
-    </div>
+    </PageLayout>
   )
 }
 

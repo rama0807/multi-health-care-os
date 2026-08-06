@@ -6,12 +6,24 @@ import { Loader2, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
 import { createWard, deactivateWard, listWards, updateWard } from '@/lib/api/ipd'
 import { useAuth } from '@/lib/auth/auth-context'
@@ -23,12 +35,6 @@ function getErrorMessage(error: unknown): string {
 
 function formatEnumLabel(value: string): string {
   return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
-}
-
-const WARD_STATUS_BADGE: Record<WardStatus, 'success' | 'secondary' | 'warning'> = {
-  ACTIVE: 'success',
-  INACTIVE: 'secondary',
-  UNDER_RENOVATION: 'warning',
 }
 
 export default function WardsPage() {
@@ -44,48 +50,39 @@ export default function WardsPage() {
   const wards = wardsQuery.data?.data ?? []
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Wards</h1>
-          <p className="text-sm text-muted-foreground">Ward inventory — floor, block, type, and bed occupancy.</p>
-        </div>
-        {canCreate && (
+    <PageLayout
+      breadcrumbs={[{ label: 'IPD', href: '/dashboard/ipd' }, { label: 'Wards' }]}
+      title="Wards"
+      description="Ward inventory — floor, block, type, and bed occupancy."
+      actions={
+        canCreate && (
           <Button onClick={() => setDialogOpen(true)}>
             <Plus className="h-4 w-4" />
             Add ward
           </Button>
-        )}
-      </div>
-
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Code</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead>Beds</TableHead>
-              <TableHead>Status</TableHead>
-              {(canUpdate || canDelete) && <TableHead>Actions</TableHead>}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {wardsQuery.isLoading ? (
+        )
+      }
+    >
+      {wardsQuery.isLoading ? (
+        <TableSkeleton rows={6} columns={canUpdate || canDelete ? 7 : 6} />
+      ) : wards.length === 0 ? (
+        <EmptyState title="No wards yet" action={canCreate ? { label: 'Add ward', onClick: () => setDialogOpen(true) } : undefined} />
+      ) : (
+        <TableContainer className="max-h-[70vh]">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Name</TableHead>
+                <TableHead>Code</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Location</TableHead>
+                <TableHead>Beds</TableHead>
+                <TableHead>Status</TableHead>
+                {(canUpdate || canDelete) && <TableHead className="w-32" />}
               </TableRow>
-            ) : wards.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                  No wards yet.
-                </TableCell>
-              </TableRow>
-            ) : (
-              wards.map((w) => (
+            </TableHeader>
+            <TableBody>
+              {wards.map((w) => (
                 <TableRow key={w.id}>
                   <TableCell className="font-medium">{w.name}</TableCell>
                   <TableCell className="font-mono text-xs">{w.code}</TableCell>
@@ -101,7 +98,7 @@ export default function WardsPage() {
                     </Link>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={WARD_STATUS_BADGE[w.status]}>{formatEnumLabel(w.status)}</Badge>
+                    <StatusBadge status={w.status} />
                   </TableCell>
                   {(canUpdate || canDelete) && (
                     <TableCell className="flex gap-1">
@@ -116,17 +113,17 @@ export default function WardsPage() {
                     </TableCell>
                   )}
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       <WardDialog open={dialogOpen} onOpenChange={setDialogOpen} />
       {editing && (
         <WardDialog open onOpenChange={(open) => !open && setEditing(null)} ward={wards.find((w) => w.id === editing)} />
       )}
-    </div>
+    </PageLayout>
   )
 }
 

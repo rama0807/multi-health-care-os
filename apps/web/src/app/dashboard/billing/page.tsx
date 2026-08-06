@@ -3,8 +3,13 @@
 import { useQuery } from '@tanstack/react-query'
 import { AlertCircle, IndianRupee, ReceiptText, RefreshCcw, ShieldCheck, Wallet } from 'lucide-react'
 import Link from 'next/link'
+import { Bar, BarChart, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis } from 'recharts'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { EmptyState } from '@/components/ui/empty-state'
+import { StatCard, StatCardGrid } from '@/components/ui/stat-card'
 import { getBillingDashboardStats } from '@/lib/api/billing'
 
 export default function BillingDashboardPage() {
@@ -23,16 +28,17 @@ export default function BillingDashboardPage() {
     { key: 'pendingRefundApprovals', label: 'Pending refund approvals', value: stats?.pendingRefundApprovals },
   ] as const
 
-  const maxTrend = Math.max(1, ...(stats?.collectionTrend.map((d) => Number(d.amount)) ?? [1]))
+  const trend = (stats?.collectionTrend ?? []).map((d) => ({
+    date: new Date(d.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
+    amount: Number(d.amount),
+  }))
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Billing</h1>
-          <p className="text-sm text-muted-foreground">Invoices, payments, and refunds.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+    <PageLayout
+      title="Billing"
+      description="Invoices, payments, and refunds."
+      actions={
+        <>
           <Button asChild variant="outline">
             <Link href="/dashboard/billing/invoices">Invoices</Link>
           </Button>
@@ -42,25 +48,17 @@ export default function BillingDashboardPage() {
           <Button asChild variant="outline">
             <Link href="/dashboard/billing/refunds">Refunds</Link>
           </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        </>
+      }
+    >
+      <StatCardGrid columns={4}>
         {tiles.map((tile) => (
-          <div key={tile.key} className="flex items-center gap-3 rounded-lg border bg-card p-4 shadow-sm">
-            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
-              <tile.icon className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-lg font-semibold text-foreground">{statsQuery.isLoading ? '—' : (tile.value ?? 0)}</p>
-              <p className="text-xs text-muted-foreground">{tile.label}</p>
-            </div>
-          </div>
+          <StatCard key={tile.key} icon={tile.icon} label={tile.label} value={tile.value} loading={statsQuery.isLoading} />
         ))}
-      </div>
+      </StatCardGrid>
 
       {stats && (stats.pendingDiscountApprovals > 0 || stats.pendingRefundApprovals > 0) && (
-        <div className="flex flex-wrap gap-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+        <div className="flex flex-wrap items-center gap-4 rounded-lg border border-warning-border bg-warning-subtle p-3 text-sm text-warning-subtle-foreground">
           <AlertCircle className="h-4 w-4 flex-shrink-0" />
           {approvals
             .filter((a) => (a.value ?? 0) > 0)
@@ -76,27 +74,29 @@ export default function BillingDashboardPage() {
         </div>
       )}
 
-      <div className="rounded-lg border bg-card p-4">
-        <h3 className="mb-3 text-sm font-semibold text-foreground">Collection trend (last 7 days)</h3>
-        {statsQuery.isLoading ? (
-          <p className="text-sm text-muted-foreground">Loading...</p>
-        ) : (
-          <div className="flex h-32 gap-2">
-            {stats?.collectionTrend.map((day) => (
-              <div key={day.date} className="flex h-32 flex-1 flex-col items-center justify-end gap-1">
-                <div
-                  className="w-full rounded-t bg-primary/80"
-                  style={{ height: `${Math.max(4, (Number(day.amount) / maxTrend) * 100)}%` }}
-                  title={`₹${day.amount}`}
-                />
-                <span className="text-[10px] text-muted-foreground">
-                  {new Date(day.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Collection trend (last 7 days)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {statsQuery.isLoading ? (
+            <div className="h-40 animate-pulse rounded-md bg-surface-secondary" />
+          ) : trend.length === 0 ? (
+            <EmptyState compact title="No collections in the last 7 days" />
+          ) : (
+            <div className="h-40">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={trend}>
+                  <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} width={40} />
+                  <RechartsTooltip formatter={(value: number) => [`₹${value}`, 'Collected']} />
+                  <Bar dataKey="amount" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </PageLayout>
   )
 }

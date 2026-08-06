@@ -8,12 +8,16 @@ import type {
   ReportSeriesPoint,
 } from '@medicore/types'
 import { useQuery } from '@tanstack/react-query'
-import { Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 
+import { PageLayout } from '@/components/layout/page-layout'
 import { Button } from '@/components/ui/button'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Card, CardHeader, CardTitle } from '@/components/ui/card'
+import { EmptyState } from '@/components/ui/empty-state'
+import { StatCardSkeleton } from '@/components/ui/skeleton'
+import { StatCard, StatCardGrid } from '@/components/ui/stat-card'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   getAppointmentReport,
@@ -493,22 +497,20 @@ export default function OperationalReportsPage() {
   const view = reportQuery.data
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Operational Reports</h1>
-          <p className="text-sm text-muted-foreground">Module-by-module operational analytics.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+    <PageLayout
+      title="Operational Reports"
+      description="Module-by-module operational analytics."
+      actions={
+        <>
           <Button asChild variant="outline">
             <Link href="/dashboard/reports">Dashboards</Link>
           </Button>
           <Button asChild>
             <Link href="/dashboard/reports/builder">Report builder</Link>
           </Button>
-        </div>
-      </div>
-
+        </>
+      }
+    >
       <Tabs value={config.key} onValueChange={setModuleKey}>
         <TabsList className="flex-wrap">
           {MODULES.map((m) => (
@@ -526,23 +528,16 @@ export default function OperationalReportsPage() {
       />
 
       {reportQuery.isLoading ? (
-        <div className="flex items-center justify-center gap-2 rounded-lg border p-10 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading report…
-        </div>
+        <StatCardSkeleton count={4} />
       ) : reportQuery.isError ? (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-6 text-sm text-destructive">
-          Could not load this report. {reportQuery.error.message}
-        </div>
+        <EmptyState variant="error" title="Could not load this report" description={reportQuery.error.message} />
       ) : view ? (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatCardGrid columns={4}>
             {view.stats.map((stat) => (
-              <div key={stat.label} className="rounded-lg border bg-card p-4 shadow-sm">
-                <p className="text-xs text-muted-foreground">{stat.label}</p>
-                <p className="mt-1 text-xl font-semibold text-foreground">{stat.value}</p>
-              </div>
+              <StatCard key={stat.label} label={stat.label} value={stat.value} />
             ))}
-          </div>
+          </StatCardGrid>
 
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             {view.charts.map((chart) => (
@@ -551,54 +546,48 @@ export default function OperationalReportsPage() {
           </div>
 
           {view.table && (
-            <div className="rounded-lg border bg-card shadow-sm">
-              <div className="border-b p-4">
-                <h3 className="text-sm font-semibold text-foreground">{view.table.title}</h3>
+            <Card>
+              <CardHeader>
+                <CardTitle>{view.table.title}</CardTitle>
                 {view.table.note && <p className="mt-0.5 text-xs text-muted-foreground">{view.table.note}</p>}
-              </div>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      {view.table.columns.map((column, index) => (
-                        <TableHead key={column} className={index === 0 ? undefined : 'text-right'}>
-                          {column}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {view.table.rows.length === 0 ? (
+              </CardHeader>
+              {view.table.rows.length === 0 ? (
+                <EmptyState compact title="No data for the selected period" />
+              ) : (
+                <TableContainer className="rounded-none border-0 border-y">
+                  <Table density="compact" container={false}>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell
-                          colSpan={view.table.columns.length}
-                          className="text-center text-sm text-muted-foreground"
-                        >
-                          No data for the selected period
-                        </TableCell>
+                        {view.table.columns.map((column, index) => (
+                          <TableHead key={column} align={index === 0 ? undefined : 'right'}>
+                            {column}
+                          </TableHead>
+                        ))}
                       </TableRow>
-                    ) : (
-                      view.table.rows.map((row, rowIndex) => (
+                    </TableHeader>
+                    <TableBody>
+                      {view.table.rows.map((row, rowIndex) => (
                         <TableRow key={rowIndex}>
                           {row.map((cell, cellIndex) => (
                             <TableCell
                               key={cellIndex}
-                              className={cellIndex === 0 ? undefined : 'text-right tabular-nums'}
+                              align={cellIndex === 0 ? undefined : 'right'}
+                              className={cellIndex === 0 ? undefined : 'tabular-nums'}
                             >
                               {/* An absent measurement prints as a dash, never as 0. */}
                               {cell === null || cell === undefined ? '—' : String(cell)}
                             </TableCell>
                           ))}
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </Card>
           )}
         </div>
       ) : null}
-    </div>
+    </PageLayout>
   )
 }

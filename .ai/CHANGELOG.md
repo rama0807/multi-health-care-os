@@ -5,6 +5,59 @@
 
 ## [Unreleased]
 
+### Design System V2 — Phase 2: every feature page migrated (2026-08-06)
+
+**UI/UX only, module by module. No API, business rule, permission, workflow or
+Prisma-schema change** — by the same explicit instruction that scoped this
+work, verified module-by-module (lint → typecheck → build) across all 18
+modules: Dashboard home, Patients, Doctors, Appointments, Medical Records,
+Laboratory, Radiology, Pharmacy, Billing, Insurance, IPD, Nursing, Inventory,
+Staff, Organization, Reports, Notifications, AI.
+
+- **Every dashboard, list, detail and dialog page now uses the Phase 1
+  primitives.** `PageLayout` (breadcrumbs/title/badge/meta/description/
+  actions/toolbar) replaced hand-rolled header divs; `<StatusBadge>` replaced
+  ~20 separate per-page `Record<Status, Variant>` maps; `Card`/`CardHeader`/
+  `CardContent`/`CardFooter` replaced `rounded-lg border bg-card p-4`;
+  `TableContainer` + `<Table density>` replaced raw `<table>`/manual
+  `overflow-x-auto` wrappers; `EmptyState` replaced ad-hoc "no data" text and
+  distinguishes empty from filtered-empty; `StatCard`/`StatCardGrid` replaced
+  hand-rolled KPI tiles and render an em dash for a missing measurement,
+  never `0`; `FilterBar`/`SearchInput` replaced bespoke filter rows; hand-drawn
+  bar "charts" (divs sized by inline `style`) were replaced with real
+  `recharts` `BarChart`s.
+- **Centralizing status colour surfaced and fixed real, pre-existing bugs**
+  that independent per-page maps had introduced: "Cancelled" rendered red in
+  Appointments and in Doctors' leave (now correctly neutral); "In
+  Consultation" rendered green in Appointments; dispense/order "Completed"
+  was inconsistently grey in some modules and green in others; pharmacy
+  low-stock/expiring badges rendered red instead of amber/warning; an IPD
+  bed-grid colour pair paired `bg-success-subtle` with `text-success` instead
+  of `text-success-subtle-foreground`, violating the system's own contrast
+  rule. None of these were introduced by this work — they were latent
+  inconsistencies the old per-module maps allowed, now impossible by
+  construction.
+- **Five status keys added to the shared `STATUS_TONES` map** to cover cases
+  Phase 1 had not encountered: `UNDER_RENOVATION` and `ADMINISTERED`
+  (warning/success), `TRIALING` (info), `PAST_DUE` (danger), `SUCCEEDED`
+  (success) — additive only, no existing mapping changed.
+- **One genuine semantic ambiguity handled via the sanctioned escape hatch:**
+  nursing risk levels (`LOW`/`HIGH`) and lab abnormal-value flags
+  (`LOW`/`HIGH`) mean opposite things — a low fall-risk is good, a low
+  potassium is not. `StatusBadge`'s `tone` override prop exists for exactly
+  this, documented inline rather than corrupting the shared map.
+- **Verification:** `pnpm lint && pnpm typecheck && pnpm test && pnpm build`
+  clean across the whole repository (785 API unit tests, 49 web unit tests,
+  full production build). `pnpm test:e2e` could not be run — the pre-existing,
+  documented local-infra gap (TD-0004: needs a migrated `medicore_test`
+  Postgres + Redis), unrelated to this work. **Not browser-verified; no
+  screenshots taken** — both by the same explicit instruction, consistent with
+  Phase 1's precedent.
+- TD-0077 (feature-page migration) is now resolved. TD-0074 (branding reach)
+  and TD-0075 (hospital selector doesn't filter data) remain open — both
+  require backend/query changes that were correctly out of scope for a
+  UI-only pass.
+
 ### Design System V2 — Phase 1: the reusable UI foundation (2026-08-06)
 
 **Design language only. No feature page, dashboard, API, business rule or test

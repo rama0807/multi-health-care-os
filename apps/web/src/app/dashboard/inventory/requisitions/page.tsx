@@ -6,13 +6,24 @@ import { Loader2, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 
-import { Badge } from '@/components/ui/badge'
+import { PageLayout } from '@/components/layout/page-layout'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/ui/pagination'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { listInventoryItems, listInventoryStores } from '@/lib/api/inventory'
@@ -26,16 +37,6 @@ function getErrorMessage(error: unknown): string {
 
 function formatEnumLabel(value: string): string {
   return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
-}
-
-const STATUS_BADGE: Record<RequisitionStatus, 'secondary' | 'outline' | 'success' | 'destructive'> = {
-  [RequisitionStatus.REQUESTED]: 'secondary',
-  [RequisitionStatus.APPROVED]: 'outline',
-  [RequisitionStatus.REJECTED]: 'destructive',
-  [RequisitionStatus.ISSUED]: 'outline',
-  [RequisitionStatus.PARTIALLY_ISSUED]: 'outline',
-  [RequisitionStatus.RECEIVED]: 'success',
-  [RequisitionStatus.CANCELLED]: 'destructive',
 }
 
 export default function StoreRequisitionsPage() {
@@ -55,20 +56,18 @@ export default function StoreRequisitionsPage() {
   const pagination = query.data?.pagination
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Store Requisitions</h1>
-          <p className="text-sm text-muted-foreground">Internal ward/OT/ICU/lab stock requests between stores.</p>
-        </div>
-        {canCreate && (
+    <PageLayout
+      title="Store Requisitions"
+      description="Internal ward/OT/ICU/lab stock requests between stores."
+      actions={
+        canCreate && (
           <Button onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />
             New requisition
           </Button>
-        )}
-      </div>
-
+        )
+      }
+    >
       <Select
         value={status}
         onValueChange={(v) => {
@@ -89,32 +88,28 @@ export default function StoreRequisitionsPage() {
         </SelectContent>
       </Select>
 
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Requisition #</TableHead>
-              <TableHead>Route</TableHead>
-              <TableHead>Priority</TableHead>
-              <TableHead>Items</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {query.isLoading ? (
+      {query.isLoading ? (
+        <TableSkeleton rows={8} columns={5} />
+      ) : requisitions.length === 0 ? (
+        <EmptyState
+          variant={status === 'ALL' ? 'empty' : 'search'}
+          title="No requisitions yet"
+          action={canCreate ? { label: 'New requisition', onClick: () => setCreateOpen(true) } : undefined}
+        />
+      ) : (
+        <TableContainer className="max-h-[65vh]">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Requisition #</TableHead>
+                <TableHead>Route</TableHead>
+                <TableHead>Priority</TableHead>
+                <TableHead>Items</TableHead>
+                <TableHead>Status</TableHead>
               </TableRow>
-            ) : requisitions.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                  No requisitions yet.
-                </TableCell>
-              </TableRow>
-            ) : (
-              requisitions.map((r) => (
+            </TableHeader>
+            <TableBody>
+              {requisitions.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell className="font-mono text-xs">
                     <Link href={`/dashboard/inventory/requisitions/${r.id}`} className="text-primary hover:underline">
@@ -125,25 +120,25 @@ export default function StoreRequisitionsPage() {
                     {r.fromStore.name} → {r.toStore.name}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{formatEnumLabel(r.priority)}</Badge>
+                    <StatusBadge status={r.priority} />
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">{r.items.length} item(s)</TableCell>
                   <TableCell>
-                    <Badge variant={STATUS_BADGE[r.status]}>{formatEnumLabel(r.status)}</Badge>
+                    <StatusBadge status={r.status} />
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       {pagination && pagination.totalPages > 1 && (
         <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={setPage} />
       )}
 
       <CreateRequisitionDialog open={createOpen} onOpenChange={setCreateOpen} />
-    </div>
+    </PageLayout>
   )
 }
 

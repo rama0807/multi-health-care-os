@@ -5,11 +5,13 @@ import { Plus, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
 import { createHoliday, deleteHoliday, listHolidays } from '@/lib/api/leave'
 import { getOrganizationSettings, updateOrganizationSettings } from '@/lib/api/organization'
@@ -131,8 +133,11 @@ export function SettingsTab() {
   return (
     <div className="space-y-4 pt-4">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="rounded-lg border bg-card p-4">
-          <h3 className="mb-3 text-sm font-semibold text-foreground">Locale &amp; currency</h3>
+        <Card>
+          <CardHeader>
+            <CardTitle>Locale &amp; currency</CardTitle>
+          </CardHeader>
+          <CardContent>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="Timezone" id="set-timezone">
               <Input
@@ -194,10 +199,14 @@ export function SettingsTab() {
               </Select>
             </Field>
           </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="rounded-lg border bg-card p-4">
-          <h3 className="mb-3 text-sm font-semibold text-foreground">Tax &amp; records</h3>
+        <Card>
+          <CardHeader>
+            <CardTitle>Tax &amp; records</CardTitle>
+          </CardHeader>
+          <CardContent>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Field label="GST number" id="set-gst-number">
               <Input
@@ -242,10 +251,14 @@ export function SettingsTab() {
             Changing the UHID prefix affects only newly registered patients — existing UHIDs are
             never rewritten.
           </p>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="rounded-lg border bg-card p-4">
-          <h3 className="mb-3 text-sm font-semibold text-foreground">Working hours</h3>
+        <Card>
+          <CardHeader>
+            <CardTitle>Working hours</CardTitle>
+          </CardHeader>
+          <CardContent>
           <div className="flex flex-wrap gap-3">
             {WEEKDAYS.map((day) => (
               <label key={day.value} className="flex items-center gap-1.5 text-sm">
@@ -284,10 +297,14 @@ export function SettingsTab() {
               />
             </Field>
           </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="rounded-lg border bg-card p-4">
-          <h3 className="mb-3 text-sm font-semibold text-foreground">Feature flags</h3>
+        <Card>
+          <CardHeader>
+            <CardTitle>Feature flags</CardTitle>
+          </CardHeader>
+          <CardContent>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {flagKeys.map((flag) => (
               <label key={flag.key} className="flex items-center gap-2 text-sm">
@@ -302,7 +319,8 @@ export function SettingsTab() {
               </label>
             ))}
           </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {canEdit ? (
           <div className="flex justify-end">
@@ -368,8 +386,8 @@ function HolidaysPanel({ canManage }: { canManage: boolean }) {
   const holidays = holidaysQuery.data ?? []
 
   return (
-    <div className="rounded-lg border bg-card">
-      <div className="flex flex-wrap items-end justify-between gap-3 border-b px-4 py-3">
+    <Card>
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border px-4 py-3">
         <div>
           <h3 className="text-sm font-semibold text-foreground">Holiday calendar ({year})</h3>
           <p className="text-xs text-muted-foreground">
@@ -409,49 +427,45 @@ function HolidaysPanel({ canManage }: { canManage: boolean }) {
           </div>
         )}
       </div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Holiday</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead>Type</TableHead>
-            {canManage && <TableHead className="text-right">Actions</TableHead>}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {holidays.length === 0 && (
-            <TableRow>
-              <TableCell
-                colSpan={canManage ? 4 : 3}
-                className="text-center text-sm text-muted-foreground"
-              >
-                No holidays configured for {year}.
-              </TableCell>
-            </TableRow>
-          )}
-          {holidays.map((holiday) => (
-            <TableRow key={holiday.id}>
-              <TableCell className="font-medium">{holiday.name}</TableCell>
-              <TableCell>{formatDate(holiday.date)}</TableCell>
-              <TableCell>{holiday.isOptional ? 'Optional' : 'Mandatory'}</TableCell>
-              {canManage && (
-                <TableCell className="text-right">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    aria-label={`Remove ${holiday.name}`}
-                    disabled={deleteMutation.isPending}
-                    onClick={() => deleteMutation.mutate(holiday.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </TableCell>
-              )}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+      {holidays.length === 0 ? (
+        <EmptyState compact title={`No holidays configured for ${year}`} />
+      ) : (
+        <TableContainer className="rounded-none border-0">
+          <Table density="compact" container={false}>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Holiday</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Type</TableHead>
+                {canManage && <TableHead align="right" />}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {holidays.map((holiday) => (
+                <TableRow key={holiday.id}>
+                  <TableCell className="font-medium">{holiday.name}</TableCell>
+                  <TableCell>{formatDate(holiday.date)}</TableCell>
+                  <TableCell>{holiday.isOptional ? 'Optional' : 'Mandatory'}</TableCell>
+                  {canManage && (
+                    <TableCell align="right">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        aria-label={`Remove ${holiday.name}`}
+                        disabled={deleteMutation.isPending}
+                        onClick={() => deleteMutation.mutate(holiday.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+    </Card>
   )
 }
 

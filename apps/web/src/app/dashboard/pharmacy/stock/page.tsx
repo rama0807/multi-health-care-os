@@ -1,13 +1,24 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Loader2 } from 'lucide-react'
 import { useState } from 'react'
 
-import { Badge } from '@/components/ui/badge'
+import { PageLayout } from '@/components/layout/page-layout'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { FilterBar } from '@/components/ui/toolbar'
 import { useToast } from '@/hooks/use-toast'
 import { adjustDrugStock, listDrugCatalog } from '@/lib/api/pharmacy'
 import { useAuth } from '@/lib/auth/auth-context'
@@ -60,14 +71,13 @@ export default function PharmacyStockPage() {
   const drugs = stockQuery.data?.data ?? []
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Stock</h1>
-        <p className="text-sm text-muted-foreground">Current, reserved, and available stock across every drug batch.</p>
-      </div>
-
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <Input placeholder="Search generic/brand/batch" value={search} onChange={(e) => setSearch(e.target.value)} className="sm:w-64" />
+    <PageLayout
+      breadcrumbs={[{ label: 'Pharmacy', href: '/dashboard/pharmacy' }, { label: 'Stock' }]}
+      title="Stock"
+      description="Current, reserved, and available stock across every drug batch."
+    >
+      <FilterBar>
+        <Input placeholder="Search generic/brand/batch" value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 w-64" />
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           <input type="checkbox" checked={lowStockOnly} onChange={(e) => setLowStockOnly(e.target.checked)} />
           Low stock only
@@ -76,43 +86,31 @@ export default function PharmacyStockPage() {
           <input type="checkbox" checked={expiringOnly} onChange={(e) => setExpiringOnly(e.target.checked)} />
           Expiring within 30 days
         </label>
-      </div>
+      </FilterBar>
 
-      <div className="rounded-lg border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Drug</TableHead>
-              <TableHead>Batch</TableHead>
-              <TableHead>Expiry</TableHead>
-              <TableHead>Current</TableHead>
-              <TableHead>Reserved</TableHead>
-              <TableHead>Available</TableHead>
-              <TableHead>Reorder level</TableHead>
-              <TableHead>Adjust</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {stockQuery.isLoading ? (
+      {stockQuery.isLoading ? (
+        <TableSkeleton rows={8} columns={8} />
+      ) : stockQuery.isError ? (
+        <EmptyState variant="error" title="Couldn't load stock" description={getErrorMessage(stockQuery.error)} />
+      ) : drugs.length === 0 ? (
+        <EmptyState variant="search" title="No drugs found" description="Try a different search or clear the filters." />
+      ) : (
+        <TableContainer className="max-h-[65vh]">
+          <Table density="compact" container={false}>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
+                <TableHead>Drug</TableHead>
+                <TableHead>Batch</TableHead>
+                <TableHead>Expiry</TableHead>
+                <TableHead>Current</TableHead>
+                <TableHead>Reserved</TableHead>
+                <TableHead>Available</TableHead>
+                <TableHead>Reorder level</TableHead>
+                <TableHead>Adjust</TableHead>
               </TableRow>
-            ) : stockQuery.isError ? (
-              <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                  Couldn&apos;t load stock. {getErrorMessage(stockQuery.error)}
-                </TableCell>
-              </TableRow>
-            ) : drugs.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                  No drugs found.
-                </TableCell>
-              </TableRow>
-            ) : (
-              drugs.map((drug) => (
+            </TableHeader>
+            <TableBody>
+              {drugs.map((drug) => (
                 <TableRow key={drug.id}>
                   <TableCell>
                     <div className="font-medium">{drug.genericName}</div>
@@ -122,7 +120,7 @@ export default function PharmacyStockPage() {
                   <TableCell>
                     <div className="flex items-center gap-1.5 text-xs">
                       {new Date(drug.expiryDate).toLocaleDateString('en-IN')}
-                      {isExpiringSoon(drug.expiryDate) && <Badge variant="destructive">Expiring</Badge>}
+                      {isExpiringSoon(drug.expiryDate) && <StatusBadge status="EXPIRING" />}
                     </div>
                   </TableCell>
                   <TableCell>{drug.currentStock}</TableCell>
@@ -130,7 +128,7 @@ export default function PharmacyStockPage() {
                   <TableCell>
                     <div className="flex items-center gap-1.5">
                       {drug.availableStock}
-                      {drug.currentStock <= drug.reorderLevel && <Badge variant="destructive">Low</Badge>}
+                      {drug.currentStock <= drug.reorderLevel && <StatusBadge status="LOW_STOCK" label="Low" />}
                     </div>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">{drug.reorderLevel}</TableCell>
@@ -160,11 +158,11 @@ export default function PharmacyStockPage() {
                     )}
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+    </PageLayout>
   )
 }

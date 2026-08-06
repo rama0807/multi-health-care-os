@@ -19,7 +19,6 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Activity,
-  AlertTriangle,
   CalendarClock,
   CalendarOff,
   FileText,
@@ -31,11 +30,11 @@ import {
   Upload,
   X,
 } from 'lucide-react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { PageLayout } from '@/components/layout/page-layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -47,9 +46,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { PageHeaderMeta } from '@/components/ui/page-header'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
@@ -83,16 +85,9 @@ function formatEnumLabel(value: string): string {
   return value.charAt(0) + value.slice(1).toLowerCase().replace(/_/g, ' ')
 }
 
-const AVAILABILITY_BADGE_VARIANT: Record<DoctorAvailabilityStatus, 'success' | 'secondary' | 'destructive'> = {
-  [DoctorAvailabilityStatus.AVAILABLE]: 'success',
-  [DoctorAvailabilityStatus.ON_LEAVE]: 'secondary',
-  [DoctorAvailabilityStatus.UNAVAILABLE]: 'destructive',
-}
-
 export default function DoctorDetailPage() {
   const params = useParams<{ id: string }>()
   const doctorId = params.id
-  const router = useRouter()
   const { hasPermission } = useAuth()
   const { toast } = useToast()
   const queryClient = useQueryClient()
@@ -132,76 +127,82 @@ export default function DoctorDetailPage() {
 
   if (doctorQuery.isLoading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
+      <PageLayout
+        breadcrumbs={[{ label: 'Doctors', href: '/dashboard/doctors' }, { label: '…' }]}
+        title="…"
+        loading
+      >
+        <div className="flex h-64 items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </PageLayout>
     )
   }
 
   if (doctorQuery.isError || !doctorQuery.data) {
     return (
-      <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Doctor not found</AlertTitle>
-        <AlertDescription>
-          {getErrorMessage(doctorQuery.error)}{' '}
-          <Button variant="link" className="h-auto p-0" onClick={() => router.push('/dashboard/doctors')}>
-            Back to doctors
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <PageLayout breadcrumbs={[{ label: 'Doctors', href: '/dashboard/doctors' }, { label: 'Not found' }]} title="Doctor not found">
+        <EmptyState
+          variant="error"
+          title="Doctor not found"
+          description={getErrorMessage(doctorQuery.error)}
+          action={{ label: 'Back to doctors', href: '/dashboard/doctors' }}
+        />
+      </PageLayout>
     )
   }
 
   const doctor = doctorQuery.data
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-semibold text-foreground">Dr. {doctor.fullName}</h1>
-            <Badge variant={doctor.isActive ? 'success' : 'secondary'}>
-              {doctor.isActive ? 'Active' : 'Deactivated'}
-            </Badge>
-            <Badge variant={AVAILABILITY_BADGE_VARIANT[doctor.availabilityStatus]}>
-              {formatEnumLabel(doctor.availabilityStatus)}
-            </Badge>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {doctor.specialization}
-            {doctor.subSpecialization ? ` · ${doctor.subSpecialization}` : ''} · {doctor.experienceYears} yrs
-            experience
-          </p>
-          <p className="font-mono text-xs text-muted-foreground">{doctor.registrationNumber}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {doctor.isActive && canDelete && (
-            <Button variant="destructive" size="sm" onClick={() => setConfirmDeactivate(true)}>
-              <Trash2 />
-              Deactivate
-            </Button>
-          )}
-          {!doctor.isActive && canUpdate && (
-            <Button size="sm" onClick={() => restoreMutation.mutate()} disabled={restoreMutation.isPending}>
-              {restoreMutation.isPending ? <Loader2 className="animate-spin" /> : <RotateCcw />}
-              Restore
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <Tabs defaultValue="profile">
-        <TabsList className="flex-wrap">
-          <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="statistics">Statistics</TabsTrigger>
-          <TabsTrigger value="schedule">Schedule</TabsTrigger>
-          <TabsTrigger value="leave">Leave</TabsTrigger>
-          <TabsTrigger value="availability">Availability</TabsTrigger>
-          <TabsTrigger value="documents">Documents</TabsTrigger>
-          <TabsTrigger value="audit">Audit</TabsTrigger>
-        </TabsList>
-
+    <Tabs defaultValue="profile">
+      <PageLayout
+        breadcrumbs={[{ label: 'Doctors', href: '/dashboard/doctors' }, { label: `Dr. ${doctor.fullName}` }]}
+        title={`Dr. ${doctor.fullName}`}
+        badge={
+          <>
+            <StatusBadge status={doctor.isActive ? 'ACTIVE' : 'INACTIVE'} label={doctor.isActive ? 'Active' : 'Deactivated'} />
+            <StatusBadge status={doctor.availabilityStatus} />
+          </>
+        }
+        meta={
+          <>
+            <PageHeaderMeta label="Specialization">
+              {doctor.specialization}
+              {doctor.subSpecialization ? ` · ${doctor.subSpecialization}` : ''}
+            </PageHeaderMeta>
+            <PageHeaderMeta label="Experience">{doctor.experienceYears} yrs</PageHeaderMeta>
+            <PageHeaderMeta label="Reg. no.">{doctor.registrationNumber}</PageHeaderMeta>
+          </>
+        }
+        actions={
+          <>
+            {doctor.isActive && canDelete && (
+              <Button variant="destructive" size="sm" onClick={() => setConfirmDeactivate(true)}>
+                <Trash2 />
+                Deactivate
+              </Button>
+            )}
+            {!doctor.isActive && canUpdate && (
+              <Button size="sm" onClick={() => restoreMutation.mutate()} disabled={restoreMutation.isPending}>
+                {restoreMutation.isPending ? <Loader2 className="animate-spin" /> : <RotateCcw />}
+                Restore
+              </Button>
+            )}
+          </>
+        }
+        toolbar={
+          <TabsList className="flex-wrap">
+            <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="statistics">Statistics</TabsTrigger>
+            <TabsTrigger value="schedule">Schedule</TabsTrigger>
+            <TabsTrigger value="leave">Leave</TabsTrigger>
+            <TabsTrigger value="availability">Availability</TabsTrigger>
+            <TabsTrigger value="documents">Documents</TabsTrigger>
+            <TabsTrigger value="audit">Audit</TabsTrigger>
+          </TabsList>
+        }
+      >
         <TabsContent value="profile">
           <ProfileTab doctor={doctor} canUpdate={canUpdate} />
         </TabsContent>
@@ -232,32 +233,32 @@ export default function DoctorDetailPage() {
         <TabsContent value="audit">
           <AuditTab doctorId={doctorId} />
         </TabsContent>
-      </Tabs>
 
-      <Dialog open={confirmDeactivate} onOpenChange={setConfirmDeactivate}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Deactivate Dr. {doctor.fullName}?</DialogTitle>
-            <DialogDescription>
-              This deactivates the doctor&apos;s profile. It can be restored later from the doctors list.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmDeactivate(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => deactivateMutation.mutate()}
-              disabled={deactivateMutation.isPending}
-            >
-              {deactivateMutation.isPending && <Loader2 className="animate-spin" />}
-              Deactivate
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+        <Dialog open={confirmDeactivate} onOpenChange={setConfirmDeactivate}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Deactivate Dr. {doctor.fullName}?</DialogTitle>
+              <DialogDescription>
+                This deactivates the doctor&apos;s profile. It can be restored later from the doctors list.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setConfirmDeactivate(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => deactivateMutation.mutate()}
+                disabled={deactivateMutation.isPending}
+              >
+                {deactivateMutation.isPending && <Loader2 className="animate-spin" />}
+                Deactivate
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </PageLayout>
+    </Tabs>
   )
 }
 
@@ -1026,13 +1027,6 @@ function NewScheduleDialog({
   )
 }
 
-const LEAVE_STATUS_BADGE: Record<string, 'success' | 'secondary' | 'destructive'> = {
-  PENDING: 'secondary',
-  APPROVED: 'success',
-  REJECTED: 'destructive',
-  CANCELLED: 'destructive',
-}
-
 function LeaveTab({ doctorId }: { doctorId: string }) {
   const { hasPermission } = useAuth()
   const { toast } = useToast()
@@ -1118,7 +1112,7 @@ function LeaveTab({ doctorId }: { doctorId: string }) {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant={LEAVE_STATUS_BADGE[leave.status]}>{formatEnumLabel(leave.status)}</Badge>
+                  <StatusBadge status={leave.status} />
                   {leave.status === LeaveStatus.PENDING && canApprove && (
                     <>
                       <Button

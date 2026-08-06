@@ -118,7 +118,6 @@ function QueueCard({
   )
 }
 
-/** A single number-and-label cell for the dense operational overview grid. */
 function OverviewMetric({
   label,
   value,
@@ -175,6 +174,7 @@ export default function DashboardPage() {
   const canReadAppointments = hasPermission('appointments.read')
   const canReadLab = hasPermission('laboratory.read')
   const canReadPharmacy = hasPermission('pharmacy.read')
+  const canReadNursingTasks = hasPermission('ipd.tasks.read')
 
   // ── Hospital Overview + headline KPIs ─────────────────────────────────────
 
@@ -501,7 +501,7 @@ export default function DashboardPage() {
                 ]}
               />
             )}
-            {canReadIpd && (
+            {canReadIpd && canReadNursingTasks && (
               <QueueCard
                 icon={ClipboardList}
                 title="Nursing tasks"

@@ -17,26 +17,26 @@ import { cn } from "@/lib/utils"
  * `link`) and sizes are all preserved - roughly ninety pages depend on them.
  */
 const buttonVariants = cva(
-  "relative inline-flex select-none items-center justify-center gap-1.5 whitespace-nowrap rounded-md text-sm font-medium transition-[background-color,border-color,color,box-shadow] duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "relative inline-flex select-none items-center justify-center gap-1.5 whitespace-nowrap rounded-md text-sm font-medium transition-[background-color,border-color,color,box-shadow,transform] duration-fast active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 disabled:active:scale-100 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
         default:
           "bg-primary text-primary-foreground shadow-xs hover:bg-primary-hover active:bg-primary-active",
         /** Tinted brand button - the workhorse for secondary page actions. */
-        soft: "bg-primary-subtle text-primary-subtle-foreground hover:bg-primary-subtle/70",
+        soft: "bg-primary-subtle text-primary-subtle-foreground hover:bg-primary-subtle/70 active:bg-primary-subtle/90",
         destructive:
-          "bg-destructive text-destructive-foreground shadow-xs hover:bg-destructive/90",
+          "bg-destructive text-destructive-foreground shadow-xs hover:bg-destructive/90 active:bg-destructive/80",
         danger:
-          "bg-danger text-danger-foreground shadow-xs hover:bg-danger/90",
+          "bg-danger text-danger-foreground shadow-xs hover:bg-danger/90 active:bg-danger/80",
         success:
-          "bg-success text-success-foreground shadow-xs hover:bg-success/90",
+          "bg-success text-success-foreground shadow-xs hover:bg-success/90 active:bg-success/80",
         outline:
-          "border border-input bg-surface shadow-xs hover:bg-surface-hover hover:text-foreground",
+          "border border-input bg-surface shadow-xs hover:border-border-strong hover:bg-surface-hover hover:text-foreground active:bg-surface-hover",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary-hover",
-        ghost: "hover:bg-surface-hover hover:text-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
+          "bg-secondary text-secondary-foreground hover:bg-secondary-hover active:bg-secondary-hover/70",
+        ghost: "hover:bg-surface-hover hover:text-foreground active:bg-surface-hover/70",
+        link: "text-primary underline-offset-4 hover:underline active:scale-100",
       },
       size: {
         xs: "h-7 rounded-sm px-2 text-xs [&_svg]:size-3.5",

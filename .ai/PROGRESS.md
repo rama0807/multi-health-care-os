@@ -2391,3 +2391,83 @@ column; the four clinical status colours were **hardcoded hex** in
   silently re-pointed (**TD-0076**); feature pages have not been migrated to the
   new primitives, which is Phase 2 (**TD-0077**). Not browser-verified -
   automated verification is this repository's default policy.
+
+---
+
+## Design System V2 - Phase 3: shared component visual polish: Complete
+
+Completed 2026-08-06, same day as Phases 1-2. Explicit instruction scoped this
+purely to **micro-visual polish of the shared primitives already built in
+Phase 1** - no feature page touched, no IA change, no new page, no backend/API/
+business-logic change. All motion kept under 200ms; no gradients, glassmorphism
+or neumorphism introduced; every colour used was an existing semantic token
+from `globals.css` - no new tokens were added.
+
+Every change below is **additive or purely cosmetic** - no existing prop,
+variant, or exported name was removed, so none of the ~90 already-migrated
+pages needed editing:
+
+- **`Card`** - new `interactive` variant (hover lift: border + shadow only,
+  for a card that is itself a link/button) and a base `transition-shadow` so
+  any variant swap animates smoothly. `default`/`elevated`/`inset`/`ghost`
+  unchanged.
+- **`StatCard`** - icon chip gained a subtle inset ring and grew from `size-7`
+  to `size-8`; the headline number switched from `font-semibold` to
+  `font-bold leading-none` for more emphasis without changing its font size
+  (no wrapping risk across the ~70 call sites); new optional `sparklineData`
+  prop renders a tiny dependency-free inline SVG trend line next to the
+  trend/hint row - purely decorative, opt-in, renders nothing when omitted.
+- **`Button`** - every variant gained a real `active:` state (previously only
+  `default` had one, via `--primary-active`); all variants now also get a
+  subtle `active:scale-[0.98]` press-down, reverted with the existing
+  `duration-fast` (120ms) token. `link` is excluded (a press-scale on inline
+  text reads as a layout jump).
+- **`Sidebar`** - nav links get a 2px `hover:translate-x-0.5` nudge (skipped
+  when collapsed, where there is no room for it); the active-route marker bar
+  thickened from `w-0.5`/`inset-y-1` to `w-[3px]`/`inset-y-1.5` for a clearer
+  second signal alongside the tint.
+- **`Input`/`Select`/`Textarea`** - added a shared `hover:border-border-strong`
+  step before focus, and an explicit `duration-fast` on the transition (was
+  relying on Tailwind's default). **`Textarea` was still on pre-V2 styling**
+  (`bg-background`, `ring-[3px]`, the `destructive` alias) - brought up to the
+  same tokens `Input`/`Select` already use (`bg-surface`, `ring-2 ring-ring/30`,
+  `danger`), the one non-cosmetic-only fix in this phase, still presentation-only.
+- **`EmptyState`** - icon circle gained the same subtle inset ring as the
+  `StatCard` icon chip, for visual consistency between the two "icon in a
+  circle" treatments in the system.
+- **Skeletons** - two new composite exports, `CardSkeleton` and
+  `DetailPageSkeleton`, built from the existing `Skeleton`/`SkeletonText`/
+  `StatCardSkeleton` primitives - covers the "detail pages" and "generic card"
+  loading shapes the brief asked for; `TableSkeleton` was already exactly
+  right and is unchanged.
+- **Notification bell badge** - swapped a hardcoded `text-white` and the
+  `bg-destructive` alias for real tokens (`text-primary-foreground`/
+  `text-danger-foreground`, `bg-danger`), so the badge derives correctly under
+  a tenant's branding and in dark mode; added a `ring-2 ring-surface` so the
+  badge visually separates from the bell icon instead of touching it.
+- **Header search trigger** - added the same `hover:border-border-strong` +
+  `duration-fast` step used on the form inputs, for consistency.
+- **Badges, Tables, Timeline** were audited against the brief and found
+  already at the target bar from Phase 1 (soft tinted-not-solid badges,
+  sticky headers, row-hover, colored timeline dots, keyboard-reachable row
+  actions) - deliberately left untouched rather than changed for the sake of
+  changing something.
+- Verification: `pnpm --filter web lint` / `typecheck` / `test` (49 web unit
+  tests) / `build` all clean across all 90+ routes. Not browser-verified -
+  automated verification is this repository's default policy; no UI
+  regression was suspected or reported that would call for it.
+- Nothing deferred - this phase's whole scope (the 12 named component
+  categories) was addressed in the same session; items already meeting the
+  bar are called out above rather than silently skipped.
+- **Follow-up fix, same session:** the user reported the sticky table header
+  on `/dashboard/medical-records` scrolling away with the rows instead of
+  staying pinned. Root cause: `position: sticky` on a `<thead>`/`<tr>` is
+  unreliable across browser engines - a `<th>` is a real box in the
+  containing-block chain that a table row-group is not, which is why some
+  engines honor sticky on the row-group and some don't. Fixed in
+  `components/ui/table.tsx` by adding an internal `HeaderStickyContext` that
+  `TableHeader` provides and every `TableHead` consumes, pinning each header
+  *cell* (`top-0 z-sticky`) in addition to the `<thead>` itself - composes
+  correctly with a cell's existing horizontal `sticky` (frozen-column) prop
+  for a "frozen corner" cell. No prop or API change; re-verified lint/
+  typecheck/build clean.

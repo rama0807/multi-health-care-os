@@ -13,10 +13,12 @@ import { cn } from "@/lib/utils"
  * headlines and no hierarchy.
  *
  * Depth comes from the border. `elevated` adds a shadow and is for surfaces
- * that genuinely float; a card sitting in page flow does not.
+ * that genuinely float; a card sitting in page flow does not. `interactive`
+ * is for a card that is itself a control (wraps a `<Link>` or `onClick`) - it
+ * lifts on hover so the whole tile reads as clickable, not just its label.
  */
 const cardVariants = cva(
-  "rounded-lg border bg-card text-card-foreground",
+  "rounded-lg border bg-card text-card-foreground transition-shadow duration-fast",
   {
     variants: {
       variant: {
@@ -25,6 +27,9 @@ const cardVariants = cva(
         /** No shadow, muted fill - for a nested/inset panel inside a card. */
         inset: "border-border/70 bg-surface-secondary shadow-none",
         ghost: "border-transparent bg-transparent shadow-none",
+        /** A card that is a link or button - hover lifts it off the page. */
+        interactive:
+          "cursor-pointer shadow-xs hover:border-border-strong hover:shadow-md",
       },
     },
     defaultVariants: { variant: "default" },

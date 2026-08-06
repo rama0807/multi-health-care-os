@@ -88,14 +88,14 @@ export function Sidebar() {
         <WorkspaceSwitcher collapsed={collapsed} displayName={displayName} logo={logo} />
 
         {visibleActions.length > 0 && (
-          <div className={cn('px-2 pb-1 pt-2', collapsed && 'px-1.5')}>
+          <div className={cn('border-b border-sidebar-border px-2 py-2', collapsed && 'px-1.5')}>
             <QuickCreate collapsed={collapsed} actions={visibleActions} />
           </div>
         )}
 
         <nav
           aria-label="Main"
-          className={cn('flex-1 overflow-y-auto overflow-x-hidden px-2 py-2', collapsed && 'px-1.5')}
+          className={cn('flex-1 overflow-y-auto overflow-x-hidden px-2 py-3', collapsed && 'px-1.5')}
         >
           {navigation.map((section, index) => {
             const items = section.items.filter(
@@ -104,9 +104,9 @@ export function Sidebar() {
             if (items.length === 0) return null
 
             return (
-              <div key={section.title || index} className="mb-3 last:mb-0">
+              <div key={section.title || index} className="mb-5 last:mb-0">
                 {section.title && !collapsed && (
-                  <p className="mb-1 px-2 text-2xs font-semibold uppercase tracking-wider text-sidebar-muted">
+                  <p className="mb-1.5 px-2 text-2xs font-semibold uppercase tracking-wider text-sidebar-muted">
                     {section.title}
                   </p>
                 )}
@@ -199,8 +199,8 @@ function NavEntry({
       href={item.href}
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'group relative flex items-center gap-2.5 rounded-md py-1.5 text-sm transition-colors duration-fast',
-        collapsed ? 'justify-center px-0' : 'px-2',
+        'group relative flex items-center gap-2.5 rounded-md py-1.5 text-sm transition-[background-color,color,transform] duration-fast',
+        collapsed ? 'justify-center px-0' : 'px-2 hover:translate-x-0.5',
         active
           ? 'bg-sidebar-item-active font-medium text-sidebar-item-active-foreground'
           : 'text-sidebar-muted hover:bg-sidebar-item-hover hover:text-sidebar-foreground',
@@ -210,7 +210,7 @@ function NavEntry({
       {active && (
         <span
           aria-hidden="true"
-          className="absolute inset-y-1 left-0 w-0.5 rounded-full bg-primary"
+          className="absolute inset-y-1.5 left-0 w-[3px] rounded-full bg-primary"
         />
       )}
       <item.icon className="size-4 shrink-0" aria-hidden="true" />

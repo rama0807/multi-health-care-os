@@ -7,8 +7,8 @@ import {
   CreditCard,
   FileText,
   FlaskConical,
-  Home,
   Landmark,
+  LayoutDashboard,
   Package,
   Pill,
   Scan,
@@ -53,9 +53,9 @@ export interface NavSection {
 
 export const navigation: NavSection[] = [
   {
-    title: '',
+    title: 'Overview',
     items: [
-      { label: 'Dashboard', href: '/dashboard', icon: Home },
+      { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       {
         label: 'Patients',
         href: '/dashboard/patients',

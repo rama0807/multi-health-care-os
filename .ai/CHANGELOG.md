@@ -5,6 +5,43 @@
 
 ## [Unreleased]
 
+### Design System V2 - Phase 3: shared component visual polish (2026-08-06)
+
+**Presentation-only, additive.** No feature page, IA, backend, API or
+business-logic change; no new colour token; every motion under 200ms; no
+gradients/glassmorphism/neumorphism.
+
+- `Card` gained an `interactive` hover-lift variant and a smoother shadow
+  transition; existing variants unchanged.
+- `StatCard` icon chip got a subtle ring and grew slightly; the headline
+  number is bolder and tighter; added an opt-in `sparklineData` prop (a
+  dependency-free inline SVG trend line).
+- `Button` - every variant now has a real `active:` state plus a shared
+  `active:scale-[0.98]` press animation.
+- Sidebar nav items get a small hover nudge; the active-route marker bar is
+  slightly thicker.
+- `Input`/`Select`/`Textarea` gained a consistent pre-focus hover border;
+  `Textarea` was migrated off pre-V2 styling (`bg-background`/`ring-[3px]`/
+  `destructive`) onto the same tokens `Input`/`Select` already use.
+- `EmptyState`'s icon circle and the notification bell's unread badge picked
+  up the same small consistency fixes (a ring on the icon circle; real
+  tokens instead of a hardcoded white and the `destructive` alias on the
+  badge).
+- Two new composite skeleton loaders, `CardSkeleton` and
+  `DetailPageSkeleton`, built from existing skeleton primitives.
+- Badges, Tables and Timeline were reviewed against the brief and found
+  already at target from Phase 1 - left unchanged.
+- Verified: `pnpm --filter web lint`/`typecheck`/`test`/`build` all clean.
+
+### Fixed
+- **Sticky table headers could scroll away with the rows** (reported against
+  `/dashboard/medical-records`, applies to every table). `position: sticky`
+  on a `<thead>`/`<tr>` is unreliable across browser engines - a `<th>` is a
+  real box in the containing-block chain, a table row-group is not. Fixed in
+  `components/ui/table.tsx` by pushing the pin down onto every header cell
+  (`TableHead`, via a new internal `HeaderStickyContext`) in addition to the
+  `<thead>` itself - no prop or API change, so no page needed editing.
+
 ### Design System V2 - Phase 2: every feature page migrated (2026-08-06)
 
 **UI/UX only, module by module. No API, business rule, permission, workflow or

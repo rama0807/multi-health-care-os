@@ -6,6 +6,95 @@
 
 ---
 
+## Session - 2026-08-06 - Design System V2, Phase 3: shared component visual polish
+
+### What was completed
+
+Explicit instruction: keep backend/APIs/routing/business logic untouched, do
+not migrate or redesign any more feature pages, and polish only the **shared**
+components already built in Phase 1 - Card, StatCard, Sidebar, Tables,
+Timeline, Top Navigation, Buttons, Inputs, Badges, Empty States, Skeleton
+loaders, and subtle (<200ms) animation, with no gradients/glassmorphism/
+neumorphism and no new colour tokens.
+
+Read every file under `apps/web/src/components/ui/` plus `layout/sidebar.tsx`,
+`layout/header.tsx`, `layout/command-palette.tsx`, and
+`notifications/notification-bell.tsx` first, against `tailwind.config.ts` and
+`globals.css`'s token layer, before changing anything - most of the 12
+requested categories were already at a premium bar from Phase 1 (sticky
+tables, tinted-not-solid badges, colored timeline dots, a real branding-aware
+token system). Badges, Tables and Timeline needed nothing and were
+deliberately left alone rather than changed for its own sake.
+
+**Files changed** (all additive or purely cosmetic - no prop, variant or
+export removed, so none of the ~90 already-migrated feature pages needed
+touching):
+- `components/ui/card.tsx` - new `interactive` hover-lift variant, smoother
+  shadow transition on the base.
+- `components/ui/stat-card.tsx` - icon chip ring + size bump, bolder/tighter
+  headline number, new opt-in `sparklineData` prop (dependency-free inline
+  SVG, additive default-undefined).
+- `components/ui/button.tsx` - every variant now has a real `active:` state;
+  added a shared `active:scale-[0.98]` press animation (excluded on `link`).
+- `components/layout/sidebar.tsx` - nav-item hover nudge (`translate-x-0.5`,
+  skipped when collapsed), active-marker bar thickened.
+- `components/ui/input.tsx`, `select.tsx` - added `hover:border-border-strong`
+  + explicit `duration-fast`.
+- `components/ui/textarea.tsx` - **the one non-trivial fix**: this primitive
+  was still on pre-V2 styling (`bg-background`, `ring-[3px]`,
+  `destructive`/`text-muted-foreground` aliases) while `Input`/`Select` had
+  already been migrated in Phase 1. Brought onto the same tokens
+  (`bg-surface`, `ring-2 ring-ring/30`, `danger`, `duration-fast`) - still
+  presentation-only, no prop change.
+- `components/ui/empty-state.tsx` - icon circle gained the same subtle ring as
+  `StatCard`'s icon chip.
+- `components/ui/skeleton.tsx` - two new composite exports, `CardSkeleton` and
+  `DetailPageSkeleton`, built from the existing skeleton primitives.
+- `components/notifications/notification-bell.tsx` - unread badge now uses
+  real tokens (`bg-danger`/`text-danger-foreground`,
+  `bg-primary`/`text-primary-foreground`) instead of a hardcoded `text-white`
+  and the `destructive` alias, plus a `ring-2 ring-surface` so it visually
+  separates from the bell icon.
+- `components/layout/command-palette.tsx` - header search trigger gained the
+  same hover-border + `duration-fast` treatment as the form inputs.
+
+### Architectural decisions made
+
+None - this session made no architecture decision. It applied existing
+ADR-0031 tokens more consistently (`Textarea` was the one primitive that had
+drifted from them) and stayed entirely within already-settled design-system
+rules.
+
+### Known issues
+
+None introduced, and one real bug reported and fixed in the same session: the
+user observed the sticky table header on `/dashboard/medical-records`
+scrolling away with the rows. `position: sticky` on `<thead>`/`<tr>` is
+unreliable across browser engines (a `<th>` is a real box in the
+containing-block chain; a table row-group is not). Fixed in
+`components/ui/table.tsx` - `TableHeader` now provides a `HeaderStickyContext`
+that every `TableHead` consumes to pin itself (`top-0 z-sticky`) in addition
+to the `<thead>`'s own sticky, composing correctly with a cell's existing
+horizontal `sticky` (frozen-column) prop. No API change. Re-verified lint/
+typecheck/build clean. Not otherwise browser-verified beyond this - by this
+repository's default automated-verification policy.
+
+### Recommended next task
+
+There is no queued shared-component work - the 12 requested categories are
+now addressed (several were already at target and intentionally left alone).
+Per `NEXT.md`, the next real backlog items are still TD-0074 (branding gating,
+backend), TD-0075 (hospital selector doesn't filter data yet, per-module), and
+TD-0076 (`/dashboard/settings` 404) - none of which are shared-component work.
+Do not start a fourth design-system pass without a fresh instruction.
+
+### Estimated project completion
+
+Unchanged from the last entry below - this session touched only the shared
+component layer's visual finish, not scope or completion of any module.
+
+---
+
 ## Session - 2026-08-06 - Design System V2, Phase 2: every feature page migrated
 
 ### What was completed

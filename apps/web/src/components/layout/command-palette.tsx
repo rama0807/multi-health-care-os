@@ -77,7 +77,7 @@ export function CommandPalette() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex h-8 w-full max-w-sm items-center gap-2 rounded-md border border-border bg-surface-secondary px-2.5 text-left text-sm text-muted-foreground transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex h-8 w-full max-w-sm items-center gap-2 rounded-md border border-border bg-surface-secondary px-2.5 text-left text-sm text-muted-foreground transition-colors duration-fast hover:border-border-strong hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <Search className="size-3.5 flex-shrink-0" aria-hidden="true" />
         <span className="truncate">Search patients, pages, actions…</span>

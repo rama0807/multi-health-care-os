@@ -32,6 +32,16 @@ type Density = "comfortable" | "compact"
 
 const DensityContext = React.createContext<Density>("comfortable")
 
+/**
+ * Whether the enclosing `<TableHeader sticky>` is pinned. `position: sticky`
+ * on a `<thead>`/`<tr>` is unreliable across engines - a `<th>` is a real box
+ * in the containing-block chain, a row-group is not - so the pin is applied
+ * to every header *cell* as well as the row-group. Belt and suspenders: this
+ * costs nothing where the row-group already sticks, and is what makes it
+ * stick where it doesn't.
+ */
+const HeaderStickyContext = React.createContext(false)
+
 const DENSITY_CELL: Record<Density, string> = {
   comfortable: "px-3 py-3",
   compact: "px-2.5 py-1.5",
@@ -101,18 +111,20 @@ const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement> & { sticky?: boolean }
 >(({ className, sticky = true, ...props }, ref) => (
-  <thead
-    ref={ref}
-    className={cn(
-      "bg-surface-secondary [&_th]:border-b",
-      // `border-separate` above means the header's bottom border travels with
-      // it while stuck - a collapsed border would be left behind at the top of
-      // the scrolled content.
-      sticky && "sticky top-0 z-sticky",
-      className
-    )}
-    {...props}
-  />
+  <HeaderStickyContext.Provider value={sticky}>
+    <thead
+      ref={ref}
+      className={cn(
+        "bg-surface-secondary [&_th]:border-b",
+        // `border-separate` above means the header's bottom border travels with
+        // it while stuck - a collapsed border would be left behind at the top of
+        // the scrolled content.
+        sticky && "sticky top-0 z-sticky",
+        className
+      )}
+      {...props}
+    />
+  </HeaderStickyContext.Provider>
 ))
 TableHeader.displayName = "TableHeader"
 
@@ -184,6 +196,10 @@ interface TableHeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
 const TableHead = React.forwardRef<HTMLTableCellElement, TableHeadProps>(
   ({ className, align = "left", sticky, ...props }, ref) => {
     const density = React.useContext(DensityContext)
+    // The row's own vertical pin (see `HeaderStickyContext`) - independent of
+    // this cell's `sticky` prop, which only pins it *horizontally* as a
+    // frozen identity column. A cell can be pinned on both axes at once.
+    const pinnedToTop = React.useContext(HeaderStickyContext)
     return (
       <th
         ref={ref}
@@ -193,7 +209,10 @@ const TableHead = React.forwardRef<HTMLTableCellElement, TableHeadProps>(
           align === "left" && "text-left",
           align === "center" && "text-center",
           align === "right" && "text-right",
-          sticky && "sticky left-0 z-raised",
+          (pinnedToTop || sticky) && "sticky",
+          pinnedToTop && "top-0 z-sticky",
+          sticky && "left-0",
+          sticky && !pinnedToTop && "z-raised",
           "[&:has([role=checkbox])]:w-10 [&:has([role=checkbox])]:pr-0",
           className
         )}

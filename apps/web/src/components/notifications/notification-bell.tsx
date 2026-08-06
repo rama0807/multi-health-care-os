@@ -82,10 +82,10 @@ export function NotificationBell() {
         {unread > 0 && (
           <span
             className={cn(
-              'absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold text-white',
+              'absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold ring-2 ring-surface',
               // Critical unread turns the badge red; ordinary unread stays
               // neutral, so the colour still means something when it appears.
-              critical > 0 ? 'bg-destructive' : 'bg-primary',
+              critical > 0 ? 'bg-danger text-danger-foreground' : 'bg-primary text-primary-foreground',
             )}
           >
             {unread > 99 ? '99+' : unread}

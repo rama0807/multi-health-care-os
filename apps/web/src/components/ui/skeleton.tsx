@@ -91,4 +91,49 @@ function StatCardSkeleton({ count = 4, className }: { count?: number; className?
   )
 }
 
-export { Skeleton, SkeletonText, TableSkeleton, StatCardSkeleton }
+/** A generic card body - title line plus a short paragraph of copy. */
+function CardSkeleton({ lines = 3, className }: { lines?: number; className?: string }) {
+  return (
+    <div
+      className={cn("rounded-lg border bg-surface p-4", className)}
+      role="status"
+      aria-label="Loading"
+    >
+      <Skeleton className="h-4 w-32" />
+      <SkeletonText lines={lines} className="mt-4" />
+    </div>
+  )
+}
+
+/**
+ * A detail page's first paint: title bar, the stat row every detail page
+ * opens with, then a two-column body. Pages compose their own real tab
+ * content once loaded - this is only the shape shown before that.
+ */
+function DetailPageSkeleton({ className }: { className?: string }) {
+  return (
+    <div className={cn("space-y-4", className)} role="status" aria-label="Loading page">
+      <div className="flex items-center justify-between gap-4">
+        <div className="space-y-2">
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="h-6 w-56" />
+        </div>
+        <Skeleton className="h-8 w-28 shrink-0" />
+      </div>
+      <StatCardSkeleton count={4} />
+      <div className="grid gap-4 lg:grid-cols-3">
+        <CardSkeleton lines={4} className="lg:col-span-2" />
+        <CardSkeleton lines={4} />
+      </div>
+    </div>
+  )
+}
+
+export {
+  Skeleton,
+  SkeletonText,
+  TableSkeleton,
+  StatCardSkeleton,
+  CardSkeleton,
+  DetailPageSkeleton,
+}

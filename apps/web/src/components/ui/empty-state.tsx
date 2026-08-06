@@ -64,7 +64,7 @@ export function EmptyState({
     >
       <div
         className={cn(
-          "flex items-center justify-center rounded-full",
+          "flex items-center justify-center rounded-full ring-1 ring-inset ring-border/60",
           compact ? "size-9" : "size-12",
           variant === "error"
             ? "bg-danger-subtle text-danger-subtle-foreground"

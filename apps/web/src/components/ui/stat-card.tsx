@@ -42,6 +42,45 @@ export interface StatCardProps extends Omit<React.HTMLAttributes<HTMLDivElement>
   loading?: boolean
   /** Tints the icon chip - use to carry a status meaning, e.g. critical count. */
   tone?: "default" | "success" | "warning" | "danger" | "info"
+  /**
+   * Optional trend shape, rendered as a tiny inline sparkline. Decorative only
+   * - for a real chart, link to the module's report instead of trying to make
+   * this tile do more than a KPI glance should.
+   */
+  sparklineData?: number[]
+}
+
+/** A minimal inline trend line - no chart library, no axes, no tooltip. */
+function Sparkline({ data, className }: { data: number[]; className?: string }) {
+  if (data.length < 2) return null
+  const max = Math.max(...data)
+  const min = Math.min(...data)
+  const range = max - min || 1
+  const points = data
+    .map((point, index) => {
+      const x = (index / (data.length - 1)) * 100
+      const y = 18 - ((point - min) / range) * 16
+      return `${x},${y}`
+    })
+    .join(" ")
+
+  return (
+    <svg
+      viewBox="0 0 100 20"
+      preserveAspectRatio="none"
+      className={cn("h-5 w-16", className)}
+      aria-hidden="true"
+    >
+      <polyline
+        points={points}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
 }
 
 const TONE_CHIP: Record<NonNullable<StatCardProps["tone"]>, string> = {
@@ -73,6 +112,7 @@ export function StatCard({
   href,
   loading = false,
   tone = "default",
+  sparklineData,
   className,
   ...props
 }: StatCardProps) {
@@ -87,40 +127,53 @@ export function StatCard({
         {Icon && (
           <span
             className={cn(
-              "flex size-7 shrink-0 items-center justify-center rounded-md",
+              "flex size-8 shrink-0 items-center justify-center rounded-md ring-1 ring-inset ring-border/60",
               TONE_CHIP[tone]
             )}
           >
-            <Icon className="size-3.5" aria-hidden="true" />
+            <Icon className="size-4" aria-hidden="true" />
           </span>
         )}
       </div>
 
-      <div className="mt-2">
+      <div className="mt-2.5">
         {loading ? (
           <Skeleton className="h-7 w-20" />
         ) : (
-          <p className="text-2xl font-semibold tabular-nums tracking-tight text-foreground">
+          <p className="text-2xl font-bold leading-none tracking-tight text-foreground tabular-nums">
             {value === null || value === undefined || value === "" ? <EmptyValue /> : value}
           </p>
         )}
       </div>
 
       {(trend || hint) && (
-        <div className="mt-2 flex items-center gap-1.5 text-xs">
-          {trend && TrendIcon && (
-            <span
+        <div className="mt-2.5 flex items-center justify-between gap-2 text-xs">
+          <div className="flex min-w-0 items-center gap-1.5">
+            {trend && TrendIcon && (
+              <span
+                className={cn(
+                  "inline-flex items-center gap-0.5 font-medium tabular-nums",
+                  TREND_INTENT[trend.intent ?? "neutral"]
+                )}
+              >
+                <TrendIcon className="size-3" aria-hidden="true" />
+                {trend.value}
+              </span>
+            )}
+            {(trend?.label || hint) && (
+              <span className="truncate text-muted-foreground">{trend?.label ?? hint}</span>
+            )}
+          </div>
+          {!loading && sparklineData && sparklineData.length > 1 && (
+            <Sparkline
+              data={sparklineData}
               className={cn(
-                "inline-flex items-center gap-0.5 font-medium tabular-nums",
-                TREND_INTENT[trend.intent ?? "neutral"]
+                "shrink-0",
+                trend?.intent === "positive" && "text-success-subtle-foreground",
+                trend?.intent === "negative" && "text-danger-subtle-foreground",
+                (!trend?.intent || trend.intent === "neutral") && "text-primary/60"
               )}
-            >
-              <TrendIcon className="size-3" aria-hidden="true" />
-              {trend.value}
-            </span>
-          )}
-          {(trend?.label || hint) && (
-            <span className="truncate text-muted-foreground">{trend?.label ?? hint}</span>
+            />
           )}
         </div>
       )}

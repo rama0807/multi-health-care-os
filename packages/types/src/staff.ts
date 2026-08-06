@@ -70,10 +70,10 @@ export const CreateStaffSchema = z.object({
   // Employment profile fields.
   employeeId: z.string().min(1).max(50),
   designation: z.string().min(1).max(100),
-  departmentId: z.string().min(1).optional(),
+  departmentId: optionalString(z.string().min(1)),
   hospitalId: z.string().min(1),
   employmentType: z.nativeEnum(EmploymentType).default(EmploymentType.FULL_TIME),
-  reportsToId: z.string().min(1).optional(),
+  reportsToId: optionalString(z.string().min(1)),
   joiningDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format: YYYY-MM-DD'),
   monthlySalary: z.number().nonnegative().optional(),
 })

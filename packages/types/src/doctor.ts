@@ -63,7 +63,7 @@ export const CreateDoctorSchema = z.object({
   availabilityStatus: z.nativeEnum(DoctorAvailabilityStatus).default(DoctorAvailabilityStatus.AVAILABLE),
   joiningDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format: YYYY-MM-DD'),
   hospitalId: z.string().min(1),
-  departmentId: z.string().min(1).optional(),
+  departmentId: optionalString(z.string().min(1)),
 })
 
 export type CreateDoctorDto = z.infer<typeof CreateDoctorSchema>

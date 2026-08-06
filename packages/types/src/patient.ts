@@ -47,7 +47,7 @@ export const CreatePatientSchema = z.object({
   phone: z.string().regex(/^[6-9]\d{9}$/, 'Enter valid Indian mobile number'),
   dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format: YYYY-MM-DD'),
   gender: z.nativeEnum(Gender),
-  bloodGroup: z.nativeEnum(BloodGroup).optional(),
+  bloodGroup: optionalString(z.nativeEnum(BloodGroup)),
   address: z.string().max(200).optional(),
   city: z.string().max(50).optional(),
   state: z.string().max(50).optional(),

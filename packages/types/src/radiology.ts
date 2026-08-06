@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { Priority, RadiologyAttachmentType, RadiologyStatus } from './enums'
+import { optionalString } from './zod-helpers'
 
 // ─── Catalog ───────────────────────────────────────────────────────────────
 
@@ -214,7 +215,7 @@ export const CreateExternalRadiologyAttachmentSchema = z.object({
   type: z.enum([RadiologyAttachmentType.EXTERNAL_IMAGING, RadiologyAttachmentType.DICOM_PLACEHOLDER]),
   metadata: z
     .object({
-      externalUrl: z.string().url().optional(),
+      externalUrl: optionalString(z.string().url()),
       accessionNumber: z.string().max(100).optional(),
       studyInstanceUid: z.string().max(200).optional(),
       notes: z.string().max(500).optional(),

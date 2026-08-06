@@ -94,8 +94,20 @@ export class AuthController {
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
     const presentedToken = request.cookies?.[REFRESH_COOKIE_NAME]
-    const result = await this.authService.refresh(presentedToken, this.requestMeta(request))
-    return this.respondWithSession(reply, result)
+    try {
+      const result = await this.authService.refresh(presentedToken, this.requestMeta(request))
+      return this.respondWithSession(reply, result)
+    } catch (error) {
+      // A rejected refresh means this cookie will never succeed again (it was
+      // missing, expired, invalid, reused, or belongs to a now-inactive
+      // user/org) - leaving it in the browser just means the frontend's
+      // middleware (which only checks *presence*, not validity, of this
+      // cookie - see `middleware.ts`) keeps sending the caller back to a
+      // dashboard that will immediately bounce them again. Clearing it here
+      // is what lets that redirect loop actually terminate at `/login`.
+      clearAuthCookies(reply, this.configService.get<boolean>('app.isProduction') ?? false)
+      throw error
+    }
   }
 
   @ApiBearerAuth()

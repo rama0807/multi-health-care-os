@@ -2471,3 +2471,45 @@ pages needed editing:
   correctly with a cell's existing horizontal `sticky` (frozen-column) prop
   for a "frozen corner" cell. No prop or API change; re-verified lint/
   typecheck/build clean.
+
+---
+
+## Auth: fixed the "stuck loading forever" `/dashboard` ⇄ `/login` redirect loop
+
+Same session (2026-08-06), reported by the user as "I was already logged in
+but it loads forever." This one **is** a backend fix (`apps/api`) - flagged
+and confirmed with the user before making it, since it falls outside the
+design-system-only scope of the rest of this session.
+
+**Root cause**, read directly off the reporter's own Chrome DevTools Network
+tab: two `POST /auth/refresh` calls both 401, immediately followed by a
+307 to `/login` and then straight back to a `dashboard` fetch.
+`middleware.ts` (`apps/web/src/middleware.ts`) only checks whether the
+`medicore_rt` refresh-token cookie is *present* before allowing `/dashboard`
+- by its own documented design, this is a cheap heuristic, not the real
+security boundary (the backend guards and `AuthProvider`'s bootstrap check
+are). When that cookie is present but no longer valid - expired, rotated out,
+reused/stolen and revoked (`auth.service.ts`'s theft-detection path), or the
+user/org has since been suspended - `AuthService.refresh` correctly threw
+`UnauthorizedException`, but **`AuthController.refresh` never cleared the
+cookie on that path** (only the explicit `/auth/logout` route did, via
+`clearAuthCookies`). The frontend cannot clear an `httpOnly` cookie itself
+(`auth-context.tsx`'s `clearSession` only clears the in-memory access token),
+so the middleware kept seeing "a session," bounced the user back to
+`/dashboard`, which failed the same refresh and bounced them to `/login`
+again - forever, with a perpetual spinner as the only visible symptom.
+
+**Fix:** `AuthController.refresh` (`apps/api/src/modules/auth/auth.controller.ts`)
+now wraps the `authService.refresh(...)` call and clears the refresh + CSRF
+cookies via the existing `clearAuthCookies` helper before rethrowing on any
+failure - same mechanism `/auth/logout` already used, just also invoked on a
+rejected refresh. Response status/body is unchanged (still a plain 401); this
+is additive Set-Cookie behaviour only.
+
+**Verification:** `pnpm --filter api lint`/`typecheck` clean; full API unit
+suite (785 tests, 96 suites) still passing; `auth.e2e-spec.ts` re-run against
+local Postgres/Redis (ports 5434/6381 - `medicore-postgres`/`medicore-redis`,
+hyphenated, not the underscored names an earlier session note claimed) -
+all 3 tests pass, including the register→login→refresh→theft-detection flow
+that already exercises this exact rejected-refresh path. Full monorepo
+`pnpm build` (all 4 packages) clean.

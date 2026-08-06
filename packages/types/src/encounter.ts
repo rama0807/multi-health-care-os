@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { DiagnosisType, EncounterAttachmentType, EncounterStatus, EncounterType } from './enums'
+import { optionalString } from './zod-helpers'
 
 export interface Encounter {
   id: string
@@ -153,7 +154,7 @@ export interface Procedure {
 export const CreateProcedureSchema = z.object({
   name: z.string().min(1).max(200),
   notes: z.string().max(2000).optional(),
-  performedAt: z.string().datetime().optional(),
+  performedAt: optionalString(z.string().datetime()),
 })
 
 export type CreateProcedureDto = z.infer<typeof CreateProcedureSchema>

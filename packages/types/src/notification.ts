@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { optionalString } from './zod-helpers'
+
 // Communication & Notification Platform (Milestone 18 / ADR-0027).
 //
 // Every module in MediCore notifies through this one surface. The shapes here
@@ -230,10 +232,10 @@ export const SendNotificationSchema = z
     roleSlugs: z.array(z.string().min(1)).max(20).optional(),
     hospitalId: z.string().optional(),
     icon: z.string().max(60).optional(),
-    imageUrl: z.string().url().optional(),
+    imageUrl: optionalString(z.string().url()),
     deepLink: z.string().max(500).optional(),
     payload: z.record(z.unknown()).optional(),
-    scheduleAt: isoDateTime.optional(),
+    scheduleAt: optionalString(isoDateTime),
   })
   .refine((value) => (value.recipientIds?.length ?? 0) + (value.roleSlugs?.length ?? 0) > 0, {
     message: 'Provide at least one recipient or role',

@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { UpcomingLeaveEntry } from './doctor-availability'
 import { DoctorAvailabilityStatus } from './enums'
+import { optionalString } from './zod-helpers'
 
 export interface DoctorHospitalSummary {
   id: string
@@ -48,10 +49,7 @@ export const CreateDoctorSchema = z.object({
   email: z.string().email(),
   firstName: z.string().min(2).max(50),
   lastName: z.string().min(2).max(50),
-  phone: z
-    .string()
-    .regex(/^[6-9]\d{9}$/, 'Enter valid Indian mobile number')
-    .optional(),
+  phone: optionalString(z.string().regex(/^[6-9]\d{9}$/, 'Enter valid Indian mobile number')),
 
   // Professional profile fields.
   registrationNumber: z.string().min(1).max(50),

@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { BloodGroup, DocumentType, Gender } from './enums'
+import { optionalString } from './zod-helpers'
 
 export interface Patient {
   id: string
@@ -42,7 +43,7 @@ export interface PatientDocument {
 export const CreatePatientSchema = z.object({
   firstName: z.string().min(2).max(50),
   lastName: z.string().min(2).max(50),
-  email: z.string().email().optional(),
+  email: optionalString(z.string().email()),
   phone: z.string().regex(/^[6-9]\d{9}$/, 'Enter valid Indian mobile number'),
   dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format: YYYY-MM-DD'),
   gender: z.nativeEnum(Gender),
@@ -50,12 +51,9 @@ export const CreatePatientSchema = z.object({
   address: z.string().max(200).optional(),
   city: z.string().max(50).optional(),
   state: z.string().max(50).optional(),
-  pincode: z.string().regex(/^\d{6}$/).optional(),
+  pincode: optionalString(z.string().regex(/^\d{6}$/)),
   emergencyContactName: z.string().max(50).optional(),
-  emergencyContactPhone: z
-    .string()
-    .regex(/^[6-9]\d{9}$/)
-    .optional(),
+  emergencyContactPhone: optionalString(z.string().regex(/^[6-9]\d{9}$/)),
 })
 
 export type CreatePatientDto = z.infer<typeof CreatePatientSchema>

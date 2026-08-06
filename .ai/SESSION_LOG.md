@@ -79,14 +79,48 @@ horizontal `sticky` (frozen-column) prop. No API change. Re-verified lint/
 typecheck/build clean. Not otherwise browser-verified beyond this - by this
 repository's default automated-verification policy.
 
+### Also fixed this session, outside the design-system scope (confirmed with the user first)
+
+Two bugs the user found by actually using the app, both fixed and verified:
+
+1. **Sticky table headers scrolling away with the rows** - `position: sticky`
+   on `<thead>`/`<tr>` is unreliable across engines. Fixed in
+   `components/ui/table.tsx` by pinning header *cells* too, via a new
+   `HeaderStickyContext`. Frontend-only, no API touched. See `PROGRESS.md`/
+   `CHANGELOG.md` for detail.
+2. **A stale-but-present `medicore_rt` cookie caused an infinite
+   `/dashboard` ⇄ `/login` redirect loop** ("loading forever" / "I was
+   already logged in"). Root cause: `AuthController.refresh`
+   (`apps/api/src/modules/auth/auth.controller.ts`) never cleared the
+   refresh/CSRF cookies when the refresh attempt was rejected (expired,
+   rotated-out, reused/stolen, or a since-suspended user/org) - only
+   `/auth/logout` did. Since the cookie is `httpOnly`, the frontend cannot
+   clear it itself, so `middleware.ts`'s presence-only check kept sending the
+   user back to a dashboard that would fail the same refresh again. **This is
+   a backend (`apps/api`) fix** - confirmed with the user before applying it,
+   since it's outside this session's design-system-only scope. Fully
+   verified: API lint/typecheck clean, all 785 unit tests passing,
+   `auth.e2e-spec.ts` re-run against local Postgres/Redis (all 3 tests
+   passing, including the theft-detection replay case that already exercises
+   this exact path), full monorepo `pnpm build` clean.
+
+**Stale infra note found and worth flagging:** the "Correct local infra"
+note lower in this file (and in `NEXT.md`) claims the containers are named
+`medicore_postgres`/`medicore_redis` on ports 5432/6379. Actually running
+during this session: `medicore-postgres`/`medicore-redis` (hyphenated) on
+**5434/6381** - which is what the e2e config's own `??=` defaults already
+assume. Not corrected in place this session (out of scope for this task),
+but the next session should reconcile it rather than trust the old note.
+
 ### Recommended next task
 
-There is no queued shared-component work - the 12 requested categories are
-now addressed (several were already at target and intentionally left alone).
-Per `NEXT.md`, the next real backlog items are still TD-0074 (branding gating,
+No queued shared-component work remains - the 12 requested categories are
+addressed (several were already at target and intentionally left alone). Per
+`NEXT.md`, the next real backlog items are still TD-0074 (branding gating,
 backend), TD-0075 (hospital selector doesn't filter data yet, per-module), and
 TD-0076 (`/dashboard/settings` 404) - none of which are shared-component work.
-Do not start a fourth design-system pass without a fresh instruction.
+Do not start a fourth design-system pass without a fresh instruction. Also
+worth a follow-up: reconcile the stale container-name/port note above.
 
 ### Estimated project completion
 

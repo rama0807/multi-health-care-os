@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { SystemRole } from './enums'
+import { optionalString } from './zod-helpers'
 
 export interface Hospital {
   id: string
@@ -44,7 +45,7 @@ export const CreateHospitalSchema = z.object({
   state: z.string().optional(),
   pincode: z.string().optional(),
   phone: z.string().optional(),
-  email: z.string().email().optional(),
+  email: optionalString(z.string().email()),
 })
 
 export type CreateHospitalDto = z.infer<typeof CreateHospitalSchema>

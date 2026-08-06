@@ -5,6 +5,26 @@
 
 ## [Unreleased]
 
+### Fixed
+- **Stale refresh-token cookie caused an infinite `/dashboard` ⇄ `/login`
+  redirect loop for a user who "was already logged in."** `middleware.ts`
+  only checks whether the `medicore_rt` cookie is *present* (a deliberate,
+  documented heuristic - it is not the security boundary) before allowing
+  `/dashboard`. If the cookie was present but no longer valid (expired,
+  rotated out, reused/stolen and revoked, or belonging to a since-suspended
+  user/org), `POST /auth/refresh` correctly rejected it with 401 - but never
+  cleared the cookie. The frontend can't clear it either (`httpOnly` by
+  design), so the middleware kept seeing "a session" on every subsequent
+  request and bounced the user straight back to `/dashboard`, which failed
+  the same refresh and bounced them to `/login` again - forever, with a
+  perpetual loading spinner as the only visible symptom. Fixed in
+  `AuthController.refresh` (`apps/api/src/modules/auth/auth.controller.ts`):
+  a rejected refresh now clears the refresh + CSRF cookies before the 401 is
+  returned, the same way `/auth/logout` already does, so the loop actually
+  terminates at `/login`. No API contract change (still a 401, same body);
+  covered by the existing `auth.e2e-spec.ts` theft-detection replay case,
+  which already drives exactly this failure path.
+
 ### Design System V2 - Phase 3: shared component visual polish (2026-08-06)
 
 **Presentation-only, additive.** No feature page, IA, backend, API or

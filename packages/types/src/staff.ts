@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { EmploymentStatus, EmploymentType } from './enums'
+import { optionalString } from './zod-helpers'
 
 export interface StaffHospitalSummary {
   id: string
@@ -51,10 +52,7 @@ export const CreateStaffSchema = z.object({
   email: z.string().email(),
   firstName: z.string().min(2).max(50),
   lastName: z.string().min(2).max(50),
-  phone: z
-    .string()
-    .regex(/^[6-9]\d{9}$/, 'Enter valid Indian mobile number')
-    .optional(),
+  phone: optionalString(z.string().regex(/^[6-9]\d{9}$/, 'Enter valid Indian mobile number')),
   // Which SystemRole the login gets - any non-doctor employee role (Nurse,
   // Receptionist, Lab Technician, Radiology Technician, Pharmacist, Cashier,
   // HR, Inventory Manager). Doctors keep their own dedicated flow.
@@ -92,10 +90,7 @@ export const UpdateStaffSchema = CreateStaffSchema.omit({
   .partial()
   .extend({
     employmentStatus: z.nativeEnum(EmploymentStatus).optional(),
-    dateOfLeaving: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Format: YYYY-MM-DD')
-      .optional(),
+    dateOfLeaving: optionalString(z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format: YYYY-MM-DD')),
   })
 
 export type UpdateStaffDto = z.infer<typeof UpdateStaffSchema>

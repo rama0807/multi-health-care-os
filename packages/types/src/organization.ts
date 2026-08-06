@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { OrganizationStatus, OrganizationType, SubscriptionStatus, SubscriptionTier } from './enums'
+import { optionalString } from './zod-helpers'
 
 export interface Organization {
   id: string
@@ -82,14 +83,14 @@ const HH_MM = /^([01]\d|2[0-3]):[0-5]\d$/
 
 export const UpdateOrganizationSchema = z.object({
   name: z.string().min(2).max(100).optional(),
-  email: z.string().email().optional(),
+  email: optionalString(z.string().email()),
   phone: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
   country: z.string().length(2).optional(),
   pincode: z.string().optional(),
-  website: z.string().url().optional(),
+  website: optionalString(z.string().url()),
   licenseNumber: z.string().optional(),
   taxId: z.string().optional(),
   type: z.nativeEnum(OrganizationType).optional(),
@@ -110,8 +111,8 @@ export const UpdateOrganizationSettingsSchema = z
     gstRate: z.number().min(0).max(100).optional(),
     defaultAppointmentDuration: z.number().int().min(5).max(240).optional(),
     workingDays: z.array(z.number().int().min(0).max(6)).max(7).optional(),
-    workingHoursStart: z.string().regex(HH_MM, 'Expected HH:mm').optional(),
-    workingHoursEnd: z.string().regex(HH_MM, 'Expected HH:mm').optional(),
+    workingHoursStart: optionalString(z.string().regex(HH_MM, 'Expected HH:mm')),
+    workingHoursEnd: optionalString(z.string().regex(HH_MM, 'Expected HH:mm')),
     language: z.string().min(2).max(10).optional(),
     featureFlags: z.record(z.boolean()).optional(),
   })
@@ -123,9 +124,9 @@ export const UpdateOrganizationSettingsSchema = z
 export type UpdateOrganizationSettingsDto = z.infer<typeof UpdateOrganizationSettingsSchema>
 
 export const UpdateOrganizationBrandingSchema = z.object({
-  primaryColor: z.string().regex(HEX_COLOR, 'Expected a hex colour like #0F62FE').optional(),
-  secondaryColor: z.string().regex(HEX_COLOR, 'Expected a hex colour like #0F62FE').optional(),
-  accentColor: z.string().regex(HEX_COLOR, 'Expected a hex colour like #0F62FE').optional(),
+  primaryColor: optionalString(z.string().regex(HEX_COLOR, 'Expected a hex colour like #0F62FE')),
+  secondaryColor: optionalString(z.string().regex(HEX_COLOR, 'Expected a hex colour like #0F62FE')),
+  accentColor: optionalString(z.string().regex(HEX_COLOR, 'Expected a hex colour like #0F62FE')),
   displayName: z.string().max(60).optional(),
   loginTagline: z.string().max(160).optional(),
   emailFooterText: z.string().max(300).optional(),

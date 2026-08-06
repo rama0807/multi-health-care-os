@@ -7,6 +7,7 @@ import {
   StockTransferStatus,
   StoreManagerRole,
 } from './enums'
+import { optionalString } from './zod-helpers'
 
 // ─── Item Master ────────────────────────────────────────────────────────────
 
@@ -94,7 +95,7 @@ export const CreateInventoryManufacturerSchema = z.object({
   name: z.string().min(1).max(200),
   contactPerson: z.string().max(200).optional(),
   phone: z.string().max(20).optional(),
-  email: z.string().email().optional(),
+  email: optionalString(z.string().email()),
   address: z.string().max(500).optional(),
 })
 export type CreateInventoryManufacturerDto = z.infer<typeof CreateInventoryManufacturerSchema>
@@ -274,7 +275,7 @@ export const CreateVendorSchema = z.object({
   code: z.string().min(1).max(50),
   contactPerson: z.string().max(200).optional(),
   phone: z.string().max(20).optional(),
-  email: z.string().email().optional(),
+  email: optionalString(z.string().email()),
   address: z.string().max(500).optional(),
   city: z.string().max(100).optional(),
   state: z.string().max(100).optional(),

@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { AttendanceStatus } from './enums'
 import { StaffSummary } from './shift'
+import { optionalString } from './zod-helpers'
 
 export interface Attendance {
   id: string
@@ -42,8 +43,8 @@ export const MarkAttendanceSchema = z.object({
   staffId: z.string().min(1),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format: YYYY-MM-DD'),
   status: z.nativeEnum(AttendanceStatus),
-  clockInAt: z.string().datetime().optional(),
-  clockOutAt: z.string().datetime().optional(),
+  clockInAt: optionalString(z.string().datetime()),
+  clockOutAt: optionalString(z.string().datetime()),
   notes: z.string().max(500).optional(),
 })
 

@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { optionalString } from './zod-helpers'
+
 // Reports & Analytics (Milestone 17 / ADR-0026).
 //
 // Every shape here describes a *read-only aggregation* over data other
@@ -587,8 +589,8 @@ export interface SavedReport {
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}(T.*)?$/
 
 export const ReportFilterSchema = z.object({
-  from: z.string().regex(ISO_DATE, 'Format: YYYY-MM-DD').optional(),
-  to: z.string().regex(ISO_DATE, 'Format: YYYY-MM-DD').optional(),
+  from: optionalString(z.string().regex(ISO_DATE, 'Format: YYYY-MM-DD')),
+  to: optionalString(z.string().regex(ISO_DATE, 'Format: YYYY-MM-DD')),
   groupBy: z.enum(['day', 'week', 'month']).optional(),
   hospitalId: z.string().min(1).optional(),
   departmentId: z.string().min(1).optional(),
@@ -605,10 +607,9 @@ export const CreateSavedReportSchema = z.object({
   // Validated for shape even though nothing dispatches it yet (TD-0053) -
   // persisting an unparseable cron would just move the failure to whoever
   // builds the dispatcher in Milestone 18.
-  scheduleCron: z
-    .string()
-    .regex(/^(\S+\s+){4}\S+$/, 'Format: 5-field cron expression, e.g. "0 6 * * 1"')
-    .optional(),
+  scheduleCron: optionalString(
+    z.string().regex(/^(\S+\s+){4}\S+$/, 'Format: 5-field cron expression, e.g. "0 6 * * 1"'),
+  ),
   scheduleRecipients: z.array(z.string().email()).max(20).optional(),
 })
 

@@ -241,34 +241,45 @@ function NavEntry({
             className="absolute right-1 flex size-5 items-center justify-center rounded-xs text-sidebar-muted transition-colors hover:bg-sidebar-item-hover hover:text-sidebar-foreground"
           >
             <ChevronDown
-              className={cn('size-3.5 transition-transform duration-fast', open && 'rotate-180')}
+              className={cn(
+                'size-3.5 transition-transform duration-[160ms] ease-emphasized',
+                open && 'rotate-180',
+              )}
             />
           </button>
         )}
       </div>
 
-      {hasGroup && open && (
-        <ul className="ml-[1.4rem] mt-0.5 space-y-0.5 border-l border-sidebar-border pl-2">
-          {children.map((child) => {
-            const childActive = pathname === child.href
-            return (
-              <li key={child.href}>
-                <Link
-                  href={child.href}
-                  aria-current={childActive ? 'page' : undefined}
-                  className={cn(
-                    'block truncate rounded-md px-2 py-1 text-xs transition-colors duration-fast',
-                    childActive
-                      ? 'bg-sidebar-item-active font-medium text-sidebar-item-active-foreground'
-                      : 'text-sidebar-muted hover:bg-sidebar-item-hover hover:text-sidebar-foreground',
-                  )}
-                >
-                  {child.label}
-                </Link>
-              </li>
-            )
-          })}
-        </ul>
+      {hasGroup && (
+        <div
+          className={cn(
+            'grid transition-[grid-template-rows] duration-[160ms] ease-emphasized',
+            open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+          )}
+        >
+          <ul aria-hidden={!open} className="ml-5 space-y-1 overflow-hidden pt-1 mt-1">
+            {children.map((child) => {
+              const childActive = pathname === child.href
+              return (
+                <li key={child.href}>
+                  <Link
+                    href={child.href}
+                    tabIndex={open ? 0 : -1}
+                    aria-current={childActive ? 'page' : undefined}
+                    className={cn(
+                      'block truncate rounded-sm px-2 py-2 text-2xs transition-colors duration-fast',
+                      childActive
+                        ? 'bg-primary-subtle font-semibold text-primary-subtle-foreground'
+                        : 'text-sidebar-muted hover:bg-sidebar-item-hover hover:text-sidebar-foreground',
+                    )}
+                  >
+                    {child.label}
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
       )}
     </li>
   )

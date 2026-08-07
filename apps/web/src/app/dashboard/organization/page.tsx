@@ -65,7 +65,7 @@ function OrganizationDashboard() {
         onNavigate={navigate}
       />
 
-      <div className="sticky top-0 z-10 bg-background py-2">
+      <div className="sticky top-0 z-10 border-b border-border bg-background py-2 shadow-sm">
         <SegmentedNav items={SECTIONS} value={section} onChange={setSection} />
       </div>
 

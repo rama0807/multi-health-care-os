@@ -30,6 +30,8 @@ function buildStaff(overrides: Partial<Record<string, unknown>> = {}) {
 describe('StaffService', () => {
   let prisma: {
     staff: Record<string, jest.Mock>
+    organization: Record<string, jest.Mock>
+    $executeRaw: jest.Mock
     $transaction: jest.Mock
   }
   let staffOnboardingService: { onboardUserInTransaction: jest.Mock; sendOnboardingEmail: jest.Mock }
@@ -47,7 +49,13 @@ describe('StaffService', () => {
         count: jest.fn(),
         update: jest.fn(),
       },
-      $transaction: jest.fn((cb: (tx: unknown) => unknown) => cb({ staff: prisma.staff })),
+      organization: {
+        findUniqueOrThrow: jest.fn().mockResolvedValue({ id: 'org_1', settings: { uhidPrefix: 'MAIN' } }),
+      },
+      $executeRaw: jest.fn(),
+      $transaction: jest.fn((cb: (tx: unknown) => unknown) =>
+        cb({ staff: prisma.staff, organization: prisma.organization, $executeRaw: prisma.$executeRaw }),
+      ),
     }
     staffOnboardingService = {
       onboardUserInTransaction: jest.fn(),
@@ -103,6 +111,28 @@ describe('StaffService', () => {
         expect.objectContaining({ staffId: 'staff_1', organizationId: 'org_1', userId: 'actor_1' }),
       )
       expect(result.fullName).toBe('Anjali Verma')
+    })
+
+    it('auto-generates an employee ID when none is supplied', async () => {
+      const dtoWithoutEmployeeId: Record<string, unknown> = { ...createDto }
+      delete dtoWithoutEmployeeId.employeeId
+      staffOnboardingService.onboardUserInTransaction.mockResolvedValue({
+        user: { id: 'user_1', email: 'anjali@example.com', firstName: 'Anjali', lastName: 'Verma' },
+        created: true,
+        temporaryPassword: 'Temp1234',
+      })
+      prisma.staff.findUnique.mockResolvedValueOnce(null) // existing-profile check inside tx
+      prisma.staff.count.mockResolvedValueOnce(4)
+      prisma.staff.create = jest.fn().mockResolvedValue(buildStaff())
+
+      await service.create('org_1', dtoWithoutEmployeeId as never, 'actor_1')
+
+      expect(prisma.organization.findUniqueOrThrow).toHaveBeenCalledWith({ where: { id: 'org_1' } })
+      expect(prisma.staff.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ employeeId: expect.stringMatching(/^EMP-MAIN-\d{4}-000005$/) }),
+        }),
+      )
     })
 
     it('rejects a duplicate employee ID', async () => {

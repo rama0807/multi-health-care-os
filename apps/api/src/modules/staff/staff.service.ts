@@ -100,11 +100,13 @@ export class StaffService {
       await this.requireStaffWithRelations(organizationId, dto.reportsToId)
     }
 
-    const conflict = await this.prisma.staff.findUnique({
-      where: { employeeId_organizationId: { employeeId: dto.employeeId, organizationId } },
-    })
-    if (conflict) {
-      throw new ConflictException('A staff member with this employee ID already exists')
+    if (dto.employeeId) {
+      const conflict = await this.prisma.staff.findUnique({
+        where: { employeeId_organizationId: { employeeId: dto.employeeId, organizationId } },
+      })
+      if (conflict) {
+        throw new ConflictException('A staff member with this employee ID already exists')
+      }
     }
 
     const { staff, onboarding } = await this.prisma.$transaction(async (tx) => {
@@ -123,13 +125,15 @@ export class StaffService {
         throw new ConflictException('This user already has a staff profile')
       }
 
+      const employeeId = dto.employeeId ?? (await this.generateEmployeeId(tx, organizationId))
+
       const created = await tx.staff.create({
         data: {
           userId: onboardingResult.user.id,
           organizationId,
           hospitalId: dto.hospitalId,
           departmentId: dto.departmentId,
-          employeeId: dto.employeeId,
+          employeeId,
           designation: dto.designation,
           employmentType: dto.employmentType,
           reportsToId: dto.reportsToId,
@@ -221,6 +225,20 @@ export class StaffService {
     })
 
     return this.toResponse(staff)
+  }
+
+  private async generateEmployeeId(tx: Prisma.TransactionClient, organizationId: string): Promise<string> {
+    const org = await tx.organization.findUniqueOrThrow({ where: { id: organizationId } })
+    const settings = (org.settings ?? {}) as Record<string, unknown>
+    const prefix = typeof settings.uhidPrefix === 'string' ? settings.uhidPrefix : 'MED'
+
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${organizationId} || ':staff_employee_id')::bigint)`
+
+    const year = new Date().getFullYear()
+    const yearStart = new Date(Date.UTC(year, 0, 1))
+    const count = await tx.staff.count({ where: { organizationId, createdAt: { gte: yearStart } } })
+
+    return `EMP-${prefix}-${year}-${String(count + 1).padStart(6, '0')}`
   }
 
   async requireStaffWithRelations(organizationId: string, id: string): Promise<StaffWithRelations> {

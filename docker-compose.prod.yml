@@ -27,7 +27,6 @@ services:
   # REDIS_HOST at them.
   postgres:
     image: postgres:16-alpine
-    container_name: medicore_postgres_prod
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
@@ -47,7 +46,6 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: medicore_redis_prod
     restart: unless-stopped
     # `--appendonly yes` matters here: Redis holds live sessions, and losing
     # them on a restart logs every user out mid-shift.
@@ -67,7 +65,6 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
       target: production
-    container_name: medicore_api
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -132,7 +129,6 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
       target: production
-    container_name: medicore_web
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -147,7 +143,6 @@ services:
 
   nginx:
     image: nginx:alpine
-    container_name: medicore_nginx
     restart: unless-stopped
     ports:
       - '80:80'

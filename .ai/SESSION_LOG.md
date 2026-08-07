@@ -6,6 +6,164 @@
 
 ---
 
+## Session - 2026-08-07 - Sidebar quick-create redesign, Organization sticky-nav fix, Dokploy deployment
+
+### What was completed
+
+Three unrelated fixes/changes in one session:
+
+1. **Sidebar "New" dropdown redesigned into a "Quick create" tile menu**
+   (`apps/web/src/components/layout/sidebar.tsx`, `QuickCreate`). UI-only, no
+   route/permission/business-logic change. Trigger: "Add New..." label,
+   48px/`rounded-xl` `Button`, rotating chevron tied to a controlled
+   `DropdownMenu` `open` state - kept the design system's normal
+   brand-primary button styling (a forced neutral-950 dark button was tried
+   first per the original ask, but the user rejected it on sight as "not
+   looking that great" - reverted to the standard `Button` default variant).
+   Dropdown: fixed white `rounded-2xl` tile list (icon chip + title +
+   description per action), first action (`Register patient`) has a
+   `bg-primary-subtle` tint. Kept using `DropdownMenuItem asChild` + `Link`
+   so keyboard nav/ESC/Enter/focus-ring all still come from Radix for free.
+
+2. **Organization page's sticky section nav was slicing through cards
+   (`apps/web/src/app/dashboard/organization/page.tsx:68`).** The
+   `sticky top-0 z-10` wrapper around `SegmentedNav` had no border/shadow, so
+   scrolling would pin it mid-page directly over the "Locale & currency"
+   card in `SettingsPanel` (which is a single `Card` with 6 fields in a
+   `grid-cols-3` - two visual rows) - the opaque bar exactly matched the
+   card's width, hiding its middle with no visible edge, reading as a broken/
+   split card. Fix: added `border-b border-border` + `shadow-sm` to that one
+   div so the bar always reads as a distinct floating layer. Scoped fix -
+   this sticky pattern isn't used anywhere else in the app (`grep` confirmed
+   one match).
+
+3. **Dokploy deployment (ADR-0033, TD-0079).** User is deploying via
+   Dokploy's Compose feature. First attempt used the *dev* `docker-compose.yml`
+   (Compose Path was set to `./docker-compose.yml`), whose `postgres`/`redis`
+   publish `5432`/`6379` straight to the host - failed with "port is already
+   allocated" on a shared Dokploy VPS. Told the user to switch Compose Path to
+   `./docker-compose.prod.yml`, which doesn't publish those ports. Anticipating
+   the next failure (that file's `nginx` binds 80/443 and terminates TLS,
+   colliding with Dokploy's own Traefik), asked the user how to resolve it;
+   they chose "drop nginx, use Dokploy's Domains tab" over "keep nginx,
+   rework it to sit behind Traefik". Implemented: removed every
+   `container_name` from `docker-compose.prod.yml` (collides across Dokploy
+   environments on the same host - unrelated to the immediate error but same
+   category of bug), and added a new `docker-compose.dokploy.yml` (same
+   `postgres`/`redis`/`api`/`web`, no `nginx`). Validated both with
+   `docker compose ... config` (dummy env vars) - both parse correctly.
+   `docker-compose.prod.yml` (with `nginx`) is unchanged in spirit and still
+   the file for a manually-managed VPS with your own certs.
+
+### Files modified/created
+
+- `apps/web/src/components/layout/sidebar.tsx` - `QuickCreate` rewritten.
+- `apps/web/src/app/dashboard/organization/page.tsx` - one className change,
+  line 68.
+- `docker-compose.prod.yml` - `container_name` removed from all 5 services.
+- `docker-compose.dokploy.yml` - **new file**.
+- `.ai/DECISIONS.md` - ADR-0033. `.ai/TECH_DEBT.md` - TD-0079.
+  `.ai/CHANGELOG.md` - Unreleased entry.
+
+### Architectural decisions
+
+ADR-0033 (two prod compose files: `docker-compose.prod.yml` for a
+self-managed VPS+nginx, `docker-compose.dokploy.yml` for Dokploy+Traefik).
+No other new decisions - the sidebar and organization-page fixes were
+implementation-level, nothing DECISIONS.md-worthy.
+
+### Known issues
+
+- TD-0079: nginx's rate-limiting/security headers don't apply on the Dokploy
+  path. Not ported to Traefik middleware - out of scope for "get it
+  deploying."
+- The documented migration step (`prisma migrate deploy`, run *before*
+  `up -d` - see `docs/operations/deployment.md`) is still a manual step on
+  Dokploy; its Deploy button does not run it. Not automated in this session.
+- Not independently verified in a browser (no browser tool available this
+  session) - user is testing live against their own running dev server and
+  Dokploy instance and reporting back screenshots.
+
+### Recommended next task
+
+Confirm with the user that switching Compose Path to
+`./docker-compose.dokploy.yml` and filling in the required env vars
+(Dokploy's Environment tab) actually gets the stack up; then walk through
+the manual `prisma migrate deploy` step via Dokploy's "Open Terminal" before
+declaring the deployment done. If Dokploy becomes the primary/only
+deployment target going forward (not just a first try), revisit TD-0079.
+
+### Estimated completion
+
+No change to feature completion - this session was UI polish + deployment
+infra, not new product functionality. See `MODULE_STATUS.md` for the
+overall/per-module figures, which are unaffected.
+
+---
+
+## Session - 2026-08-07 - Staff: auto-generate Employee ID
+
+### What was completed
+
+User shared a screenshot of the "Add staff member" dialog blocked on a
+required, manually-typed Employee ID field ("String must contain at least 1
+character(s)") and asked whether it should be auto-generated instead.
+Checked `DECISIONS.md` first for an existing ruling - none found; this was
+an oversight, not a deliberate choice. This repo already has a live pattern
+for exactly this (`LAB-`/`RAD-`/`ADM-`, and the inventory module's `PR-`/
+`PO-`/`GRN-`/`TRF-`/`REQ-`/`AUD-`/`VRTN-`): a per-organization
+`pg_advisory_xact_lock` + year-counter, prefixed with the org's `uhidPrefix`
+setting. Wired Employee ID into that same pattern rather than inventing a
+new one.
+
+Changed `CreateStaffSchema.employeeId` (`packages/types/src/staff.ts`) to
+`optionalString(...)` (same helper already used for `departmentId`/
+`reportsToId` in this schema); `StaffService.create`
+(`apps/api/src/modules/staff/staff.service.ts`) now only runs the existing
+duplicate-ID conflict check when one is supplied, and otherwise calls a new
+private `generateEmployeeId(tx, organizationId)` inside the existing create
+transaction - format `EMP-<uhidPrefix>-<year>-<6-digit seq>`. Manual entry
+still works unchanged, still deduped the same way. Frontend
+(`AddStaffDialog` in `apps/web/src/app/dashboard/staff/directory/page.tsx`):
+label → "Employee ID (optional)", placeholder "Auto-generated if left
+blank", default value `undefined` instead of `''`.
+
+Added one unit test asserting the generated-ID shape and the
+`organization.findUniqueOrThrow` call; all 7 tests in `staff.service.spec.ts`
+pass. Full detail in `PROGRESS.md`'s matching entry.
+
+### Files modified/created
+
+Modified: `packages/types/src/staff.ts`, `apps/api/src/modules/staff/staff.service.ts`,
+`apps/api/src/modules/staff/staff.service.spec.ts` (+1 test, mock `prisma`
+gained `organization`/`$executeRaw`), `apps/web/src/app/dashboard/staff/directory/page.tsx`.
+No new files, no migration, no schema change.
+
+### Architectural decisions
+
+None new - this reuses the existing "sequential human-readable numbering via
+per-org advisory lock + year counter" idiom (documented for inventory in
+`DECISIONS.md`'s point 7 near ADR-0020) rather than establishing a fresh
+pattern. Not itself written up as a new ADR since it's an application of an
+already-decided pattern, not a new architectural choice.
+
+### Known issues
+
+None introduced. Not browser-verified this session (no browser tool
+available) - verified via `pnpm --filter @medicore/types build`,
+`--filter @medicore/api lint`/`typecheck`/`test -- staff.service.spec.ts`,
+and `--filter @medicore/web lint`/`typecheck`, all clean. Did not re-run the
+full monorepo test/e2e/build - scoped, contained change (one optional field
++ one generator method), not a milestone checkpoint.
+
+### Recommended next task
+
+None specific from this fix - continue per `NEXT.md`. Project completion
+percentage unchanged (this is a small enhancement within the already-
+Completed Milestone 14/Staff module, not new scope).
+
+---
+
 ## Session - 2026-08-07 - Per-organization Resend email config (TD-0064, ADR-0032)
 
 ### What was completed

@@ -184,7 +184,7 @@ const DEFAULT_VALUES: CreateStaffDto = {
   lastName: '',
   phone: undefined,
   systemRole: 'NURSE',
-  employeeId: '',
+  employeeId: undefined,
   designation: '',
   departmentId: undefined,
   hospitalId: '',
@@ -306,9 +306,9 @@ function AddStaffDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
                   name="employeeId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Employee ID</FormLabel>
+                      <FormLabel>Employee ID (optional)</FormLabel>
                       <FormControl>
-                        <Input {...field} />
+                        <Input placeholder="Auto-generated if left blank" {...field} value={field.value ?? ''} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

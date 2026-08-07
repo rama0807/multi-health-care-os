@@ -87,11 +87,6 @@ export function Sidebar() {
       >
         <WorkspaceSwitcher collapsed={collapsed} displayName={displayName} logo={logo} />
 
-        {visibleActions.length > 0 && (
-          <div className={cn('border-b border-sidebar-border px-2 py-2', collapsed && 'px-1.5')}>
-            <QuickCreate collapsed={collapsed} actions={visibleActions} />
-          </div>
-        )}
 
         <nav
           aria-label="Main"
@@ -345,46 +340,5 @@ function WorkspaceSwitcher({
         <p className="truncate text-2xs text-sidebar-muted">{subtitle}</p>
       </div>
     </div>
-  )
-}
-
-function QuickCreate({
-  collapsed,
-  actions,
-}: {
-  collapsed: boolean
-  actions: typeof quickActions
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          size={collapsed ? 'icon-sm' : 'sm'}
-          className={cn('w-full', collapsed && 'w-8')}
-          aria-label="Quick create"
-        >
-          <Plus />
-          {!collapsed && 'New'}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-64">
-        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-          Create
-        </DropdownMenuLabel>
-        {actions.map((action) => (
-          <DropdownMenuItem key={action.href} asChild>
-            <Link href={action.href} className="cursor-pointer">
-              <action.icon className="text-muted-foreground" />
-              <span className="flex-1">
-                <span className="block">{action.label}</span>
-                {action.description && (
-                  <span className="block text-2xs text-muted-foreground">{action.description}</span>
-                )}
-              </span>
-            </Link>
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
   )
 }

@@ -2657,3 +2657,46 @@ under one ADR - see TD-0064's updated entry.
   `RESEND_API_KEY` is still the shipped placeholder (`re_xxxxxxxxxxxx`), so a
   test email here exercises the encryption/storage path fully but still lands
   on the console-fallback path for actual delivery, exactly as documented.
+
+---
+
+## ADR-0033: A separate `docker-compose.dokploy.yml`, not a shared prod compose file, for Dokploy deployments
+
+Date: 2026-08-07
+Status: Accepted
+
+**Context:** Deploying to Dokploy (a self-hosted PaaS) via its Compose
+feature surfaced two conflicts in `docker-compose.prod.yml`: (1) `postgres`/
+`redis` in the *dev* `docker-compose.yml` publish `5432`/`6379` straight to
+the host, which fails with "port is already allocated" the moment anything
+else on that Dokploy host holds the port - this is what actually broke the
+first deploy attempt; (2) `docker-compose.prod.yml`'s `nginx` service
+publishes `80`/`443` and terminates TLS itself, which will collide with
+Dokploy's own Traefik the moment that file is used instead, since Dokploy
+already owns those ports for domain routing and Let's Encrypt. Hardcoded
+`container_name`s on every service were a third, quieter problem: names must
+be unique per Docker host, and Dokploy isolates environments as separate
+compose projects on the same host, so a second environment or a redeploy
+that collides would refuse to start.
+
+**Decision:** Removed every `container_name` from `docker-compose.prod.yml`
+(Compose auto-namespaces per project instead). Added a new
+`docker-compose.dokploy.yml` - identical `postgres`/`redis`/`api`/`web`
+services, no `nginx`. Dokploy's own Traefik takes over TLS termination and
+domain routing (its "Domains" tab, pointed at `web`:3000 and `api`:4000 on
+the shared network); `docker-compose.prod.yml` keeps its `nginx` service
+unchanged for the already-documented manually-managed VPS path in
+`docs/operations/deployment.md`, which still owns its own certs and 80/443.
+Nothing in `nginx.conf`, the Dockerfiles, or apps/api/apps/web changed.
+
+**Consequences:**
+- Two prod compose files now exist, deliberately: `docker-compose.prod.yml`
+  for a VPS you manage yourself (own nginx, own certs), `docker-compose.dokploy.yml`
+  for Dokploy (Traefik owns TLS/routing). Pick the one matching the host.
+- `nginx.conf`'s rate-limiting and security-header rules do not apply on the
+  Dokploy path - a real, disclosed gap. Porting them to Traefik middleware is
+  follow-up work, not attempted here (see `TECH_DEBT.md`).
+- The documented migration step (`docker compose run --rm api npx prisma
+  migrate deploy`, before `up -d` - see `docs/operations/deployment.md`) is
+  not automated by Dokploy's Deploy button on either compose file; still a
+  manual step run via Dokploy's "Open Terminal" (or SSH) after each deploy.

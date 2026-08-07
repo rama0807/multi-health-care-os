@@ -67,8 +67,8 @@ export const CreateStaffSchema = z.object({
     'INVENTORY_MANAGER',
   ]),
 
-  // Employment profile fields.
-  employeeId: z.string().min(1).max(50),
+  // Employment profile fields. Omit to auto-generate (EMP-<org prefix>-<year>-<seq>).
+  employeeId: optionalString(z.string().max(50)),
   designation: z.string().min(1).max(100),
   departmentId: optionalString(z.string().min(1)),
   hospitalId: z.string().min(1),

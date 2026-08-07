@@ -2976,3 +2976,52 @@ hyphenated, not the underscored names an earlier session note claimed) -
 all 3 tests pass, including the register→login→refresh→theft-detection flow
 that already exercises this exact rejected-refresh path. Full monorepo
 `pnpm build` (all 4 packages) clean.
+
+---
+
+## Staff: Employee ID is now auto-generated on the "Add staff member" form
+
+2026-08-07. The user flagged, from a screenshot of the "Add staff member"
+dialog, that Employee ID was a required free-text field the operator had to
+type themselves (and it was blocking submission with "String must contain at
+least 1 character(s)"). Checked `DECISIONS.md` first - no ADR had
+deliberately chosen manual entry; it looked like an oversight, not a
+decision. This repo already has a precedent for exactly this kind of
+identifier: `LAB-`/`RAD-`/`ADM-` and the inventory module's `PR-`/`PO-`/
+`GRN-`/`TRF-`/`REQ-`/`AUD-`/`VRTN-` numbers, all minted via the same
+per-organization `pg_advisory_xact_lock` + year-counter idiom, prefixed with
+the org's `uhidPrefix` setting (default `MED`). Employee ID was never wired
+into that pattern - fixed here rather than left as another dangling
+inconsistency.
+
+**Backend:** `CreateStaffSchema.employeeId` (`packages/types/src/staff.ts`)
+changed from `z.string().min(1).max(50)` to `optionalString(z.string().max(50))`
+- same "empty string from an untouched form field means not provided" helper
+already used for `departmentId`/`reportsToId` in this same schema.
+`StaffService.create` (`apps/api/src/modules/staff/staff.service.ts`) only
+runs the existing duplicate-employeeId conflict check when one was actually
+supplied, and falls back to a new private `generateEmployeeId(tx, organizationId)`
+inside the existing creation transaction when it wasn't - format
+`EMP-<uhidPrefix>-<year>-<6-digit seq, per-org per-year>`, counting existing
+`Staff` rows created this year, matching `LAB-`/`RAD-`'s exact numbering
+shape. Manual entry still works unchanged (an operator migrating a hospital's
+existing employee-ID scheme can still type one) and still gets the same
+duplicate check as before.
+
+**Frontend:** `AddStaffDialog` (`apps/web/src/app/dashboard/staff/directory/page.tsx`)
+- label now reads "Employee ID (optional)", placeholder "Auto-generated if
+left blank", default value `undefined` instead of `''` so the shared
+`optionalString` schema treats an untouched field as absent rather than
+failing `min(1)`.
+
+**Tests:** added one new unit test (`staff.service.spec.ts`) asserting the
+auto-generated id shape and that it calls `organization.findUniqueOrThrow`
+for the prefix; all 7 tests in that suite pass. `pnpm --filter @medicore/types build`,
+`--filter @medicore/api lint`/`typecheck`/`test -- staff.service.spec.ts`,
+and `--filter @medicore/web lint`/`typecheck` all clean. Did not re-run the
+full monorepo suite/e2e/build or take a screenshot - this is a small,
+contained fix (one optional field, one generator method), not a milestone
+checkpoint; nothing else in Staff, Payroll, Shift Roster, or Reports reads
+`employeeId` as anything other than an opaque display string, so no other
+module needed changes. Not browser-verified (no browser tool available this
+session) - automated verification only, per this repo's default policy.

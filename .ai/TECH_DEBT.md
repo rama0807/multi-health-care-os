@@ -2264,3 +2264,23 @@ instruction to do so:
 - Favicon/invoice-PDF branding: a `faviconUrl` column mirroring `logo`, and
   threading `Organization.branding` colours into the existing PDF generators
   (`billing-invoice-pdf.ts` etc.) instead of only their name/address/GSTIN.
+
+---
+
+## TD-0079: `nginx.conf`'s rate-limiting and security headers do not apply on the Dokploy deployment path
+
+**Discovered:** 2026-08-07, while getting a first Dokploy deploy working (see
+ADR-0033).
+**Severity:** Medium - the API and Next.js app still set their own security
+headers/CORS independently (unaffected), but the coarse per-IP rate-limiting
+and the extra `Strict-Transport-Security`/`X-Frame-Options`/etc. headers
+`infra/nginx/nginx.conf` adds in front of the app are specific to the `nginx`
+service, which `docker-compose.dokploy.yml` deliberately omits (Dokploy's own
+Traefik owns TLS/routing there instead - see ADR-0033).
+
+**Resolution plan:** Port the rate-limit zones and security headers to
+Traefik middleware (`middlewares.rateLimit`/`headers` in Dokploy's Traefik
+config, or per-router labels on the `web`/`api` services) if this deployment
+path becomes the primary one. Not done here - out of scope for "get Dokploy
+deploying at all," and `docker-compose.prod.yml`'s nginx-based path is
+unaffected and still carries the full protection.

@@ -6,6 +6,16 @@
 ## [Unreleased]
 
 ### Added
+- **`docker-compose.dokploy.yml` (ADR-0033).** A Dokploy-specific variant of
+  the production stack - same `postgres`/`redis`/`api`/`web` services, no
+  `nginx`, since Dokploy's own Traefik owns ports 80/443 and TLS on that
+  host. Route to `web`/`api` via Dokploy's "Domains" tab instead. Removed
+  hardcoded `container_name`s from `docker-compose.prod.yml` too (they
+  collide across Dokploy environments on the same host); that file otherwise
+  unchanged and still the one to use for a manually-managed VPS with your own
+  nginx and certs. See TD-0079 for what this path doesn't carry over
+  (nginx's rate-limiting/security headers).
+
 - **Per-organization Resend email credential (TD-0064, ADR-0032).** An org
   admin can now configure their own Resend API key, sender name/address and
   reply-to under `/dashboard/organization` → Email, instead of every tenant
@@ -66,6 +76,14 @@
   route, permission or business-logic change. See `PROGRESS.md` and TD-0078.
 
 ### Fixed
+- **Staff "Add staff member" form required a manually-typed Employee ID.**
+  It is now auto-generated (`EMP-<org prefix>-<year>-<seq>`), matching the
+  same per-organization numbering pattern already used for `LAB-`/`RAD-`/
+  `ADM-`/inventory document numbers. The field is now optional in both the
+  form (placeholder "Auto-generated if left blank") and the shared
+  `CreateStaffSchema` - an operator can still type one manually (e.g. when
+  migrating an existing employee-ID scheme), and the same duplicate-ID check
+  still applies when they do. No schema/migration change. See `PROGRESS.md`.
 - **Stale refresh-token cookie caused an infinite `/dashboard` ⇄ `/login`
   redirect loop for a user who "was already logged in."** `middleware.ts`
   only checks whether the `medicore_rt` cookie is *present* (a deliberate,

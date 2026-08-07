@@ -20,20 +20,41 @@ COPY --from=deps /app ./
 COPY . .
 RUN pnpm --filter @medicore/types build
 RUN pnpm --filter @medicore/database db:generate
+RUN pnpm --filter @medicore/database build
 RUN pnpm --filter @medicore/api build
 
 # ─── Production ───────────────────────────────────────────────────────────────
 FROM node:20-alpine AS production
-RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 WORKDIR /app
 
 ENV NODE_ENV=production
 
-COPY --from=builder /app/apps/api/dist ./dist
-COPY --from=builder /app/apps/api/package.json ./package.json
-COPY --from=builder /app/packages/database/prisma ./prisma
+# `apps/api/dist/main.js` requires bare specifiers like `@nestjs/config` and
+# `@medicore/types` - Node resolves those by walking up from the requiring
+# file's own directory looking for a `node_modules` at each level. pnpm's
+# node-linker gives every workspace package its own `node_modules` (holding
+# symlinks to its *own* deps, pointing into this root node_modules' `.pnpm`
+# store) rather than hoisting everything to one flat tree. So the app's own
+# package tree has to stay nested exactly as it is in the workspace -
+# `apps/api/dist` next to `apps/api/node_modules`, `packages/types/dist` next
+# to `packages/types/node_modules` - or that walk never reaches the
+# `node_modules` holding the symlink it needs, and every such import 404s
+# with `Cannot find module` despite the module plainly being on disk.
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
+COPY --from=builder /app/packages/types/node_modules ./packages/types/node_modules
+COPY --from=builder /app/packages/types/dist ./packages/types/dist
+COPY --from=builder /app/packages/types/package.json ./packages/types/package.json
+COPY --from=builder /app/packages/database/node_modules ./packages/database/node_modules
+COPY --from=builder /app/packages/database/dist ./packages/database/dist
+COPY --from=builder /app/packages/database/package.json ./packages/database/package.json
+# `docs/operations/deployment.md` runs migrations/seeding with
+# `--schema ./prisma/schema.prisma` and `require('./node_modules/@medicore/database/dist/seed.js')`
+# from this WORKDIR, so the schema stays at the top-level path those commands
+# already assume.
+COPY --from=builder /app/packages/database/prisma ./prisma
 
 # Runs unprivileged (Milestone 19.5), matching what apps/web/Dockerfile already
 # did. A container escape from the API process should not land on root.
@@ -54,4 +75,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 
 # Exec form, so node is PID 1 and receives SIGTERM directly - that is what
 # starts the graceful drain in `main.ts`.
-CMD ["node", "dist/main"]
+CMD ["node", "apps/api/dist/main"]

@@ -6,6 +6,108 @@
 
 ---
 
+## Session - 2026-08-07 (cont. 3) - Dockerfile fixes confirmed working; new failure was `redis` unhealthy at container startup
+
+### What was completed
+
+The Dockerfile fix below was validated by the actual Dokploy deploy log: both
+`api` and `web` images built end-to-end this time (full `next build`,
+`nest build`, Prisma generate, image export - no `tsc`/`standalone` errors).
+Deploy then failed at container startup instead:
+
+```
+Container demo-apps-hospital-rzrfop-postgres-1 Healthy
+Container demo-apps-hospital-rzrfop-redis-1 Error dependency redis failed to start
+dependency failed to start: container demo-apps-hospital-rzrfop-redis-1 is unhealthy
+```
+
+Root cause, in both `docker-compose.dokploy.yml` and `docker-compose.prod.yml`:
+the `redis` service's healthcheck is `redis-cli -a $${REDIS_PASSWORD} ping | grep PONG`
+(`$$` -> literal `$`, so this expands *inside the container's own shell* at
+healthcheck time). But `redis`'s `command:` is the only place `REDIS_PASSWORD`
+appears in the service definition - and that gets substituted by the Compose
+CLI on the **host** before the container is created, baking the real password
+into `redis-server`'s argv. It never becomes an environment variable *inside*
+the container. So the healthcheck's `$REDIS_PASSWORD` was always empty,
+`redis-cli -a  ping` failed auth against the real password-protected
+instance, and Redis was permanently `unhealthy` - which then blocked `api`
+(`depends_on: redis: condition: service_healthy`) from ever starting. This
+is why it looked like the deploy died on redis specifically even though
+postgres, whose healthcheck vars ARE mirrored into `environment:`
+(`POSTGRES_USER`, `POSTGRES_DB`), passed fine - that was the tell.
+
+Fix: added a `redis: environment: REDIS_PASSWORD: ${REDIS_PASSWORD:?...}`
+block to both compose files, so the container's shell actually has the
+variable the healthcheck references.
+
+**Verified for real**, not just by reading the compose file: reproduced the
+exact bug in isolation with `docker compose up -d` using the old healthcheck
+and no `environment:` block - confirmed `(unhealthy)` after ~25s, matching
+the Dokploy log. Then re-ran with the `environment:` fix added - confirmed
+`(healthy)`. Both throwaway stacks torn down with `down -v` afterward.
+
+### Files modified
+- `docker-compose.dokploy.yml` - added `REDIS_PASSWORD` to `redis.environment`
+- `docker-compose.prod.yml` - same
+
+### Recommended next task
+Trigger another Dokploy redeploy. If containers come up, confirm `api`'s
+health endpoint and `web` load, then apply migrations per
+`docs/operations/deployment.md` ("Apply migrations, then start" - Dokploy's
+Deploy button does not run them).
+
+### Estimated project completion
+No change - infra fix, not feature work.
+
+---
+
+## Session - 2026-08-07 (cont. 4) - Audited every Dockerfile/compose file for the same two bug classes
+
+### What was completed
+
+User asked to "fix every file" after the redis fix above - treated as: audit
+the whole deploy surface for the same two bug classes already found (missing
+`environment:` mirror for a `$${VAR}` healthcheck reference; narrow
+`COPY --from=deps` in a multi-stage Dockerfile), not just patch the one
+error currently showing in the log.
+
+Inventory: only two Dockerfiles (`apps/api/Dockerfile`, `apps/web/Dockerfile`
+- both already fixed) and three compose files (`docker-compose.yml` [local
+dev], `docker-compose.prod.yml`, `docker-compose.dokploy.yml`) exist in the
+repo.
+
+- `docker-compose.yml` (dev): redis has no `--requirepass` at all, so the
+  `$${VAR}`-without-`environment:` bug class doesn't apply there - confirmed
+  clean.
+- `docker-compose.prod.yml` / `docker-compose.dokploy.yml`: grepped every
+  `$${...}` healthcheck reference and confirmed each now has a matching
+  `environment:` entry (`POSTGRES_USER`/`POSTGRES_DB` already did;
+  `REDIS_PASSWORD` from the entry below now does too). Nothing missing.
+- Both Dockerfiles: confirmed only the one collapsed `COPY --from=deps /app ./`
+  line remains in each `builder` stage - no other narrow per-path copy lines
+  to miss a package on.
+- Ran `docker compose -f <file> config -q` against all three compose files
+  with dummy required env vars set - all three parse clean. `docker-compose.yml`
+  emitted a warning about the obsolete top-level `version: '3.9'` key
+  (Compose v2 ignores it); removed it since it was a one-line, no-risk
+  cleanup found while already auditing the file - re-ran `config -q`,
+  warning gone.
+
+No further bugs found. This was an audit pass, not a hunt for a new failure
+- next real signal is another Dokploy deploy attempt.
+
+### Files modified
+- `docker-compose.yml` - removed obsolete `version: '3.9'` key
+
+### Recommended next task
+Same as the entry above: trigger a Dokploy redeploy and watch for the next
+real error, if any, rather than continuing to audit speculatively.
+
+### Estimated project completion
+No change - infra audit, not feature work.
+
+---
+
 ## Session - 2026-08-07 (cont. 2) - `tsc: not found` recurred: builder stage was missing per-package `node_modules`
 
 ### What was completed

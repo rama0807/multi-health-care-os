@@ -6,6 +6,19 @@
 ## [Unreleased]
 
 ### Fixed
+- **`redis` container permanently `unhealthy` at startup, blocking `api`
+  (which `depends_on: redis: condition: service_healthy`).** In both
+  `docker-compose.dokploy.yml` and `docker-compose.prod.yml`, the `redis`
+  service's healthcheck (`redis-cli -a $${REDIS_PASSWORD} ping | grep PONG`)
+  expands `$REDIS_PASSWORD` inside the container's own shell, but that
+  variable was only ever substituted into the service's `command:` by the
+  Compose CLI on the host - it was never exposed as an actual environment
+  variable inside the container. The healthcheck always ran with an empty
+  password, failed auth, and Redis never went healthy. Added
+  `REDIS_PASSWORD` to `redis`'s `environment:` block in both files so the
+  healthcheck can see it. Verified by reproducing the exact `(unhealthy)`
+  state in an isolated `docker compose up`, then confirming `(healthy)` with
+  the fix.
 - **`sh: tsc: not found` recurred after the previous fix below** because the
   real cause was in the `builder` stage, not `deps`: both Dockerfiles copied
   `node_modules` from the `deps` stage for only the root and the one app

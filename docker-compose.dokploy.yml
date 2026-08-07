@@ -54,6 +54,12 @@ services:
     # them on a restart logs every user out mid-shift.
     command: >-
       redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    environment:
+      # Not consumed by redis-server itself (that gets the real password via
+      # `command:` above, substituted by the Compose CLI on the host) - this
+      # is so the healthcheck's `$${REDIS_PASSWORD}` has something to expand
+      # inside the container's own shell, which otherwise never sees it.
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
     volumes:
       - redis_data:/data
     healthcheck:

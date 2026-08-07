@@ -6,6 +6,129 @@
 
 ---
 
+## Session - 2026-08-07 (cont. 2) - `tsc: not found` recurred: builder stage was missing per-package `node_modules`
+
+### What was completed
+
+Dokploy's deploy log showed the exact same `sh: tsc: not found` error on
+`pnpm --filter @medicore/types build` that the entry below already
+"fixed" by adding the missing `packages/config/tsconfig` `COPY` line to the
+`deps` stage. That fix was necessary but not sufficient - the real cause was
+in the `builder` stage of both `apps/api/Dockerfile` and `apps/web/Dockerfile`:
+
+```
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules   # (or apps/web)
+COPY . .
+```
+
+pnpm's default (non-hoisted, symlinked) node-linker gives every workspace
+package its **own** `node_modules/.bin` with symlinks to its own
+`devDependencies`. `typescript` is a `devDependency` of `packages/types`
+itself, so `tsc`'s symlink lives at `packages/types/node_modules/.bin/tsc` -
+a path neither Dockerfile ever copied from the `deps` stage. `COPY . .`
+afterward can't fill the gap since `node_modules/` is gitignored. Root and
+the one app's `node_modules` being present was a red herring; every other
+workspace package's `node_modules` (types, database, config/tsconfig,
+config/eslint-config) was silently missing the whole time.
+
+Fix: replaced the two narrow `COPY --from=deps` lines in each Dockerfile
+with a single `COPY --from=deps /app ./`, which brings over every package's
+`node_modules` (and the deps stage's package.json copies, harmlessly
+overwritten a line later by `COPY . .`'s full source copy).
+
+While re-verifying end-to-end, `apps/web/Dockerfile`'s production stage
+failed separately: `COPY --from=builder .../.next/standalone` - not found.
+`next.config.mjs` never set `output: 'standalone'`, so Next had nothing to
+emit there. Added `output: 'standalone'` to the config.
+
+**Verified for real:** ran full (not `--target builder`) local
+`docker build -f apps/api/Dockerfile .` and `docker build -f apps/web/Dockerfile .`
+- both complete end-to-end including the production stage, image export, and
+`next build`'s standalone output. Removed the local test images afterward.
+
+### Files modified
+- `apps/api/Dockerfile` - builder stage `COPY --from=deps` collapsed to one line
+- `apps/web/Dockerfile` - same
+- `apps/web/next.config.mjs` - added `output: 'standalone'`
+
+### Architectural decisions made
+None new - this is a bugfix, not a design change. Worth noting for future
+Dockerfile edits: when adding a new workspace package as a build-time
+dependency, don't reach for another narrow `COPY --from=deps /app/<pkg>/node_modules`
+line - copy the whole `/app` tree from `deps`, as done here, so this class of
+bug can't recur one package at a time.
+
+### Known issues
+None outstanding from this fix. Dokploy's actual next deploy attempt hasn't
+been observed yet (this session only verified local `docker build`).
+
+### Recommended next task
+Trigger the Dokploy redeploy and confirm both images build and the stack
+comes up healthy. If it fails again, read the new error verbatim before
+assuming it's another `node_modules` gap - this class of bug is now closed.
+
+### Estimated project completion
+No change from the entry below - this is an infra fix, not feature work.
+
+---
+
+## Session - 2026-08-07 (cont.) - Two Dockerfile bugs blocking every Dokploy build, plus dead-code cleanup
+
+### What was completed
+
+Continuing the same Dokploy deployment effort (see the entry directly below):
+the build kept failing after the `packages/ui` fix, on a new error each
+retry. Fixed two real Dockerfile bugs, both affecting **every** from-scratch
+build, not just Dokploy's:
+
+1. `sh: tsc: not found` running `pnpm --filter @medicore/types build` in
+   both `apps/web/Dockerfile` and `apps/api/Dockerfile`'s `builder` stage.
+   Cause: `packages/types` (and `apps/web`/`apps/api` directly) depend on
+   `@medicore/tsconfig: workspace:*`, but neither Dockerfile's `deps` stage
+   copied `packages/config/tsconfig/package.json` - same category of bug as
+   the earlier `packages/ui` one, except this dependency is real. Added the
+   missing `COPY` line to both.
+2. Once that let the `web` build reach `next build`'s type-check step, it
+   failed on `'Plus' is declared but its value is never read` in
+   `sidebar.tsx`. This is unrelated to Docker - the quick-create button
+   built earlier this session had been removed from `sidebar.tsx` (by the
+   user, outside this conversation - flagged via a system-reminder at the
+   time) but its imports (`Plus`, the whole `DropdownMenu*` block) and a
+   `visibleActions` computation were left dangling. Dev mode's type-checker
+   apparently doesn't gate on this the way `next build`'s does. Removed the
+   dead imports/variable; confirmed `quickActions` is still legitimately
+   used elsewhere (`dashboard/page.tsx`, `settings/_components/shortcuts-section.tsx`,
+   `command-palette.tsx`) so only sidebar.tsx's usage was dead.
+
+**Verified for real, not just by reasoning:** ran actual local
+`docker build -f apps/web/Dockerfile --target builder` and
+`docker build -f apps/api/Dockerfile --target builder` - both complete
+end-to-end now (Next's type-check and `next build` finish; Prisma generate
+and `nest build` finish). Removed the test images after.
+
+### Files modified
+
+`apps/web/Dockerfile`, `apps/api/Dockerfile` (one `COPY` line each),
+`apps/web/src/components/layout/sidebar.tsx` (dead-code removal only - no
+behavior change), `.ai/CHANGELOG.md`.
+
+### Known issues / what's still unverified
+
+Same as the entry below - migrations are still a manual step on Dokploy, and
+TD-0079 (nginx's rate-limiting/headers not carried over) is still open. This
+round didn't touch either.
+
+### Recommended next task
+
+Redeploy on Dokploy with `docker-compose.dokploy.yml`. If a *third* build
+error shows up, check whether it's another missing workspace `package.json`
+COPY in the same two Dockerfiles first - that's now the proven failure
+pattern here (`packages/ui`, then `packages/config/tsconfig`) - before
+assuming something new.
+
+---
+
 ## Session - 2026-08-07 - Sidebar quick-create redesign, Organization sticky-nav fix, Dokploy deployment
 
 ### What was completed

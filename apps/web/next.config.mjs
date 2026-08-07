@@ -6,6 +6,9 @@ const { version } = JSON.parse(readFileSync(new URL('./package.json', import.met
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Dockerfile copies .next/standalone into the production image - without
+  // this, that directory is never emitted and the build step fails.
+  output: 'standalone',
   env: {
     NEXT_PUBLIC_APP_VERSION: version,
   },

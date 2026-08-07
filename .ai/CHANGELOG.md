@@ -5,6 +5,47 @@
 
 ## [Unreleased]
 
+### Fixed
+- **`sh: tsc: not found` recurred after the previous fix below** because the
+  real cause was in the `builder` stage, not `deps`: both Dockerfiles copied
+  `node_modules` from the `deps` stage for only the root and the one app
+  (`apps/api` or `apps/web`), never for the other workspace packages
+  (`packages/types`, `packages/database`, `packages/config/*`). pnpm's
+  symlinked node-linker puts each package's own devDependency binaries (like
+  `tsc`, since `typescript` is a `devDependency` of `packages/types`) under
+  that package's own `node_modules/.bin` - a path that was silently never
+  copied. Replaced the narrow per-path `COPY --from=deps` lines with a single
+  `COPY --from=deps /app ./` in both Dockerfiles so every workspace package's
+  `node_modules` comes across. Also found `apps/web/next.config.mjs` was
+  missing `output: 'standalone'`, which made the production stage's
+  `COPY --from=builder .../.next/standalone` fail with "not found" once the
+  `tsc` fix let the build get that far - added it. Verified with full (not
+  `--target builder`) local `docker build` runs for both images, all the way
+  through image export.
+- **`apps/web/Dockerfile` and `apps/api/Dockerfile` failed every from-scratch
+  build.** Two separate bugs surfaced while getting the Dokploy deploy
+  green: (1) `apps/web/Dockerfile` copied `packages/ui/package.json` into
+  the `deps` stage, but `packages/ui` is a dead scaffold directory with no
+  `package.json` and nothing depends on it (not referenced by
+  `apps/web/package.json` or `pnpm-lock.yaml`) - removed the line;
+  (2) neither Dockerfile's `deps` stage copied
+  `packages/config/tsconfig/package.json`, which `@medicore/types` (and
+  `apps/web`/`apps/api` themselves) depend on as `@medicore/tsconfig:
+  workspace:*` - without it, pnpm couldn't fully resolve `packages/types`'s
+  install and `tsc` was never linked, failing with `sh: tsc: not found` on
+  `pnpm --filter @medicore/types build`. Added the missing `COPY` line to
+  both Dockerfiles. Verified with real local `docker build --target builder`
+  runs for both images (not just reasoning about the compose file) - both
+  now complete end-to-end, including `next build`'s type-check and
+  `nest build`.
+- **`apps/web/src/components/layout/sidebar.tsx` had dead code left over
+  from the quick-create button being removed** (unused `Plus` and
+  `DropdownMenu*` imports, an unused `visibleActions` computation) - this is
+  what `next build`'s type-check caught once the Dockerfile fix above let
+  the build reach that step. Cleaned up; `quickActions` itself is still used
+  elsewhere (dashboard quick actions, settings shortcuts, command palette),
+  only the now-orphaned sidebar usage was removed.
+
 ### Added
 - **`docker-compose.dokploy.yml` (ADR-0033).** A Dokploy-specific variant of
   the production stack - same `postgres`/`redis`/`api`/`web` services, no

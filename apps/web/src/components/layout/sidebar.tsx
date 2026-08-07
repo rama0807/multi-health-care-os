@@ -1,26 +1,18 @@
 'use client'
 
-import { ChevronDown, PanelLeftClose, PanelLeftOpen, Plus } from 'lucide-react'
+import { ChevronDown, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import * as React from 'react'
 
-import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useAuth } from '@/lib/auth/auth-context'
 import { cn } from '@/lib/utils'
 import { useBranding } from '@/providers/branding-provider'
 import { useWorkspace } from '@/providers/workspace-provider'
 
-import { navigation, quickActions, type NavItem } from './nav-config'
+import { navigation, type NavItem } from './nav-config'
 
 // Re-exported so any module that imported these from the sidebar keeps working.
 export { navigation } from './nav-config'
@@ -73,10 +65,6 @@ export function Sidebar() {
       return next
     })
   }, [])
-
-  const visibleActions = quickActions.filter(
-    (action) => !action.permission || hasPermission(action.permission),
-  )
 
   return (
     <TooltipProvider delayDuration={300}>

@@ -92,7 +92,7 @@ deliberately.
 
 ```bash
 docker compose -f docker-compose.prod.yml --env-file .env.production \
-  run --rm api node -e "require('./node_modules/@medicore/database/dist/seed.js')"
+  run --rm api node -e "require('./packages/database/dist/seed.js')"
 ```
 
 Seeding creates the permission catalogue, the default roles and the

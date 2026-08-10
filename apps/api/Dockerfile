@@ -1,5 +1,6 @@
 # syntax=docker/dockerfile:1
 FROM node:20-alpine AS base
+RUN apk add --no-cache openssl
 RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 
 # ─── Dependencies ────────────────────────────────────────────────────────────
@@ -25,6 +26,10 @@ RUN pnpm --filter @medicore/api build
 
 # ─── Production ───────────────────────────────────────────────────────────────
 FROM node:20-alpine AS production
+# Matches the `base` stage - the engine binary generated there was built
+# against whatever OpenSSL `prisma generate` found, and needs the same major
+# version actually present here at runtime.
+RUN apk add --no-cache openssl
 WORKDIR /app
 
 ENV NODE_ENV=production

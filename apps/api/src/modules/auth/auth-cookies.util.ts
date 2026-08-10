@@ -19,6 +19,7 @@ export function setAuthCookies(
   ttlSeconds: number,
   rememberMe: boolean,
   isProduction: boolean,
+  cookieDomain?: string,
 ): void {
   // "Remember me" gets a persistent cookie (maxAge); otherwise a session
   // cookie that the browser drops on close, backstopped by the shorter
@@ -30,6 +31,7 @@ export function setAuthCookies(
     secure: isProduction,
     sameSite: 'lax',
     path: COOKIE_PATH,
+    ...(cookieDomain ? { domain: cookieDomain } : {}),
     ...(maxAge ? { maxAge } : {}),
   })
 
@@ -38,11 +40,22 @@ export function setAuthCookies(
     secure: isProduction,
     sameSite: 'lax',
     path: COOKIE_PATH,
+    ...(cookieDomain ? { domain: cookieDomain } : {}),
     ...(maxAge ? { maxAge } : {}),
   })
 }
 
-export function clearAuthCookies(reply: FastifyReply, isProduction: boolean): void {
-  void reply.clearCookie(REFRESH_COOKIE_NAME, { path: COOKIE_PATH, secure: isProduction, sameSite: 'lax' })
-  void reply.clearCookie(CSRF_COOKIE_NAME, { path: COOKIE_PATH, secure: isProduction, sameSite: 'lax' })
+export function clearAuthCookies(reply: FastifyReply, isProduction: boolean, cookieDomain?: string): void {
+  void reply.clearCookie(REFRESH_COOKIE_NAME, {
+    path: COOKIE_PATH,
+    secure: isProduction,
+    sameSite: 'lax',
+    ...(cookieDomain ? { domain: cookieDomain } : {}),
+  })
+  void reply.clearCookie(CSRF_COOKIE_NAME, {
+    path: COOKIE_PATH,
+    secure: isProduction,
+    sameSite: 'lax',
+    ...(cookieDomain ? { domain: cookieDomain } : {}),
+  })
 }

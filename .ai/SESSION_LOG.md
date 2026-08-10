@@ -6,6 +6,95 @@
 
 ---
 
+## Session - 2026-08-10 - First real Dokploy deploy of `hospital` project taken end-to-end; five separate bugs found and fixed along the way
+
+### What was completed
+
+Walked a live Dokploy deployment (`demo-apps-hospital-rzrfop`, domains
+`hospitals.grovyn.in` / `hospitals-api.grovyn.in`) from a crash-looping `api`
+container all the way to a working login. Root causes, in the order hit:
+
+1. **Dokploy env vars were the local dev `.env` copied verbatim** -
+   `DATABASE_URL`/`REDIS_HOST`/`REDIS_PORT` pointed at `localhost:5434`/
+   `:6381` (dev Docker port mappings), not the compose service names/ports.
+   Fixed in Dokploy's Environment tab, not in the repo - `docker-compose.dokploy.yml`
+   was already correct (`${VAR:?required}`).
+2. **`medicore` database never existed** - the postgres volume's first init
+   never got a `POSTGRES_DB=medicore`, so even a correct `DATABASE_URL`
+   hit P1003. Fixed with `CREATE DATABASE medicore OWNER medicore;` via
+   `docker exec` into the postgres container, once.
+3. **`apps/web/Dockerfile` assumed a flat (non-monorepo) `next build`
+   standalone layout.** Since `next.config.mjs` has no `outputFileTracingRoot`,
+   Next auto-detects it from the repo-root `pnpm-lock.yaml`, which nests the
+   standalone output under `apps/web/` inside `.next/standalone` - the
+   Dockerfile's `COPY .next/standalone ./` + `CMD ["node", "server.js"]`
+   assumed the file was at the image root. Fixed: copy/`CMD` paths now say
+   `apps/web/server.js`, `apps/web/public`, `apps/web/.next/static`.
+4. **Migrations were never run** (Dokploy's Deploy button doesn't run them -
+   already documented in `deployment.md`, just easy to forget on a first
+   deploy). Also: `npx prisma migrate deploy` with no pinned version grabbed
+   Prisma 7 from the registry (the image only ships `@prisma/client`, not
+   the `prisma` CLI), which rejects this repo's Prisma-5-era
+   `datasource { url = env(...) }` syntax - must run `npx prisma@5.22.0
+   migrate deploy` to match the app's actual Prisma version.
+5. **`apps/web`'s Docker healthcheck used `http://localhost:3000/...`**, and
+   Alpine resolves `localhost` to the IPv6 loopback first - Next only binds
+   IPv4, so the healthcheck always saw connection-refused and Docker/Traefik
+   never routed to an otherwise-perfectly-healthy container. Fixed to
+   `127.0.0.1`, matching what `apps/api`'s Dockerfile already did correctly.
+   Also added the missing `apps/web/src/app/api/health/route.ts` - that
+   healthcheck path never existed as a route at all before this session.
+6. **`NEXT_PUBLIC_API_URL` was only wired as container `environment:`**, but
+   Next inlines `NEXT_PUBLIC_*` into the client bundle at `next build` time -
+   runtime env on the already-built image does nothing. Login calls went to
+   the code's hardcoded dev fallback (`localhost:4000`) instead of
+   `hospitals-api.grovyn.in`. Fixed by adding it as a `build.args` in both
+   `docker-compose.dokploy.yml` and `docker-compose.prod.yml`, and an `ARG`/
+   `ENV` in `apps/web/Dockerfile`'s builder stage.
+7. **Login "succeeded" but immediately bounced back to `/login`** - see
+   **ADR-0034**. ADR-0033's two-Dokploy-domains layout broke the
+   no-explicit-`domain` refresh/CSRF cookies `auth-cookies.util.ts` sets,
+   since they were written assuming one shared nginx origin. Fixed with a
+   new optional `COOKIE_DOMAIN` env (`.grovyn.in` for this deployment),
+   threaded through `setAuthCookies`/`clearAuthCookies`.
+
+### Files modified
+`apps/web/Dockerfile`, `apps/web/src/app/api/health/route.ts` (new),
+`apps/api/src/config/app.config.ts`, `apps/api/src/modules/auth/auth-cookies.util.ts`,
+`apps/api/src/modules/auth/auth.controller.ts`, `docker-compose.dokploy.yml`,
+`docker-compose.prod.yml`, `.ai/DECISIONS.md` (ADR-0034).
+
+### Known issues / not yet done
+- **`COOKIE_DOMAIN=.grovyn.in` still needs to be added to Dokploy's actual
+  Environment tab** for this project - the code/compose changes alone don't
+  fix the live deployment until that's set and it's redeployed.
+- Base seed (`node -e "require('./packages/database/dist/seed.js')"`) has
+  been run against this deployment - `superadmin@medicore.app` /
+  `Demo@12345` and the per-role `*@medicore.demo` accounts exist with the
+  shared demo password. **Must be changed before this is anything but a
+  throwaway demo.** `seed-demo.ts` (realistic patient/appointment/billing
+  data) has not been run.
+- None of this session's fixes have been through `pnpm lint`/`typecheck`/
+  `test`/`build` yet - small, targeted changes, but unverified by the
+  project's own Definition of Done. Run the full verification suite before
+  considering this session's changes done, not just "deployed and clicking."
+- `docker-compose.prod.yml`'s nginx-based path was not touched beyond the
+  same `NEXT_PUBLIC_API_URL` build-arg fix - not deploy-tested this session.
+
+### Recommended next task
+Set `COOKIE_DOMAIN=.grovyn.in` in Dokploy's Environment tab, redeploy, log
+in as `superadmin@medicore.app`, change that password immediately, then run
+`pnpm lint && pnpm typecheck && pnpm test && pnpm build` before calling any
+of this session's fixes done per this file's own Definition of Done.
+
+### Estimated project completion
+No change to feature completion - this was entirely deployment/infra
+debugging, not new product work. Milestone 19's production-readiness gaps
+(TD-0070 backups, TD-0067 per-process rate limiting) are unaffected and
+still open.
+
+---
+
 ## Session - 2026-08-07 (cont. 3) - Dockerfile fixes confirmed working; new failure was `redis` unhealthy at container startup
 
 ### What was completed

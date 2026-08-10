@@ -88,6 +88,11 @@ services:
       JWT_ACCESS_TOKEN_EXPIRY: ${JWT_ACCESS_TOKEN_EXPIRY:-15m}
       JWT_REFRESH_TOKEN_EXPIRY: ${JWT_REFRESH_TOKEN_EXPIRY:-30d}
       COOKIE_SECRET: ${COOKIE_SECRET:?COOKIE_SECRET is required}
+      # Only needed because this file puts web/api on separate subdomains
+      # (ADR-0033) - without it, the refresh/CSRF cookies the api sets are
+      # scoped to its own host and the web app's middleware never sees them.
+      # Set to the shared parent, e.g. ".grovyn.in" (leading dot).
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
       FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL is required}
       CORS_ORIGINS: ${CORS_ORIGINS:-}
       # Dokploy's Traefik terminates TLS and sets X-Forwarded-For; without

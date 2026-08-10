@@ -53,6 +53,7 @@ export class AuthController {
       result.refreshTokenTtlSeconds,
       result.rememberMe,
       this.configService.get<boolean>('app.isProduction') ?? false,
+      this.configService.get<string>('app.cookieDomain'),
     )
     return { accessToken: result.accessToken, expiresIn: result.expiresIn, user: result.user }
   }
@@ -105,7 +106,11 @@ export class AuthController {
       // cookie - see `middleware.ts`) keeps sending the caller back to a
       // dashboard that will immediately bounce them again. Clearing it here
       // is what lets that redirect loop actually terminate at `/login`.
-      clearAuthCookies(reply, this.configService.get<boolean>('app.isProduction') ?? false)
+      clearAuthCookies(
+        reply,
+        this.configService.get<boolean>('app.isProduction') ?? false,
+        this.configService.get<string>('app.cookieDomain'),
+      )
       throw error
     }
   }
@@ -117,7 +122,11 @@ export class AuthController {
   @ApiOperation({ summary: 'Revoke the current session' })
   async logout(@CurrentUser() user: JwtPayload, @Res({ passthrough: true }) reply: FastifyReply) {
     await this.authService.logout(user.sub, user.sessionId)
-    clearAuthCookies(reply, this.configService.get<boolean>('app.isProduction') ?? false)
+    clearAuthCookies(
+      reply,
+      this.configService.get<boolean>('app.isProduction') ?? false,
+      this.configService.get<string>('app.cookieDomain'),
+    )
     return { message: 'Logged out' }
   }
 
@@ -128,7 +137,11 @@ export class AuthController {
   @ApiOperation({ summary: 'Revoke every session for the current user' })
   async logoutAll(@CurrentUser() user: JwtPayload, @Res({ passthrough: true }) reply: FastifyReply) {
     await this.authService.logoutAll(user.sub)
-    clearAuthCookies(reply, this.configService.get<boolean>('app.isProduction') ?? false)
+    clearAuthCookies(
+      reply,
+      this.configService.get<boolean>('app.isProduction') ?? false,
+      this.configService.get<string>('app.cookieDomain'),
+    )
     return { message: 'Logged out of all devices' }
   }
 

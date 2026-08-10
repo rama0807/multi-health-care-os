@@ -9,4 +9,10 @@ export default registerAs('app', () => ({
   logLevel: process.env.LOG_LEVEL ?? 'debug',
   cookieSecret: process.env.COOKIE_SECRET ?? 'change-me-in-production-min-32-chars',
   isProduction: process.env.NODE_ENV === 'production',
+  // Unset by default: web and api are assumed to share one origin (see
+  // auth-cookies.util.ts). Only needed when they're deployed on separate
+  // subdomains (e.g. Dokploy's ADR-0033 one-domain-per-service layout) -
+  // set to the shared parent, e.g. ".grovyn.in", so the browser attaches
+  // the cookie set by the api host to requests made from the web host too.
+  cookieDomain: process.env.COOKIE_DOMAIN,
 }))

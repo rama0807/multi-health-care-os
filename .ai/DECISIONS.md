@@ -2700,3 +2700,38 @@ Nothing in `nginx.conf`, the Dockerfiles, or apps/api/apps/web changed.
   migrate deploy`, before `up -d` - see `docs/operations/deployment.md`) is
   not automated by Dokploy's Deploy button on either compose file; still a
   manual step run via Dokploy's "Open Terminal" (or SSH) after each deploy.
+
+## ADR-0034: `COOKIE_DOMAIN` - a shared parent-domain cookie, for Dokploy's one-domain-per-service layout only
+
+Date: 2026-08-10
+Status: Accepted
+
+**Context:** ADR-0033 put `web` and `api` on two separate Dokploy domains
+(`hospitals.grovyn.in`, `hospitals-api.grovyn.in`). `auth-cookies.util.ts`
+sets the refresh/CSRF cookies with no explicit `domain`, which was correct
+for the single-nginx-origin deployment (`docker-compose.prod.yml`) it was
+written for - the cookie is then scoped to whichever host issued it. Under
+ADR-0033's two-domain layout, that host is the api's own domain, so the
+browser never attaches it to page requests against the web domain - the
+frontend's middleware (which gates `/dashboard` on this cookie's presence)
+never sees it, and login appears to succeed but immediately bounces back to
+`/login`. Not caught until an actual end-to-end login was tested against a
+real Dokploy deploy - ADR-0033 never mentioned cookies at all.
+
+**Decision:** Added an optional `COOKIE_DOMAIN` env var (`app.cookieDomain`
+in `app.config.ts`), threaded through `setAuthCookies`/`clearAuthCookies` as
+the cookie's `domain` attribute when set. Unset (the default) preserves the
+original single-origin behavior for `docker-compose.prod.yml` and local dev.
+For `docker-compose.dokploy.yml`, set it to the shared parent - e.g.
+`.grovyn.in` - so both subdomains receive the cookie.
+
+**Consequences:**
+- Anyone deploying `docker-compose.dokploy.yml` with per-service domains
+  under different second-level domains (not just different subdomains of
+  the same parent) cannot use this fix - cookies cannot cross registrable
+  domains. That deployment shape isn't supported by this app's auth model at
+  all; it would need the single-origin path-based routing ADR-0033 rejected.
+- `COOKIE_DOMAIN` is not validated at boot (`env.validation.ts`) - an empty
+  value degrades to the pre-fix broken-login behavior silently rather than
+  failing loud. Left as a manual deployment-checklist item, not a boot
+  error, since it's correct to leave unset for the single-origin path.

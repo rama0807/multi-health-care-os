@@ -31,9 +31,14 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-COPY --from=builder /app/apps/web/public ./public
+# `next.config.mjs` doesn't set `outputFileTracingRoot`, so Next auto-detects
+# it from the pnpm-lock.yaml at the *monorepo* root (required so tracing
+# reaches into `@medicore/types`/`@medicore/ui`) - which makes `standalone`
+# preserve the full path from that root, landing server.js at
+# `apps/web/server.js` inside the standalone tree, not at its own root.
+COPY --from=builder /app/apps/web/public ./apps/web/public
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
 
 USER nextjs
 
@@ -45,4 +50,4 @@ ENV HOSTNAME="0.0.0.0"
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD wget -qO- http://localhost:3000/api/health || exit 1
 
-CMD ["node", "server.js"]
+CMD ["node", "apps/web/server.js"]

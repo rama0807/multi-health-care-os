@@ -18,6 +18,11 @@ WORKDIR /app
 COPY --from=deps /app ./
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED 1
+# NEXT_PUBLIC_* vars are inlined into the client bundle by `next build` -
+# setting them only as container `environment:` (runtime) never reaches
+# already-built JS, so it has to arrive here as a build arg instead.
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN pnpm --filter @medicore/types build
 RUN pnpm --filter @medicore/web build
 

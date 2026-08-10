@@ -135,6 +135,11 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
       target: production
+      # Next inlines NEXT_PUBLIC_* into the client bundle at `next build` -
+      # it has to reach the builder as an arg, not just container env, or
+      # the browser bundle keeps whatever default the code falls back to.
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL is required}
     restart: unless-stopped
     environment:
       NODE_ENV: production

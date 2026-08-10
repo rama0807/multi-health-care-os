@@ -47,7 +47,10 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
+# 127.0.0.1, not localhost - Alpine resolves `localhost` to the IPv6 loopback
+# first, and Next only binds the IPv4 socket, so `wget localhost` gets an
+# instant connection-refused even while the process is up and serving.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD wget -qO- http://localhost:3000/api/health || exit 1
+  CMD wget -qO- http://127.0.0.1:3000/api/health || exit 1
 
 CMD ["node", "apps/web/server.js"]

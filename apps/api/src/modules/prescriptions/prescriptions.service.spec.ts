@@ -55,7 +55,6 @@ describe('PrescriptionsService', () => {
 
     service = new PrescriptionsService(
       prisma as never,
-      encountersService as never,
       doctorRef as never,
       permissionsService as never,
       eventEmitter as never,

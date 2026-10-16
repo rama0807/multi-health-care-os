@@ -90,3 +90,5 @@ export class StaffController {
     return this.staffService.setEmploymentStatus(orgId, id, EmploymentStatus.TERMINATED, userId)
   }
 }
+
+// Trigger reload

@@ -1,9 +1,13 @@
+/* eslint-disable @typescript-eslint/no-unsafe-enum-comparison */
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
 import { Loader2, Search, Users } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+
+import { flattenDentalNavigation, dentalQuickActions } from './dental-nav-config'
+import { flattenNavigation, quickActions } from './nav-config'
 
 import {
   CommandDialog,
@@ -18,22 +22,30 @@ import { Kbd } from '@/components/ui/progress'
 import { listPatients } from '@/lib/api/patients'
 import { useAuth } from '@/lib/auth/auth-context'
 
-import { flattenNavigation, quickActions } from './nav-config'
 
 /**
  * Global ⌘K / Ctrl+K command palette - searches real patients (by name,
  * phone, or UHID) and doubles as quick navigation and quick creation across
  * every page the user has access to.
  *
- * Navigation and create actions come from `nav-config`, filtered by the same
- * permission check the sidebar uses, so the palette can never offer a page the
- * rail hides.
+ * Automatically adapts between Dental OS and Hospital OS:
+ * - Dental OS: Searches patients, opens dental charts, provides dental quick actions (Odontogram, Lab Cases, etc.)
+ * - Hospital OS: Searches patients, opens hospital dashboard, provides hospital quick actions
  */
-export function CommandPalette() {
+export function CommandPalette({ basePath: explicitBasePath }: { basePath?: '/dashboard' | '/dental' } = {}) {
   const router = useRouter()
-  const { hasPermission } = useAuth()
+  const pathname = usePathname()
+  const { user, hasPermission } = useAuth()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
+
+  const isDental = explicitBasePath
+    ? explicitBasePath === '/dental'
+    : (pathname ? pathname.startsWith('/dental') : false) ||
+    user?.organizationType === 'DENTAL' ||
+    String(user?.organizationType).toUpperCase() === 'DENTAL'
+
+  const basePath = explicitBasePath ?? (isDental ? '/dental' : '/dashboard')
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -60,10 +72,17 @@ export function CommandPalette() {
     enabled: canSearchPatients && trimmedQuery.length >= 2,
   })
 
-  const navItems = useMemo(() => flattenNavigation(isVisible), [isVisible])
+  const navItems = useMemo(
+    () => (isDental ? flattenDentalNavigation(isVisible) : flattenNavigation(isVisible)),
+    [isDental, isVisible],
+  )
+
   const createItems = useMemo(
-    () => quickActions.filter((action) => isVisible(action.permission)),
-    [isVisible],
+    () =>
+      (isDental ? dentalQuickActions : quickActions).filter((action) =>
+        isVisible(action.permission),
+      ),
+    [isDental, isVisible],
   )
 
   function go(href: string) {
@@ -80,13 +99,19 @@ export function CommandPalette() {
         className="flex h-8 w-full max-w-sm items-center gap-2 rounded-md border border-border bg-surface-secondary px-2.5 text-left text-sm text-muted-foreground transition-colors duration-fast hover:border-border-strong hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <Search className="size-3.5 flex-shrink-0" aria-hidden="true" />
-        <span className="truncate">Search patients, pages, actions…</span>
+        <span className="truncate">
+          {isDental ? 'Search dental patients, pages, actions…' : 'Search patients, pages, actions…'}
+        </span>
         <Kbd className="ml-auto flex-shrink-0">⌘K</Kbd>
       </button>
 
       <CommandDialog open={open} onOpenChange={setOpen}>
         <CommandInput
-          placeholder="Search patients, jump to a page, or start something new…"
+          placeholder={
+            isDental
+              ? 'Search dental patients, jump to a page, or start something new…'
+              : 'Search patients, jump to a page, or start something new…'
+          }
           value={query}
           onValueChange={setQuery}
         />
@@ -111,7 +136,7 @@ export function CommandPalette() {
                   <CommandItem
                     key={patient.id}
                     value={`patient-${patient.id}-${patient.fullName}-${patient.uhid}`}
-                    onSelect={() => go(`/dashboard/patients/${patient.id}`)}
+                    onSelect={() => go(`${basePath}/patients/${patient.id}`)}
                   >
                     <Users className="mr-2 size-4 text-muted-foreground" />
                     <span className="truncate">{patient.fullName}</span>

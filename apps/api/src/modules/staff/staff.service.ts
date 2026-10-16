@@ -87,11 +87,18 @@ export class StaffService {
   }
 
   async create(organizationId: string, dto: CreateStaffDto, actorUserId?: string): Promise<Staff> {
-    await this.hospitalsService.getById(organizationId, dto.hospitalId)
+    let hospitalId = dto.hospitalId
+    if (!hospitalId) {
+      const defaultHospital = await this.hospitalsService.findOrCreateDefaultHospital(organizationId)
+      hospitalId = defaultHospital.id
+      dto = { ...dto, hospitalId }
+    } else {
+      await this.hospitalsService.getById(organizationId, hospitalId)
+    }
 
     if (dto.departmentId) {
       const department = await this.departmentsService.getById(organizationId, dto.departmentId)
-      if (department.hospitalId !== dto.hospitalId) {
+      if (department.hospitalId !== hospitalId) {
         throw new ConflictException('The selected department does not belong to the selected hospital')
       }
     }

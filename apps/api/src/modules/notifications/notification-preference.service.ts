@@ -7,7 +7,7 @@ import {
   NotificationPriority,
   UpdateNotificationPreferenceDto,
 } from '@medicore/types'
-import { Injectable } from '@nestjs/common'
+import { Injectable, Logger } from '@nestjs/common'
 import { Prisma, NotificationPreference as PrismaNotificationPreference } from '@prisma/client'
 
 import { PrismaService } from '../../prisma/prisma.service'
@@ -44,6 +44,8 @@ export interface ChannelDecision {
  */
 @Injectable()
 export class NotificationPreferenceService {
+  private readonly logger = new Logger(NotificationPreferenceService.name)
+
   constructor(private readonly prisma: PrismaService) {}
 
   /**
@@ -53,13 +55,24 @@ export class NotificationPreferenceService {
    * `update`, which does need it.
    */
   async get(_organizationId: string, userId: string): Promise<NotificationPreference> {
-    const row = await this.prisma.notificationPreference.findUnique({ where: { userId } })
-    if (row) return toResponse(row)
+    try {
+      const row = await this.prisma.notificationPreference.findUnique({ where: { userId } })
+      if (row) return toResponse(row)
+    } catch (err) {
+      this.logger.warn(`Could not query notification preferences for user ${userId}: ${err instanceof Error ? err.message : String(err)}`)
+    }
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { timezone: true },
-    })
+    let timezone = 'Asia/Kolkata'
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { timezone: true },
+      })
+      if (user?.timezone) timezone = user.timezone
+    } catch {
+      // non-fatal fallback
+    }
+
     return {
       userId,
       inAppEnabled: true,
@@ -70,7 +83,7 @@ export class NotificationPreferenceService {
       emailFrequency: EmailDigestFrequency.IMMEDIATE,
       quietHoursStart: null,
       quietHoursEnd: null,
-      timezone: user?.timezone ?? 'Asia/Kolkata',
+      timezone,
       categoryPreferences: {},
       updatedAt: null,
     }

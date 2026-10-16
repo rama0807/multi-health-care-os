@@ -2,6 +2,7 @@ import {
   AuthenticatedUser,
   JwtPayload,
   LoginDto,
+  OrganizationType,
   RegisterOrganizationDto,
   UserStatus,
 } from '@medicore/types'
@@ -14,7 +15,7 @@ import {
 } from '@nestjs/common'
 import { EventEmitter2 } from '@nestjs/event-emitter'
 import { JwtService } from '@nestjs/jwt'
-import { Prisma } from '@prisma/client'
+import { Prisma, OrganizationType as PrismaOrgType } from '@prisma/client'
 import * as argon2 from 'argon2'
 
 
@@ -49,7 +50,7 @@ export interface AuthSessionResult {
 const userWithOrg = Prisma.validator<Prisma.UserDefaultArgs>()({
   include: {
     organization: {
-      select: { id: true, slug: true, name: true, isActive: true, isPlatform: true },
+      select: { id: true, slug: true, name: true, type: true, isActive: true, isPlatform: true },
     },
   },
 })
@@ -69,7 +70,18 @@ export class AuthService {
     private readonly emailConfigService: OrganizationEmailConfigService,
   ) {}
 
-  async register(dto: RegisterOrganizationDto, meta: RequestMeta): Promise<AuthSessionResult> {
+  async register(dto: RegisterOrganizationDto, meta: RequestMeta, autoLogin?: true): Promise<AuthSessionResult>
+  async register(dto: RegisterOrganizationDto, meta: RequestMeta, autoLogin: false): Promise<{ user: AuthenticatedUser }>
+  async register(
+    dto: RegisterOrganizationDto,
+    meta: RequestMeta,
+    autoLogin?: boolean,
+  ): Promise<AuthSessionResult | { user: AuthenticatedUser }>
+  async register(
+    dto: RegisterOrganizationDto,
+    meta: RequestMeta,
+    autoLogin = true,
+  ): Promise<AuthSessionResult | { user: AuthenticatedUser }> {
     const existingOrg = await this.prisma.organization.findUnique({
       where: { slug: dto.organizationSlug },
     })
@@ -84,6 +96,7 @@ export class AuthService {
       data: {
         name: dto.organizationName,
         slug: dto.organizationSlug,
+        type: dto.organizationType as unknown as PrismaOrgType,
         email: dto.adminEmail,
         phone: dto.phone,
         settings: {
@@ -129,6 +142,13 @@ export class AuthService {
 
     await this.sendVerificationEmail(user.id, user.email, user.firstName, org.id)
 
+    if (!autoLogin) {
+      const authContext = await this.rolesService.resolveAuthContext(user.id)
+      return {
+        user: this.toAuthenticatedUser({ ...user, organization: org }, authContext),
+      }
+    }
+
     return this.issueSession(
       { ...user, organization: org },
       meta,
@@ -139,7 +159,7 @@ export class AuthService {
   async login(dto: LoginDto, meta: RequestMeta): Promise<AuthSessionResult> {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
-      include: { organization: { select: { id: true, slug: true, name: true, isActive: true, isPlatform: true } } },
+      include: { organization: { select: { id: true, slug: true, name: true, type: true, isActive: true, isPlatform: true } } },
     })
 
     if (!user) throw new UnauthorizedException('Invalid credentials')
@@ -201,7 +221,7 @@ export class AuthService {
 
     const user = await this.prisma.user.findUnique({
       where: { id: result.session.userId },
-      include: { organization: { select: { id: true, slug: true, name: true, isActive: true, isPlatform: true } } },
+      include: { organization: { select: { id: true, slug: true, name: true, type: true, isActive: true, isPlatform: true } } },
     })
 
     if (!user || user.status === UserStatus.SUSPENDED || user.status === UserStatus.INACTIVE) {
@@ -241,7 +261,7 @@ export class AuthService {
   async me(userId: string): Promise<AuthenticatedUser> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: { organization: { select: { id: true, slug: true, name: true, isActive: true, isPlatform: true } } },
+      include: { organization: { select: { id: true, slug: true, name: true, type: true, isActive: true, isPlatform: true } } },
     })
     if (!user) throw new UnauthorizedException('User not found')
 
@@ -399,6 +419,7 @@ export class AuthService {
       email: user.email,
       orgId: user.organizationId,
       orgSlug: user.organization.slug,
+      orgType: user.organization.type as OrganizationType,
       isPlatform: user.organization.isPlatform,
       roles: authContext.roles,
       permissions: authContext.permissions,
@@ -422,6 +443,7 @@ export class AuthService {
       organizationId: user.organizationId,
       organizationSlug: user.organization.slug,
       organizationName: user.organization.name,
+      organizationType: user.organization.type as OrganizationType,
       isPlatform: user.organization.isPlatform,
       roles: authContext.roles,
       permissions: authContext.permissions,

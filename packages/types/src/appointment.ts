@@ -38,6 +38,7 @@ export const CreateAppointmentSchema = z.object({
   type: z.nativeEnum(AppointmentType).default(AppointmentType.OPD),
   chiefComplaint: z.string().max(500).optional(),
   notes: z.string().max(1000).optional(),
+  roomNumber: z.string().max(100).optional(),
 })
 
 export type CreateAppointmentDto = z.infer<typeof CreateAppointmentSchema>

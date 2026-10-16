@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   Appointment,
   AppointmentQuery,
@@ -72,7 +73,7 @@ export class AppointmentsService {
     private readonly availabilityService: AvailabilityService,
     private readonly emailService: EmailService,
     private readonly eventEmitter: EventEmitter2,
-  ) {}
+  ) { }
 
   async getAvailableSlotsForBooking(
     organizationId: string,
@@ -174,6 +175,7 @@ export class AppointmentsService {
       type: dto.type,
       chiefComplaint: dto.chiefComplaint,
       notes: dto.notes,
+      roomNumber: dto.roomNumber,
       isWalkIn: false,
       recurrenceGroupId: null,
       actorUserId,
@@ -285,6 +287,7 @@ export class AppointmentsService {
     type: AppointmentType
     chiefComplaint?: string
     notes?: string
+    roomNumber?: string
     isWalkIn: boolean
     recurrenceGroupId: string | null
     actorUserId?: string
@@ -322,6 +325,7 @@ export class AppointmentsService {
           type: params.type as unknown as PrismaAppointmentType,
           chiefComplaint: params.chiefComplaint,
           notes: params.notes,
+          roomNumber: params.roomNumber,
           isWalkIn: params.isWalkIn,
           recurrenceGroupId: params.recurrenceGroupId,
         },

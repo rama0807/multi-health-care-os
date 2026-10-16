@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   CreatePrescriptionDto,
   DrugInteractionWarning,
@@ -19,7 +21,6 @@ import {
 
 import { PermissionsService } from '../../common/permissions/permissions.service'
 import { PrismaService } from '../../prisma/prisma.service'
-import { EncountersService } from '../medical-records/encounters.service'
 import { DoctorRefService } from '../scheduling/doctor-ref.service'
 
 import { checkDrugInteractions } from './drug-interactions'
@@ -48,11 +49,10 @@ const PRESCRIPTION_WITH_RELATIONS_INCLUDE = {
 export class PrescriptionsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly encountersService: EncountersService,
     private readonly doctorRef: DoctorRefService,
     private readonly permissionsService: PermissionsService,
     private readonly eventEmitter: EventEmitter2,
-  ) {}
+  ) { }
 
   async list(organizationId: string, query: PrescriptionQuery) {
     const page = query.page && query.page > 0 ? query.page : 1
@@ -61,7 +61,12 @@ export class PrescriptionsService {
     const where: Prisma.PrescriptionWhereInput = { organizationId }
     if (query.patientId) where.patientId = query.patientId
     if (query.doctorId) where.doctorId = query.doctorId
-    if (query.encounterId) where.encounterId = query.encounterId
+    if (query.encounterId) {
+      where.OR = [
+        { encounterId: query.encounterId },
+        { dentalEncounterId: query.encounterId }
+      ]
+    }
     if (query.status) where.status = query.status as unknown as PrismaPrescriptionStatus
 
     const [data, total] = await Promise.all([
@@ -98,7 +103,16 @@ export class PrescriptionsService {
     dto: CreatePrescriptionDto,
     actorUserId?: string,
   ): Promise<{ prescription: Prescription; warnings: DrugInteractionWarning[] }> {
-    const encounter = await this.encountersService.requireEncounter(organizationId, dto.encounterId)
+    let encounter: any = await this.prisma.encounter.findFirst({ where: { id: dto.encounterId, organizationId } })
+    if (!encounter) {
+      encounter = await this.prisma.dentalEncounter.findFirst({ where: { id: dto.encounterId, organizationId } })
+      if (encounter) {
+        encounter.doctorId = encounter.dentistId
+      }
+    }
+    if (!encounter) {
+      throw new NotFoundException('Encounter not found')
+    }
 
     const activePrescriptions = await this.prisma.prescription.findMany({
       where: { patientId: encounter.patientId, organizationId, status: PrismaPrescriptionStatus.ACTIVE },
@@ -119,7 +133,8 @@ export class PrescriptionsService {
           prescriptionNumber,
           patientId: encounter.patientId,
           doctorId: encounter.doctorId,
-          encounterId: dto.encounterId,
+          encounterId: encounter.dentistId ? null : dto.encounterId,
+          dentalEncounterId: encounter.dentistId ? dto.encounterId : null,
           organizationId,
           notes: dto.notes,
           items: {

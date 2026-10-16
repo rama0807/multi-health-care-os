@@ -89,12 +89,25 @@ export class PatientsService {
     if (query.dob) where.dateOfBirth = new Date(query.dob)
     if (query.gender) where.gender = query.gender as unknown as PrismaGender
     if (query.q) {
-      where.OR = [
-        { firstName: { contains: query.q, mode: 'insensitive' } },
-        { lastName: { contains: query.q, mode: 'insensitive' } },
-        { uhid: { contains: query.q, mode: 'insensitive' } },
-        { phone: { contains: query.q } },
-      ]
+      const terms = query.q.trim().split(/\s+/)
+      
+      if (terms.length > 1) {
+        where.AND = terms.map((term) => ({
+          OR: [
+            { firstName: { contains: term, mode: 'insensitive' } },
+            { lastName: { contains: term, mode: 'insensitive' } },
+            { uhid: { contains: term, mode: 'insensitive' } },
+            { phone: { contains: term } },
+          ],
+        }))
+      } else {
+        where.OR = [
+          { firstName: { contains: query.q, mode: 'insensitive' } },
+          { lastName: { contains: query.q, mode: 'insensitive' } },
+          { uhid: { contains: query.q, mode: 'insensitive' } },
+          { phone: { contains: query.q } },
+        ]
+      }
     }
 
     const [data, total] = await Promise.all([

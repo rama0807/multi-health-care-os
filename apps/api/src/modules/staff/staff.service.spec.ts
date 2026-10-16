@@ -1,3 +1,4 @@
+/// <reference types="jest" />
 import { ConflictException } from '@nestjs/common'
 
 import { StaffService } from './staff.service'
@@ -35,7 +36,7 @@ describe('StaffService', () => {
     $transaction: jest.Mock
   }
   let staffOnboardingService: { onboardUserInTransaction: jest.Mock; sendOnboardingEmail: jest.Mock }
-  let hospitalsService: { getById: jest.Mock }
+  let hospitalsService: { getById: jest.Mock; findOrCreateDefaultHospital: jest.Mock }
   let departmentsService: { getById: jest.Mock }
   let eventEmitter: { emit: jest.Mock }
   let service: StaffService
@@ -61,7 +62,10 @@ describe('StaffService', () => {
       onboardUserInTransaction: jest.fn(),
       sendOnboardingEmail: jest.fn().mockResolvedValue(undefined),
     }
-    hospitalsService = { getById: jest.fn().mockResolvedValue({ id: 'hospital_1' }) }
+    hospitalsService = {
+      getById: jest.fn().mockResolvedValue({ id: 'hospital_1' }),
+      findOrCreateDefaultHospital: jest.fn().mockResolvedValue({ id: 'hospital_1' }),
+    }
     departmentsService = { getById: jest.fn().mockResolvedValue({ id: 'dept_1', hospitalId: 'hospital_1' }) }
     eventEmitter = { emit: jest.fn() }
 

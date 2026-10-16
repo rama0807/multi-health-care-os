@@ -8,6 +8,7 @@ function payload(overrides: Partial<JwtPayload> = {}): JwtPayload {
     email: 'user@example.com',
     orgId: 'org_1',
     orgSlug: 'org-1',
+    orgType: 'HOSPITAL' as any,
     isPlatform: false,
     roles: [],
     permissions: [],

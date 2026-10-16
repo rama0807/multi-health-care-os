@@ -16,8 +16,8 @@ function Logo({ className = '' }: { className?: string }) {
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="grid min-h-screen lg:grid-cols-2">
-      <div className="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-primary via-primary to-slate-900 p-10 text-white lg:flex">
+    <div className="grid min-h-screen lg:h-screen lg:overflow-hidden lg:grid-cols-2">
+      <div className="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-primary via-primary to-slate-900 p-10 text-white lg:flex lg:h-full">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.12),transparent_45%)]" />
         <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/5 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-28 -left-16 h-80 w-80 rounded-full bg-white/5 blur-3xl" />
@@ -52,13 +52,13 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </p>
       </div>
 
-      <div className="flex min-h-screen items-center justify-center bg-muted/30 p-6 sm:p-10">
-        <div className="w-full max-w-sm">
+      <div className="flex min-h-screen lg:min-h-0 lg:h-full w-full flex-col items-center justify-start overflow-y-auto bg-muted/30 p-4 sm:p-8 lg:p-10">
+        <div className="w-full max-w-xl my-auto py-6 sm:py-8">
           <div className="mb-8 flex items-center gap-2.5 text-lg font-semibold text-foreground lg:hidden">
             <Logo className="bg-primary text-primary-foreground" />
             MediCore
           </div>
-          <div className="rounded-xl border bg-card p-8 shadow-lg shadow-black/5">{children}</div>
+          <div className="rounded-xl border bg-card p-6 sm:p-8 shadow-lg shadow-black/5">{children}</div>
         </div>
       </div>
     </div>

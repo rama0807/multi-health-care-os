@@ -39,11 +39,13 @@ export class EmailService implements OnModuleInit {
       this.fromAddress = fromName ? `${fromName} <${fromEmail}>` : fromEmail
     }
 
-    if (apiKey) {
+    const isPlaceholder = !apiKey || apiKey.includes('xxxx') || apiKey.includes('placeholder')
+
+    if (apiKey && !isPlaceholder) {
       this.resend = new Resend(apiKey)
     } else {
       this.logger.warn(
-        'RESEND_API_KEY is not set - emails will be logged to the console instead of sent.',
+        'RESEND_API_KEY is not set or is a placeholder - emails will be logged to the console instead of sent.',
       )
     }
   }
@@ -58,7 +60,8 @@ export class EmailService implements OnModuleInit {
    * that was never exercised.
    */
   async send({ to, subject, html }: SendEmailInput, override?: EmailSendOverride): Promise<{ delivered: boolean }> {
-    const client = override?.apiKey ? new Resend(override.apiKey) : this.resend
+    const isOverridePlaceholder = override?.apiKey && (override.apiKey.includes('xxxx') || override.apiKey.includes('placeholder'))
+    const client = override?.apiKey && !isOverridePlaceholder ? new Resend(override.apiKey) : this.resend
     const from = this.resolveFrom(override)
 
     if (!client) {
@@ -71,6 +74,9 @@ export class EmailService implements OnModuleInit {
       return { delivered: true }
     } catch (error) {
       this.logger.error(`Failed to send email to ${to}: ${(error as Error).message}`)
+      if (process.env.NODE_ENV !== 'production') {
+        this.logger.log(`[email:dev-fallback] To: ${to} | Subject: ${subject}\n${html}`)
+      }
       throw error
     }
   }

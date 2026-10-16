@@ -14,6 +14,8 @@ enum OrganizationType {
   CLINIC
   DIAGNOSTIC_CENTER
   NURSING_HOME
+  /// Grovyn Dental OS — dental clinic organization type
+  DENTAL
 }
 
 enum SubscriptionTier {
@@ -103,6 +105,8 @@ enum InvoiceType {
   PHARMACY
   PROCEDURE
   MISCELLANEOUS
+  /// Dental procedure invoice (Grovyn Dental OS)
+  DENTAL
 }
 
 enum PaymentMode {
@@ -136,6 +140,8 @@ enum ChargeSourceModule {
   PROCEDURE
   IPD
   MISCELLANEOUS
+  /// Dental procedure charge (Grovyn Dental OS)
+  DENTAL
 }
 
 enum ChargeStatus {
@@ -351,6 +357,11 @@ enum SystemRole {
   CASHIER
   HR
   INVENTORY_MANAGER
+  // ─ Grovyn Dental OS roles ─────────────────────────────────────────────
+  DENTIST
+  DENTAL_ASSISTANT
+  TREATMENT_COORDINATOR
+  LAB_COORDINATOR
 }
 
 enum UserStatus {
@@ -685,6 +696,29 @@ model Organization {
   userDevices               UserDevice[]
   subscription              Subscription?
   emailConfig               OrganizationEmailConfig?
+  // ─ Grovyn Dental OS ─────────────────────────────────────────────────────
+  dentalPatientProfiles     DentalPatientProfile[]
+  dentalMedicalHistories    DentalMedicalHistory[]
+  dentalSafetyAlerts        DentalSafetyAlert[]
+  dentalHistories           DentalHistory[]
+  dentalChairs              DentalChair[]
+  dentalEncounters          DentalEncounter[]
+  dentalClinicalNotes       DentalClinicalNote[]
+  odontograms               Odontogram[]
+  dentalTreatmentPlans      DentalTreatmentPlan[]
+  dentalProcedures          DentalProcedure[]
+  dentalImagingRecords      DentalImagingRecord[]
+  dentalDocuments           DentalDocument[]
+  dentalVendors             DentalVendor[]
+  dentalLabCases            DentalLabCase[]
+  dentalLabPickups          DentalLabPickup[]
+  dentalLabReceivings       DentalLabReceiving[]
+  dentalRecalls             DentalRecall[]
+  dentalConsentForms        DentalConsentForm[]
+  dentalInvoices            DentalInvoice[]
+  dentalPayments            DentalPayment[]
+  dentalCharges             DentalCharge[]
+  dentalOrganizationConfig  DentalOrganizationConfig?
 
   @@index([slug])
   @@index([status])
@@ -1307,6 +1341,24 @@ model Patient {
   notifications     Notification[]
   dispenseOrders    DispenseOrder[]
   aiConversations   AiConversation[]
+  // ─ Grovyn Dental OS back-relations ───────────────────────────────────────
+  dentalProfile          DentalPatientProfile?
+  dentalMedicalHistories DentalMedicalHistory[]
+  dentalSafetyAlerts     DentalSafetyAlert[]
+  dentalHistories        DentalHistory[]
+  dentalEncounters       DentalEncounter[]
+  dentalClinicalNotes    DentalClinicalNote[]
+  odontograms            Odontogram[]
+  toothHistories         ToothHistory[]
+  dentalTreatmentPlans   DentalTreatmentPlan[]
+  treatmentAcceptances   TreatmentAcceptance[]
+  dentalProcedures       DentalProcedure[]
+  dentalImagingRecords   DentalImagingRecord[]
+  dentalDocuments        DentalDocument[]
+  dentalLabCases         DentalLabCase[]
+  dentalLabPickups       DentalLabPickup[]
+  dentalRecalls          DentalRecall[]
+  dentalConsentForms     DentalConsentForm[]
 
   @@unique([uhid, organizationId])
   @@unique([phone, organizationId])
@@ -1565,6 +1617,7 @@ model Prescription {
   patientId          String
   doctorId           String
   encounterId        String?
+  dentalEncounterId  String?
   organizationId     String
   status             PrescriptionStatus @default(ACTIVE)
   notes              String?
@@ -1575,6 +1628,7 @@ model Prescription {
   patient          Patient            @relation(fields: [patientId], references: [id])
   doctor           Doctor             @relation(fields: [doctorId], references: [id])
   encounter        Encounter?         @relation(fields: [encounterId], references: [id])
+  dentalEncounter  DentalEncounter?   @relation(fields: [dentalEncounterId], references: [id])
   organization     Organization       @relation(fields: [organizationId], references: [id])
   items            PrescriptionItem[]
   dispenseOrder    DispenseOrder?
@@ -3795,6 +3849,129 @@ model AssetMaintenanceRecord {
   @@map("asset_maintenance_records")
 }
 
+// ─── Dental Billing & Organization ───────────────────────────────────────
+
+model DentalInvoice {
+  id                        String                 @id @default(cuid())
+  invoiceNumber             String
+  patientId                 String
+  dentalPatientProfileId    String?
+  organizationId            String
+  status                    InvoiceStatus          @default(DRAFT)
+  subtotal                  Decimal                @db.Decimal(12, 2)
+  discountAmount            Decimal                @default(0) @db.Decimal(12, 2)
+  taxAmount                 Decimal                @default(0) @db.Decimal(12, 2)
+  totalAmount               Decimal                @db.Decimal(12, 2)
+  paidAmount                Decimal                @default(0) @db.Decimal(12, 2)
+  balanceDue                Decimal                @db.Decimal(12, 2)
+  currency                  String                 @default("INR")
+  notes                     String?
+  dueDate                   DateTime?
+  createdByUserId           String?
+  discountType              DiscountType?
+  discountValue             Decimal?               @db.Decimal(10, 2)
+  discountReason            String?
+  discountApprovalStatus    DiscountApprovalStatus @default(NONE)
+  discountRequestedByUserId String?
+  discountApprovedByUserId  String?
+  discountApprovedAt        DateTime?
+  finalizedAt               DateTime?
+  createdAt                 DateTime               @default(now())
+  updatedAt                 DateTime               @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  items        DentalInvoiceItem[]
+  payments     DentalPayment[]
+
+  @@index([organizationId, status])
+  @@index([patientId])
+  @@map("dental_invoices")
+}
+
+model DentalInvoiceItem {
+  id              String        @id @default(cuid())
+  invoiceId       String
+  chargeId        String?       @unique
+  description     String
+  quantity        Int           @default(1)
+  unitPrice       Decimal       @db.Decimal(12, 2)
+  taxPercentage   Decimal       @default(0) @db.Decimal(5, 2)
+  discountAmount  Decimal       @default(0) @db.Decimal(12, 2)
+  netAmount       Decimal       @db.Decimal(12, 2)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  invoice DentalInvoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  charge  DentalCharge?  @relation(fields: [chargeId], references: [id])
+
+  @@map("dental_invoice_items")
+}
+
+model DentalPayment {
+  id              String        @id @default(cuid())
+  receiptNumber   String        @unique
+  invoiceId       String
+  organizationId  String
+  patientId       String
+  amount          Decimal       @db.Decimal(12, 2)
+  paymentMode     PaymentMode
+  status          PaymentStatus @default(PENDING)
+  transactionId   String?
+  paymentDate     DateTime      @default(now())
+  collectedByUserId String?
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  invoice      DentalInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@index([invoiceId])
+  @@map("dental_payments")
+}
+
+model DentalCharge {
+  id              String             @id @default(cuid())
+  organizationId  String
+  patientId       String
+  encounterId     String?
+  sourceModule    ChargeSourceModule @default(DENTAL)
+  sourceId        String?
+  description     String
+  quantity        Int                @default(1)
+  unitPrice       Decimal            @db.Decimal(12, 2)
+  taxPercentage   Decimal            @default(0) @db.Decimal(5, 2)
+  totalAmount     Decimal            @db.Decimal(12, 2)
+  status          ChargeStatus       @default(PENDING)
+  createdByUserId String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoiceItem  DentalInvoiceItem?
+
+  @@index([organizationId, status])
+  @@index([patientId])
+  @@map("dental_charges")
+}
+
+model DentalOrganizationConfig {
+  id                        String   @id @default(cuid())
+  organizationId            String   @unique
+  currency                  String   @default("INR")
+  taxPercentage             Decimal  @default(0) @db.Decimal(5, 2)
+  defaultInvoiceNotes       String?
+  requireApprovalForDiscount Boolean @default(true)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("dental_organization_configs")
+}
+
+
 /// History of who/where an asset has been assigned - `Asset.assignedTo*`
 /// always reflects the latest (or null once returned) row here.
 model AssetAssignment {
@@ -4303,4 +4480,766 @@ model SavedReport {
   @@index([organizationId])
   @@index([organizationId, reportKey])
   @@map("saved_reports")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GROVYN DENTAL OS — Data Models
+// All tables are organization-scoped (organizationId FK) and purely additive.
+// No existing Hospital table is modified.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ─── Dental Enums ──────────────────────────────────────────────────────────
+
+enum DentalPickupStatus {
+  READY_FOR_PICKUP
+  SCHEDULED
+  PICKED_UP
+  IN_TRANSIT
+  RECEIVED_BY_VENDOR
+}
+
+enum DentalReceivingOutcome {
+  ACCEPTED
+  ISSUE_NOTED
+  REMAKE_REQUESTED
+}
+
+enum DentalLabCaseStatus {
+  DRAFT
+  MEASUREMENT_PENDING
+  SENT_TO_VENDOR
+  IN_PRODUCTION
+  READY_FOR_PICKUP
+  PICKED_UP
+  RECEIVED
+  TRY_IN
+  CORRECTION_NEEDED
+  APPROVED
+  DELIVERED
+  REMAKE
+  CANCELLED
+}
+
+enum ToothConditionType {
+  SOUND
+  CARIES
+  RESTORED_COMPOSITE
+  RESTORED_AMALGAM
+  RESTORED_GOLD
+  CROWN
+  BRIDGE_ABUTMENT
+  BRIDGE_PONTIC
+  IMPLANT
+  MISSING
+  MISSING_UNERUPTED
+  IMPACTED
+  EXTRACTED
+  ROOT_CANAL
+  ROOT_STUMP
+  FRACTURE
+  SEALANT
+  VENEER
+  DENTURE_FULL
+  DENTURE_PARTIAL
+  OTHER
+}
+
+enum ToothSurfaceType {
+  MESIAL
+  DISTAL
+  BUCCAL
+  LINGUAL
+  OCCLUSAL
+  INCISAL
+  PALATAL
+  LABIAL
+}
+
+enum TreatmentAcceptanceStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  DEFERRED
+  CALLBACK_REQUESTED
+}
+
+enum DentalEncounterStatus {
+  OPEN
+  SIGNED
+  AMENDED
+}
+
+enum DentalChairStatus {
+  AVAILABLE
+  OCCUPIED
+  MAINTENANCE
+  INACTIVE
+}
+
+// ─── Patient Foundation ─────────────────────────────────────────────────────
+
+/// Dental-specific clinical extensions to the generic Patient record.
+/// One row per patient per organization — the Patient row is the source of truth
+/// for identity; this table adds dental-specific fields.
+model DentalPatientProfile {
+  id             String   @id @default(cuid())
+  organizationId String
+  patientId      String   @unique
+  /// How the patient found the practice
+  referralSource String?
+  /// Primary dentist assigned
+  primaryDentistId String?
+  /// Patient is considered high-risk (requires pre-medication, etc.)
+  isHighRisk     Boolean  @default(false)
+  /// Freeform notes visible at the top of every dental encounter
+  clinicalNotes  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization     Organization      @relation(fields: [organizationId], references: [id])
+  patient          Patient           @relation(fields: [patientId], references: [id])
+  medicalHistories DentalMedicalHistory[]
+  safetyAlerts     DentalSafetyAlert[]
+  dentalHistories  DentalHistory[]
+
+  @@index([organizationId])
+  @@map("dental_patient_profiles")
+}
+
+/// Dental-specific medical history captured at the point of care.
+model DentalMedicalHistory {
+  id                String   @id @default(cuid())
+  organizationId    String
+  patientId         String
+  /// Known drug / material allergies
+  allergies         String[]
+  /// Current medications relevant to dental treatment
+  currentMedications String[]
+  /// Systemic conditions (diabetes, hypertension, bleeding disorders, etc.)
+  conditions        String[]
+  /// Pregnancy status (affects X-ray protocol)
+  isPregnant        Boolean?
+  /// Pre-medication requirements before dental procedures
+  preMedicationNotes String?
+  /// Emergency contact for high-risk patients
+  emergencyContact  Json?
+  recordedByUserId  String?
+  recordedAt        DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id])
+  patient      Patient             @relation(fields: [patientId], references: [id])
+  profile      DentalPatientProfile @relation(fields: [patientId], references: [patientId], map: "dental_medical_histories_profileId_fkey")
+
+  @@index([organizationId])
+  @@index([patientId])
+  @@map("dental_medical_histories")
+}
+
+/// Critical alerts shown prominently at the top of the patient chart.
+model DentalSafetyAlert {
+  id             String   @id @default(cuid())
+  organizationId String
+  patientId      String
+  alertType      String   /// ALLERGY | MEDICAL_CONDITION | MEDICATION | BEHAVIORAL | OTHER
+  severity       String   /// LOW | MEDIUM | HIGH | CRITICAL
+  description    String
+  isActive       Boolean  @default(true)
+  createdByUserId String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id])
+  patient      Patient             @relation(fields: [patientId], references: [id])
+  profile      DentalPatientProfile @relation(fields: [patientId], references: [patientId], map: "dental_safety_alerts_profileId_fkey")
+
+  @@index([organizationId])
+  @@index([patientId])
+  @@map("dental_safety_alerts")
+}
+
+/// Historical record of the patient's prior dental treatment (before joining this practice).
+model DentalHistory {
+  id               String   @id @default(cuid())
+  organizationId   String
+  patientId        String
+  previousProcedures String[]
+  orthodonticHistory String?
+  extractionHistory  String?
+  prostheticsHistory String?
+  lastDentalVisit  DateTime?
+  previousDentist  String?
+  notes            String?
+  recordedByUserId String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id])
+  patient      Patient             @relation(fields: [patientId], references: [id])
+  profile      DentalPatientProfile @relation(fields: [patientId], references: [patientId], map: "dental_histories_profileId_fkey")
+
+  @@index([organizationId])
+  @@index([patientId])
+  @@map("dental_histories")
+}
+
+// ─── Dental Chair (Operatory) ───────────────────────────────────────────────
+
+model DentalChair {
+  id             String          @id @default(cuid())
+  organizationId String
+  name           String
+  number         Int?
+  /// Which hospital/branch this chair belongs to
+  hospitalId     String?
+  status         DentalChairStatus @default(AVAILABLE)
+  equipment      String[]
+  notes          String?
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  organization Organization      @relation(fields: [organizationId], references: [id])
+  encounters   DentalEncounter[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@map("dental_chairs")
+}
+
+// ─── Dental Encounter ───────────────────────────────────────────────────────
+
+/// One clinical encounter per patient visit. May link to an Appointment.
+model DentalEncounter {
+  id              String                @id @default(cuid())
+  organizationId  String
+  patientId       String
+  appointmentId   String?
+  chairId         String?
+  /// The attending dentist
+  dentistId       String
+  assistantId     String?
+  status          DentalEncounterStatus @default(OPEN)
+  chiefComplaint  String?
+  visitDate       DateTime              @default(now())
+  signedAt        DateTime?
+  signedByUserId  String?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  organization   Organization          @relation(fields: [organizationId], references: [id])
+  patient        Patient               @relation(fields: [patientId], references: [id])
+  chair          DentalChair?          @relation(fields: [chairId], references: [id])
+  clinicalNotes  DentalClinicalNote[]
+  prescriptions  Prescription[]
+  odontograms    Odontogram[]
+  procedures     DentalProcedure[]
+  imagingRecords DentalImagingRecord[]
+  documents      DentalDocument[]
+
+  @@index([organizationId])
+  @@index([patientId])
+  @@index([appointmentId])
+  @@map("dental_encounters")
+}
+
+/// SOAP-structured clinical note per encounter. Multiple notes per encounter allowed.
+model DentalClinicalNote {
+  id             String   @id @default(cuid())
+  organizationId String
+  encounterId    String
+  patientId      String
+  templateId     String?
+  /// Subjective — what the patient reports
+  subjective     String?
+  /// Objective — clinical findings
+  objective      String?
+  /// Assessment — diagnosis / impression
+  assessment     String?
+  /// Plan — treatment decided
+  plan           String?
+  /// Freeform additional notes
+  additionalNotes String?
+  /// Whether the note has been signed/locked
+  isSigned       Boolean  @default(false)
+  signedAt       DateTime?
+  signedByUserId String?
+  /// Amendment history kept on signed records (append-only)
+  amendments     Json     @default("[]")
+  createdByUserId String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  encounter    DentalEncounter @relation(fields: [encounterId], references: [id])
+  patient      Patient         @relation(fields: [patientId], references: [id])
+
+  @@index([organizationId])
+  @@index([encounterId])
+  @@map("dental_clinical_notes")
+}
+
+/// Reusable note templates for common encounter types.
+model DentalClinicalTemplate {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  subjective     String?
+  objective      String?
+  assessment     String?
+  plan           String?
+  isActive       Boolean  @default(true)
+  createdByUserId String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@map("dental_clinical_templates")
+}
+
+// ─── Odontogram ─────────────────────────────────────────────────────────────
+
+/// One odontogram snapshot. Can be a standalone patient chart or linked to an encounter.
+model Odontogram {
+  id             String   @id @default(cuid())
+  organizationId String
+  patientId      String
+  encounterId    String?
+  recordedByUserId String?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id])
+  patient      Patient          @relation(fields: [patientId], references: [id])
+  encounter    DentalEncounter? @relation(fields: [encounterId], references: [id])
+  teeth        OdontogramTooth[]
+
+  @@index([organizationId])
+  @@index([patientId])
+  @@map("odontograms")
+}
+
+/// Per-tooth record inside an odontogram. Up to 32 entries per odontogram.
+model OdontogramTooth {
+  id            String             @id @default(cuid())
+  odontogramId  String
+  /// ISO tooth number (11-48 for permanent, 51-85 for primary)
+  toothNumber   Int
+  condition     ToothConditionType @default(SOUND)
+  /// Which surfaces are affected
+  surfaces      ToothSurfaceType[]
+  notes         String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  odontogram    Odontogram         @relation(fields: [odontogramId], references: [id], onDelete: Cascade)
+
+  @@unique([odontogramId, toothNumber])
+  @@map("odontogram_teeth")
+}
+
+/// Longitudinal history of a specific tooth across all odontograms/encounters.
+model ToothHistory {
+  id             String             @id @default(cuid())
+  organizationId String
+  patientId      String
+  toothNumber    Int
+  encounterId    String?
+  condition      ToothConditionType
+  surfaces       ToothSurfaceType[]
+  notes          String?
+  recordedByUserId String?
+  recordedAt     DateTime           @default(now())
+
+  patient      Patient @relation(fields: [patientId], references: [id])
+
+  @@index([organizationId])
+  @@index([patientId, toothNumber])
+  @@map("tooth_histories")
+}
+
+// ─── Treatment Planning ─────────────────────────────────────────────────────
+
+/// A treatment plan for a patient — may contain multiple options (A, B, C).
+model DentalTreatmentPlan {
+  id             String   @id @default(cuid())
+  organizationId String
+  patientId      String
+  encounterId    String?
+  title          String
+  description    String?
+  createdByUserId String
+  presentedAt    DateTime?
+  expiresAt      DateTime?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization           @relation(fields: [organizationId], references: [id])
+  patient      Patient                @relation(fields: [patientId], references: [id])
+  options      TreatmentPlanOption[]
+
+  @@index([organizationId])
+  @@index([patientId])
+  @@map("dental_treatment_plans")
+}
+
+/// One option within a treatment plan (Option A = conservative, Option B = comprehensive, etc.)
+model TreatmentPlanOption {
+  id            String   @id @default(cuid())
+  treatmentPlanId String
+  label         String   /// "Option A", "Option B", etc.
+  totalCost     Decimal  @db.Decimal(12, 2)
+  discount      Decimal? @db.Decimal(12, 2)
+  netCost       Decimal  @db.Decimal(12, 2)
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  treatmentPlan TreatmentPlanItem[]  @relation("OptionItems")
+  plan          DentalTreatmentPlan  @relation(fields: [treatmentPlanId], references: [id], onDelete: Cascade)
+  acceptance    TreatmentAcceptance?
+
+  @@index([treatmentPlanId])
+  @@map("treatment_plan_options")
+}
+
+/// One procedure line item within a treatment plan option.
+model TreatmentPlanItem {
+  id              String   @id @default(cuid())
+  optionId        String
+  toothNumber     Int?
+  surfaces        ToothSurfaceType[]
+  procedureName   String
+  procedureCode   String?
+  /// Sequence within this option
+  sequence        Int      @default(0)
+  estimatedCost   Decimal  @db.Decimal(12, 2)
+  estimatedVisits Int      @default(1)
+  durationMinutes Int?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  option TreatmentPlanOption @relation("OptionItems", fields: [optionId], references: [id], onDelete: Cascade)
+
+  @@index([optionId])
+  @@map("treatment_plan_items")
+}
+
+/// Records the patient's decision on a treatment plan option.
+model TreatmentAcceptance {
+  id              String                    @id @default(cuid())
+  organizationId  String
+  optionId        String                    @unique
+  patientId       String
+  status          TreatmentAcceptanceStatus @default(PENDING)
+  acceptedAt      DateTime?
+  declinedAt      DateTime?
+  callbackDate    DateTime?
+  notes           String?
+  recordedByUserId String?
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+
+  option  TreatmentPlanOption @relation(fields: [optionId], references: [id])
+  patient Patient             @relation(fields: [patientId], references: [id])
+
+  @@index([organizationId])
+  @@index([patientId])
+  @@map("treatment_acceptances")
+}
+
+// ─── Procedures ─────────────────────────────────────────────────────────────
+
+/// An executed dental procedure — linked to an encounter and optionally to billing.
+model DentalProcedure {
+  id              String   @id @default(cuid())
+  organizationId  String
+  patientId       String
+  encounterId     String
+  toothNumber     Int?
+  surfaces        ToothSurfaceType[]
+  procedureName   String
+  procedureCode   String?
+  performedByUserId String
+  performedAt     DateTime @default(now())
+  cost            Decimal  @db.Decimal(12, 2)
+  notes           String?
+  /// FK to the Charge engine row that was created for billing
+  chargeId        String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  patient      Patient         @relation(fields: [patientId], references: [id])
+  encounter    DentalEncounter @relation(fields: [encounterId], references: [id])
+  labCases     DentalLabCase[]
+
+  @@index([organizationId])
+  @@index([patientId])
+  @@index([encounterId])
+  @@map("dental_procedures")
+}
+
+// ─── Imaging & Documents ────────────────────────────────────────────────────
+
+model DentalImagingRecord {
+  id             String   @id @default(cuid())
+  organizationId String
+  patientId      String
+  encounterId    String?
+  imagingType    String   /// OPG | BITEWING | PERIAPICAL | CBCT | INTRAORAL_PHOTO | OTHER
+  title          String?
+  storagePath    String
+  storageKey     String
+  mimeType       String
+  fileSizeBytes  Int
+  takenAt        DateTime @default(now())
+  takenByUserId  String?
+  notes          String?
+  createdAt      DateTime @default(now())
+
+  organization Organization     @relation(fields: [organizationId], references: [id])
+  patient      Patient          @relation(fields: [patientId], references: [id])
+  encounter    DentalEncounter? @relation(fields: [encounterId], references: [id])
+
+  @@index([organizationId])
+  @@index([patientId])
+  @@map("dental_imaging_records")
+}
+
+model DentalDocument {
+  id             String   @id @default(cuid())
+  organizationId String
+  patientId      String
+  encounterId    String?
+  documentType   String   /// CONSENT | REFERRAL | PRESCRIPTION | LAB_REPORT | OTHER
+  title          String
+  storagePath    String
+  storageKey     String
+  mimeType       String
+  fileSizeBytes  Int
+  uploadedByUserId String?
+  createdAt      DateTime @default(now())
+
+  organization Organization     @relation(fields: [organizationId], references: [id])
+  patient      Patient          @relation(fields: [patientId], references: [id])
+  encounter    DentalEncounter? @relation(fields: [encounterId], references: [id])
+
+  @@index([organizationId])
+  @@index([patientId])
+  @@map("dental_documents")
+}
+
+// ─── Vendors & Lab Cases ────────────────────────────────────────────────────
+
+/// Dental labs and restoration vendors the clinic works with.
+model DentalVendor {
+  id                String   @id @default(cuid())
+  organizationId    String
+  name              String
+  contactPerson     String?
+  phone             String?
+  email             String?
+  address           String?
+  city              String?
+  /// LAB | MATERIAL_SUPPLIER | EQUIPMENT_VENDOR
+  vendorType        String   @default("LAB")
+  services          String[]
+  defaultTurnaround Int?     /// Expected turnaround days
+  isActive          Boolean  @default(true)
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  labCases     DentalLabCase[]
+  pickups      DentalLabPickup[]
+  receivings   DentalLabReceiving[]
+
+  @@index([organizationId])
+  @@map("dental_vendors")
+}
+
+/// One lab case — a restoration job sent to a vendor (crown, bridge, denture, implant crown, etc.)
+model DentalLabCase {
+  id              String              @id @default(cuid())
+  organizationId  String
+  patientId       String
+  procedureId     String?
+  vendorId        String?
+  caseNumber      String?
+  restorationName String              /// CROWN | BRIDGE | VENEER | DENTURE_FULL | DENTURE_PARTIAL | IMPLANT_CROWN | OTHER
+  status          DentalLabCaseStatus @default(DRAFT)
+  sentAt          DateTime?
+  expectedReturnAt DateTime?
+  receivedAt      DateTime?
+  deliveredAt     DateTime?
+  notes           String?
+  createdByUserId String
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  organization Organization         @relation(fields: [organizationId], references: [id])
+  patient      Patient              @relation(fields: [patientId], references: [id])
+  procedure    DentalProcedure?     @relation(fields: [procedureId], references: [id])
+  vendor       DentalVendor?        @relation(fields: [vendorId], references: [id])
+  measurements DentalLabCaseMeasurement[]
+  pickups      DentalLabPickup[]
+  receivings   DentalLabReceiving[]
+  timeline     DentalLabCaseTimeline[]
+
+  @@index([organizationId])
+  @@index([patientId])
+  @@map("dental_lab_cases")
+}
+
+/// Shade, material, and dimensional measurements for a lab case. Flexible JSON
+/// for measurements so different restoration types can capture different data.
+model DentalLabCaseMeasurement {
+  id                  String   @id @default(cuid())
+  organizationId      String
+  labCaseId           String
+  toothNumber         Int
+  restorationMaterial String?  /// PFM | ZIRCONIA | E_MAX | COMPOSITE | ACRYLIC | METAL | OTHER
+  shade               String?
+  shadeSystem         String?  /// VITA | VITA_3D | CHROMASCOP
+  /// Flexible key-value data for this restoration type (overjet, overbite, arch width, etc.)
+  measurements        Json     @default("{}")
+  impressionType      String?  /// PUTTY | ALGINATE | DIGITAL_SCAN | INTRAORAL_SCAN
+  scanInfo            String?
+  notes               String?
+  attachments         Json     @default("[]")
+  recordedByUserId    String?
+  recordedAt          DateTime @default(now())
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  labCase DentalLabCase @relation(fields: [labCaseId], references: [id], onDelete: Cascade)
+
+  @@index([labCaseId])
+  @@map("dental_lab_case_measurements")
+}
+
+/// Scheduling a pickup of a completed case from the clinic to the vendor.
+model DentalLabPickup {
+  id             String            @id @default(cuid())
+  organizationId String
+  labCaseId      String
+  vendorId       String
+  patientId      String
+  scheduledAt    DateTime?
+  pickedUpAt     DateTime?
+  status         DentalPickupStatus @default(READY_FOR_PICKUP)
+  staffId        String?
+  notes          String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  labCase      DentalLabCase @relation(fields: [labCaseId], references: [id])
+  vendor       DentalVendor  @relation(fields: [vendorId], references: [id])
+  patient      Patient       @relation(fields: [patientId], references: [id])
+
+  @@index([organizationId])
+  @@index([labCaseId])
+  @@map("dental_lab_pickups")
+}
+
+/// Recording the arrival and condition assessment of a finished lab case.
+model DentalLabReceiving {
+  id              String                 @id @default(cuid())
+  organizationId  String
+  labCaseId       String
+  vendorId        String
+  receivedAt      DateTime               @default(now())
+  receivedById    String
+  /// GOOD | DAMAGED | MISMATCH | INCOMPLETE
+  condition       String
+  outcome         DentalReceivingOutcome
+  remakeReason    String?
+  notes           String?
+  attachments     Json                   @default("[]")
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  labCase      DentalLabCase @relation(fields: [labCaseId], references: [id])
+  vendor       DentalVendor  @relation(fields: [vendorId], references: [id])
+
+  @@index([organizationId])
+  @@index([labCaseId])
+  @@map("dental_lab_receivings")
+}
+
+/// Append-only status history for a lab case — tracks every state transition.
+model DentalLabCaseTimeline {
+  id         String              @id @default(cuid())
+  labCaseId  String
+  status     DentalLabCaseStatus
+  notes      String?
+  userId     String?
+  occurredAt DateTime            @default(now())
+
+  labCase DentalLabCase @relation(fields: [labCaseId], references: [id], onDelete: Cascade)
+
+  @@index([labCaseId])
+  @@map("dental_lab_case_timelines")
+}
+
+// ─── Recall ─────────────────────────────────────────────────────────────────
+
+model DentalRecall {
+  id              String   @id @default(cuid())
+  organizationId  String
+  patientId       String
+  recallType      String   /// CHECK_UP | CLEANING | FOLLOW_UP | POST_PROCEDURE
+  dueDate         DateTime
+  /// PENDING | NOTIFIED | BOOKED | MISSED | CANCELLED
+  status          String   @default("PENDING")
+  appointmentId   String?
+  notes           String?
+  createdByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  patient      Patient      @relation(fields: [patientId], references: [id])
+
+  @@index([organizationId])
+  @@index([patientId])
+  @@index([dueDate])
+  @@map("dental_recalls")
+}
+
+// ─── Digital Consent (P0.5) ─────────────────────────────────────────────────
+
+model DentalConsentForm {
+  id              String   @id @default(cuid())
+  organizationId  String
+  patientId       String
+  encounterId     String?
+  templateName    String
+  procedureName   String?
+  consentText     String
+  patientSignature String?
+  witnessSignature String?
+  signedAt        DateTime?
+  /// Stored PDF/image reference
+  documentPath    String?
+  isActive        Boolean  @default(true)
+  createdByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  patient      Patient      @relation(fields: [patientId], references: [id])
+
+  @@index([organizationId])
+  @@index([patientId])
+  @@map("dental_consent_forms")
 }

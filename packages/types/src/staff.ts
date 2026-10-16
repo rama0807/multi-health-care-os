@@ -80,6 +80,33 @@ export const CreateStaffSchema = z.object({
 
 export type CreateStaffDto = z.infer<typeof CreateStaffSchema>
 
+export const CreateDentalStaffSchema = z.object({
+  email: z.string().email(),
+  firstName: z.string().min(2).max(50),
+  lastName: z.string().min(2).max(50),
+  phone: optionalString(z.string().regex(/^[6-9]\d{9}$/, 'Enter valid Indian mobile number')),
+  systemRole: z.enum([
+    'DENTAL_ASSISTANT',
+    'TREATMENT_COORDINATOR',
+    'LAB_COORDINATOR',
+    'RECEPTIONIST',
+    'CASHIER',
+    'HR',
+    'INVENTORY_MANAGER',
+  ]),
+  employeeId: optionalString(z.string().max(50)),
+  designation: z.string().min(1).max(100),
+  departmentId: optionalString(z.string().min(1)),
+  hospitalId: optionalString(z.string().min(1)),
+  employmentType: z.nativeEnum(EmploymentType).default(EmploymentType.FULL_TIME),
+  joiningDate: optionalString(z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format: YYYY-MM-DD')).default(() =>
+    new Date().toISOString().slice(0, 10),
+  ),
+  monthlySalary: z.number().nonnegative().optional(),
+})
+
+export type CreateDentalStaffDto = z.infer<typeof CreateDentalStaffSchema>
+
 export const UpdateStaffSchema = CreateStaffSchema.omit({
   email: true,
   firstName: true,

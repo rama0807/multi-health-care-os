@@ -6,9 +6,9 @@ const { version } = JSON.parse(readFileSync(new URL('./package.json', import.met
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Dockerfile copies .next/standalone into the production image - without
-  // this, that directory is never emitted and the build step fails.
-  output: 'standalone',
+  // Dockerfile copies .next/standalone into the production image.
+  // On local Windows dev without symlink privileges, fallback to standard build output to avoid EPERM.
+  output: process.platform === 'win32' && !process.env.DOCKER_BUILD ? undefined : 'standalone',
   env: {
     NEXT_PUBLIC_APP_VERSION: version,
   },

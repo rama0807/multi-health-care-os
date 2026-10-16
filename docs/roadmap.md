@@ -497,6 +497,20 @@ and no schema change was added.
       log-only SMS/WhatsApp drivers, TD-0050 platform access granularity)
       rather than claiming compliance
 
+## Milestone 20 - Dental OS (In Progress)
+
+**Goal:** Specialized clinical modules for dental practices, integrating seamlessly into the core patient timeline and billing engine.
+
+### Deliverables
+- [x] **Interactive Odontogram Charting** - adult/pediatric toggle, surface-level condition selection, save state to DB
+- [x] **Treatment Plan Builder & Dashboard** - multi-step procedure planning with cost estimation and status tracking
+- [x] **Imaging Module (X-Ray/CBCT)** - DICOM/image upload portal, placeholder webGL viewer inside Patient 360
+- [x] **Chair Queue (Live Kanban)** - auto-refreshed status board mapping today's appointments to waiting/in-chair/completed buckets
+- [x] **Patient Ledger / Billing** - integration of dental treatment plans into the core MediCore invoicing engine
+- [ ] **Periodontal Charting** - numerical grid for probing depths (1-9mm), bleeding on probing (BOP), and tooth mobility
+- [ ] **Global Lab Cases Dashboard** - track outgoing/incoming crowns, bridges, dentures across vendors and return dates
+- [ ] **Clinical Notes & Templates** - dental-specific note macros for common procedures (e.g. composite fillings, extractions)
+
 ---
 
 ## Future Roadmap (Post-MVP)

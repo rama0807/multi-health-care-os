@@ -6,6 +6,25 @@
 
 ---
 
+## Session - 2026-10-03 - Appointments Calendar & Dental UI
+*(Recovered from interrupted session)*
+
+### What was completed
+
+Built the Appointments Calendar and wired it up 100% functional to the database front-to-back:
+1. **Backend Architecture:** Extended the core `Appointment` schema and API endpoints to specifically support Operatories/Chairs, mapping them dynamically.
+2. **Dynamic Rendering:** The Calendar grid fetches real appointments using absolute positioning to calculate block rendering based on `scheduledAt` timestamp and `durationMinutes`.
+3. **New Appointment Flow:** Full dialog component for booking - selects Patient, Doctor, Chair, date, time, duration. Saves via Prisma and invalidates frontend cache to pop color-coded block onto grid.
+4. Set up the foundational UI for Dental module: `imaging-tab.tsx`, `ledger-tab.tsx`, and `dental/patients/[id]/page.tsx` based on Grovyn Dental OS reference images. User confirmed the design looked good and requested making them 100% functional before a system restart interrupted the session.
+
+### Files modified
+`apps/web/src/app/dental/appointments/page.tsx`, `apps/web/src/components/dental/imaging-tab.tsx`, `apps/web/src/components/dental/ledger-tab.tsx`, `apps/web/src/app/dental/patients/[id]/page.tsx`
+
+### Recommended next task
+Make the Dental module components (`imaging-tab`, `ledger-tab`, and charting features) 100% functional, or move on to the Vendors Directory or Billing Module as originally prompted.
+
+---
+
 ## Session - 2026-08-10 - First real Dokploy deploy of `hospital` project taken end-to-end; five separate bugs found and fixed along the way
 
 ### What was completed

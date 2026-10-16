@@ -135,6 +135,21 @@ const RESOURCE_ACTIONS: Record<string, string[]> = {
   // configuration (Milestone 18 Checkpoint 18.6). Same double gate as every
   // other `platform.*` resource.
   'platform.notifications': ['read', 'manage'],
+  // ─── Grovyn Dental OS (Phase 3) ─────────────────────────────────────────
+  // Dental-specific resources, namespaced with `dental_` to avoid collisions
+  // with existing hospital resources. Dental roles (DENTIST, DENTAL_ASSISTANT,
+  // TREATMENT_COORDINATOR, LAB_COORDINATOR) are granted subsets of these;
+  // ORG_ADMIN receives all of them when the organization type is DENTAL.
+  dental_patients: ['read', 'create', 'update'],
+  dental_encounters: ['read', 'create', 'update'],
+  dental_odontogram: ['read', 'update'],
+  dental_treatment_plans: ['read', 'create', 'update'],
+  dental_billing: ['read', 'create', 'update'],
+  dental_vendors: ['read', 'create', 'update', 'manage'],
+  dental_lab_cases: ['read', 'create', 'update', 'manage'],
+  dental_recalls: ['read', 'create', 'update'],
+  dental_imaging: ['read', 'create'],
+  dental_consent: ['read', 'create', 'update'],
 }
 
 /**

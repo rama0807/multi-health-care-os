@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-enum-comparison */
 'use client'
 
 import { NotificationPriority, type Notification } from '@medicore/types'
@@ -5,7 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
 import { Bell, Check, CheckCheck, Pin, Settings2 } from 'lucide-react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'
@@ -21,6 +22,7 @@ import {
   markAllNotificationsRead,
   markNotificationsRead,
 } from '@/lib/api/notifications'
+import { useAuth } from '@/lib/auth/auth-context'
 import { cn } from '@/lib/utils'
 
 /** How often the bell re-checks. Long enough not to be chatty. */
@@ -39,10 +41,22 @@ const POLL_INTERVAL_MS = 60_000
  * operate for the same result, and is recorded in TECH_DEBT as a deliberate
  * omission rather than an oversight.
  */
-export function NotificationBell() {
+export function NotificationBell({ basePath: explicitBasePath }: { basePath?: '/dashboard' | '/dental' } = {}) {
   const [open, setOpen] = useState(false)
   const router = useRouter()
+  const pathname = usePathname()
+  const { user } = useAuth()
   const queryClient = useQueryClient()
+
+  const isDental = explicitBasePath
+    ? explicitBasePath === '/dental'
+    : (pathname ? pathname.startsWith('/dental') : false) ||
+    user?.organizationType === 'DENTAL' ||
+    String(user?.organizationType).toUpperCase() === 'DENTAL'
+
+  const basePath = explicitBasePath ?? (isDental ? '/dental' : '/dashboard')
+  const notificationsHref = `${basePath}/notifications`
+  const preferencesHref = `${basePath}/notifications/preferences`
 
   const { data: summary } = useQuery({
     queryKey: ['notifications', 'summary'],
@@ -69,7 +83,7 @@ export function NotificationBell() {
       await markNotificationsRead({ ids: [notification.id] })
       await invalidate()
     }
-    router.push(notification.deepLink ?? `/dashboard/notifications?highlight=${notification.id}`)
+    router.push(notification.deepLink ?? `${notificationsHref}?highlight=${notification.id}`)
   }
 
   return (
@@ -114,7 +128,7 @@ export function NotificationBell() {
               </Button>
             )}
             <Link
-              href="/dashboard/notifications/preferences"
+              href={preferencesHref}
               onClick={() => setOpen(false)}
               className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               aria-label="Notification preferences"
@@ -167,7 +181,7 @@ export function NotificationBell() {
 
         <div className="border-t px-3 py-2">
           <Link
-            href="/dashboard/notifications"
+            href={notificationsHref}
             onClick={() => setOpen(false)}
             className="block text-center text-xs font-medium text-primary hover:underline"
           >

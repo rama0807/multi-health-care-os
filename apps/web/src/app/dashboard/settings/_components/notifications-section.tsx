@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { ArrowRight, Bell } from 'lucide-react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -26,6 +27,10 @@ const CHANNELS: Array<{ key: 'inAppEnabled' | 'emailEnabled' | 'pushEnabled' | '
  * same settings, per this task's explicit instruction not to.
  */
 export function NotificationsSection() {
+  const pathname = usePathname()
+  const isDental = pathname?.startsWith('/dental')
+  const preferencesHref = isDental ? '/dental/notifications/preferences' : '/dashboard/notifications/preferences'
+
   const { data, isLoading } = useQuery({
     queryKey: ['notifications', 'preferences'],
     queryFn: getNotificationPreferences,
@@ -78,7 +83,7 @@ export function NotificationsSection() {
           )}
 
           <Button variant="outline" size="sm" asChild className="gap-1.5">
-            <Link href="/dashboard/notifications/preferences">
+            <Link href={preferencesHref}>
               Manage notification preferences
               <ArrowRight className="size-3.5" aria-hidden="true" />
             </Link>

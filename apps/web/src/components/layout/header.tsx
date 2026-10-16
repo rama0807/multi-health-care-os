@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unsafe-enum-comparison */
+/* eslint-disable import/order */
 'use client'
 
-import { CheckSquare, LogOut, Monitor, Moon, Settings, Sparkles, Sun, User } from 'lucide-react'
+import { CheckSquare, LogOut, Monitor, Moon, Settings, SlidersHorizontal, Sparkles, Sun, User } from 'lucide-react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import * as React from 'react'
 
@@ -34,9 +36,25 @@ import { HospitalSelector } from './hospital-selector'
  * icon button that opens a 403 or a 404 is worse than an absent one, because it
  * teaches the user that parts of the product are broken.
  */
-export function Header() {
+export interface HeaderProps {
+  basePath?: '/dashboard' | '/dental'
+}
+
+export function Header({ basePath: explicitBasePath }: HeaderProps = {}) {
   const { user, logout, hasPermission } = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
+
+  const isDental = explicitBasePath
+    ? explicitBasePath === '/dental'
+    : (pathname ? pathname.startsWith('/dental') : false) ||
+    user?.organizationType === 'DENTAL' ||
+    String(user?.organizationType).toUpperCase() === 'DENTAL'
+
+  const basePath = explicitBasePath ?? (isDental ? '/dental' : '/dashboard')
+  const profileHref = `${basePath}/profile`
+  const notificationPreferencesHref = `${basePath}/notifications/preferences`
+  const settingsHref = `${basePath}/settings`
 
   async function handleLogout() {
     await logout()
@@ -46,11 +64,11 @@ export function Header() {
   return (
     <TooltipProvider delayDuration={400}>
       <header className="flex h-header flex-shrink-0 items-center gap-3 border-b bg-surface px-4">
-        <HospitalSelector />
-        <CommandPalette />
+        {!isDental && <HospitalSelector />}
+        <CommandPalette basePath={basePath} />
 
         <div className="ml-auto flex items-center gap-1">
-          {hasPermission('ipd.tasks.read') && (
+          {!isDental && hasPermission('ipd.tasks.read') && (
             <IconLink
               href="/dashboard/nursing/tasks"
               label="Tasks"
@@ -58,11 +76,11 @@ export function Header() {
             />
           )}
 
-          {hasPermission('ai.read') && (
+          {!isDental && hasPermission('ai.read') && (
             <IconLink href="/dashboard/ai" label="AI assistant" icon={Sparkles} />
           )}
 
-          <NotificationBell />
+          <NotificationBell basePath={basePath} />
 
           <ThemeToggle />
 
@@ -95,26 +113,38 @@ export function Header() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.push('/dashboard/profile')}>
-                  <User />
-                  Profile
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link href={profileHref} className="flex w-full items-center gap-2">
+                    <User className="size-4" />
+                    Profile
+                  </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push('/dashboard/notifications/preferences')}>
-                  <Settings />
-                  Notification preferences
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link href={notificationPreferencesHref} className="flex w-full items-center gap-2">
+                    <Settings className="size-4" />
+                    Notification preferences
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link href={settingsHref} className="flex w-full items-center gap-2">
+                    <SlidersHorizontal className="size-4" />
+                    Account settings
+                  </Link>
                 </DropdownMenuItem>
                 {user.isPlatform && (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => router.push('/platform')}>
-                      <Monitor />
-                      Platform console
+                    <DropdownMenuItem asChild className="cursor-pointer">
+                      <Link href="/platform" className="flex w-full items-center gap-2">
+                        <Monitor className="size-4" />
+                        Platform console
+                      </Link>
                     </DropdownMenuItem>
                   </>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => void handleLogout()}>
-                  <LogOut />
+                <DropdownMenuItem onClick={() => void handleLogout()} className="cursor-pointer">
+                  <LogOut className="size-4" />
                   Log out
                 </DropdownMenuItem>
               </DropdownMenuContent>

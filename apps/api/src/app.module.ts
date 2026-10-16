@@ -35,6 +35,7 @@ import { AppointmentsModule } from './modules/appointments/appointments.module'
 import { AuditModule } from './modules/audit/audit.module'
 import { AuthModule } from './modules/auth/auth.module'
 import { BillingModule } from './modules/billing/billing.module'
+import { DentalModule } from './modules/dental/dental.module'
 import { DepartmentsModule } from './modules/departments/departments.module'
 import { DoctorsModule } from './modules/doctors/doctors.module'
 import { HealthModule } from './modules/health/health.module'
@@ -90,12 +91,12 @@ import { PrismaModule } from './prisma/prisma.module'
             context: 'HTTP',
             ...(context
               ? {
-                  requestId: context.requestId,
-                  traceId: context.trace.traceId,
-                  spanId: context.trace.spanId,
-                  ...(context.organizationId ? { organizationId: context.organizationId } : {}),
-                  ...(context.userId ? { userId: context.userId } : {}),
-                }
+                requestId: context.requestId,
+                traceId: context.trace.traceId,
+                spanId: context.trace.spanId,
+                ...(context.organizationId ? { organizationId: context.organizationId } : {}),
+                ...(context.userId ? { userId: context.userId } : {}),
+              }
               : {}),
           }
         },
@@ -178,6 +179,8 @@ import { PrismaModule } from './prisma/prisma.module'
     AiModule,
     ReportsModule,
     PlatformModule,
+    // ─ Grovyn Dental OS ─────────────────────────────────────────────────
+    DentalModule,
   ],
   providers: [
     // Order matters: rate-limit first, then authenticate, then authorize.
@@ -195,4 +198,4 @@ import { PrismaModule } from './prisma/prisma.module'
     { provide: APP_INTERCEPTOR, useClass: ApiUsageInterceptor },
   ],
 })
-export class AppModule {}
+export class AppModule { }

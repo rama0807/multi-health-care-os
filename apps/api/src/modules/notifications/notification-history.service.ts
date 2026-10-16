@@ -13,7 +13,7 @@ import {
   NotificationUnreadSummary,
   PaginatedResponse,
 } from '@medicore/types'
-import { Injectable, NotFoundException } from '@nestjs/common'
+import { Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
 
 import { PrismaService } from '../../prisma/prisma.service'
@@ -45,6 +45,8 @@ type NotificationRow = Prisma.NotificationGetPayload<{
  */
 @Injectable()
 export class NotificationHistoryService {
+  private readonly logger = new Logger(NotificationHistoryService.name)
+
   constructor(private readonly prisma: PrismaService) {}
 
   async listForUser(
@@ -114,33 +116,38 @@ export class NotificationHistoryService {
 
   /** Bell state. One query per counter, all filtered to this user. */
   async summary(userId: string): Promise<NotificationUnreadSummary> {
-    const base: Prisma.NotificationWhereInput = {
-      recipientId: userId,
-      isArchived: false,
-      deliveryStatus: { not: NotificationStatus.SCHEDULED },
-    }
+    try {
+      const base: Prisma.NotificationWhereInput = {
+        recipientId: userId,
+        isArchived: false,
+        deliveryStatus: { not: NotificationStatus.SCHEDULED },
+      }
 
-    const [unread, critical, pinned, byCategory] = await Promise.all([
-      this.prisma.notification.count({ where: { ...base, isRead: false } }),
-      this.prisma.notification.count({
-        where: { ...base, isRead: false, priority: NotificationPriority.CRITICAL },
-      }),
-      this.prisma.notification.count({ where: { recipientId: userId, isPinned: true } }),
-      this.prisma.notification.groupBy({
-        by: ['category'],
-        where: { ...base, isRead: false },
-        _count: { _all: true },
-      }),
-    ])
+      const [unread, critical, pinned, byCategory] = await Promise.all([
+        this.prisma.notification.count({ where: { ...base, isRead: false } }),
+        this.prisma.notification.count({
+          where: { ...base, isRead: false, priority: NotificationPriority.CRITICAL },
+        }),
+        this.prisma.notification.count({ where: { recipientId: userId, isPinned: true } }),
+        this.prisma.notification.groupBy({
+          by: ['category'],
+          where: { ...base, isRead: false },
+          _count: { _all: true },
+        }),
+      ])
 
-    return {
-      unread,
-      critical,
-      pinned,
-      byCategory: byCategory.map((row) => ({
-        category: row.category as NotificationCategory,
-        count: row._count._all,
-      })),
+      return {
+        unread,
+        critical,
+        pinned,
+        byCategory: byCategory.map((row) => ({
+          category: row.category as NotificationCategory,
+          count: row._count._all,
+        })),
+      }
+    } catch (err) {
+      this.logger.warn(`Could not compute notification summary for ${userId}: ${err instanceof Error ? err.message : String(err)}`)
+      return { unread: 0, critical: 0, pinned: 0, byCategory: [] }
     }
   }
 

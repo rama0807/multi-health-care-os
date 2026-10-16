@@ -48,6 +48,40 @@ export class HospitalsService {
     return hospital
   }
 
+  async findOrCreateDefaultHospital(organizationId: string) {
+    const existing = await this.prisma.hospital.findFirst({
+      where: { organizationId },
+      orderBy: { createdAt: 'asc' },
+    })
+    if (existing) {
+      if (!existing.isActive) {
+        return this.prisma.hospital.update({
+          where: { id: existing.id },
+          data: { isActive: true },
+        })
+      }
+      return existing
+    }
+
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId } })
+    const baseCode =
+      (org?.slug ?? 'MAIN')
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, '')
+        .slice(0, 10) || 'MAIN'
+
+    return this.prisma.hospital.create({
+      data: {
+        organizationId,
+        name: org?.name ? `${org.name} Facility` : 'Main Clinic',
+        code: baseCode,
+        phone: org?.phone,
+        email: org?.email,
+        isActive: true,
+      },
+    })
+  }
+
   async create(organizationId: string, dto: CreateHospitalDto, actorUserId?: string) {
     await this.assertCodeAvailable(organizationId, dto.code)
 

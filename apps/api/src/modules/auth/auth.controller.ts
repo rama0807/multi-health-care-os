@@ -64,10 +64,24 @@ export class AuthController {
   @ApiOperation({ summary: 'Register a new organization with its admin user' })
   async register(
     @Body() dto: RegisterOrganizationDto,
-    @Req() request: FastifyRequest,
+    @Req() request: FastifyRequest & { query?: { autoLogin?: string; session?: string } },
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
-    const result = await this.authService.register(dto, this.requestMeta(request))
+    const autoLogin = request.query?.autoLogin !== 'false' && request.query?.session !== 'false'
+    const result = await this.authService.register(dto, this.requestMeta(request), autoLogin)
+
+    if (!autoLogin || !('accessToken' in result)) {
+      clearAuthCookies(
+        reply,
+        this.configService.get<boolean>('app.isProduction') ?? false,
+        this.configService.get<string>('app.cookieDomain'),
+      )
+      return {
+        message: 'Organization registered successfully. Please sign in.',
+        user: result.user,
+      }
+    }
+
     return this.respondWithSession(reply, result)
   }
 

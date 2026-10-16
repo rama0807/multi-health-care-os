@@ -1,13 +1,13 @@
+/* eslint-disable @typescript-eslint/no-unsafe-enum-comparison */
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
 import { LoginSchema, type LoginDto } from '@medicore/types'
-import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -23,6 +23,8 @@ function getErrorMessage(error: unknown): string {
 
 export function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const isRegistered = searchParams.get('registered') === 'true'
   const { login } = useAuth()
   const [serverError, setServerError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
@@ -35,8 +37,12 @@ export function LoginForm() {
   async function onSubmit(values: LoginDto) {
     setServerError(null)
     try {
-      await login(values)
-      router.push('/dashboard')
+      const user = await login(values)
+      if (user.organizationType === 'DENTAL') {
+        router.push('/dental')
+      } else {
+        router.push('/dashboard')
+      }
     } catch (error) {
       setServerError(getErrorMessage(error))
     }
@@ -48,8 +54,21 @@ export function LoginForm() {
     <div className="space-y-6">
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
-        <p className="text-sm text-muted-foreground">Enter your credentials to access MediCore</p>
+        <p className="text-sm text-muted-foreground">
+          {isRegistered
+            ? 'Account created successfully. Sign in with your admin credentials to continue.'
+            : 'Enter your credentials to access Grovyn Healthcare OS'}
+        </p>
       </div>
+
+      {isRegistered && (
+        <Alert className="border-emerald-500/30 bg-emerald-50/70 dark:bg-emerald-950/25 text-emerald-900 dark:text-emerald-200">
+          <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+          <AlertDescription className="text-xs font-medium text-emerald-800 dark:text-emerald-300">
+            Account created successfully! Please sign in with your email and password to access your workspace.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {serverError && (
         <Alert variant="destructive">

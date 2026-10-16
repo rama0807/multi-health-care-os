@@ -3,6 +3,8 @@ export enum OrganizationType {
   CLINIC = 'CLINIC',
   DIAGNOSTIC_CENTER = 'DIAGNOSTIC_CENTER',
   NURSING_HOME = 'NURSING_HOME',
+  /** Dental Clinic / Grovyn Dental OS organization type */
+  DENTAL = 'DENTAL',
 }
 
 export enum SubscriptionTier {
@@ -86,6 +88,8 @@ export enum InvoiceType {
   PHARMACY = 'PHARMACY',
   PROCEDURE = 'PROCEDURE',
   MISCELLANEOUS = 'MISCELLANEOUS',
+  /** Dental procedure invoice (Grovyn Dental OS) */
+  DENTAL = 'DENTAL',
 }
 
 export enum PaymentMode {
@@ -114,6 +118,8 @@ export enum ChargeSourceModule {
   PROCEDURE = 'PROCEDURE',
   IPD = 'IPD',
   MISCELLANEOUS = 'MISCELLANEOUS',
+  /** Dental procedure charge (Grovyn Dental OS) */
+  DENTAL = 'DENTAL',
 }
 
 export enum ChargeStatus {
@@ -366,6 +372,11 @@ export enum SystemRole {
   CASHIER = 'CASHIER',
   HR = 'HR',
   INVENTORY_MANAGER = 'INVENTORY_MANAGER',
+  // ── Dental OS roles (Grovyn Dental OS) ─────────────────────────────────
+  DENTIST = 'DENTIST',
+  DENTAL_ASSISTANT = 'DENTAL_ASSISTANT',
+  TREATMENT_COORDINATOR = 'TREATMENT_COORDINATOR',
+  LAB_COORDINATOR = 'LAB_COORDINATOR',
 }
 
 export enum UserStatus {

@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils'
 import { useBranding } from '@/providers/branding-provider'
 import { useWorkspace } from '@/providers/workspace-provider'
 
-import { navigation, type NavItem } from './nav-config'
+import { navigation, type NavItem, type NavSection } from './nav-config'
 
 // Re-exported so any module that imported these from the sidebar keeps working.
 export { navigation } from './nav-config'
@@ -38,7 +38,7 @@ const COLLAPSE_KEY = 'medicore.sidebar.collapsed'
  *   `/dashboard/billing/invoices` from a link must not leave Billing collapsed;
  *   the user needs to see where they are.
  */
-export function Sidebar() {
+export function Sidebar({ sections = navigation }: { sections?: NavSection[] } = {}) {
   const pathname = usePathname()
   const { user, hasPermission } = useAuth()
   const { displayName, logo } = useBranding()
@@ -80,7 +80,7 @@ export function Sidebar() {
           aria-label="Main"
           className={cn('flex-1 overflow-y-auto overflow-x-hidden px-2 py-3', collapsed && 'px-1.5')}
         >
-          {navigation.map((section, index) => {
+          {sections.map((section, index) => {
             const items = section.items.filter(
               (item) => !item.permission || hasPermission(item.permission),
             )
@@ -150,7 +150,7 @@ export function Sidebar() {
 
 /** `/dashboard` must not light up on `/dashboard/patients`. */
 function isRouteActive(href: string, pathname: string): boolean {
-  if (href === '/dashboard') return pathname === '/dashboard'
+  if (href === '/dashboard' || href === '/dental') return pathname === href
   return pathname === href || pathname.startsWith(href + '/')
 }
 

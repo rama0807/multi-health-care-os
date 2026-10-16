@@ -16,7 +16,7 @@ interface AuthContextValue {
   user: AuthenticatedUser | null
   isLoading: boolean
   isAuthenticated: boolean
-  login: (dto: LoginDto) => Promise<void>
+  login: (dto: LoginDto) => Promise<AuthenticatedUser>
   logout: () => Promise<void>
   logoutAll: () => Promise<void>
   hasPermission: (permission: string) => boolean
@@ -63,10 +63,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [clearSession])
 
-  const login = useCallback(async (dto: LoginDto) => {
+  const login = useCallback(async (dto: LoginDto): Promise<AuthenticatedUser> => {
     const { data } = await apiClient.post<{ data: LoginResponseBody }>('/auth/login', dto)
     setAccessToken(data.data.accessToken)
     setUser(data.data.user)
+    return data.data.user
   }, [])
 
   const logout = useCallback(async () => {

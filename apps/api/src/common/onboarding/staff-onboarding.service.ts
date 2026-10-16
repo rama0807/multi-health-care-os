@@ -125,12 +125,95 @@ export class StaffOnboardingService {
   }
 
   private async requireRole(tx: Prisma.TransactionClient, organizationId: string, systemRole: SystemRole) {
-    const role = await tx.role.findFirst({ where: { organizationId, systemRole } })
-    if (!role) {
-      throw new NotFoundException(
-        `No '${systemRole}' role is configured for this organization - an administrator must create it first`,
-      )
+    const existingByRole = await tx.role.findFirst({ where: { organizationId, systemRole } })
+    if (existingByRole) return existingByRole
+
+    if (tx.role?.create && tx.permission?.findMany) {
+      const roleName = systemRole
+        .toLowerCase()
+        .split('_')
+        .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+        .join(' ')
+
+      const existingByName = await tx.role.findUnique?.({
+        where: { name_organizationId: { name: roleName, organizationId } },
+      })
+      if (existingByName) {
+        if (!existingByName.systemRole) {
+          return tx.role.update({
+            where: { id: existingByName.id },
+            data: { systemRole },
+          })
+        }
+        return existingByName
+      }
+
+      let permissionWhere: Prisma.PermissionWhereInput = {
+        NOT: { resource: { startsWith: 'platform' } },
+      }
+
+      if (systemRole === 'DENTAL_ASSISTANT') {
+        permissionWhere = {
+          OR: [
+            { resource: { in: ['dental_odontogram', 'dental_encounters', 'dental_imaging', 'dental_lab_cases', 'dental_consent', 'dental_recalls'] } },
+            { resource: 'dental_patients', action: { in: ['read'] } },
+            { resource: 'dental_treatment_plans', action: { in: ['read'] } },
+            { resource: { in: ['patients', 'appointments', 'medical_records'] }, action: { in: ['read'] } },
+            { resource: { in: ['attendance', 'leave', 'shifts.roster'] } },
+          ],
+          NOT: {
+            OR: [
+              { resource: { startsWith: 'platform' } },
+              { resource: { startsWith: 'dental_billing' } },
+              { resource: 'dental_treatment_plans', action: { not: 'read' } },
+              { resource: 'dental_patients', action: { in: ['delete'] } },
+            ],
+          },
+        }
+      } else if (systemRole === 'TREATMENT_COORDINATOR') {
+        permissionWhere = {
+          OR: [
+            { resource: { startsWith: 'dental_' } },
+            { resource: { in: ['patients', 'appointments', 'billing', 'attendance', 'leave'] } },
+          ],
+          NOT: { resource: { startsWith: 'platform' } },
+        }
+      } else if (systemRole === 'LAB_COORDINATOR') {
+        permissionWhere = {
+          OR: [
+            { resource: { startsWith: 'dental_lab' } },
+            { resource: { startsWith: 'dental_vendors' } },
+            { resource: { in: ['attendance', 'leave'] } },
+          ],
+          NOT: { resource: { startsWith: 'platform' } },
+        }
+      } else if (systemRole === 'RECEPTIONIST') {
+        permissionWhere = {
+          OR: [
+            { resource: { in: ['patients', 'appointments', 'billing', 'attendance', 'leave', 'shifts.roster'] } },
+            { resource: { startsWith: 'dental_' } },
+          ],
+          NOT: { resource: { startsWith: 'platform' } },
+        }
+      }
+
+      const permissions = await tx.permission.findMany({ where: permissionWhere })
+
+      return tx.role.create({
+        data: {
+          name: roleName,
+          description: `Default ${roleName} role`,
+          systemRole,
+          organizationId,
+          rolePermissions: {
+            create: permissions.map((p) => ({ permissionId: p.id })),
+          },
+        },
+      })
     }
-    return role
+
+    throw new NotFoundException(
+      `No '${systemRole}' role is configured for this organization - an administrator must create it first`,
+    )
   }
 }

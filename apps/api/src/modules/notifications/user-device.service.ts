@@ -30,12 +30,22 @@ export class UserDeviceService {
 
   /** What the browser needs before it can subscribe, or why it cannot. */
   pushConfig(): PushConfigStatus {
-    const reason = this.fcm.browserPushReason()
-    return {
-      configured: reason === null,
-      vapidPublicKey: this.fcm.vapidPublicKey(),
-      projectId: this.fcm.projectId(),
-      reason,
+    try {
+      const reason = this.fcm.browserPushReason()
+      return {
+        configured: reason === null,
+        vapidPublicKey: this.fcm.vapidPublicKey(),
+        projectId: this.fcm.projectId(),
+        reason,
+      }
+    } catch (err) {
+      this.logger.warn(`Could not compute push config: ${err instanceof Error ? err.message : String(err)}`)
+      return {
+        configured: false,
+        vapidPublicKey: null,
+        projectId: null,
+        reason: 'Push notifications are not configured on this server.',
+      }
     }
   }
 
@@ -86,11 +96,16 @@ export class UserDeviceService {
   }
 
   async list(userId: string): Promise<UserDevice[]> {
-    const rows = await this.prisma.userDevice.findMany({
-      where: { userId },
-      orderBy: [{ isActive: 'desc' }, { lastSeenAt: 'desc' }],
-    })
-    return rows.map(toResponse)
+    try {
+      const rows = await this.prisma.userDevice.findMany({
+        where: { userId },
+        orderBy: [{ isActive: 'desc' }, { lastSeenAt: 'desc' }],
+      })
+      return rows.map(toResponse)
+    } catch (err) {
+      this.logger.warn(`Could not list user devices for ${userId}: ${err instanceof Error ? err.message : String(err)}`)
+      return []
+    }
   }
 
   /** Active tokens for a recipient - what the FCM provider fans out over. */

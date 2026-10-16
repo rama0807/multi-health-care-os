@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { SystemRole } from './enums'
+import { OrganizationType, SystemRole } from './enums'
 
 /**
  * The three tenant levels every authenticated request resolves to
@@ -23,6 +23,12 @@ export interface JwtPayload {
   email: string
   orgId: string
   orgSlug: string
+  /**
+   * The organization type embedded at login/refresh time so route guards and
+   * the frontend router can branch without a round trip. Validated server-side
+   * against the live `Organization.type` on every request via `JwtStrategy`.
+   */
+  orgType: OrganizationType
   /**
    * True when this user's organization is the platform tenant. Carried in the
    * token so `PlatformGuard` needs no per-request DB round trip - the same
@@ -56,6 +62,9 @@ export interface AuthenticatedUser {
   organizationId: string
   organizationSlug: string
   organizationName: string
+  /** The type of organization this user belongs to (HOSPITAL, DENTAL, etc.). Used
+   *  by the frontend router to branch to the correct application shell. */
+  organizationType: OrganizationType
   /** Mirrors `JwtPayload.isPlatform` - lets the web app route to the isolated Platform console. */
   isPlatform: boolean
   roles: SystemRole[]
@@ -104,6 +113,8 @@ export const RegisterOrganizationSchema = z.object({
       'Password must contain uppercase, lowercase, and number',
     ),
   phone: z.string().regex(/^[6-9]\d{9}$/, 'Enter valid Indian mobile number'),
+  /** Defaults to HOSPITAL so the existing hospital signup flow is unchanged. */
+  organizationType: z.nativeEnum(OrganizationType).default(OrganizationType.HOSPITAL),
 })
 
 export type RegisterOrganizationDto = z.infer<typeof RegisterOrganizationSchema>
